@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Schaduw-module — demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="schaduw.css">
+<style>
+  :root{ --gold:#c9a84c; --gold-dim:#8a6f32; --parchment:#f5ead6; }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100dvh}
+  body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgia,serif;font-size:18px;line-height:1.7;overflow-x:hidden}
+  .wrap{max-width:680px;margin:0 auto;padding:3rem 1.5rem 6rem}
+  h1{font-family:'Cinzel',serif;color:var(--gold);font-size:1.6rem;letter-spacing:.08em}
+  .demo-kaart{margin:1.5rem 0;padding:1.5rem;border:1px solid rgba(201,168,76,.25);border-radius:6px;
+    background:linear-gradient(160deg,rgba(201,168,76,.06),rgba(0,0,0,.2))}
+  .demo-kaart h3{font-family:'Cinzel',serif;color:var(--gold);font-size:1.1rem;margin:.2rem 0 .6rem}
+  .demo-kaart p{font-style:italic;color:var(--parchment)}
+  /* een lichte/gekleurde strook om te zien dat de mist óók daar zichtbaar is */
+  .kleurvlak{height:120px;border-radius:6px;margin:1.5rem 0;
+    background:linear-gradient(90deg,#c97b3a,#d8b84a,#5a8d6a,#4a6fa5)}
+
+  /* ── Testpaneel ── */
+  #panel{position:fixed;left:14px;bottom:14px;z-index:900;width:230px;background:rgba(12,8,4,.95);
+    border:1px solid rgba(201,168,76,.4);border-radius:8px;padding:.9rem;font-family:'Crimson Text',serif;
+    box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  #panel h4{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin:0 0 .75rem}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.55rem;font-size:.82rem;color:#cdbfa8}
+  .row input[type=range]{flex:1}
+  .b{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;padding:.5rem;
+    border:1px solid rgba(201,168,76,.3);background:rgba(201,168,76,.06);color:var(--gold);cursor:pointer;border-radius:3px;flex:1}
+  .b:hover{background:rgba(201,168,76,.14)}
+  .b.aan{background:rgba(201,168,76,.22);color:#fff}
+  .bar{height:8px;background:rgba(201,168,76,.12);border-radius:4px;overflow:hidden}
+  .fill{height:100%;width:0%;background:linear-gradient(90deg,var(--gold-dim),#8b1a1a);transition:width .3s}
+  .codebox{font-family:'Cinzel',serif;letter-spacing:.25em;color:#ffd9d9;text-align:center;font-size:1.1rem;
+    padding:.35rem;background:rgba(255,200,200,.06);border-radius:4px;min-height:1.8rem}
+  .note{font-size:.7rem;color:var(--gold-dim);font-style:italic;line-height:1.4;margin-top:.5rem}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Schaduw-module — testomgeving</h1>
+    <div class="demo-kaart">
+      <h3>Dorpsput</h3>
+      <p>Het water is zwart en stil. Je eigen spiegelbeeld ontbreekt. Iets onder het
+        oppervlak lijkt naar je te kijken, geduldig, alsof het al heel lang wacht.</p>
+    </div>
+    <div class="kleurvlak"></div>
+    <div class="demo-kaart">
+      <h3>Nummer 7</h3>
+      <p>De deur staat op een kier. Binnen ruikt het naar oud kaarsvet en iets zoets dat
+        je niet kunt plaatsen. De stilte heeft een gewicht.</p>
+    </div>
+    <p style="opacity:.6;font-style:italic">Zet de schaduw aan (paneel linksonder) en laat de meter
+      vollopen. Bij 100% komt de memory-puzzel. Doe die fout om de vergrendeling te testen.</p>
+  </div>
+
+  <!-- Testpaneel -->
+  <div id="panel">
+    <h4>Schaduw — test</h4>
+    <div class="row"><span>Meter: <b id="pct">0</b>%</span></div>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <div class="row" style="margin-top:.6rem"><span>Snelheid</span>
+      <input type="range" min="0.2" max="3" step="0.2" value="1.1" oninput="ZilverweideSchaduw._setSpeed(this.value)"></div>
+    <div class="row" style="gap:.4rem">
+      <button class="b" id="b-cursed" onclick="toggleCursed()">Schaduw UIT</button></div>
+    <div class="row" style="gap:.4rem">
+      <button class="b" onclick="ZilverweideSchaduw._forceMemory()">Memory nu</button>
+      <button class="b" id="b-busy" onclick="toggleBusy()">Busy UIT</button></div>
+    <div class="note">Vergrendeld? Lees de code hieronder en open de redder-invoer
+      (= het tablet van de medespeler).</div>
+    <div class="row" style="margin-top:.4rem"><span>Code</span></div>
+    <div class="codebox" id="codebox">····</div>
+    <div class="row" style="gap:.4rem;margin-top:.5rem">
+      <button class="b" onclick="ZilverweideSchaduw.toonRedderInvoer()">Redder logt in →</button></div>
+  </div>
+
+  <script src="schaduw.js"></script>
+  <script>
+    ZilverweideSchaduw.init({
+      fogSrc: 'fog.png',
+      onVergrendel: code => { document.getElementById('codebox').textContent = code; },
+      onBevrijd:    ()   => { document.getElementById('codebox').textContent = '····'; }
+    });
+    let cursed=false, busy=false;
+    function toggleCursed(){
+      cursed=!cursed;
+      if(cursed) ZilverweideSchaduw.vervloek(); else ZilverweideSchaduw.kalmeer();
+      const b=document.getElementById('b-cursed');
+      b.textContent = cursed?'Schaduw AAN':'Schaduw UIT'; b.classList.toggle('aan',cursed);
+    }
+    function toggleBusy(){
+      busy=!busy; ZilverweideSchaduw.setBusy(busy);
+      const b=document.getElementById('b-busy');
+      b.textContent = busy?'Busy AAN':'Busy UIT'; b.classList.toggle('aan',busy);
+    }
+    // live de code tonen zodra de speler vergrendeld raakt
+    setInterval(()=>{
+      const c=ZilverweideSchaduw._getCode();
+      if(c) document.getElementById('codebox').textContent=c;
+    }, 500);
+  </script>
+  <script>
+    // Meter-balkje in het paneel laten meelopen met de echte meter.
+    // De module exposeert de meter niet direct; we lezen 'm af van de smoke-var.
+    setInterval(()=>{
+      const root=document.getElementById('zv-schaduw');
+      if(!root) return;
+      const smoke=parseFloat(getComputedStyle(root).getPropertyValue('--zv-smoke'))||0;
+      // smoke = .25 + .75*(meter/100)  →  meter = (smoke-.25)/.75*100
+      const meter=Math.max(0,Math.min(100,(smoke-0.25)/0.75*100));
+      document.getElementById('pct').textContent=Math.round(meter);
+      document.getElementById('fill').style.width=meter+'%';
+    }, 300);
+  </script>
+</body>
+</html>

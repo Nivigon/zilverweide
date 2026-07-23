@@ -1,0 +1,460 @@
+/* ════════════════════════════════════════════════════════════════════
+   DOOLHOF-ENGINE — Styling
+   Alle classes hebben prefix "dh-" om botsing met andere CSS te vermijden.
+   Gebruikt CSS-variabelen van het omringende project (Zilverweide-tokens).
+   Voor standalone gebruik staan er fallback-defaults op :root.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Fallback-variabelen — worden overschreven als de gastpagina (Zilverweide)
+   z'n eigen :root al definieert met dezelfde namen. */
+:root {
+  --gold: #c9a84c;
+  --gold-dim: #8a6f32;
+  --parchment: #f5ead6;
+  --mist: #c8bfaf;
+  --blood: #8b1a1a;
+  --rose: #9b3a4a;
+  --ash: #3d3228;
+  --ink: #1a1208;
+}
+
+/* ─── Container ─── */
+.dh-root {
+  font-family: 'Crimson Text', Georgia, serif;
+  color: var(--parchment);
+}
+
+/* ─── Screens ─── */
+.dh-screen {
+  display: none;
+  animation: dh-fadeIn .6s ease;
+}
+.dh-screen.dh-active { display: block; }
+@keyframes dh-fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Crest (compacte titel) ─── */
+.dh-crest {
+  text-align: center;
+  padding: .5rem 0 .25rem;
+}
+.dh-crest-sub {
+  font-family: 'Cinzel', serif;
+  font-size: .85rem;
+  color: var(--gold-dim);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+/* ─── Compacte header (terug + ondertitel op één regel) ─── */
+.dh-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 0;
+  margin: 0 0 .5rem;
+}
+.dh-back-btn {
+  background: none;
+  border: none;
+  color: var(--gold-dim);
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .12em;
+  cursor: pointer;
+  padding: .25rem .5rem .25rem 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.dh-back-btn:hover { color: var(--gold); }
+.dh-header-sep {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(201, 168, 76, .3), transparent);
+}
+.dh-header-sub {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+/* Grote titel bij compactHeader: prominent maar compact */
+.dh-titel-compact {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  color: var(--gold);
+  letter-spacing: .08em;
+  text-align: center;
+  text-shadow: 0 0 30px rgba(201, 168, 76, .35);
+  line-height: 1.15;
+  margin: .25rem 0 .25rem;
+}
+/* Sub-titel direct onder de grote titel */
+.dh-sub-onder-titel {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 .5rem;
+}
+
+/* ─── Dialoog-box (onder de afbeelding, vaste hoogte, klik-door) ─── */
+.dh-dialog {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  height: 110px;
+  margin: 0 0 1rem;
+  background: rgba(13, 10, 6, .55);
+  border: 1px solid rgba(201, 168, 76, .25);
+  border-radius: 4px;
+  overflow: hidden;
+  animation: dh-dialogIn .35s ease;
+}
+@keyframes dh-dialogIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.dh-dialog-body {
+  flex: 1;
+  padding: .85rem 1.1rem .9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+.dh-dialog-spreker {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .22em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: .35rem;
+  opacity: .9;
+}
+.dh-dialog-tekst {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--parchment);
+  /* fade-in alleen op de tekst, niet de container */
+  animation: dh-dialogTextIn .25s ease;
+}
+@keyframes dh-dialogTextIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Sierlijke verder-knop: smal, volle hoogte van de box, met ornament */
+.dh-dialog-verder {
+  flex: 0 0 auto;
+  width: 56px;
+  border: none;
+  border-left: 1px solid rgba(201, 168, 76, .25);
+  background: linear-gradient(180deg,
+    rgba(201, 168, 76, .06) 0%,
+    rgba(201, 168, 76, .12) 50%,
+    rgba(201, 168, 76, .06) 100%);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .15rem;
+  transition: all .2s;
+  position: relative;
+}
+.dh-dialog-verder:hover {
+  background: linear-gradient(180deg,
+    rgba(201, 168, 76, .12) 0%,
+    rgba(201, 168, 76, .22) 50%,
+    rgba(201, 168, 76, .12) 100%);
+  color: var(--parchment);
+}
+.dh-dialog-verder:active { transform: scale(.97); }
+.dh-dialog-verder .dh-verder-ornament {
+  font-size: 1.3rem;
+  line-height: 1;
+  animation: dh-verderPulse 1.6s ease-in-out infinite;
+}
+.dh-dialog-verder .dh-verder-label {
+  font-size: .55rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+@keyframes dh-verderPulse {
+  0%, 100% { opacity: .65; }
+  50%      { opacity: 1; }
+}
+
+/* ─── Narrator-blok (gebruikt op startscherm) ─── */
+.dh-narrator {
+  background: rgba(201, 168, 76, .06);
+  border: 1px solid rgba(201, 168, 76, .2);
+  border-radius: 4px;
+  padding: 1.5rem 1.75rem;
+  margin: 1.5rem 0;
+  position: relative;
+}
+.dh-narrator::before {
+  content: '"';
+  font-family: 'Cinzel', serif;
+  font-size: 4rem;
+  color: var(--gold);
+  opacity: .2;
+  position: absolute;
+  top: -.5rem;
+  left: .75rem;
+  line-height: 1;
+}
+.dh-narrator p {
+  font-style: italic;
+  color: var(--parchment);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin: 0;
+}
+.dh-narrator p + p { margin-top: .75rem; }
+
+/* ─── Knoppen (Zilverweide-look) ─── */
+.dh-btn {
+  display: inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: .9rem;
+  letter-spacing: .12em;
+  padding: .8rem 2rem;
+  border: 1px solid var(--gold-dim);
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+  transition: all .2s;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.dh-btn:hover { background: rgba(201, 168, 76, .1); border-color: var(--gold); }
+.dh-btn:active { transform: scale(.98); }
+.dh-btn-full {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 1rem;
+}
+
+/* ─── Scene-afbeelding ─── */
+.dh-scene-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 42vh;
+  background: #000 center/cover no-repeat;
+  border: 1px solid rgba(201, 168, 76, .2);
+  border-radius: 4px;
+  margin: .5rem 0 .75rem;
+  box-shadow: 0 0 40px rgba(0, 0, 0, .6) inset, 0 0 30px rgba(0, 0, 0, .5);
+  position: relative;
+  overflow: hidden;
+}
+.dh-scene-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, .55) 100%);
+  pointer-events: none;
+}
+/* Startscherm-variant: zelfde sizing als doolhof-scherm voor consistente layout */
+.dh-screen-start .dh-scene-image {
+  aspect-ratio: 16 / 9;
+  max-height: 42vh;
+  margin: .25rem 0 .75rem;
+}
+
+.dh-scene-caption {
+  font-family: 'Cinzel', serif;
+  font-size: .75rem;
+  letter-spacing: .2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 .5rem;
+}
+
+/* ─── Heks-trigger (binnen scene-image) ─── */
+.dh-scene-image.dh-heks-mode {
+  transition: background-image .15s ease, box-shadow .4s ease;
+  box-shadow: 0 0 60px rgba(139, 26, 26, .5) inset,
+              0 0 40px rgba(139, 26, 26, .4);
+  animation: dh-heksShake .4s ease;
+}
+@keyframes dh-heksShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+.dh-scene-caption.dh-heks-mode {
+  color: var(--blood);
+  font-style: italic;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 1rem;
+  letter-spacing: .02em;
+  text-transform: none;
+  text-shadow: 0 0 12px rgba(139, 26, 26, .5);
+}
+
+/* ─── Positie-label ─── */
+.dh-positie-label {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .18em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 .75rem;
+}
+.dh-positie-letter {
+  display: inline-block;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: var(--gold);
+  background: rgba(201, 168, 76, .08);
+  border: 1px solid rgba(201, 168, 76, .35);
+  border-radius: 3px;
+  padding: .05em .55em;
+  margin-left: .4em;
+  letter-spacing: .05em;
+  text-transform: lowercase;
+}
+
+/* ─── Move controls (D-pad) ─── */
+.dh-move-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .5rem;
+  margin-top: .25rem;
+}
+.dh-move-controls.dh-locked {
+  opacity: .3;
+  pointer-events: none;
+  transition: opacity .3s ease;
+}
+.dh-move-row-top { display: flex; justify-content: center; }
+.dh-move-row-bottom {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
+  gap: .5rem;
+  width: 100%;
+  max-width: 380px;
+}
+.dh-move-row-bottom .dh-move-btn { width: 100%; }
+.dh-move-btn {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .1em;
+  padding: .65rem 1rem;
+  min-width: 110px;
+  border: 1px solid var(--gold-dim);
+  background: rgba(201, 168, 76, .04);
+  color: var(--gold);
+  cursor: pointer;
+  transition: all .2s;
+  border-radius: 2px;
+  text-transform: uppercase;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .2rem;
+}
+.dh-move-btn:hover { background: rgba(201, 168, 76, .12); border-color: var(--gold); }
+.dh-move-btn:active { transform: scale(.97); }
+.dh-move-btn.dh-hidden { visibility: hidden; pointer-events: none; }
+.dh-move-btn .dh-arrow { font-size: 1.2rem; line-height: 1; color: var(--parchment); }
+.dh-move-btn .dh-label { font-size: .7rem; }
+
+/* ─── Win-blok ─── */
+.dh-win-block {
+  background: rgba(125, 191, 125, .06);
+  border: 1px solid rgba(125, 191, 125, .3);
+  border-radius: 4px;
+  padding: 1.75rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+.dh-win-block h2 {
+  font-family: 'Cinzel', serif;
+  color: #9dd49d;
+  font-size: 1.4rem;
+  letter-spacing: .1em;
+  margin: 0 0 .75rem;
+}
+.dh-win-block p {
+  font-style: italic;
+  color: var(--mist);
+  margin: 0;
+}
+
+/* ─── Muziek-toggle ─── */
+.dh-music-toggle {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 300;
+  width: 36px;
+  height: 36px;
+  background: rgba(13, 10, 6, .7);
+  border: 1px solid rgba(201, 168, 76, .25);
+  border-radius: 50%;
+  color: var(--gold);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .2s;
+  opacity: .6;
+}
+.dh-music-toggle:hover { opacity: 1; border-color: var(--gold); }
+.dh-music-toggle.dh-muted { color: var(--gold-dim); opacity: .4; }
+.dh-music-toggle.dh-muted::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 1px;
+  background: var(--gold-dim);
+  transform: rotate(-45deg);
+}
+
+/* ─── Debug-label (optioneel) ─── */
+.dh-debug {
+  position: fixed;
+  bottom: .6rem;
+  left: .6rem;
+  z-index: 300;
+  font-family: 'Cinzel', serif;
+  font-size: .65rem;
+  letter-spacing: .1em;
+  color: var(--gold-dim);
+  background: rgba(13, 10, 6, .7);
+  padding: .25rem .6rem;
+  border: 1px solid rgba(201, 168, 76, .15);
+  border-radius: 2px;
+  opacity: .5;
+  pointer-events: none;
+  text-transform: uppercase;
+}

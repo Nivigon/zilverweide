@@ -1,0 +1,83 @@
+/* ══════════════════════════════════════════════════════════════════
+   BLIKSEM — flits + optionele bliksemschicht (sfeerlaag)
+   Volle-scherm flits met realistische flikker (dubbele piek), plus
+   een optionele schicht-SVG. Donder zit in bliksem.js (audio).
+   pointer-events:none → klikken gaan door.
+
+   Prefix: bl-   |   Mount via Bliksem (zie bliksem.js)
+   ══════════════════════════════════════════════════════════════════ */
+
+.bl-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 8;            /* boven regen/gloed */
+}
+
+/* ── De flits zelf ── */
+.bl-flash {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  mix-blend-mode: screen;   /* licht de scene op i.p.v. overdekken */
+  /* heldere kern bij --bl-x (oorsprong), koel-wit naar de randen */
+  background: radial-gradient(120% 90% at var(--bl-x, 50%) -10%,
+      rgba(228, 236, 255, .95) 0%,
+      rgba(150, 180, 235, .55) 30%,
+      rgba(60, 90, 150, .15) 65%,
+      rgba(0, 0, 0, 0) 100%);
+}
+.bl-flash.bl-fire {
+  animation: bl-flits var(--bl-dur, .8s) ease-out 1;
+}
+
+/* realistische flikker: snelle piek, korte dip, tweede piek, uitdoven */
+@keyframes bl-flits {
+  0%   { opacity: 0; }
+  6%   { opacity: .95; }
+  14%  { opacity: .25; }
+  22%  { opacity: .85; }
+  32%  { opacity: .15; }
+  45%  { opacity: .6;  }
+  100% { opacity: 0;   }
+}
+
+/* ── Optionele bliksemschicht ── */
+.bl-bolt {
+  position: absolute;
+  top: -2%;
+  width: 30%;
+  height: 78%;
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(200, 220, 255, .9))
+          drop-shadow(0 0 18px rgba(120, 160, 235, .6));
+  /* left wordt inline gezet (--bl-x) */
+}
+.bl-bolt.bl-fire {
+  animation: bl-boltflits var(--bl-dur, .8s) ease-out 1;
+}
+.bl-bolt path {
+  stroke: #f2f6ff;
+  stroke-width: 2.2;
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+@keyframes bl-boltflits {
+  0%  { opacity: 0; }
+  5%  { opacity: 1; }
+  16% { opacity: .15; }
+  24% { opacity: .9; }
+  40% { opacity: 0; }
+  100%{ opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* zachtere, kortere flits */
+  .bl-flash.bl-fire { animation-duration: .5s; }
+  @keyframes bl-flits {
+    0% { opacity: 0; } 20% { opacity: .5; } 100% { opacity: 0; }
+  }
+}

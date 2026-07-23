@@ -1,0 +1,46 @@
+/* ══════════════════════════════════════════════════════════════════
+   REGEN — regen-overlay (sfeerlaag)
+   3 lagen voor diepte (ver / mid / dichtbij). De streep-tiles worden
+   in JS als SVG gezet, met naadloze wrap (strepen lopen door over de
+   randen) zodat je géén herhalend raster ziet. Elke laag heeft een
+   eigen lichte draaiing + horizontale fase zodat de lagen niet
+   uitlijnen. Performant: alleen background-position animeert.
+
+   Prefix: rg-   |   Mount via Regen (zie regen.js)
+   ══════════════════════════════════════════════════════════════════ */
+
+.rg-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  --rg-intensity: 0.8;       /* 0..1 via setIntensity() */
+}
+.rg-layer.rg-on { opacity: var(--rg-intensity); }
+
+.rg-streaks {
+  position: absolute;
+  inset: -12%;               /* ruim over de rand i.v.m. lichte rotatie */
+  background-repeat: repeat;
+  background-position: var(--rg-x, 0px) 0px;
+  transform: rotate(var(--rg-rot, 0deg));
+  will-change: background-position;
+  animation-name: rg-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  /* per-laag inline gezet door regen.js:
+     background-image, background-size, animation-duration,
+     --rg-shiftY, --rg-rot, --rg-x */
+}
+
+@keyframes rg-fall {
+  from { background-position: var(--rg-x, 0px) 0px; }
+  to   { background-position: var(--rg-x, 0px) var(--rg-shiftY, 300px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rg-streaks { animation-duration: 2.6s !important; opacity: .35 !important; }
+}

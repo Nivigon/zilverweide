@@ -1,0 +1,470 @@
+/* ════════════════════════════════════════════════════════════════════
+   SCENE — Gedeelde styling voor alle locatie-scènes in Zilverweide.
+   Alle classes hebben prefix "sc-" om botsing met bestaande CSS te vermijden.
+   Gebruikt CSS-variabelen van Zilverweide (--gold, --parchment, etc.).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ─── Compacte header met terug-knop ─── */
+.sc-header {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  padding: 0;
+  margin: 0 0 .5rem;
+}
+.sc-back-btn {
+  background: none;
+  border: none;
+  color: var(--gold-dim);
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .12em;
+  cursor: pointer;
+  padding: .25rem .5rem .25rem 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.sc-back-btn:hover { color: var(--gold); }
+.sc-header-sep {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, rgba(201, 168, 76, .3), transparent);
+}
+
+/* ─── Titel + subtitel ─── */
+.sc-titel {
+  font-family: 'Cinzel', serif;
+  font-weight: 600;
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  color: var(--gold);
+  letter-spacing: .08em;
+  text-align: center;
+  text-shadow: 0 0 30px rgba(201, 168, 76, .35);
+  line-height: 1.15;
+  margin: .25rem 0 .25rem;
+}
+.sc-sub {
+  font-family: 'Cinzel', serif;
+  font-size: .8rem;
+  letter-spacing: .2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  text-align: center;
+  margin: 0 0 .5rem;
+}
+
+/* ─── Afbeelding-container (gereserveerde ruimte) ─── */
+.sc-image {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 42vh;
+  background: #000 center/cover no-repeat;
+  border: 1px solid rgba(201, 168, 76, .2);
+  border-radius: 4px;
+  margin: .25rem 0 .75rem;
+  box-shadow: 0 0 40px rgba(0, 0, 0, .6) inset, 0 0 30px rgba(0, 0, 0, .5);
+  position: relative;
+  overflow: hidden;
+}
+.sc-image::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(0, 0, 0, .55) 100%);
+  pointer-events: none;
+}
+/* Video-variant (vult de container 16:9, geen achtergrond) */
+.sc-image-video {
+  background: #000;
+  padding: 0;
+}
+.sc-image-video::after {
+  /* vignet weg op video voor zuiver beeld */
+  display: none;
+}
+.sc-video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+}
+
+/* ─── Portret-variant: staande video (9:16) ───
+   Een rechtopstaande film in een 16:9-vak wordt piepklein met brede zwarte
+   balken. Deze variant draait de container rechtop en houdt hem gecentreerd,
+   zodat het beeld de hoogte vult. Groot: de film is hier het hele punt,
+   er staat geen dialoog onder die ruimte nodig heeft. */
+.sc-image.sc-image-portret {
+  aspect-ratio: 9 / 16;
+  height: 72vh;
+  max-height: 72vh;
+  width: auto;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 640px) {
+  .sc-image.sc-image-portret {
+    height: 66vh;
+    max-height: 66vh;
+  }
+}
+
+/* Slot-variant (custom content, bv. heks-keuzes) */
+.sc-image-slot {
+  background: #000;
+  padding: 0;
+}
+.sc-image-slot::after {
+  /* vignet weg op slot voor zuiver beeld */
+  display: none;
+}
+
+/* Cross-fade voor mediaSlot swap (mediaSlotAfterDialog) */
+.sc-image.sc-fade-out {
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+.sc-image.sc-fade-in {
+  animation: sc-fadeIn .35s ease;
+}
+@keyframes sc-fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Heks-keuze-grid (binnen sc-image-slot) ─── */
+.heks-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+.heks-keuze {
+  position: relative;
+  background: #0d0a06;
+  border: none;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all .25s ease;
+  padding: 0;
+  text-align: left;
+  display: block;
+}
+/* Portret op 40% opacity, op een EIGEN element (.heks-keuze-bg) in plaats van
+   een ::before met var(--portret). Reden: een url() binnen een CSS-variabele
+   wordt door de browser uitgerekend vanaf het stylesheet dat hem gebruikt, en
+   dit bestand staat in technischefiles/. Alle portretten werden daardoor daar
+   gezocht in plaats van naast zilverweide.html. Op een echt element staat de
+   url() inline in de HTML, en die rekent gewoon vanaf de pagina. */
+.heks-keuze-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center top;
+  opacity: .4;
+  transition: opacity .25s ease;
+}
+/* Donkere gradient onderaan zodat tekst leesbaar blijft. */
+.heks-keuze::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top,
+    rgba(0, 0, 0, .95) 0%,
+    rgba(0, 0, 0, .65) 35%,
+    rgba(0, 0, 0, .25) 60%,
+    rgba(0, 0, 0, 0) 100%);
+  pointer-events: none;
+}
+.heks-keuze-inhoud {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: .75rem .9rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: .15rem;
+}
+.heks-keuze-code {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .15em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+}
+.heks-keuze-naam {
+  font-family: 'Cinzel', serif;
+  font-size: .95rem;
+  color: var(--gold);
+  letter-spacing: .04em;
+  line-height: 1.2;
+}
+.heks-keuze-sub {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: .8rem;
+  color: var(--mist);
+  line-height: 1.3;
+}
+.heks-keuze:hover .heks-keuze-bg { opacity: .65; }
+.heks-keuze:hover { box-shadow: 0 0 20px rgba(201, 168, 76, .3) inset; }
+.heks-keuze:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+.heks-keuze:disabled:hover .heks-keuze-bg { opacity: .4; }
+.heks-keuze:disabled:hover { box-shadow: none; }
+/* Locked-variant — wel klikbaar, maar visueel gedimd (gebruikt voor
+   districten die nog niet ontgrendeld zijn bij de Waarzegster). */
+.heks-keuze-locked {
+  opacity: .45;
+}
+.heks-keuze-locked .heks-keuze-bg {
+  opacity: .2;
+}
+.heks-keuze-locked:hover {
+  opacity: .65;
+}
+.heks-keuze-locked:hover .heks-keuze-bg {
+  opacity: .3;
+}
+
+/* Placeholder als er nog geen afbeelding is */
+.sc-image-placeholder {
+  background: linear-gradient(135deg, #0d0a06 0%, #1a1208 50%, #0d0a06 100%);
+}
+.sc-image-placeholder::before {
+  content: 'AFBEELDING VOLGT';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Cinzel', serif;
+  font-size: .75rem;
+  letter-spacing: .35em;
+  color: var(--gold-dim);
+  opacity: .35;
+  z-index: 1;
+}
+
+/* ─── Dialoog-box ─── */
+.sc-dialog {
+  display: flex;
+  align-items: stretch;
+  min-height: 110px;
+  margin: 0 0 1rem;
+  background: rgba(13, 10, 6, .55);
+  border: 1px solid rgba(201, 168, 76, .25);
+  border-radius: 4px;
+  overflow: hidden;
+  animation: sc-dialogIn .35s ease;
+}
+@keyframes sc-dialogIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sc-dialog-body {
+  flex: 1;
+  padding: .9rem 1.1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.sc-dialog-spreker {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .22em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: .35rem;
+  opacity: .9;
+}
+.sc-dialog-tekst {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--parchment);
+  animation: sc-dialogTextIn .25s ease;
+}
+@keyframes sc-dialogTextIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Verder-knop */
+.sc-dialog-verder {
+  flex: 0 0 auto;
+  width: 56px;
+  border: none;
+  border-left: 1px solid rgba(201, 168, 76, .25);
+  background: linear-gradient(180deg,
+    rgba(201, 168, 76, .06) 0%,
+    rgba(201, 168, 76, .12) 50%,
+    rgba(201, 168, 76, .06) 100%);
+  color: var(--gold);
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .15rem;
+  transition: all .2s;
+  position: relative;
+}
+.sc-dialog-verder:hover {
+  background: linear-gradient(180deg,
+    rgba(201, 168, 76, .12) 0%,
+    rgba(201, 168, 76, .22) 50%,
+    rgba(201, 168, 76, .12) 100%);
+  color: var(--parchment);
+}
+.sc-dialog-verder:active { transform: scale(.97); }
+.sc-dialog-verder .sc-verder-ornament {
+  font-size: 1.3rem;
+  line-height: 1;
+  animation: sc-verderPulse 1.6s ease-in-out infinite;
+}
+.sc-dialog-verder .sc-verder-label {
+  font-size: .55rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+@keyframes sc-verderPulse {
+  0%, 100% { opacity: .65; }
+  50%      { opacity: 1; }
+}
+
+/* ─── Observatie-kaarten (bv. Jan's uitzicht vanaf de toren) ─── */
+.observatie-grid {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: .9rem;
+  padding: 1.5rem 2rem;
+  box-sizing: border-box;
+}
+.observatie-kaart {
+  display: flex;
+  align-items: flex-start;
+  gap: .9rem;
+  padding: .85rem 1.1rem;
+  background: rgba(13, 10, 6, .5);
+  border: 1px solid rgba(201, 168, 76, .2);
+  border-radius: 3px;
+  animation: sc-fadeIn .5s ease backwards;
+}
+.observatie-kaart:nth-child(1) { animation-delay: .05s; }
+.observatie-kaart:nth-child(2) { animation-delay: .25s; }
+.observatie-kaart:nth-child(3) { animation-delay: .45s; }
+.observatie-pijl {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 1.05rem;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+.observatie-tekst {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--parchment);
+}
+
+/* ─── Waarzegster reactie-zone (inline reactie onder grid) ─── */
+.waarzegster-reactie {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: 1rem;
+  color: var(--rose, #d4826e);
+  text-align: center;
+  margin: .25rem 0 0;
+  min-height: 1.5em;
+  opacity: 0;
+  transition: opacity .35s ease;
+  letter-spacing: .01em;
+}
+.waarzegster-reactie-aan {
+  opacity: 1;
+}
+.waarzegster-reactie-uit {
+  opacity: 0;
+}
+
+/* ─── Extra-zone (tussen dialoog en acties, voor code-input e.d.) ─── */
+.sc-extra {
+  margin: 0 0 .75rem;
+  animation: sc-actiesIn .4s ease;
+}
+
+/* ─── Actie-knoppen (zichtbaar pas na laatste dialoog-regel) ─── */
+.sc-acties {
+  display: flex;
+  flex-direction: column;
+  gap: .6rem;
+  margin-top: .5rem;
+  animation: sc-actiesIn .4s ease;
+}
+@keyframes sc-actiesIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sc-actie-btn {
+  display: block;
+  width: 100%;
+  text-align: center;
+  font-family: 'Cinzel', serif;
+  font-size: .9rem;
+  letter-spacing: .12em;
+  padding: .8rem 2rem;
+  border: 1px solid var(--gold-dim);
+  background: transparent;
+  color: var(--gold);
+  cursor: pointer;
+  transition: all .2s;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.sc-actie-btn:hover {
+  background: rgba(201, 168, 76, .1);
+  border-color: var(--gold);
+}
+.sc-actie-btn:active { transform: scale(.98); }
+
+/* Grote variant: voor het ene moment dat de knop hét moment ís (bv. een
+   film starten). Zwaarder, ruimer, met een zachte gouden gloed. */
+.sc-actie-btn.sc-actie-groot {
+  font-size: 1.05rem;
+  letter-spacing: .2em;
+  padding: 1.2rem 2rem;
+  border-color: var(--gold);
+  background: rgba(201, 168, 76, .07);
+  box-shadow: 0 0 24px rgba(201, 168, 76, .12);
+}
+.sc-actie-btn.sc-actie-groot:hover {
+  background: rgba(201, 168, 76, .16);
+  box-shadow: 0 0 32px rgba(201, 168, 76, .28);
+}
+.sc-actie-btn.sc-actie-blood {
+  border-color: var(--blood);
+  color: #d4826e;
+}
+.sc-actie-btn.sc-actie-blood:hover {
+  background: rgba(139, 26, 26, .15);
+  border-color: #a52020;
+}

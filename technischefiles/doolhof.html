@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Het Doolhof — Zilverweide</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="doolhof.css">
+<style>
+  /* Page-shell — alleen voor standalone demo.
+     In Zilverweide draait alles binnen #app dat al gestyled is. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#0d0a06;
+    color:var(--parchment);
+    font-family:'Crimson Text',Georgia,serif;
+    font-size:18px;
+    line-height:1.7;
+    min-height:100vh;
+    overflow-x:hidden;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;z-index:1000;opacity:.4;
+  }
+  #app{max-width:680px;margin:0 auto;padding:2rem 1.5rem 4rem;position:relative}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="doolhof-mount"></div>
+</div>
+
+<script src="doolhof-engine.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   CONFIG: HET VERWEERDE WOUD
+   Dit is het object dat we straks vanuit Zilverweide aanroepen.
+
+   Grid 4x4 met letter-labels:
+       a b c d
+       e f g h
+       i j k l
+       m n o p   (p = start, c = uitgang)
+
+   Tegelkleuren:
+     ROOD   p — start
+     GEEL   correcte/loop-tegels (m, n, o, i, e, f, g)
+     GROEN  k — cul-de-sac, alleen bereikbaar vanaf o, alleen Terug
+     ORANJE a, l — valse routes (lijken op geel, alleen Terug)
+     BLAUW  b, d, h, j — heks-tegels
+   ════════════════════════════════════════════════════════════ */
+var WOUD_CONFIG = {
+  gridSize: { rows: 4, cols: 4 },
+  start:    { r: 3, c: 3 },  // p
+  exit:     { r: 0, c: 2 },  // c
+
+  tegelLetter: {
+    "0,0":"a","0,1":"b","0,2":"c","0,3":"d",
+    "1,0":"e","1,1":"f","1,2":"g","1,3":"h",
+    "2,0":"i","2,1":"j","2,2":"k","2,3":"l",
+    "3,0":"m","3,1":"n","3,2":"o","3,3":"p"
+  },
+
+  // Veilige richtingen per tegel. Niet-gedefinieerd = heks-reset.
+  safe: {
+    // Onderste rij (m, n, o, p)
+    "3,3": ["links", "vooruit"],            // p → o of l
+    "3,2": ["links", "rechts", "vooruit"],  // o → n, p (terug), of k
+    "3,1": ["links", "rechts"],             // n → m of o (terug)
+    "3,0": ["vooruit", "rechts"],           // m → i of n (terug)
+
+    // Linker kolom (i, e)
+    "2,0": ["vooruit", "achter"],           // i → e of m (terug)
+    "1,0": ["rechts", "vooruit", "achter"], // e → f, a, of i (terug)
+
+    // Middenrij (f, g)
+    "1,1": ["rechts", "links"],             // f → g of e (terug)
+    "1,2": ["vooruit", "links"],            // g → c (uitgang) of f (terug)
+
+    // Uitgang (c)
+    "0,2": ["vooruit", "achter"],           // vooruit = win, achter = g
+
+    // Oranje/groen: alleen terug
+    "2,3": ["achter"],  // l → p
+    "0,0": ["achter"],  // a → e
+    "2,2": ["achter"]   // k → o (groen)
+  },
+
+  // Op k tonen we alleen de Terug-knop (cul-de-sac signaal)
+  forceButtons: {
+    "2,2": ["achter"]
+  },
+
+  images: {
+    scene: 'woud.jpg',
+    heks:  'heks.jpg'
+  },
+
+  teksten: {
+    titel:   'Het Doolhof',
+    sub:     'Het Verweerde Woud',
+    intro: [
+      'De bomen sluiten zich achter je. Er is geen pad meer terug — alleen vooruit, links, of rechts. Ergens diep in het woud lacht iets dat geen mens is.',
+      'Eén verkeerde stap en je staat weer waar je begon.'
+    ],
+    caption: '— Een open plek tussen de bomen —',
+    heks:    'Een schorre lach — alles wordt zwart.<br>Je ontwaakt bij de ingang.',
+    win: {
+      titel: '[ PLACEHOLDER ]',
+      body:  'Hier komt later de win-tekst en eventueel een code / volgende stap.'
+    }
+  }
+};
+
+// ─── Engine starten ────────────────────────────────────────
+var doolhof = new Doolhof({
+  container: document.getElementById('doolhof-mount'),
+  config:    WOUD_CONFIG,
+  music:     'intromusiczv.mpeg',
+  showDebug: true,
+  onWin: function () {
+    console.log('Doolhof gewonnen!');
+    // In Zilverweide: hier triggeren we het volgende stuk verhaal,
+    // geven we een code/item, of zetten we een state-flag.
+  }
+});
+doolhof.mount();
+</script>
+
+</body>
+</html>

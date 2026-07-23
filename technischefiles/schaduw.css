@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SCHADUW-MODULE — stylesheet
+   Hoort bij schaduw.js. Alle selectors met zv-prefix zodat niets in
+   zilverweide.html botst. Kleuren vallen terug op de projectpalet-vars
+   als die bestaan, anders op een eigen waarde.
+   De fog-textuur wordt door schaduw.js gezet (init {fogSrc}), niet hier,
+   zodat het pad naar fog.png configureerbaar blijft.
+═══════════════════════════════════════════════════════════════════ */
+
+#zv-schaduw{ --zv-gold:var(--gold,#c9a84c); --zv-gold-dim:var(--gold-dim,#8a6f32); }
+
+/* ─── Rook: vignette-randen + schermvullende donkere mist ──────────── */
+#zv-rook{position:fixed;inset:0;pointer-events:none;z-index:400;opacity:0;transition:opacity 1.5s ease}
+#zv-rook.zv-actief{opacity:1}
+.zv-rand{position:absolute;inset:0;opacity:calc((var(--zv-smoke,0) - .25) * .8)}
+.zv-l{background:linear-gradient(90deg,rgba(4,2,7,.8) 0%,rgba(4,2,7,.35) 8%,transparent 22%)}
+.zv-r{background:linear-gradient(270deg,rgba(4,2,7,.8) 0%,rgba(4,2,7,.35) 8%,transparent 22%)}
+.zv-t{background:linear-gradient(180deg,rgba(4,2,7,.55) 0%,transparent 12%)}
+.zv-b{background:linear-gradient(0deg,rgba(4,2,7,.6) 0%,transparent 15%)}
+/* Losse fogbanken: elk dekt maar een deel van het scherm, met zachte
+   vervagende randen (mask), zodat de fog in stukken over het scherm trekt
+   en delen vrij blijven. JS zet de fog-textuur en de opacity per bank. */
+.zv-bank{position:absolute;pointer-events:none;background-repeat:repeat;background-size:300px 300px;
+  filter:blur(7px);will-change:transform,opacity;opacity:0;
+  -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 30%,rgba(0,0,0,.55) 55%,transparent 74%);
+          mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 30%,rgba(0,0,0,.55) 55%,transparent 74%)}
+.zv-b1{left:-6vw; top:5vh;  width:46vw;height:40vh;animation:zvBank1 27s ease-in-out infinite}
+.zv-b2{left:60vw; top:1vh;  width:48vw;height:42vh;animation:zvBank2 33s ease-in-out infinite}
+.zv-b3{left:20vw; top:30vh; width:42vw;height:38vh;animation:zvBank3 24s ease-in-out infinite}
+.zv-b4{left:-4vw; top:52vh; width:44vw;height:42vh;animation:zvBank4 30s ease-in-out infinite}
+.zv-b5{left:55vw; top:50vh; width:46vw;height:44vh;animation:zvBank5 36s ease-in-out infinite}
+.zv-b6{left:30vw; top:-7vh; width:40vw;height:36vh;animation:zvBank6 22s ease-in-out infinite}
+@keyframes zvBank1{0%,100%{transform:translate(0,0) scale(1)}    50%{transform:translate(7vw,4vh) scale(1.08)}}
+@keyframes zvBank2{0%,100%{transform:translate(0,0) scale(1.05)} 50%{transform:translate(-8vw,3vh) scale(.96)}}
+@keyframes zvBank3{0%,100%{transform:translate(0,0) scale(1)}    50%{transform:translate(6vw,-5vh) scale(1.1)}}
+@keyframes zvBank4{0%,100%{transform:translate(0,0) scale(1.04)} 50%{transform:translate(9vw,-3vh) scale(.95)}}
+@keyframes zvBank5{0%,100%{transform:translate(0,0) scale(1)}    50%{transform:translate(-7vw,-4vh) scale(1.09)}}
+@keyframes zvBank6{0%,100%{transform:translate(0,0) scale(1.06)} 50%{transform:translate(5vw,5vh) scale(.97)}}
+
+/* ─── Gefluister: gecentreerd net onder de meterbalk — fade via opacity ── */
+#zv-fluister{position:fixed;left:1.4rem;top:6.2rem;width:min(240px,62vw);z-index:541;pointer-events:none;
+  font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1.05rem;letter-spacing:.03em;
+  text-align:center;opacity:0;color:rgba(228,216,196,.92);
+  text-shadow:0 0 14px rgba(0,0,0,.85),0 1px 2px rgba(0,0,0,.7);
+  transition:opacity 1.2s ease}
+
+/* ─── Zichtbare schaduw-meter (linksboven, onder de inventaris) ─────
+   Valt subtiel mee bij lage meter en wordt nadrukkelijker naarmate de
+   schaduw voller raakt. --zv-mi (0..1) wordt door de JS gezet. */
+#zv-meter{position:fixed;top:3.4rem;left:1.4rem;transform:translateX(-12px);
+  z-index:540;pointer-events:none;width:min(240px,62vw);padding:.5rem .8rem .55rem;
+  text-align:left;--zv-mi:0;
+  background:linear-gradient(180deg,
+    rgba(13,10,6,calc(.30 + var(--zv-mi)*.62)),
+    rgba(13,10,6,calc(.18 + var(--zv-mi)*.58)));
+  border:1px solid rgba(201,168,76,calc(.12 + var(--zv-mi)*.40));
+  border-radius:8px;
+  box-shadow:0 4px 14px rgba(0,0,0,calc(var(--zv-mi)*.45)),
+             0 0 calc(var(--zv-mi)*18px) rgba(139,26,26,calc(var(--zv-mi)*.35));
+  opacity:0;transition:transform .6s ease,opacity .6s ease,
+    background .6s ease,border-color .6s ease,box-shadow .6s ease}
+#zv-meter.zv-zichtbaar{transform:translateX(0);opacity:calc(.55 + var(--zv-mi)*.45)}
+.zv-meter-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--zv-gold,#c9a84c);opacity:calc(.45 + var(--zv-mi)*.5);margin-bottom:.4rem}
+.zv-meter-track{height:6px;border-radius:4px;background:rgba(201,168,76,.12);
+  border:1px solid rgba(201,168,76,.2);overflow:hidden}
+.zv-meter-fill{height:100%;width:0%;border-radius:4px;transition:width .9s linear;
+  background:linear-gradient(90deg,rgba(138,111,50,.9),#8b1a1a 78%,#b32222);
+  box-shadow:0 0 calc(6px + var(--zv-mi)*10px) rgba(139,26,26,calc(.3 + var(--zv-mi)*.5))}
+
+/* ─── Gedeelde overlay-basis (memory / vergrendeling / redder) ─────── */
+.zv-overlay{position:fixed;inset:0;z-index:600;display:none;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:2rem;background:radial-gradient(ellipse at center,rgba(20,4,8,.86) 0%,rgba(4,2,6,.97) 80%)}
+.zv-overlay.zv-open{display:flex;animation:zvFade .6s ease}
+@keyframes zvFade{from{opacity:0}to{opacity:1}}
+.zv-eyebrow{font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.22em;color:rgba(255,200,200,.8);text-transform:uppercase;margin-bottom:1rem}
+.zv-title{font-family:'Cinzel',serif;font-size:1.5rem;color:#ffd9d9;margin-bottom:.6rem}
+.zv-line{font-style:italic;color:rgba(255,214,214,.9);font-size:1.15rem;line-height:1.8;max-width:30rem;margin:0 auto .4rem}
+.zv-sub{font-style:italic;color:rgba(255,200,200,.6);font-size:1rem;max-width:28rem;margin:.8rem auto 0}
+
+/* ─── Vloek-intro: zwart scherm met opkomende tekst ────────────────── */
+#zv-flits{position:fixed;inset:0;z-index:10000;display:none;pointer-events:none;background:#fff;opacity:0}
+#zv-vloekintro{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;
+  padding:2rem;background:#000;opacity:0}
+#zv-vloekintro-tekst{opacity:0;text-align:center;max-width:34rem;
+  font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1.5rem;line-height:1.7;
+  color:rgba(228,216,196,.95);text-shadow:0 0 24px rgba(0,0,0,.9)}
+
+/* ─── Memory-mini (runes naspelen) ─────────────────────────────────── */
+#zv-mem-intro{animation:zvFade .8s ease;max-width:32rem}
+.zv-schim{width:104px;height:auto;display:block;margin:0 auto 1.1rem;
+  filter:drop-shadow(0 0 26px rgba(0,0,0,.85));animation:zvSchimAdem 4s ease-in-out infinite}
+@keyframes zvSchimAdem{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.02)}}
+.zv-progress{display:flex;gap:.6rem;margin:1.5rem 0 2rem;min-height:14px}
+.zv-dot{width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,200,200,.4)}
+.zv-dot.zv-fill{background:rgba(255,200,200,.85);box-shadow:0 0 8px rgba(255,150,150,.6)}
+.zv-runes{display:flex;gap:1.25rem}
+.zv-rune{width:84px;height:84px;border-radius:8px;border:1px solid rgba(255,200,200,.35);background:rgba(0,0,0,.35);
+  display:flex;align-items:center;justify-content:center;font-size:2.4rem;color:#ffd9d9;cursor:pointer;
+  transition:all .15s;user-select:none}
+.zv-rune:hover{border-color:rgba(255,200,200,.8)}
+.zv-rune.zv-lit{background:rgba(255,210,210,.9);color:#3a0000;box-shadow:0 0 28px rgba(255,160,160,.8);transform:scale(1.08)}
+.zv-rune.zv-disabled{opacity:.35;pointer-events:none}
+
+/* ─── De code (het "teken") ────────────────────────────────────────── */
+.zv-code{font-family:'Cinzel',serif;font-size:3.4rem;letter-spacing:.4em;color:#ffe1e1;
+  text-shadow:0 0 30px rgba(255,120,120,.7);margin:1.6rem 0 1.4rem;padding-left:.4em}
+
+/* ─── Invoer (redder typt het teken) ───────────────────────────────── */
+.zv-input{font-family:'Cinzel',serif;font-size:2rem;letter-spacing:.35em;text-align:center;text-transform:uppercase;
+  width:11rem;padding:.7rem .4rem .7rem .8rem;margin:1.4rem 0;background:rgba(0,0,0,.4);color:#ffe1e1;
+  border:1px solid rgba(255,200,200,.4);border-radius:6px;outline:none}
+.zv-input:focus{border-color:rgba(255,200,200,.9);box-shadow:0 0 20px rgba(255,140,140,.4)}
+.zv-input.zv-shake{animation:zvShake .4s}
+@keyframes zvShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-9px)}40%,80%{transform:translateX(9px)}}
+.zv-err{color:#ff9a9a;font-style:italic;min-height:1.4rem;margin-top:.2rem}
+
+.zv-btn{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.7rem 1.8rem;
+  border:1px solid rgba(255,200,200,.4);background:rgba(255,200,200,.05);color:#ffd9d9;cursor:pointer;border-radius:4px;margin-top:1rem}
+.zv-btn:hover{background:rgba(255,200,200,.12)}
+.zv-wacht{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.2em;color:rgba(255,200,200,.45);text-transform:uppercase;margin-top:1.4rem}
+/* ─── Orbitmist: mistbanken die rond de schim draaien in overlays ───
+   Vier wolken in een container die centraal over de schim hangt. Elk
+   orbiteert op een eigen snelheid en as, zodat de mist kolkt. De
+   --zv-mist-opa en --zv-mist-schaal vars worden door de testschuivers
+   gezet; defaults staan hieronder. */
+.zv-schim-mist{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.zv-orbit{position:absolute;pointer-events:none;background-repeat:repeat;background-size:200px 200px;
+  filter:blur(10px);
+  opacity:var(--zv-mist-opa,.25);
+  -webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 20%,rgba(0,0,0,.4) 50%,transparent 72%);
+          mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 20%,rgba(0,0,0,.4) 50%,transparent 72%)}
+.zv-o1{left:calc(50% - 22vw);top:calc(40% - 20vh);width:calc(28vw * var(--zv-mist-schaal,1));height:calc(28vh * var(--zv-mist-schaal,1));animation:zvOrbit1 18s ease-in-out infinite}
+.zv-o2{left:calc(50% - 8vw); top:calc(40% - 24vh);width:calc(24vw * var(--zv-mist-schaal,1));height:calc(26vh * var(--zv-mist-schaal,1));animation:zvOrbit2 23s ease-in-out infinite}
+.zv-o3{left:calc(50% - 18vw);top:calc(40% - 6vh); width:calc(32vw * var(--zv-mist-schaal,1));height:calc(24vh * var(--zv-mist-schaal,1));animation:zvOrbit3 20s ease-in-out infinite}
+.zv-o4{left:calc(50% + 2vw); top:calc(40% - 14vh);width:calc(26vw * var(--zv-mist-schaal,1));height:calc(30vh * var(--zv-mist-schaal,1));animation:zvOrbit4 26s ease-in-out infinite}
+@keyframes zvOrbit1{0%,100%{transform:translate(0,0) scale(1) rotate(0deg)}    50%{transform:translate(6vw,5vh) scale(1.12) rotate(8deg)}}
+@keyframes zvOrbit2{0%,100%{transform:translate(0,0) scale(1.05) rotate(0deg)} 50%{transform:translate(-8vw,4vh) scale(.92) rotate(-6deg)}}
+@keyframes zvOrbit3{0%,100%{transform:translate(0,0) scale(1) rotate(0deg)}    50%{transform:translate(5vw,-6vh) scale(1.15) rotate(5deg)}}
+@keyframes zvOrbit4{0%,100%{transform:translate(0,0) scale(1.08) rotate(0deg)} 50%{transform:translate(-6vw,-5vh) scale(.94) rotate(-7deg)}}
+
+/* Schim als achtergrondbeeld: blijft zichtbaar achter de runen/tekst,
+   absolute gepositioneerd in het midden van de overlay. */
+.zv-schim-bg{position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);
+  width:min(220px,50vw);height:auto;opacity:.2;
+  pointer-events:none;z-index:0;animation:zvSchimAdem 4s ease-in-out infinite}
+
+/* Testschuivers: fixed links halverwege zodat ze altijd zichtbaar en
+   bereikbaar zijn, ook als de overlay-content het scherm vult. */
+.zv-test-sliders{position:fixed;left:.8rem;top:50%;transform:translateY(-50%);z-index:9999;pointer-events:auto}
+.zv-test{margin-top:2rem;font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;
+  color:rgba(255,200,200,.4);background:transparent;border:1px solid rgba(255,200,200,.2);border-radius:4px;
+  padding:.4rem 1rem;cursor:pointer;transition:all .2s}
+.zv-test:hover{color:rgba(255,200,200,.85);border-color:rgba(255,200,200,.5)}

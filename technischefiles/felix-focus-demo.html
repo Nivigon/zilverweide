@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Felix · Vind je plek op het kratje</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+:root{--parchment:#f5ead6;--blood:#8b1a1a;--gold:#c9a84c;--gold-dim:#8a6f32;--mist:#c8bfaf;--rose:#9b3a4a}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgia,serif;font-size:18px;line-height:1.6;overflow:hidden;touch-action:none;user-select:none}
+
+.fx-noise{position:fixed;inset:0;pointer-events:none;z-index:900;opacity:.3;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")}
+.fx-schaduw{position:fixed;inset:0;pointer-events:none;z-index:910;background:radial-gradient(120% 120% at 50% 42%,transparent 30%,rgba(20,6,6,.6) 74%,rgba(6,2,2,.96) 100%);mix-blend-mode:multiply;animation:fxbreath 9s ease-in-out infinite}
+.fx-schaduw2{position:fixed;inset:0;pointer-events:none;z-index:911;opacity:.5;background:radial-gradient(60% 80% at 12% 88%,rgba(60,10,10,.5),transparent 60%),radial-gradient(55% 70% at 90% 15%,rgba(40,8,20,.45),transparent 62%);animation:fxdrift 17s ease-in-out infinite alternate}
+@keyframes fxbreath{0%,100%{opacity:.85}50%{opacity:1}}
+@keyframes fxdrift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(2%,-2%) scale(1.06)}}
+
+.fx-app{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column}
+.fx-topbar{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;padding:.5rem 1.1rem;border-bottom:1px solid rgba(201,168,76,.15);background:rgba(13,10,6,.82);z-index:20}
+.fx-loc{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);display:flex;align-items:center;gap:.5rem}
+.fx-loc .dot{color:var(--gold-dim)}.fx-loc .sub{color:var(--mist);letter-spacing:.12em}
+.fx-curse{display:flex;align-items:center;gap:.6rem}
+.fx-curse .lbl{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;color:#c0736b}
+.fx-meter{width:120px;height:5px;border-radius:3px;background:rgba(139,26,26,.18);border:1px solid rgba(139,26,26,.35);overflow:hidden}
+.fx-meter i{display:block;height:100%;background:linear-gradient(90deg,rgba(139,26,26,.5),#a52020);animation:fxcreep 13s ease-in-out infinite alternate}
+@keyframes fxcreep{0%{width:22%}100%{width:78%}}
+.fx-glyph{font-size:1rem;filter:drop-shadow(0 0 6px rgba(139,26,26,.6));animation:fxbreath 4s ease-in-out infinite}
+
+.fx-stage{flex:1;position:relative;overflow:hidden;background:#070503}
+
+/* kamer */
+.fx-kamer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:1.6rem;gap:1.1rem;transition:opacity .45s;z-index:5}
+.fx-kamer .gat{width:96px;height:64px;border-radius:52% 48% 60% 40%/62% 55% 45% 38%;background:radial-gradient(closest-side,rgba(30,22,14,.9),rgba(6,4,2,1));box-shadow:inset 0 0 18px rgba(0,0,0,.9),0 0 30px rgba(201,168,76,.08);border:2px solid rgba(61,50,40,.6)}
+.fx-mono{max-width:600px;font-style:italic;color:var(--parchment);font-size:1.08rem;line-height:1.75}
+.fx-mono .dim{color:var(--mist)}
+.fx-testrow{display:flex;gap:clamp(1.2rem,4vw,2.6rem);margin-top:.4rem}
+.fx-hint2{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold-dim);margin-top:-.2rem}
+.btn{font-family:'Cinzel',serif;font-size:.82rem;letter-spacing:.12em;padding:.8rem 2rem;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .2s;border-radius:2px;text-transform:uppercase}
+.btn:hover{background:rgba(201,168,76,.1);border-color:var(--gold)}.btn:active{transform:scale(.98)}
+.btn.big{padding:.95rem 2.6rem;font-size:.92rem}
+.btn.ghost{border-color:rgba(201,168,76,.3);color:var(--gold-dim);padding:.5rem 1.1rem;font-size:.7rem}
+.btn.ghost:hover{color:var(--gold)}
+.btn.blood{border-color:var(--blood);color:#d4826e}.btn.blood:hover{background:rgba(139,26,26,.15);border-color:#a52020}
+
+/* game */
+.fx-game{position:absolute;inset:0;display:none}
+.fx-game.on{display:block}
+
+/* het kijkgat dat van boven naar het midden zakt */
+.fx-gat{position:absolute;left:50%;top:0;width:clamp(240px,44vw,520px);height:clamp(240px,58vh,560px);transform:translate(-50%,-72%);transition:transform .7s cubic-bezier(.22,.7,.24,1);will-change:transform;z-index:4}
+.fx-gatshape{position:absolute;inset:0;overflow:hidden;background:#050403;
+  clip-path:polygon(50% 1%,63% 4%,74% 9%,84% 18%,91% 30%,96% 45%,95% 60%,89% 72%,79% 83%,66% 92%,52% 96%,38% 94%,25% 87%,14% 76%,7% 62%,4% 47%,7% 33%,15% 20%,27% 9%,39% 3%)}
+.fx-gatshape img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fx-gatshape .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(201,168,76,.4);background:repeating-linear-gradient(120deg,#161018 0 10px,#0f0b12 10px 20px)}
+.fx-rim{position:absolute;inset:0;pointer-events:none;background:radial-gradient(58% 58% at 50% 50%,transparent 52%,rgba(0,0,0,.55) 82%,rgba(0,0,0,.92) 100%)}
+.fx-dark{position:absolute;inset:0;background:#000;opacity:1;transition:opacity .6s ease}
+
+/* teksten */
+.fx-midtext{position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);text-align:center;font-family:'Cinzel',serif;letter-spacing:.08em;color:var(--gold);font-size:clamp(1.05rem,2.6vw,1.6rem);opacity:0;transition:opacity .4s;z-index:8;pointer-events:none;padding:0 2rem;text-shadow:0 2px 10px rgba(0,0,0,.9)}
+.fx-midtext.on{opacity:1}
+.fx-obs{position:absolute;left:50%;bottom:clamp(8.5rem,24vh,12rem);transform:translateX(-50%);text-align:center;font-style:italic;color:var(--parchment);font-size:clamp(1rem,2vw,1.15rem);opacity:0;transition:opacity .3s;z-index:9;pointer-events:none;padding:0 2rem;max-width:82%;text-shadow:0 2px 10px rgba(0,0,0,.95)}
+.fx-obs.on{opacity:1}
+
+/* timer boven */
+.fx-timerwrap{position:absolute;top:.6rem;left:50%;transform:translateX(-50%);width:min(52%,440px);z-index:8}
+.fx-timer{height:5px;border-radius:3px;background:rgba(201,168,76,.12);overflow:hidden}
+.fx-timer i{display:block;height:100%;width:100%;background:var(--gold);transition:width .1s linear}
+.fx-timer.warn i{background:#d85a30}
+
+/* knoppen onder, naast elkaar */
+.fx-controls{position:absolute;bottom:clamp(1rem,4vh,2.4rem);left:50%;transform:translateX(-50%);display:flex;gap:clamp(1.2rem,4vw,2.6rem);z-index:10}
+.fx-side{display:flex;flex-direction:column;align-items:center;gap:.5rem}
+.fx-key{width:clamp(84px,11vw,116px);height:clamp(84px,11vw,116px);border-radius:16px;border:1px solid var(--gold-dim);background:rgba(201,168,76,.05);color:var(--gold);font-family:'Cinzel',serif;font-size:2rem;cursor:pointer;transition:transform .08s,background .12s;display:flex;align-items:center;justify-content:center}
+.fx-key:active{background:rgba(201,168,76,.2);transform:scale(.95)}
+.fx-key:disabled{opacity:.4;cursor:not-allowed}
+.fx-klabel{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim)}
+
+.fx-closebar{position:absolute;top:.6rem;right:.9rem;z-index:30}
+
+/* krat-status linksboven */
+.fx-krat{position:absolute;top:50%;right:clamp(4rem,18vw,15rem);transform:translateY(-50%);z-index:3;display:flex;flex-direction:column;align-items:center;gap:.5rem;background:rgba(13,10,6,.55);border:1px solid rgba(201,168,76,.2);border-radius:8px;padding:.75rem .85rem}
+.fx-krat-lbl{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-dim)}
+.fx-krat-bar{display:flex;flex-direction:column-reverse;gap:5px}
+.fx-krat-bar i{width:40px;height:12px;border-radius:2px;background:rgba(201,168,76,.12);transition:background .4s}
+.fx-krat-bar.s3 i:nth-child(-n+3),.fx-krat-bar.s4 i:nth-child(-n+4),.fx-krat-bar.s2 i:nth-child(-n+2),.fx-krat-bar.s1 i:nth-child(-n+1){background:var(--gold)}
+.fx-krat-bar.warn.s2 i:nth-child(-n+2){background:#d9a441}
+.fx-krat-bar.crit.s1 i:nth-child(-n+1){background:#d85a30}
+.fx-krat-txt{font-style:italic;font-size:.82rem;color:var(--mist);max-width:150px;text-align:center;line-height:1.4}
+.fx-krat-note{font-family:'Cinzel',serif;font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(201,168,76,.5);text-align:center;max-width:150px;line-height:1.6;border-top:1px solid rgba(201,168,76,.12);padding-top:.4rem;margin-top:.1rem}
+
+/* trilling tijdens het optrekken + schok bij terugval */
+@keyframes fxstrain{0%{transform:translate(-.6px,.3px)}100%{transform:translate(.6px,-.3px)}}
+.fx-gatshape.strain{animation:fxstrain .13s ease-in-out infinite alternate}
+@keyframes fxshake{0%,100%{transform:translate(0,0)}25%{transform:translate(-5px,3px)}50%{transform:translate(4px,-2px)}75%{transform:translate(-3px,-3px)}}
+.fx-stage.shake{animation:fxshake .38s ease}
+
+/* modals */
+.fx-modal{position:fixed;inset:0;z-index:1500;display:none;align-items:center;justify-content:center;background:rgba(6,3,2,.72)}
+.fx-modal.on{display:flex;animation:fxflash .3s ease}
+@keyframes fxflash{from{opacity:0}to{opacity:1}}
+.fx-card{width:min(90vw,420px);text-align:center;border:1px solid rgba(201,168,76,.35);border-radius:8px;background:rgba(13,10,6,.97);padding:1.8rem 1.6rem;box-shadow:0 0 40px rgba(0,0,0,.8)}
+.fx-card.rest{border-color:rgba(139,26,26,.5)}
+.fx-card h2{font-family:'Cinzel',serif;font-size:1.15rem;letter-spacing:.06em;color:var(--gold);margin-bottom:.5rem}
+.fx-card.rest h2{color:#d4826e}
+.fx-card p{font-style:italic;color:var(--mist);font-size:.98rem;margin-bottom:1.1rem}
+.fx-count{font-family:'Cinzel',serif;font-size:2.6rem;color:#d4826e;margin-bottom:1rem}
+
+.fx-rotate{position:fixed;inset:0;z-index:2000;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#0d0a06;color:var(--gold);font-family:'Cinzel',serif;letter-spacing:.14em;gap:1rem;padding:2rem}
+.fx-rotate .ic{font-size:2.4rem;animation:fxrot 3s ease-in-out infinite}
+@keyframes fxrot{0%,100%{transform:rotate(-12deg)}50%{transform:rotate(78deg)}}
+@media (orientation:portrait){.fx-rotate{display:flex}.fx-app{filter:blur(2px)}}
+</style>
+</head>
+<body>
+<div class="fx-noise"></div>
+<div class="fx-schaduw"></div>
+<div class="fx-schaduw2"></div>
+
+<div class="fx-app">
+  <div class="fx-topbar">
+    <div class="fx-loc">Heer Donatuslaan <span class="dot">·</span> <span class="sub">Het Kamertje</span></div>
+    <div class="fx-curse"><span class="lbl">Vervloekt</span><span class="fx-meter"><i></i></span><span class="fx-glyph">🌑</span></div>
+  </div>
+
+  <div class="fx-stage">
+    <!-- kamer -->
+    <div class="fx-kamer" id="fxKamer">
+      <p class="fx-mono">Om overeind te blijven op dit smalle kratje moet ik voelen waar mijn linkervoet en rechtervoet horen. <span class="dim">De juiste plek hoor ik. Hoe zwakker het kratje wordt, hoe meer steunpunten ik moet vinden. Laat me eerst het geluid van links en rechts oefenen.</span></p>
+      <div class="fx-testrow">
+        <div class="fx-side"><button class="fx-key" id="fxTL">◀</button><span class="fx-klabel">Linkervoet</span></div>
+        <div class="fx-side"><button class="fx-key" id="fxTR">▶</button><span class="fx-klabel">Rechtervoet</span></div>
+      </div>
+      <p class="fx-hint2">Tik op een voet om het geluid te horen</p>
+      <button class="btn big" id="fxStart">Klim op het doosje</button>
+    </div>
+
+    <!-- game -->
+    <div class="fx-game" id="fxGame">
+      <div class="fx-gat" id="fxGat">
+        <div class="fx-gatshape" id="fxShape">
+          <img id="fxImg" alt="">
+          <div class="ph" id="fxPh" style="display:none">beeld</div>
+          <div class="fx-dark" id="fxDark"></div>
+          <div class="fx-rim"></div>
+        </div>
+      </div>
+
+      <div class="fx-krat" id="fxKrat">
+        <span class="fx-krat-lbl">Het kratje</span>
+        <div class="fx-krat-bar" id="fxKratBar"><i></i><i></i><i></i><i></i></div>
+        <span class="fx-krat-txt" id="fxKratTxt">Voelt nog stevig</span>
+        <span class="fx-krat-note">Zwakker kratje = meer steunpunten</span>
+      </div>
+
+      <div class="fx-midtext" id="fxMid">Vind de juiste plek op het kratje.</div>
+      <div class="fx-obs" id="fxObs"></div>
+
+      <div class="fx-timerwrap"><span class="fx-timer" id="fxTimer"><i id="fxTimerBar"></i></span></div>
+
+      <div class="fx-controls">
+        <div class="fx-side"><button class="fx-key" id="fxL" disabled>◀</button><span class="fx-klabel">Linkervoet</span></div>
+        <div class="fx-side"><button class="fx-key" id="fxR" disabled>▶</button><span class="fx-klabel">Rechtervoet</span></div>
+      </div>
+
+      <div class="fx-closebar"><button class="btn ghost" id="fxClose">Zak terug</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="fx-modal" id="fxRest">
+  <div class="fx-card rest">
+    <h2>Je balans was niet goed</h2>
+    <p>Je vindt je plek niet en valt van het kratje op de grond. Even bijkomen en opnieuw.</p>
+    <div class="fx-count" id="fxRestCount">20</div>
+    <button class="btn blood" id="fxRetry">Probeer opnieuw</button>
+  </div>
+</div>
+
+<div class="fx-modal" id="fxRust">
+  <div class="fx-card">
+    <h2>Genoeg gezien</h2>
+    <p>Je zakt terug van het kratje en wacht. Iemand komt zo langs.</p>
+    <button class="btn" id="fxAgain">Opnieuw</button>
+  </div>
+</div>
+
+<div class="fx-rotate"><span class="ic">📱</span><div>Draai je tablet<br><span style="font-size:.7rem;color:var(--gold-dim)">De scène speelt in landscape</span></div></div>
+
+<script>
+(function(){
+  var ROUNDS=4, CYCLE=20, DIAL=8, VIEW=10, REST=20, TICK=1350;
+  // Dit bestand draait in een iframe vanuit technischefiles/, dus alle paden
+  // worden vanaf DIE map berekend. Vandaar de ../ terug naar de hoofdmap.
+  var ROOT   = '../';
+  var SPIEK  = ROOT + 'locaties/heerdonatuslaan/';
+  var LEFT_SRC=ROOT + 'leftclick.mp3', RIGHT_SRC=ROOT + 'rightclick.mp3';
+  // Vier glimpsen door het gat. Volgorde wordt per sessie geschud.
+  // Alle hints zijn optioneel: geen enkele bevat verplichte voortgangs-info.
+  // 1) Burgemeester: red herring (hij gaat in werkelijkheid naar de herberg).
+  // 2) Slagerij: gloeiend pakketje, misdirection richting de rozen
+  //    (verklaring zit later zacht bij de apotheker-lijn).
+  // 3) Apotheker: teaser voor de anti-schaduw quest (H7).
+  // 4) Het Hol: plant Felix' eigen Lola-route (naam bewust niet genoemd).
+  var IMAGES=[
+    {src:SPIEK + 'gemeentehuis.jpeg',   cap:'De burgemeester verlaat het gemeentehuis. Gehaast, kraag omhoog. Dat is niet de route naar huis.'},
+    {src:SPIEK + 'slagerijachter.jpeg', cap:'Iemand met een kap bij de achterdeur van de slagerij. De slager neemt iets aan. Door de doek gloeit iets blauws. Die kleur komt je vaag bekend voor.'},
+    {src:SPIEK + 'apotheek.jpeg',       cap:'Een apotheker. Misschien heeft hij iets tegen dat gefluister. Je krijgt er koppijn van, al die stemmen.'},
+    {src:SPIEK + 'hethol.jpeg',         cap:'Een deur met twee mannen ervoor. Wie iets laat bewaken, heeft iets te verbergen. Misschien moet Lola daar eens aankloppen.'}
+  ];
+  // posities van het gat (translateY t.o.v. eigen hoogte)
+  var POS={park:'-72%', peek:'4%', teaser:'-60%', up:'-116%'};
+
+  var kamer=document.getElementById('fxKamer'), game=document.getElementById('fxGame');
+  var gat=document.getElementById('fxGat'), dark=document.getElementById('fxDark'), img=document.getElementById('fxImg'), ph=document.getElementById('fxPh');
+  var mid=document.getElementById('fxMid'), obs=document.getElementById('fxObs');
+  var timer=document.getElementById('fxTimer'), timerBar=document.getElementById('fxTimerBar');
+  var btnL=document.getElementById('fxL'), btnR=document.getElementById('fxR');
+  var shape=document.getElementById('fxShape'), stage=document.querySelector('.fx-stage'), kratBar=document.getElementById('fxKratBar'), kratTxt=document.getElementById('fxKratTxt');
+  var restModal=document.getElementById('fxRest'), restCount=document.getElementById('fxRestCount'), btnRetry=document.getElementById('fxRetry'), rustModal=document.getElementById('fxRust');
+
+  img.addEventListener('error',function(){ ph.textContent=img.getAttribute('src')||'beeld'; ph.style.display='flex'; });
+  img.addEventListener('load',function(){ ph.style.display='none'; });
+
+  function play(src){ try{var a=new Audio(src);a.volume=0.9;a.play().catch(function(){});}catch(_){}}
+  function setGat(pos,dur,ease){ gat.style.transition='transform '+dur+' '+(ease||'cubic-bezier(.22,.7,.24,1)'); gat.style.transform='translate(-50%,'+pos+')'; }
+  function setDark(on){ dark.style.opacity=on?'1':'0'; }
+  function showMid(txt){ mid.textContent=txt; mid.classList.add('on'); }
+  function hideMid(){ mid.classList.remove('on'); }
+  function lerp(a,b,u){return a+(b-a)*u;}
+
+  /* synthetisch geluid: kraken, ademstoot, bonk */
+  var actx=null;
+  function initAudio(){ if(actx)return; try{actx=new (window.AudioContext||window.webkitAudioContext)();}catch(_){actx=null;} }
+  function creak(intensity){ if(!actx)return; var t=actx.currentTime;
+    var o=actx.createOscillator(); o.type='sawtooth'; var base=80+Math.random()*50;
+    o.frequency.setValueAtTime(base,t); o.frequency.linearRampToValueAtTime(base*0.62,t+0.3+Math.random()*0.25);
+    var lp=actx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=340;
+    var g=actx.createGain(); var vol=0.04+0.11*intensity;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.45+Math.random()*0.25);
+    var lfo=actx.createOscillator(); lfo.type='sine'; lfo.frequency.value=7+Math.random()*6;
+    var lg=actx.createGain(); lg.gain.value=base*0.06; lfo.connect(lg).connect(o.frequency);
+    o.connect(lp).connect(g).connect(actx.destination); o.start(t); lfo.start(t); o.stop(t+0.8); lfo.stop(t+0.8);
+  }
+  function breath(strong){ if(!actx)return; var t=actx.currentTime; var len=Math.floor(actx.sampleRate*(strong?0.5:0.38));
+    var b=actx.createBuffer(1,len,actx.sampleRate),ch=b.getChannelData(0);
+    for(var i=0;i<len;i++){ var e=Math.sin(Math.PI*i/len); ch[i]=(Math.random()*2-1)*e*e; }
+    var s=actx.createBufferSource(); s.buffer=b;
+    var bp=actx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=strong?380:560; bp.Q.value=0.7;
+    var g=actx.createGain(); g.gain.value=strong?0.09:0.06;
+    s.connect(bp).connect(g).connect(actx.destination); s.start(t);
+  }
+  function thud(){ if(!actx)return; var t=actx.currentTime; var o=actx.createOscillator(),g=actx.createGain();
+    o.type='sine'; o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(44,t+0.13);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.38,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.24);
+    o.connect(g).connect(actx.destination); o.start(t); o.stop(t+0.26);
+  }
+  function shudder(intensity){ try{ var d=2+intensity*5;
+    shape.animate([{transform:'translate(0,0)'},{transform:'translate('+((Math.random()<.5?-1:1)*d).toFixed(1)+'px,'+((Math.random()*2-1)*d*0.5).toFixed(1)+'px)'},{transform:'translate(0,0)'}],{duration:180,easing:'ease-in-out'}); }catch(_){ } }
+
+  /* krat-status per ronde (zwakker = meer steunpunten nodig) */
+  var STR=[
+    {seg:4,cls:'',    txt:'Voelt nog stevig.'},
+    {seg:3,cls:'',    txt:'Kraakt zachtjes onder je.'},
+    {seg:2,cls:'warn',txt:'Kraakt hard en wiebelt.'},
+    {seg:1,cls:'crit',txt:'Staat op instorten.'}
+  ];
+  function strengthFrac(){ return 1-Math.min(G.round,STR.length-1)/(STR.length-1); }
+  function setStrength(){ var s=STR[Math.min(G.round,STR.length-1)]; kratBar.className='fx-krat-bar '+s.cls+' s'+s.seg; kratTxt.textContent=s.txt; }
+
+  var G={round:0,order:[],L:0,R:0,l:0,r:0,state:'idle',t:0,codeStart:0,restT:0,restReady:false,hervat:false};
+  var raf=null,lastNow=0;
+
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+  function startRound(){
+    var TOTALS=[2,3,4,6];                          // oplopend per ronde, max 6
+    var T=TOTALS[Math.min(G.round,TOTALS.length-1)];
+    G.L=1+Math.floor(Math.random()*(T-1)); G.R=T-G.L; // elk minstens 1
+    G.l=0; G.r=0; G.state='listen'; G.codeStart=performance.now();
+    setStrength();
+    var im=IMAGES[G.order[G.round]]; ph.style.display='none'; img.setAttribute('src',im.src);
+    obs.textContent=im.cap; obs.classList.remove('on');
+    setDark(true); setGat(POS.park,'.4s');
+    btnL.disabled=true; btnR.disabled=true;
+    showMid('Vind de juiste plek op het kratje.');
+    timer.classList.remove('warn'); timerBar.style.width='100%';
+    playCombo();
+  }
+  function playCombo(){
+    var seq=[],i; for(i=0;i<G.L;i++)seq.push('L'); for(i=0;i<G.R;i++)seq.push('R');
+    var idx=0;
+    (function next(){
+      if(idx>=seq.length){ beginDial(); return; }
+      play(seq[idx++]==='L'?LEFT_SRC:RIGHT_SRC);   // geen zichtbare hint, alleen geluid
+      setTimeout(next,TICK);
+    })();
+  }
+  function beginDial(){
+    G.state='dial'; G.t=DIAL;
+    btnL.disabled=false; btnR.disabled=false;
+    lastNow=performance.now(); if(!raf) raf=requestAnimationFrame(loop);
+  }
+  function press(side){
+    if(G.state!=='dial')return;
+    if(side==='L'){ play(LEFT_SRC); G.l++; if(G.l>G.L) return fail(); }
+    else { play(RIGHT_SRC); G.r++; if(G.r>G.R) return fail(); }
+    if(G.l===G.L && G.r===G.R) succeed();
+  }
+  function succeed(){
+    G.state='descend'; btnL.disabled=true; btnR.disabled=true; hideMid();
+    breath(false);
+    setGat(POS.peek,'.85s','cubic-bezier(.34,1.4,.5,1)'); setDark(false);
+    setTimeout(function(){ if(G.state!=='descend')return; G.state='view'; G.t=VIEW; obs.classList.add('on'); shape.classList.add('strain'); timerBar.style.width='100%'; },850);
+  }
+  function plop(){
+    G.state='plop'; obs.classList.remove('on'); shape.classList.remove('strain');
+    thud(); breath(true);
+    stage.classList.remove('shake'); void stage.offsetWidth; stage.classList.add('shake');
+    setGat(POS.park,'.26s','cubic-bezier(.5,0,.9,.5)'); setDark(true);
+    setTimeout(beginWacht,300);
+  }
+  function beginWacht(){
+    var elapsed=(performance.now()-G.codeStart)/1000;
+    G.t=Math.max(2,CYCLE-elapsed); G.state='wacht';
+    showMid('Je bent je aan het herpositioneren.');
+    timer.classList.remove('warn');
+  }
+  function advance(){ G.round++; if(G.round>=ROUNDS){ gotoRust(); return; } startRound(); }
+  function fail(){
+    G.state='failanim'; btnL.disabled=true; btnR.disabled=true; hideMid();
+    setGat(POS.teaser,'.35s');                    // zakt een beetje, alsof het lukt
+    setTimeout(function(){ setGat(POS.up,'.25s','cubic-bezier(.5,0,.9,.5)'); },430); // schiet weer omhoog
+    setTimeout(function(){ G.state='rest'; G.restT=REST; G.restReady=false; btnRetry.disabled=true; btnRetry.style.opacity='.35'; btnRetry.style.cursor='default'; restCount.textContent=REST; restModal.classList.add('on'); },760);
+  }
+  function retry(){ restModal.classList.remove('on'); setGat(POS.park,'0s'); startRound(); }
+  function gotoRust(){ G.state='rust'; rustModal.classList.add('on'); }
+
+  function start(){ initAudio(); if(actx && actx.resume){ try{actx.resume();}catch(_){}} kamer.style.opacity='0'; setTimeout(function(){kamer.style.display='none';},450); game.classList.add('on'); if(!G.hervat || !G.order || !G.order.length){ G.round=0; G.order=shuffle(IMAGES.map(function(_,i){return i;})); } G.hervat=false; lastNow=performance.now(); if(!raf) raf=requestAnimationFrame(loop); startRound(); }
+  function backToKamer(){ G.state='idle'; game.classList.remove('on'); restModal.classList.remove('on'); rustModal.classList.remove('on'); hideMid(); obs.classList.remove('on'); kamer.style.display='flex'; requestAnimationFrame(function(){kamer.style.opacity='1';}); }
+
+  var creakT=1.5;
+  function loop(now){
+    raf=requestAnimationFrame(loop);
+    var dt=Math.min((now-lastNow)/1000,0.05); lastNow=now;
+    if(game.classList.contains('on') && (G.state==='listen'||G.state==='dial'||G.state==='wacht')){
+      creakT-=dt;
+      if(creakT<=0){ var it=1-strengthFrac(); creak(it); if(it>0.25) shudder(it); creakT=lerp(6,1.8,it)*(0.6+Math.random()*0.8); }
+    }
+    if(G.state==='dial'){
+      G.t-=dt; timerBar.style.width=(Math.max(0,G.t/DIAL)*100)+'%';
+      timer.classList.toggle('warn',G.t<2.5);
+      if(G.t<=0) fail();
+    } else if(G.state==='view'){
+      G.t-=dt; timerBar.style.width=(Math.max(0,G.t/VIEW)*100)+'%';
+      if(G.t<=0) plop();
+    } else if(G.state==='wacht'){
+      G.t-=dt; timerBar.style.width=(Math.max(0,G.t/CYCLE)*100)+'%';
+      if(G.t<=0) advance();
+    } else if(G.state==='rest'){
+      G.restT-=dt; restCount.textContent=Math.max(0,Math.ceil(G.restT));
+      if(G.restT<=0 && !G.restReady){ G.restReady=true; btnRetry.disabled=false; btnRetry.style.opacity=''; btnRetry.style.cursor=''; }
+    }
+  }
+
+  btnL.addEventListener('pointerdown',function(e){e.preventDefault();press('L');});
+  btnR.addEventListener('pointerdown',function(e){e.preventDefault();press('R');});
+  window.addEventListener('keydown',function(e){ if(!game.classList.contains('on'))return; if(e.key==='ArrowLeft'){press('L');e.preventDefault();} else if(e.key==='ArrowRight'){press('R');e.preventDefault();}});
+  // Reset vanuit zilverweide (Schaduw neemt het scherm over): terug naar de
+  // klim-knop, geluid meteen stil, moeilijkheid blijft behouden.
+  window.addEventListener('message',function(e){ if(e && e.data==='felix-spiek-reset'){ G.hervat=true; if(actx && actx.suspend){ try{actx.suspend();}catch(_){}} backToKamer(); } });
+  document.getElementById('fxStart').addEventListener('click',start);
+  document.getElementById('fxTL').addEventListener('pointerdown',function(e){e.preventDefault();initAudio();play(LEFT_SRC);});
+  document.getElementById('fxTR').addEventListener('pointerdown',function(e){e.preventDefault();initAudio();play(RIGHT_SRC);});
+  document.getElementById('fxClose').addEventListener('click',backToKamer);
+  // Ingebed in zilverweide (iframe): verberg de eigen topbar (locatie plus
+  // Vervloekt) en de eigen Zak-terug, want zilverweide levert die UI al.
+  if (window.parent && window.parent !== window) {
+    var _emClose = document.getElementById('fxClose');
+    if (_emClose) _emClose.style.display = 'none';
+    var _emTop = document.querySelector('.fx-topbar');
+    if (_emTop) _emTop.style.display = 'none';
+  }
+  document.getElementById('fxAgain').addEventListener('click',backToKamer);
+  btnRetry.addEventListener('click',function(){ if(G.restReady) retry(); });
+})();
+</script>
+</body>
+</html>
