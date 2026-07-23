@@ -11,9 +11,17 @@
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <style>
-:root{--ink:#1a1208;--parchment:#f5ead6;--parchment-dark:#e8d5b0;--blood:#8b1a1a;--blood-dark:#5c0f0f;--gold:#c9a84c;--gold-dim:#8a6f32;--ash:#3d3228;--mist:#c8bfaf;--rose:#9b3a4a}
+:root{
+  /* 100vh met dvh-upgrade: iOS Safari telt de adresbalk mee in 100vh,
+     waardoor er structureel scrollruimte ontstaat. dvh verrekent de
+     balken; oudere browsers vallen terug op gewone vh. */
+  --vh100: 100vh;--ink:#1a1208;--parchment:#f5ead6;--parchment-dark:#e8d5b0;--blood:#8b1a1a;--blood-dark:#5c0f0f;--gold:#c9a84c;--gold-dim:#8a6f32;--ash:#3d3228;--mist:#c8bfaf;--rose:#9b3a4a}
+@supports (height: 100dvh) {
+  :root { --vh100: 100dvh; }
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgia,serif;font-size:18px;line-height:1.7;min-height:100vh;overflow-x:hidden}
+body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgia,serif;font-size:18px;line-height:1.7;min-height:var(--vh100);overflow-x:hidden}
 body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1000;opacity:.4}
 #app{max-width:680px;margin:0 auto;padding:0 1.5rem;position:relative}
 #app.app-breed{max-width:820px}
@@ -196,14 +204,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   display:flex;
   align-items:center;
   justify-content:center;
-  min-height:calc(100vh - 9rem);
+  min-height:calc(var(--vh100) - 9rem);
   padding:.5rem 1rem 1rem;
   box-sizing:border-box;
 }
 .ml-video-wrap{
   position:relative;
   display:inline-block;
-  height:min(78vh, calc(100vh - 11rem));
+  height:min(78vh, calc(var(--vh100) - 11rem));
   max-width:100%;
 }
 .ml-video{
@@ -253,7 +261,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 }
 @media (max-width:900px){
   /* Smal scherm: geen ruimte rechts van de video, dus knop eronder. */
-  .ml-video{height:min(65vh, calc(100vh - 16rem))}
+  .ml-video{height:min(65vh, calc(var(--vh100) - 16rem))}
   .ml-verder{
     top:100%;
     left:50%;
@@ -321,7 +329,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   opacity:.6;transition:opacity .2s;flex-shrink:0;
 }
 .archief-kaart:hover .archief-kaart-cta{opacity:1}
-#debug-panel{display:none;position:fixed;bottom:4.5rem;left:1.2rem;z-index:300;background:rgba(13,10,6,.97);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:1rem;width:260px;max-width:calc(100vw - 2.4rem);max-height:calc(100vh - 6rem);overflow-y:auto;box-shadow:0 0 30px rgba(0,0,0,.7)}
+#debug-panel{display:none;position:fixed;bottom:4.5rem;left:1.2rem;z-index:300;background:rgba(13,10,6,.97);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:1rem;width:260px;max-width:calc(100vw - 2.4rem);max-height:calc(var(--vh100) - 6rem);overflow-y:auto;box-shadow:0 0 30px rgba(0,0,0,.7)}
 #debug-panel.debug-wide{width:min(720px, calc(100vw - 2.4rem))}
 #debug-panel h4{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.75rem;border-bottom:1px solid rgba(201,168,76,.15);padding-bottom:.5rem}
 .debug-cat{margin-bottom:1rem}
@@ -329,7 +337,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .debug-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:6px}
 .debug-btn{display:block;width:100%;text-align:left;background:rgba(255,255,255,.04);border:1px solid rgba(201,168,76,.15);border-radius:3px;padding:.5rem .75rem;font-size:.82rem;color:var(--parchment);cursor:pointer;margin:0;transition:background .15s}
 .debug-btn:hover{background:rgba(201,168,76,.1)}
-.crawl-container{width:100%;height:100vh;overflow:hidden;position:relative;background:transparent}
+.crawl-container{width:100%;height:var(--vh100);overflow:hidden;position:relative;background:transparent}
 .crawl-container::before{content:'';position:absolute;top:0;left:0;right:0;height:20%;background:linear-gradient(to bottom,#0d0a06 0%,transparent 100%);z-index:10;pointer-events:none}
 .crawl-container::after{content:'';position:absolute;bottom:0;left:0;right:0;height:20%;background:linear-gradient(to top,#0d0a06 0%,transparent 100%);z-index:10;pointer-events:none}
 .crawl-perspective{width:100%;height:100%;display:flex;justify-content:center;align-items:flex-end;overflow:hidden}
@@ -671,7 +679,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    zodat titel + dialoog + knoppen altijd zonder scrollen passen, ook op korte
    schermen en tablets. Op ruime schermen blijft het gewoon 46vh. Pas 330px aan
    als je scènes structureel meer of minder onder de afbeelding hebben. */
-.sc-image { max-height: min(46vh, calc(100vh - 330px)) !important; }
+.sc-image { max-height: min(46vh, calc(var(--vh100) - 330px)) !important; }
 #screen-locatie.screen { padding: 1rem 0 1.5rem !important; }
 #screen-locatie .sc-header { margin: 0 0 .25rem !important; }
 #screen-locatie .sc-titel { margin: .1rem 0 .1rem !important; }
@@ -743,7 +751,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
   </div>
-  <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:100vh;min-height:560px;overflow:hidden">
+  <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
     <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(13,10,6,.2) 0%,rgba(13,10,6,0) 30%,rgba(13,10,6,.65) 65%,rgba(13,10,6,.97) 100%)"></div>
     <div style="position:absolute;bottom:0;left:0;right:0;text-align:center;padding:2rem 1.5rem 3.5rem;z-index:2">
@@ -771,8 +779,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   <audio id="bg-music" loop preload="auto">
     <source src="intromusiczv.mpeg" type="audio/mpeg">
   </audio>
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 6rem);gap:1.5rem;padding:1rem 0">
-    <div style="width:min(92vw, 960px, calc((100vh - 14rem) * 16 / 9));aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(201,168,76,.35);border-radius:8px;background:#000;box-shadow:0 0 40px rgba(0,0,0,.6)">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(var(--vh100) - 6rem);gap:1.5rem;padding:1rem 0">
+    <div style="width:min(92vw, 960px, calc((var(--vh100) - 14rem) * 16 / 9));aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(201,168,76,.35);border-radius:8px;background:#000;box-shadow:0 0 40px rgba(0,0,0,.6)">
       <video id="intro-video" style="width:100%;height:100%;object-fit:cover;display:block" playsinline preload="metadata">
         <source src="videos/intro.mp4" type="video/mp4">
       </video>
@@ -15521,7 +15529,7 @@ function toonStemmenStil(stil) {
   aspect-ratio:auto !important;
   /* Blijf binnen het scroll-budget; krimp mee op korte schermen.
      Pas 300px aan als titel/dialoog meer of minder ruimte innemen. */
-  height:min(56vh, calc(100vh - 300px)) !important;
+  height:min(56vh, calc(var(--vh100) - 300px)) !important;
   max-height:none !important;
   background:transparent !important;
   border:none !important;
@@ -15712,7 +15720,7 @@ function toonStemmenStil(stil) {
 /* Vraagscène: afbeelding krimpt mee zodat vraag + grote uitslag + teller
    altijd binnen het scherm passen, op elk formaat, zonder scrollen.
    Pas 410px aan als titel/uitslag meer of minder ruimte innemen. */
-.sc-image-vh{ max-height:min(40vh, calc(100vh - 410px)) !important; }
+.sc-image-vh{ max-height:min(40vh, calc(var(--vh100) - 410px)) !important; }
 
 /* ── Archivaris-onthulling: donkere laag over de echte Dorpsarchief-scène ── */
 #dgbk-reveal{
