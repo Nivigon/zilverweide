@@ -41,6 +41,7 @@ window.ZilverweideSchaduw = (function () {
     onDropLocatie: null,          // callback(klaar) als je vastraakt buiten een locatie:
                                   // de host brengt je naar een locatie, roept klaar(locId) aan
     getVastzitTekst: null,        // callback() → zin voor het wachtscherm ("Je zakt op de grond bij ...")
+    onTerugNaarStraat: null,      // callback() als de schaduw wijkt na een gedwongen drop: terug naar de straat
     huidigeLocatie: null,         // id van de locatie waar je nu bent (host houdt dit bij)
     persist: true,                // vergrendeling onthouden bij verversen
     debug: false                  // toont een solo-ontgrendelknop op het vergrendel-scherm
@@ -61,6 +62,7 @@ window.ZilverweideSchaduw = (function () {
   let busy = false;               // host speelt eigen geluid → schaduw zwijgt
   let vergrendeld = false;
   let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
+  let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
@@ -330,6 +332,19 @@ window.ZilverweideSchaduw = (function () {
     meter = 100; updateSmoke();
     stopFluisterGeluid();                       // geen 2 geluiden door elkaar
     whisperReadyAt = Date.now() + 9e8;          // blokkeer gefluister tijdens puzzel
+    // Sta je niet op een locatie (overworld/straat)? De schaduw trekt je eerst
+    // naar een lege huls, zodat de puzzel over die locatie-achtergrond speelt.
+    if (!opLocatie && typeof CFG.onDropLocatie === 'function') {
+      gedroptVoorPuzzel = true;
+      CFG.onDropLocatie(function (locId) {
+        if (locId) { opLocatie = true; CFG.huidigeLocatie = locId; }
+        startMemoryUI();
+      });
+      return;
+    }
+    startMemoryUI();
+  }
+  function startMemoryUI() {
     el.memory.classList.add('zv-open');
     // Symbolen alvast tonen (zichtbaar maar nog niet aanklikbaar).
     el.memRunes.innerHTML = RUNES.map((r, i) =>
@@ -389,6 +404,13 @@ window.ZilverweideSchaduw = (function () {
       el.memory.classList.remove('zv-open');
       meter = 0; updateSmoke();
       whisperReadyAt = Date.now() + 2000;
+      // Was je hierheen getrokken (lege huls)? Dan wandel je nu terug naar de
+      // straat. Was je al écht op een locatie, dan blijf je daar (verhaal gaat door).
+      if (gedroptVoorPuzzel) {
+        gedroptVoorPuzzel = false;
+        opLocatie = false;
+        if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+      }
     }, 1100);
   }
   function memFout() {
@@ -453,6 +475,7 @@ window.ZilverweideSchaduw = (function () {
   function bevrijd() {
     vergrendeld = false;
     actieveCode = null;
+    gedroptVoorPuzzel = false;   // terugkeer naar de straat regelt de host
     wisLock();
     el.lock.classList.remove('zv-open');
     // korte bevrijdings-flits via het lock-scherm? Houd het simpel: rook trekt op.
@@ -552,7 +575,7 @@ window.ZilverweideSchaduw = (function () {
     }, 950);
   }
   function kalmeer() {
-    cursed = false; meter = 0;
+    cursed = false; meter = 0; gedroptVoorPuzzel = false;
     if (vergrendeld) {                          // ook een lopende vergrendeling opheffen
       vergrendeld = false; actieveCode = null;
       el.lock.classList.remove('zv-open');

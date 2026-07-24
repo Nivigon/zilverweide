@@ -1879,7 +1879,7 @@ window.ZilverweideSchaduwServer = {
               helperIsZelf: true,
               zelfRol: state.personage || 'speler', zelfVermomming: state.vermomming || null,
               anderRol: sr, anderVermomming: sv
-            });
+            }, function () { schaduwTerugNaarStraat(true); });   // helper wandelt terug naar de straat
           }, 450);
         })(slachtofferRol, slachtofferVerm);
         return true;
@@ -1902,15 +1902,19 @@ setInterval(function () {
         window.ZilverweideSchaduw._ontgrendel();
         if (bevrijd && bevrijd.door) {
           setSharedState('schaduw_bevrijd_' + rol, null);   // briefje opruimen
-          (function (b) {
+          (function (b, wasGedropt) {
             setTimeout(function () {
               toonBevrijdInteractie({
                 helperIsZelf: false,
                 zelfRol: rol, zelfVermomming: state.vermomming || null,
                 anderRol: b.door, anderVermomming: b.vermomming || null
+              }, function () {
+                // Hierheen getrokken? Terug naar de straat met pop-up. Was je al
+                // écht op een locatie, dan blijf je daar en gaat het verhaal door.
+                if (wasGedropt) schaduwTerugNaarStraat(true);
               });
             }, 500);
-          })(bevrijd);
+          })(bevrijd, !!state.schaduwGedropt);
         }
       }
     }
@@ -3130,6 +3134,9 @@ function openDorendaelLocatie(code) {
   if (!id) return;
   const loc = locatiesDorendael.find(l => l.id === id);
   if (!loc) return;
+  // Zit hier iemand vast (schaduw)? Dan lege huls plus redder-invoer, de echte
+  // locatie blijft dicht (geen trigger).
+  if (schaduwRedderIntercept(id, 'dorendael')) return;
 
   // Als er een doolhof actief was en we gaan ergens anders heen, ruim 'm op.
   if (id !== 'dd5_woud' && huidigDoolhof) {
@@ -3186,6 +3193,8 @@ function openHeerDonatuslaanLocatie(code) {
   if (!id) return;
   const loc = locatiesHeerDonatuslaan.find(l => l.id === id);
   if (!loc) return;
+  // Zit hier iemand vast (schaduw)? Lege huls plus redder-invoer, echte locatie dicht.
+  if (schaduwRedderIntercept(id, 'sintdonatuslaan')) return;
 
   // Zorg dat de Zilverweide-default back-knop weer zichtbaar is.
   // Scene-engine renderers (renderLocatieScene) verstoppen hem zelf
@@ -8077,6 +8086,8 @@ function janPakKlei() {
 function openLocatie(id) {
   const loc = locatiesK1.find(l => l.id === id);
   if (!loc) return;
+  // Zit hier iemand vast (schaduw)? Lege huls plus redder-invoer, echte locatie dicht.
+  if (schaduwRedderIntercept(id, 'kraaienkwartier')) return;
   // Kraaienkwartier-locatie-afbeeldingen (map: locaties/kraaienkwartier/).
   const K1_AFBEELDINGEN = {
     'k1_groenteboer':  'locaties/kraaienkwartier/stoop.jpeg',
@@ -10634,7 +10645,7 @@ function schaduwNaamVoorRol(rol, vermomming) {
 // Bevrijdings-tweegesprek: zelfstandig overlay dat het locatiescherm met rust
 // laat. Jezelf links, de ander rechts (niet gespiegeld). De helper vraagt
 // "Gaat het weer, ...?", het slachtoffer antwoordt, dan gaat het spel verder.
-function toonBevrijdInteractie(opts) {
+function toonBevrijdInteractie(opts, onKlaar) {
   var zelfImg  = popImgVoorRol(opts.zelfRol,  opts.zelfVermomming);
   var anderImg = popImgVoorRol(opts.anderRol, opts.anderVermomming);
   if (!zelfImg || !anderImg) return;   // onbekende rol (bijv. ongekozen): sla over
@@ -10695,7 +10706,10 @@ function toonBevrijdInteractie(opts) {
     if (i < stappen.length - 1) { i++; toonStap(); }
     else {
       overlay.style.opacity = '0';
-      setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+      setTimeout(function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        if (typeof onKlaar === 'function') onKlaar();
+      }, 400);
     }
   });
   toonStap();
@@ -10714,6 +10728,119 @@ function schaduwBevrijdTest() {
     zelfRol: zelf, zelfVermomming: state.vermomming || null,
     anderRol: ander, anderVermomming: anderVerm
   });
+}
+
+// ── Lege huls / terug-naar-straat (schaduw, Optie B) ────────────────
+// Locatie-achtergronden per id (uit de bestaande scene-paden). De lege
+// huls toont er een als stille achtergrond, zonder de echte scene te openen.
+var SCHADUW_LOC_BG = {
+  'dd2_nummer2':      'locaties/dorendael/Nummer2.jpeg',
+  'dd3_nummer10':     'locaties/dorendael/Nummer10.jpeg',
+  'dd4_herberg':      'locaties/dorendael/Herberg.jpeg',
+  'dd5_woud':         'locaties/dorendael/Woud.jpeg',
+  'dd6_molen':        'locaties/dorendael/Molenpad.jpeg',
+  'dd7_klokkenmaker': 'locaties/dorendael/Klokkenmaker.jpeg',
+  'dd8_stiltevijver': 'locaties/dorendael/Vijver.jpeg',
+  'k1_groenteboer':   'locaties/kraaienkwartier/stoop.jpeg',
+  'k1_uitkijktoren':  'locaties/kraaienkwartier/toren.jpeg',
+  'k1_nachtenwens':   'locaties/kraaienkwartier/nachtenwens.jpeg',
+  'k1_dorpsput':      'locaties/kraaienkwartier/dorpsput.jpeg',
+  'k1_nummer7':       'locaties/kraaienkwartier/nummer7.jpeg',
+  'k1_nummer5':       'locaties/kraaienkwartier/nummer5.jpeg',
+  'k1_naaldmasker':   'locaties/kraaienkwartier/naaldenmasker.jpeg',
+  'h2_felixkamer':    'locaties/heerdonatuslaan/nummer1.jpeg',
+  'h3_slagerij':      'locaties/heerdonatuslaan/slagerij.jpeg',
+  'h4_kerk':          'locaties/heerdonatuslaan/kerk.jpeg',
+  'h5_gemeentehuis':  'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+  'h6_bandieten':     'locaties/heerdonatuslaan/hethol.jpeg',
+  'h7_apotheker':     'locaties/heerdonatuslaan/apotheek.jpeg',
+  'h8_steegje':       'locaties/heerdonatuslaan/steegje.jpeg'
+};
+var SCHADUW_ZONE_INVOER = {
+  kraaienkwartier: 'screen-kwartier1',
+  dorendael:       'screen-dorendael',
+  sintdonatuslaan: 'screen-sintdonatuslaan',
+  dorpsplein:      'screen-dorpsplein'
+};
+
+// Toont de locatie-afbeelding als stille achtergrond, zonder de echte scene
+// (geen bezoek, geen trigger). De schaduw-overlays spelen hier doorheen.
+function toonLegeHuls(locId) {
+  var bg = SCHADUW_LOC_BG[locId] || null;
+  state.locAfbeelding = bg;
+  var c = document.getElementById('locatie-content');
+  if (c) {
+    c.innerHTML = bg
+      ? '<div class="sc-image" style="background-image:url(\'' + bg + '\')"></div>'
+      : '';
+  }
+  var backBtn = document.getElementById('locatie-back-btn');
+  if (backBtn) backBtn.style.display = 'none';
+  showScreen('screen-locatie');
+}
+
+// Terug naar het straat-scherm na een gedwongen drop of na het helpen.
+function schaduwTerugNaarStraat(metPopup) {
+  var scherm = SCHADUW_ZONE_INVOER[state.lastZone] || 'screen-overworld';
+  state.locAfbeelding = null;
+  state.schaduwGedropt = false;
+  var backBtn = document.getElementById('locatie-back-btn');
+  if (backBtn) backBtn.style.display = '';
+  showScreen(scherm);
+  if (metPopup) toonTerugOpStraatPopup();
+}
+
+function toonTerugOpStraatPopup() {
+  var oud = document.getElementById('zv-straat-popup');
+  if (oud) oud.remove();
+  var ov = document.createElement('div');
+  ov.id = 'zv-straat-popup';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:565;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(4,2,6,.9);opacity:0;transition:opacity .4s ease';
+  ov.innerHTML =
+    '<div style="max-width:460px;text-align:center;background:linear-gradient(180deg,rgba(18,13,7,.96),rgba(10,7,4,.98));border:1px solid rgba(201,168,76,.3);border-radius:12px;padding:1.6rem 1.8rem">' +
+      '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.1rem;color:var(--parchment);line-height:1.6;margin:0 0 1.3rem">Je bent weer terug naar de straat gewandeld. Wat nu?</p>' +
+      '<button id="zv-straat-ok" class="btn">Verder</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#zv-straat-ok').onclick = function () {
+    ov.style.opacity = '0';
+    setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400);
+  };
+  requestAnimationFrame(function () { ov.style.opacity = '1'; });
+}
+
+// Optie B: gaat een speler naar een locatie waar iemand vastzit, dan opent hij
+// de echte locatie NIET, maar krijgt een lege huls plus de redder-invoer. Zo
+// raakt niemand die locatie echt aan. Geeft true als de open-functie moet stoppen.
+function schaduwRedderIntercept(locId, zone) {
+  var gevondenRol = null;
+  try {
+    var rollen = ['jan', 'kelly', 'fenna', 'felix', 'speler'];
+    for (var i = 0; i < rollen.length; i++) {
+      if (rollen[i] === state.personage) continue;
+      var l = getSharedState('schaduw_lock_' + rollen[i]);
+      if (l && l.code && l.loc === locId) { gevondenRol = rollen[i]; break; }
+    }
+  } catch (e) { console.warn('schaduwRedderIntercept:', e); }
+  if (!gevondenRol) return false;
+  state.lastOpenedLocatie = locId;
+  state.lastZone = zone;
+  toonLegeHuls(locId);
+  if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
+    window.ZilverweideSchaduw.toonRedderInvoer();
+    var wacht = setInterval(function () {
+      var el = document.getElementById('zv-redder');
+      if (!el || !el.classList.contains('zv-open')) {
+        clearInterval(wacht);
+        // Opgelost? Dan regelt controleerCode het gesprek plus terugkeer.
+        // Geannuleerd (lock staat er nog)? Zelf terug naar de straat.
+        if (getSharedState('schaduw_lock_' + gevondenRol)) schaduwTerugNaarStraat(false);
+      }
+    }, 200);
+  } else {
+    schaduwTerugNaarStraat(false);
+  }
+  return true;
 }
 
 function toonCharPop(tekst) {
@@ -15536,7 +15663,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=5"></script>
+<script src="technischefiles/schaduw.js?v=6"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
@@ -15614,9 +15741,13 @@ function toonStemmenStil(stil) {
       // Willekeurige keuze
       var gekozen = bezocht[Math.floor(Math.random() * bezocht.length)];
 
-      // Navigeer direct naar de locatie (geen tusscherm), het vergrendel-
-      // scherm zelf toont alle context (locatie, flavor-tekst).
-      openFunc(gekozen.id);
+      // Optie B: de echte locatie NIET openen (geen bezoek, geen trigger).
+      // Toon een lege huls met de locatie-afbeelding; de vergrendeling speelt
+      // daaroverheen. Zone onthouden voor de terugkeer naar de straat.
+      state.lastZone = (fase === 'kraaienkwartier' || fase === 'sintdonatuslaan') ? fase : 'dorendael';
+      state.lastOpenedLocatie = gekozen.id;
+      state.schaduwGedropt = true;
+      toonLegeHuls(gekozen.id);
       klaarCallback(gekozen.id, gekozen.naam);
     }
 
@@ -15662,6 +15793,7 @@ function toonStemmenStil(stil) {
       fogSrc: 'fog.png',
       getLocatieLabel: schaduwLocatieLabel,
       getVastzitTekst: schaduwVastzitTekst,
+      onTerugNaarStraat: function () { schaduwTerugNaarStraat(false); },
       persist: false,
       debug: true,
       sessieId: _zvSessieId,
