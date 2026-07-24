@@ -1987,6 +1987,9 @@ function duckAchtergrondVoorStap() {
 function hervatAchtergrondNaStap() {
   if (!window._bgGeduckt) return;
   window._bgGeduckt = false;
+  // Het dagboek speelt zijn eigen muziek: dan blijft de achtergrond stil.
+  // (stopDagboekMuziek zet 'm later zelf weer aan.)
+  if (window._dagboekMuziekAan) return;
   // Niet hervatten als het heks-keuzegeluid nu de achtergrond vervangt.
   if (typeof _keuzeAudio !== 'undefined' && _keuzeAudio && !_keuzeAudio.paused) return;
   var bg = document.getElementById('bg-music');
@@ -2780,7 +2783,16 @@ function hervatAchtergrondMuziek() {
 // laatste ~2s zijn stil, dus we loopen bij 22s terug naar het begin.
 var _dagboekAudio = null;
 function startDagboekMuziek() {
-  pauzeerAchtergrondMuziek();
+  window._dagboekMuziekAan = true;
+  // Een lopende verhaalstap-duck (goed.mp3, zie duckAchtergrondVoorStap) mag de
+  // achtergrond nu NIET meer hervatten, anders speelt die over de dagboekmuziek
+  // heen. We annuleren die hervat-timer en nemen het pauzeren zelf over, zodat
+  // stopDagboekMuziek de achtergrond straks weer aanzet.
+  clearTimeout(window._bgDuckTimer);
+  window._bgGeduckt = false;
+  var m = document.getElementById('bg-music');
+  if (m && !m.paused) m.pause();
+  window._bgMuziekPauze = true;
   if (!_dagboekAudio) {
     _dagboekAudio = new Audio('videos/dagboek/dagboekachtergrond.mp3');
     _dagboekAudio.addEventListener('timeupdate', function() {
@@ -2791,6 +2803,7 @@ function startDagboekMuziek() {
   _dagboekAudio.play().catch(function(){});
 }
 function stopDagboekMuziek() {
+  window._dagboekMuziekAan = false;
   if (_dagboekAudio) {
     _dagboekAudio.pause();
     try { _dagboekAudio.currentTime = 0; } catch(e) {}
