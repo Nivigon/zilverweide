@@ -65,6 +65,11 @@ window.ZilverweideSchaduw = (function () {
   let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
+  // Losstaand hand-ritueel (Kelly bij Naald en Masker): dezelfde rune-puzzel,
+  // maar zonder meter, zonder vergrendeling en zonder code. Oneindig herhalen
+  // tot ze het zegel goed naspeelt; dan wijkt de schim. Losgekoppeld van de
+  // echte vloek (cursed/meter/lock blijven ongemoeid).
+  let handModus = false, handActief = false, handWhisperTimer = null, handKlaarCb = null;
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
   let fluisterEl = null, mp3Ok = false, pathIdx = 0;
   let actieveCode = null;         // de code die deze speler nu toont (gever)
@@ -403,6 +408,12 @@ window.ZilverweideSchaduw = (function () {
   function memGoed() {
     el.memInstr.textContent = 'De schaduw trekt zich terug…';
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    // Hand-ritueel: geen meter/vloek-afhandeling, alleen de schim laten wijken
+    // en de host terugroepen.
+    if (handModus) {
+      setTimeout(handRitueelAfsluiten, 1100);
+      return;
+    }
     setTimeout(() => {
       el.memory.classList.remove('zv-open');
       updateVloekmerk();
@@ -420,7 +431,66 @@ window.ZilverweideSchaduw = (function () {
   function memFout() {
     el.memInstr.textContent = 'Verkeerd. Het zegel verbreekt.';
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    // Hand-ritueel: geen vergrendeling. Ze mag het oneindig opnieuw proberen.
+    if (handModus) { setTimeout(handHerstart, 900); return; }
     setTimeout(() => { el.memory.classList.remove('zv-open'); vergrendel(); }, 900);
+  }
+
+  // ── Losstaand hand-ritueel ───────────────────────────────────────
+  // Alleen de fluister (geen tekst, enkel het geluid): 1x bij de start en
+  // daarna elke 10s tot het zegel goed is. Losgekoppeld van de meter-lus.
+  function handFluister() { speelFluisterGeluid(0.8); }
+  function handStopFluister() {
+    handActief = false;
+    clearInterval(handWhisperTimer);
+    handWhisperTimer = null;
+    stopFluisterGeluid();
+    if (el.fluister) el.fluister.style.opacity = '0';
+  }
+  // Nieuw zegel opzetten binnen de bestaande overlay (na een fout of bij start).
+  function handNieuwZegel() {
+    memSeq = Array.from({ length: 5 }, () => Math.floor(Math.random() * RUNES.length));
+    memInput = []; memAccept = false;
+  }
+  function handHerstart() {
+    handNieuwZegel();
+    el.memInstr.textContent = 'Opnieuw. Let goed op.';
+    renderMemProgress(0);
+    el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    setTimeout(playMemSeq, 600);
+  }
+  function handRitueelAfsluiten() {
+    el.memory.classList.remove('zv-open');
+    handModus = false;
+    updateVloekmerk();
+    handStopFluister();
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0';
+    var cb = handKlaarCb; handKlaarCb = null;
+    if (typeof cb === 'function') cb();
+  }
+  // Publiek: start het hand-ritueel. onKlaar() draait zodra het zegel klopt.
+  function startHandRitueel(opts) {
+    opts = opts || {};
+    handKlaarCb = (typeof opts.onKlaar === 'function') ? opts.onKlaar : null;
+    handModus = true;
+    handActief = true;
+    // De schim + het zegel: dezelfde puzzel-overlay, maar zonder meter/lock.
+    el.memory.classList.add('zv-open');
+    updateVloekmerk();                                   // toont het vloekmerk (de schim)
+    el.memRunes.innerHTML = RUNES.map((r, i) =>
+      `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
+    el.memRunes.querySelectorAll('.zv-rune').forEach(r =>
+      r.addEventListener('click', () => memTap(+r.dataset.i)));
+    handNieuwZegel();
+    el.memIntro.style.display = '';
+    el.memStart.style.display = '';
+    el.memTitle.style.display = 'none';
+    el.memInstr.style.display = 'none';
+    el.memProgress.innerHTML = '';
+    // Fluister: nu meteen 1x, daarna elke 10 seconden tot ze klaar is.
+    handFluister();
+    clearInterval(handWhisperTimer);
+    handWhisperTimer = setInterval(function () { if (handActief) handFluister(); }, 10000);
   }
 
   // ── Vergrendeling: speler zit vast op locatie tot redder de code geeft ──
@@ -588,6 +658,7 @@ window.ZilverweideSchaduw = (function () {
       el.redder.classList.remove('zv-open');
     }
     el.memory.classList.remove('zv-open');
+    if (handModus) { handModus = false; handStopFluister(); }  // hand-ritueel netjes afbreken
     wisLock();                                  // opgeslagen vergrendeling weg
     el.rook.classList.remove('zv-actief');
     if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
@@ -607,8 +678,10 @@ window.ZilverweideSchaduw = (function () {
 
   const api = {
     init, vervloek, kalmeer, setBusy, setOpLocatie,
+    startHandRitueel,                           // losstaand hand-ritueel (Kelly, K8)
     isVergrendeld: () => vergrendeld,
     isVervloekt: () => cursed,
+    isHandRitueelBezig: () => handActief,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten
     toonRedderInvoer,                           // in productie: op het tablet van de redder
     wisVergrendeling: () => { wisLock(); },     // opgeslagen lock wissen (bijv. bij reset)
