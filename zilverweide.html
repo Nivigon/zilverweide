@@ -697,6 +697,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #screen-locatie .sc-sub { margin: 0 0 .35rem !important; }
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
+/* De speler-pop (links onder) valt over de eerste verdachte-tegel op het
+   heks-keuzescherm. Verberg de pop zolang zo'n grid actief in beeld staat; hij
+   komt vanzelf terug op de andere scenes. Oudere browsers negeren :has, dan
+   blijft de pop staan (geen regressie, gewoon het oude gedrag). */
+body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important; }
 </style>
 <link rel="stylesheet" href="technischefiles/schaduw.css">
 </head>
