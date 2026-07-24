@@ -204,6 +204,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-vak-leeg{background:linear-gradient(160deg,rgba(22,15,7,.5),rgba(10,7,3,.42));border:1px dashed rgba(201,168,76,.15);box-shadow:inset 0 2px 12px rgba(0,0,0,.45);cursor:default}
 .inv-ov-vak-leeg:hover{transform:none;border-color:rgba(201,168,76,.15);background:linear-gradient(160deg,rgba(22,15,7,.5),rgba(10,7,3,.42));box-shadow:inset 0 2px 12px rgba(0,0,0,.45)}
 .inv-ov-emoji{font-size:3rem;line-height:1;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+/* Item met een eigen afbeelding i.p.v. een emoji. */
+.item-afbeelding{object-fit:contain;display:inline-block;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+.inv-ov-emoji.item-afbeelding{width:3.4rem;height:3.4rem}
+.inv-ov-detail-emoji.item-afbeelding{width:5rem;height:5rem}
+.nvm-emoji.item-afbeelding{width:1.5rem;height:1.5rem;vertical-align:middle;filter:none}
 .inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.82rem;color:var(--parchment);text-align:center;line-height:1.2}
 .inv-ov-leeg{color:var(--mist);font-style:italic;text-align:center;line-height:1.9;margin-top:3rem}
 .inv-ov-leeg::before{content:'❦';display:block;font-family:'Cinzel',serif;font-size:2rem;color:var(--gold-dim);opacity:.55;margin-bottom:.8rem}
@@ -3180,6 +3185,16 @@ function sluitInventarisOverzicht() {
   clearTimeout(ov._sluitTimer);
   ov._sluitTimer = setTimeout(function () { ov.style.display = 'none'; }, 450);
 }
+// Items met een eigen afbeelding i.p.v. een emoji (op naam). Uitbreidbaar.
+var ITEM_AFBEELDINGEN = { 'Nat Dagboek': 'items/viesdagboekitem.png' };
+// Geeft de visuele voorstelling van een item terug: een <img> als er een
+// afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
+function itemVisueel(naam, emoji, klasse) {
+  var src = ITEM_AFBEELDINGEN[naam];
+  if (src) return '<img class="' + klasse + ' item-afbeelding" src="' + src + '" alt="">';
+  return '<span class="' + klasse + '">' + (emoji || '') + '</span>';
+}
+
 function bouwInventarisGrid() {
   var grid = document.getElementById('inv-ov-grid');
   if (!grid) return;
@@ -3191,7 +3206,7 @@ function bouwInventarisGrid() {
     var i = state.inventory[idx];
     if (i) {
       html += '<button class="inv-ov-kaart" onclick="toonInventarisItem(' + idx + ')">' +
-                '<span class="inv-ov-emoji">' + i.emoji + '</span>' +
+                itemVisueel(i.naam, i.emoji, 'inv-ov-emoji') +
                 '<span class="inv-ov-naam">' + i.naam + '</span>' +
               '</button>';
     } else {
@@ -3212,7 +3227,7 @@ function toonInventarisItem(idx) {
   var g = document.getElementById('inv-ov-grid');
   if (!i || !d) return;
   d.innerHTML =
-    '<div class="inv-ov-detail-emoji">' + i.emoji + '</div>' +
+    '<div>' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
     '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
     '<div class="inv-ov-detail-tekst">[Placeholder: hier komt de uitleg over ' + i.naam + '.]</div>' +
     '<button class="back-btn" style="margin-top:1rem" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
@@ -3227,7 +3242,7 @@ function toonInventarisItem(idx) {
 function nieuwVoorwerpMelding(emoji, naam) {
   var box = document.getElementById('nieuw-voorwerp-melding');
   if (!box) return;
-  box.innerHTML = '<span class="nvm-emoji">' + (emoji || '') + '</span>' +
+  box.innerHTML = itemVisueel(naam, emoji, 'nvm-emoji') +
                   '<span class="nvm-naam">' + (naam || 'Nieuw voorwerp') + '</span>';
   var bg = document.getElementById('bg-music');
   if (bg && !bg.paused) { bg.pause(); window._nvMuziekPauze = true; }
