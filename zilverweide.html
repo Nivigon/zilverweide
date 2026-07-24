@@ -15379,8 +15379,10 @@ function toonStemmenStil(stil) {
   });
 </script>
 
-<!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png) -->
-<script src="technischefiles/schaduw.js"></script>
+<!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
+     Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
+     browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
+<script src="technischefiles/schaduw.js?v=2"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
@@ -15442,12 +15444,13 @@ function toonStemmenStil(stil) {
       });
 
       // Fallback: nog niets bezocht in deze straat → de speler wordt aan het
-      // begin of einde van de straat neergezet (DD2/DD8, H2/H8). In het
-      // Kraaienkwartier volstaat de eerste locatie.
+      // begin of einde van de straat neergezet: de "2 of 8"-locaties
+      // (DD2/DD8, H2/H8, K2/K8). K2 is Stoop de Groenteboer, K8 Naald en Masker.
       if (bezocht.length === 0) {
         var uiteindeIds = null;
         if (fase === 'dorendael') uiteindeIds = ['dd2_nummer2', 'dd8_stiltevijver'];
         else if (fase === 'sintdonatuslaan') uiteindeIds = ['h2_felixkamer', 'h8_steegje'];
+        else if (fase === 'kraaienkwartier') uiteindeIds = ['k1_groenteboer', 'k1_naaldmasker'];
         if (uiteindeIds) {
           bezocht = locaties.filter(function (l) { return uiteindeIds.indexOf(l.id) !== -1; });
         }
@@ -15485,9 +15488,26 @@ function toonStemmenStil(stil) {
       return zone;
     }
 
+    // De naam van een locatie-id opzoeken over de drie straten heen.
+    function schaduwLocatieNaam(id) {
+      var lijsten = [locatiesK1, locatiesDorendael, locatiesHeerDonatuslaan];
+      for (var i = 0; i < lijsten.length; i++) {
+        var m = lijsten[i].find(function (l) { return l.id === id; });
+        if (m) return m.naam;
+      }
+      return '';
+    }
+    // Textuele regel voor het wachtscherm: waar zak je neer. Leunt op de
+    // locatie waar je op dat moment staat (na een eventuele drop al gezet).
+    function schaduwVastzitTekst() {
+      var naam = schaduwLocatieNaam(state.lastOpenedLocatie);
+      return naam ? ('Je zakt op de grond bij ' + naam + '.') : '';
+    }
+
     window.ZilverweideSchaduw.init({
       fogSrc: 'fog.png',
       getLocatieLabel: schaduwLocatieLabel,
+      getVastzitTekst: schaduwVastzitTekst,
       persist: false,
       debug: true,
       sessieId: _zvSessieId,
