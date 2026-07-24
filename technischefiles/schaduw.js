@@ -126,6 +126,8 @@ window.ZilverweideSchaduw = (function () {
     root.id = 'zv-schaduw';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
+      <img id="zv-vloekmerk" src="karakters/special/schaduwvloek.png" alt="" aria-hidden="true"
+           style="position:fixed;right:1.6rem;bottom:1.6rem;height:24vh;max-height:230px;width:auto;opacity:0;pointer-events:none;z-index:450;transition:opacity 1.5s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
       <div id="zv-rook">
         <div class="zv-rand zv-l"></div><div class="zv-rand zv-r"></div>
         <div class="zv-rand zv-t"></div><div class="zv-rand zv-b"></div>
@@ -142,14 +144,6 @@ window.ZilverweideSchaduw = (function () {
       <div id="zv-memory" class="zv-overlay">
         <div class="zv-eyebrow">Een schim en de stemmen dringen zich op</div>
         <div id="zv-mem-intro">
-          <svg class="zv-schim" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><radialGradient id="zvsg" cx="50%" cy="34%" r="68%">
-              <stop offset="0%" stop-color="#241420"/><stop offset="100%" stop-color="#070409"/>
-            </radialGradient></defs>
-            <path d="M100 14 C72 14 60 40 62 66 C42 76 32 110 34 150 C26 176 22 208 26 220 L174 220 C178 208 174 176 166 150 C168 110 158 76 138 66 C140 40 128 14 100 14 Z" fill="url(#zvsg)"/>
-            <ellipse cx="86" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-            <ellipse cx="114" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-          </svg>
           <div class="zv-title">Chaos</div>
           <div class="zv-line">Je hoofd loopt vol. Stemmen buitelen over elkaar, de grond kantelt.
             Uit de nevel kijkt een schim je recht aan.</div>
@@ -189,6 +183,7 @@ window.ZilverweideSchaduw = (function () {
     document.body.appendChild(root);
 
     el.root = root;
+    el.vloekmerk = root.querySelector('#zv-vloekmerk');
     el.rook = root.querySelector('#zv-rook');
     el.fluister = root.querySelector('#zv-fluister');
     el.meter = root.querySelector('#zv-meter');
@@ -524,6 +519,7 @@ window.ZilverweideSchaduw = (function () {
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
     cursed = true;
     el.rook.classList.add('zv-actief');
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0.3';   // vloekmerk zichtbaar zolang de vloek loopt
     updateSmoke();
     scheduleFluister(true);                      // eerste fluistering snel (3-5s)
   }
@@ -584,6 +580,7 @@ window.ZilverweideSchaduw = (function () {
     el.memory.classList.remove('zv-open');
     wisLock();                                  // opgeslagen vergrendeling weg
     el.rook.classList.remove('zv-actief');
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
     clearTimeout(fluisterTimer);
     updateSmoke();
   }

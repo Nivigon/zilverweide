@@ -1871,6 +1871,7 @@ window.ZilverweideSchaduwServer = {
           vermomming: (state.personage === 'felix' ? (state.vermomming || null) : null)
         });
         setSharedState('schaduw_lock_' + slachtofferRol, null);
+        schaduwPauze(true);   // meter van de helper bevriezen tot gesprek en pop-up klaar zijn
         // De helper ziet zijn eigen kant van het tweegesprek, nadat het
         // redder-invoerscherm is gesloten.
         (function (sr, sv) {
@@ -1902,6 +1903,7 @@ setInterval(function () {
         window.ZilverweideSchaduw._ontgrendel();
         if (bevrijd && bevrijd.door) {
           setSharedState('schaduw_bevrijd_' + rol, null);   // briefje opruimen
+          schaduwPauze(true);   // meter bevriezen tot het gesprek en de pop-up klaar zijn
           (function (b, wasGedropt) {
             setTimeout(function () {
               toonBevrijdInteractie({
@@ -1912,6 +1914,7 @@ setInterval(function () {
                 // Hierheen getrokken? Terug naar de straat met pop-up. Was je al
                 // écht op een locatie, dan blijf je daar en gaat het verhaal door.
                 if (wasGedropt) schaduwTerugNaarStraat(true);
+                else schaduwPauze(false);   // echte locatie, geen pop-up: meter mag weer lopen
               });
             }, 500);
           })(bevrijd, !!state.schaduwGedropt);
@@ -10790,6 +10793,15 @@ function schaduwTerugNaarStraat(metPopup) {
   if (metPopup) toonTerugOpStraatPopup();
 }
 
+// Bevriest (of hervat) de schaduw-meter en het gefluister. Gebruikt tijdens
+// het bevrijd-gesprek en de "terug naar straat"-pop-up, zodat je niet meteen
+// opnieuw vastraakt voor je klaar bent.
+function schaduwPauze(aan) {
+  if (window.ZilverweideSchaduw && typeof window.ZilverweideSchaduw.setBusy === 'function') {
+    window.ZilverweideSchaduw.setBusy(!!aan);
+  }
+}
+
 function toonTerugOpStraatPopup() {
   var oud = document.getElementById('zv-straat-popup');
   if (oud) oud.remove();
@@ -10805,6 +10817,7 @@ function toonTerugOpStraatPopup() {
   ov.querySelector('#zv-straat-ok').onclick = function () {
     ov.style.opacity = '0';
     setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400);
+    schaduwPauze(false);   // pas nu mag de meter weer lopen
   };
   requestAnimationFrame(function () { ov.style.opacity = '1'; });
 }
@@ -15663,7 +15676,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=6"></script>
+<script src="technischefiles/schaduw.js?v=7"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
