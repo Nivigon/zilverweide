@@ -10782,15 +10782,21 @@ function toonLegeHuls(locId) {
   showScreen('screen-locatie');
 }
 
-// Terug naar het straat-scherm na een gedwongen drop of na het helpen.
+// Terug naar het straat-scherm na een gedwongen drop of na het helpen. Gebruikt
+// de echte straat-binnengaan-functie (visitZone), zodat de straat volledig wordt
+// opgezet (state.zone, indicator, gargoyle-video), net als bij normaal navigeren.
 function schaduwTerugNaarStraat(metPopup) {
-  var scherm = SCHADUW_ZONE_INVOER[state.lastZone] || 'screen-overworld';
-  console.log('[schaduw] terug naar straat:', scherm, '| zone:', state.lastZone, '| bestaat:', !!document.getElementById(scherm));
+  var zone = state.lastZone;
+  console.log('[schaduw] terug naar straat via visitZone, zone:', zone);
   state.locAfbeelding = null;
   state.schaduwGedropt = false;
   var backBtn = document.getElementById('locatie-back-btn');
   if (backBtn) backBtn.style.display = '';
-  showScreen(scherm);
+  if (zone === 'kraaienkwartier' || zone === 'dorendael' || zone === 'sintdonatuslaan' || zone === 'dorpsplein') {
+    visitZone(zone);
+  } else {
+    showScreen('screen-overworld');
+  }
   if (metPopup) toonTerugOpStraatPopup();
 }
 
