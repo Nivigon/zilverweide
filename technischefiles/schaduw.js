@@ -38,6 +38,10 @@ window.ZilverweideSchaduw = (function () {
     ],
     onVergrendel: null,           // callback(code) als deze speler vastraakt
     onBevrijd: null,              // callback() als deze speler vrijkomt
+    onDropLocatie: null,          // callback(klaar) als je vastraakt buiten een locatie:
+                                  // de host brengt je naar een locatie, roept klaar(locId) aan
+    getVastzitTekst: null,        // callback() → zin voor het wachtscherm ("Je zakt op de grond bij ...")
+    huidigeLocatie: null,         // id van de locatie waar je nu bent (host houdt dit bij)
     persist: true,                // vergrendeling onthouden bij verversen
     debug: false                  // toont een solo-ontgrendelknop op het vergrendel-scherm
   };
@@ -56,6 +60,7 @@ window.ZilverweideSchaduw = (function () {
   let cursed = false, meter = 0;
   let busy = false;               // host speelt eigen geluid → schaduw zwijgt
   let vergrendeld = false;
+  let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
@@ -157,6 +162,7 @@ window.ZilverweideSchaduw = (function () {
 
       <div id="zv-lock" class="zv-overlay">
         <div class="zv-eyebrow">Vervloekt</div>
+        <div class="zv-line" id="zv-lock-loc" style="display:none"></div>
         <div class="zv-line">Het zegel brandt. De fluisteringen kruipen over elkaar heen
           tot je je eigen gedachten niet meer hoort. De grond kantelt onder je.</div>
         <div class="zv-line">Je kunt geen kant op. Niet alleen.</div>
@@ -199,6 +205,7 @@ window.ZilverweideSchaduw = (function () {
     el.flits = root.querySelector('#zv-flits');
     el.lock = root.querySelector('#zv-lock');
     el.lockCode = root.querySelector('#zv-lock-code');
+    el.lockLoc = root.querySelector('#zv-lock-loc');
     el.redder = root.querySelector('#zv-redder');
     el.redderInput = root.querySelector('#zv-redder-input');
     el.redderErr = root.querySelector('#zv-redder-err');
@@ -398,9 +405,28 @@ window.ZilverweideSchaduw = (function () {
     meter = 100; updateSmoke();                 // rook blijft vol
     stopFluisterGeluid();
     whisperReadyAt = Date.now() + 9e8;          // geen gefluister tijdens vergrendeling
+    // Zit je niet op een locatie (overworld/invoerscherm)? Laat de host je
+    // eerst naar een locatie brengen, zodat je altijd ziet waar je vastzit.
+    if (!opLocatie && typeof CFG.onDropLocatie === 'function') {
+      CFG.onDropLocatie(function (locId) {
+        if (locId) { opLocatie = true; CFG.huidigeLocatie = locId; }
+        vergrendelAfmaken();
+      });
+      return;
+    }
+    vergrendelAfmaken();
+  }
+
+  async function vergrendelAfmaken() {
     actieveCode = await Server.vraagCode(CFG.spelerId);   // ← code uit de server
     bewaarLock(actieveCode);
     el.lockCode.textContent = actieveCode;
+    // Textuele "waar zit ik vast"-regel op het wachtscherm.
+    var waar = (typeof CFG.getVastzitTekst === 'function') ? (CFG.getVastzitTekst() || '') : '';
+    if (el.lockLoc) {
+      el.lockLoc.textContent = waar;
+      el.lockLoc.style.display = waar ? '' : 'none';
+    }
     el.lock.classList.add('zv-open');
     if (typeof CFG.onVergrendel === 'function') CFG.onVergrendel(actieveCode);
   }
@@ -544,9 +570,15 @@ window.ZilverweideSchaduw = (function () {
     busy = !!b;
     if (busy) { stopFluisterGeluid(); }         // host-geluid → schaduw zwijgt + meter bevriest
   }
+  // De host meldt of we op een locatie-scherm staan (locId) of niet (null).
+  // Bepaalt of je bij vergrendeling eerst naar een locatie gebracht wordt.
+  function setOpLocatie(locId) {
+    opLocatie = !!locId;
+    CFG.huidigeLocatie = locId || null;
+  }
 
   const api = {
-    init, vervloek, kalmeer, setBusy,
+    init, vervloek, kalmeer, setBusy, setOpLocatie,
     isVergrendeld: () => vergrendeld,
     isVervloekt: () => cursed,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten

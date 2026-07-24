@@ -15485,9 +15485,26 @@ function toonStemmenStil(stil) {
       return zone;
     }
 
+    // De naam van een locatie-id opzoeken over de drie straten heen.
+    function schaduwLocatieNaam(id) {
+      var lijsten = [locatiesK1, locatiesDorendael, locatiesHeerDonatuslaan];
+      for (var i = 0; i < lijsten.length; i++) {
+        var m = lijsten[i].find(function (l) { return l.id === id; });
+        if (m) return m.naam;
+      }
+      return '';
+    }
+    // Textuele regel voor het wachtscherm: waar zak je neer. Leunt op de
+    // locatie waar je op dat moment staat (na een eventuele drop al gezet).
+    function schaduwVastzitTekst() {
+      var naam = schaduwLocatieNaam(state.lastOpenedLocatie);
+      return naam ? ('Je zakt op de grond bij ' + naam + '.') : '';
+    }
+
     window.ZilverweideSchaduw.init({
       fogSrc: 'fog.png',
       getLocatieLabel: schaduwLocatieLabel,
+      getVastzitTekst: schaduwVastzitTekst,
       persist: false,
       debug: true,
       sessieId: _zvSessieId,
