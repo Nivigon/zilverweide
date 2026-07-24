@@ -260,6 +260,94 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   box-shadow:0 0 26px rgba(240,205,80,.85);
   transform:scale(1.1);
 }
+/* Missie-paneel: het uitvouwmenu onder de verhaal-teller. Toont per zone de
+   verhaalregels die de spelers samen al onthuld hebben. Alleen voltooide
+   regels verschijnen, elk met een korte fade-in, zodat het aanvoelt als een
+   groeiend logboek van wat het team ontdekte. Absoluut gepositioneerd zodat
+   het de flex-teller niet oprekt; text-transform terug naar normaal want de
+   teller zelf staat in uppercase. */
+#missie-paneel{
+  position:absolute;
+  top:calc(100% + .55rem);
+  right:0;
+  z-index:320;
+  width:min(320px,82vw);
+  max-height:0;
+  overflow:hidden;
+  opacity:0;
+  transform:translateY(-8px);
+  pointer-events:none;
+  background:linear-gradient(160deg,rgba(20,15,9,.98),rgba(10,7,4,.98));
+  border:1px solid rgba(201,168,76,.32);
+  border-radius:12px;
+  box-shadow:0 14px 40px rgba(0,0,0,.7),0 0 24px rgba(201,168,76,.08);
+  backdrop-filter:blur(8px);
+  text-transform:none;
+  letter-spacing:normal;
+  transition:opacity .3s ease,transform .3s ease,max-height .35s ease,padding .35s ease;
+  cursor:default;
+}
+#missie-paneel.open{
+  max-height:70vh;
+  opacity:1;
+  transform:translateY(0);
+  pointer-events:auto;
+  padding:.9rem 1rem 1rem;
+  overflow-y:auto;
+}
+.missie-paneel-titel{
+  font-family:'Cinzel',serif;
+  font-size:.72rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--gold);
+  margin-bottom:.15rem;
+}
+.missie-paneel-sub{
+  font-family:'Cinzel',serif;
+  font-size:.58rem;
+  letter-spacing:.2em;
+  text-transform:uppercase;
+  color:var(--gold-dim);
+  margin-bottom:.7rem;
+  padding-bottom:.55rem;
+  border-bottom:1px solid rgba(201,168,76,.14);
+}
+.missie-paneel-lijn{
+  display:flex;
+  align-items:flex-start;
+  gap:.55rem;
+  padding:.42rem 0;
+  animation:missieRegelIn .45s ease both;
+}
+.missie-paneel-lijn + .missie-paneel-lijn{
+  border-top:1px solid rgba(201,168,76,.08);
+}
+.missie-paneel-vink{
+  flex:0 0 auto;
+  color:var(--gold);
+  font-size:.8rem;
+  line-height:1.45;
+  text-shadow:0 0 8px rgba(201,168,76,.6);
+}
+.missie-paneel-tekst{
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:.95rem;
+  line-height:1.35;
+  color:var(--parchment);
+}
+.missie-paneel-leeg{
+  font-family:'Crimson Text',Georgia,serif;
+  font-style:italic;
+  font-size:.9rem;
+  color:var(--mist);
+  text-align:center;
+  padding:.6rem 0 .2rem;
+}
+@keyframes missieRegelIn{
+  from{opacity:0;transform:translateX(-6px);}
+  to{opacity:1;transform:translateX(0);}
+}
 /* Archieven-lijst bij de archivaris — stijlvolle "kaarten" per stuk. */
 .archief-lijst{display:flex;flex-direction:column;gap:.6rem}
 
@@ -870,9 +958,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 </div>
 
 <div id="topright-cluster" style="position:fixed;top:.7rem;right:1rem;z-index:300;display:flex;align-items:center;gap:.55rem">
-  <div id="missie-teller" title="Voortgang in dit deel van het verhaal" style="display:none;flex:0 0 auto;align-items:center;gap:.4rem;padding:.35rem .7rem;border:1px solid rgba(201,168,76,.3);border-radius:50px;background:rgba(13,10,6,.82);font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;transition:all .35s ease;backdrop-filter:blur(4px);white-space:nowrap">
+  <div id="missie-teller" onclick="toggleMissiePaneel(event)" title="Bekijk wat jullie ontdekten" style="display:none;position:relative;flex:0 0 auto;align-items:center;gap:.4rem;padding:.35rem .7rem;border:1px solid rgba(201,168,76,.3);border-radius:50px;background:rgba(13,10,6,.82);font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;transition:all .35s ease;backdrop-filter:blur(4px);white-space:nowrap;cursor:pointer">
     <span style="font-size:.85rem;line-height:1">✦</span>
     <span id="missie-teller-tekst">Verhaal: 0 / 3</span>
+    <div id="missie-paneel" onclick="event.stopPropagation()"></div>
   </div>
   <div id="avatar-badge" style="display:none;align-items:center;gap:8px;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:50px;padding:4px 10px 4px 4px;backdrop-filter:blur(4px)">
     <img id="avatar-badge-img" src="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center top;border:1px solid rgba(201,168,76,.4)">
@@ -1798,6 +1887,94 @@ function updateMissieTeller() {
     totaal = KRAAIEN_MISSIE_KEYS.length;
   }
   tekst.textContent = 'Verhaal: ' + aantal + ' / ' + totaal;
+  // Als het uitvouwmenu open staat, meteen bijwerken met de nieuwe regel.
+  var paneel = document.getElementById('missie-paneel');
+  if (paneel && paneel.classList.contains('open')) bouwMissiePaneel();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Missie-paneel — het uitvouwmenu onder de verhaal-teller. Klik op de
+// teller en de regels van de huidige verhaal-fase klappen uit; alleen de
+// stappen die het team echt al voltooid heeft worden zichtbaar, als een
+// groeiend logboek van wat jullie samen ontdekten.
+// ─────────────────────────────────────────────────────────────────
+
+// Kraaienkwartier krijgt eigen verhaal-regels (door Tom aangeleverd); de
+// andere zones hergebruiken hun bestaande milestone-labels.
+const KRAAIEN_MISSIE_VERHAAL = {
+  dagboek:   'Kelly heeft het dagboek leesbaar gemaakt',
+  wallingen: 'Felix heeft een idee van Mevr. v Wallingen overgenomen',
+  robbie:    'Robbie staat klaar om Fenna-Viviènne te helpen!',
+};
+
+function faseWeergaveNaam(zone) {
+  return {
+    kraaienkwartier: 'Kraaienkwartier',
+    dorendael:       'Dorendael',
+    sintdonatuslaan: 'Heer Donatuslaan',
+  }[zone] || '';
+}
+
+// Alle regels van een zone met hun voltooid-status. De volgorde is vast
+// (verhaal-volgorde), maar in het paneel tonen we straks alleen de voltooide.
+function missieRegelsVoorZone(zone) {
+  var regels = [];
+  if (zone === 'kraaienkwartier') {
+    KRAAIEN_MISSIE_KEYS.forEach(function(k) {
+      regels.push({ voltooid: state.heksOpgelost || k.check(), tekst: KRAAIEN_MISSIE_VERHAAL[k.id] || k.label });
+    });
+  } else if (zone === 'dorendael') {
+    DORENDAEL_MISSIE_KEYS.forEach(function(f) {
+      regels.push({ voltooid: hasVisited(f), tekst: DORENDAEL_MISSIE_LABELS[f] || f });
+    });
+  } else if (zone === 'sintdonatuslaan') {
+    HEER_DONATUSLAAN_MISSIE_KEYS.forEach(function(f) {
+      regels.push({ voltooid: hasVisited(f), tekst: HEER_DONATUSLAAN_MISSIE_LABELS[f] || f });
+    });
+  }
+  return regels;
+}
+
+function bouwMissiePaneel() {
+  var paneel = document.getElementById('missie-paneel');
+  if (!paneel) return;
+  var zone = verhaalFaseZone();
+  var regels = zone ? missieRegelsVoorZone(zone) : [];
+  var voltooid = regels.filter(function(r){ return r.voltooid; });
+  var html = '<div class="missie-paneel-titel">Wat jullie ontdekten</div>';
+  if (zone) html += '<div class="missie-paneel-sub">' + faseWeergaveNaam(zone) + '</div>';
+  if (!voltooid.length) {
+    html += '<div class="missie-paneel-leeg">Het verhaal moet zich nog onthullen…</div>';
+  } else {
+    voltooid.forEach(function(r, i) {
+      html += '<div class="missie-paneel-lijn" style="animation-delay:' + (i * 0.06).toFixed(2) + 's">' +
+              '<span class="missie-paneel-vink">✦</span>' +
+              '<span class="missie-paneel-tekst">' + r.tekst + '</span></div>';
+    });
+  }
+  paneel.innerHTML = html;
+}
+
+function toggleMissiePaneel(e) {
+  if (e) e.stopPropagation();
+  var paneel = document.getElementById('missie-paneel');
+  if (!paneel) return;
+  if (paneel.classList.contains('open')) { sluitMissiePaneel(); return; }
+  bouwMissiePaneel();
+  paneel.classList.add('open');
+  // Buitenklik pas na deze klik registreren, anders sluit hij meteen weer.
+  setTimeout(function(){ document.addEventListener('click', _missieBuitenklik); }, 0);
+}
+
+function sluitMissiePaneel() {
+  var paneel = document.getElementById('missie-paneel');
+  if (paneel) paneel.classList.remove('open');
+  document.removeEventListener('click', _missieBuitenklik);
+}
+
+function _missieBuitenklik(e) {
+  var teller = document.getElementById('missie-teller');
+  if (teller && !teller.contains(e.target)) sluitMissiePaneel();
 }
 
 // Achtergrondmuziek even dempen zodat het verhaalstap-geluid (goed.mp3) er
@@ -12439,6 +12616,7 @@ function buildDebugPanel() {
     label = 'Algemeen';
     btns = [
       ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
+      ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
       ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }],
       ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
