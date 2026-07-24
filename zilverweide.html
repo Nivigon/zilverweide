@@ -711,7 +711,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
      De portretten worden ook iets lager gericht zodat de gezichten in beeld
      komen op deze brede, lage tegels. */
   #screen-locatie .sc-image-slot { max-height: min(62vh, calc(var(--vh100) - 104px)) !important; }
-  #screen-locatie .heks-keuze-bg { background-position: center 22% !important; }
+  /* Telefoon liggend: alle verdachten naast elkaar in EEN rij (nooit onder
+     elkaar), en het hele portret zichtbaar (contain) in plaats van bijgesneden. */
+  #screen-locatie .heks-grid-5 { grid-template-columns: repeat(5, 1fr) !important; }
+  #screen-locatie .heks-grid-6 { grid-template-columns: repeat(6, 1fr) !important; }
+  #screen-locatie .heks-keuze-bg {
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
+  #screen-locatie .heks-keuze-inhoud { padding: .5rem .45rem !important; }
+  #screen-locatie .heks-keuze-naam { font-size: .78rem !important; line-height: 1.1 !important; }
+  #screen-locatie .heks-keuze-sub { font-size: .62rem !important; line-height: 1.2 !important; }
   #screen-locatie.screen { padding: .4rem 0 .6rem !important; }
   #screen-locatie .sc-titel { font-size: clamp(1.1rem, 4.5vh, 1.5rem) !important; margin: .1rem 0 !important; }
   #screen-locatie .sc-sub { font-size: .6rem !important; margin: 0 0 .2rem !important; }
