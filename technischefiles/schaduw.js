@@ -162,7 +162,7 @@ window.ZilverweideSchaduw = (function () {
 
       <div id="zv-lock" class="zv-overlay">
         <div class="zv-eyebrow">Vervloekt</div>
-        <div class="zv-line" id="zv-lock-loc" style="display:none"></div>
+        <div class="zv-line" id="zv-lock-loc" style="display:none;color:#ffd27a;font-style:normal;font-weight:600"></div>
         <div class="zv-line">Het zegel brandt. De fluisteringen kruipen over elkaar heen
           tot je je eigen gedachten niet meer hoort. De grond kantelt onder je.</div>
         <div class="zv-line">Je kunt geen kant op. Niet alleen.</div>

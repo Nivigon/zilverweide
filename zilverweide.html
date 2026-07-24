@@ -1083,6 +1083,17 @@ function initSharedFirebase(sessieId) {
   // Listener: als een andere tablet iets schrijft, update lokale state
   _sharedDbRef.on('value', function (snap) {
     var data = snap.val();
+    // Firebase is leidend: schaduw-lock-records die daar gewist zijn, lokaal
+    // ook weghalen. De merge hieronder voegt alleen aanwezige keys toe en
+    // wist niets, dus zonder dit blijft een vergrendelde tablet hangen nadat
+    // de redder elders de juiste code invoerde (de lock verdween wel uit
+    // Firebase, maar niet uit de lokale kopie).
+    for (var lk in state.shared) {
+      if (state.shared.hasOwnProperty(lk) && lk.indexOf('schaduw_lock_') === 0
+          && !(data && data.hasOwnProperty(lk))) {
+        delete state.shared[lk];
+      }
+    }
     if (!data) return;
     // Merge Firebase-data in lokale state.shared (Firebase wint)
     for (var key in data) {
@@ -15382,7 +15393,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=2"></script>
+<script src="technischefiles/schaduw.js?v=3"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
