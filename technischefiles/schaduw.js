@@ -41,6 +41,7 @@ window.ZilverweideSchaduw = (function () {
     onDropLocatie: null,          // callback(klaar) als je vastraakt buiten een locatie:
                                   // de host brengt je naar een locatie, roept klaar(locId) aan
     getVastzitTekst: null,        // callback() → zin voor het wachtscherm ("Je zakt op de grond bij ...")
+    onTerugNaarStraat: null,      // callback() als de schaduw wijkt na een gedwongen drop: terug naar de straat
     huidigeLocatie: null,         // id van de locatie waar je nu bent (host houdt dit bij)
     persist: true,                // vergrendeling onthouden bij verversen
     debug: false                  // toont een solo-ontgrendelknop op het vergrendel-scherm
@@ -61,6 +62,7 @@ window.ZilverweideSchaduw = (function () {
   let busy = false;               // host speelt eigen geluid → schaduw zwijgt
   let vergrendeld = false;
   let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
+  let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
@@ -124,6 +126,8 @@ window.ZilverweideSchaduw = (function () {
     root.id = 'zv-schaduw';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
+      <img id="zv-vloekmerk" src="karakters/special/schaduwvloek.png" alt="" aria-hidden="true"
+           style="position:fixed;right:1.6rem;bottom:1.6rem;height:24vh;max-height:230px;width:auto;opacity:0;pointer-events:none;z-index:450;transition:opacity 1.5s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
       <div id="zv-rook">
         <div class="zv-rand zv-l"></div><div class="zv-rand zv-r"></div>
         <div class="zv-rand zv-t"></div><div class="zv-rand zv-b"></div>
@@ -138,22 +142,14 @@ window.ZilverweideSchaduw = (function () {
       </div>
 
       <div id="zv-memory" class="zv-overlay">
-        <div class="zv-eyebrow">De schaduw sluit zich</div>
+        <div class="zv-eyebrow">Een schim en de stemmen dringen zich op</div>
         <div id="zv-mem-intro">
-          <svg class="zv-schim" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><radialGradient id="zvsg" cx="50%" cy="34%" r="68%">
-              <stop offset="0%" stop-color="#241420"/><stop offset="100%" stop-color="#070409"/>
-            </radialGradient></defs>
-            <path d="M100 14 C72 14 60 40 62 66 C42 76 32 110 34 150 C26 176 22 208 26 220 L174 220 C178 208 174 176 166 150 C168 110 158 76 138 66 C140 40 128 14 100 14 Z" fill="url(#zvsg)"/>
-            <ellipse cx="86" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-            <ellipse cx="114" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-          </svg>
           <div class="zv-title">Chaos</div>
           <div class="zv-line">Je hoofd loopt vol. Stemmen buitelen over elkaar, de grond kantelt.
             Uit de nevel kijkt een schim je recht aan.</div>
           <div class="zv-sub">"Wijs de juiste volgorde van tekens aan… of de schaduw houdt je."</div>
         </div>
-        <div class="zv-title" id="zv-mem-title" style="display:none">Herinner het zegel</div>
+        <div class="zv-title" id="zv-mem-title" style="display:none">Orden je gedachten</div>
         <div class="zv-line" id="zv-mem-instr" style="display:none">Let goed op…</div>
         <div class="zv-progress" id="zv-mem-progress"></div>
         <div class="zv-runes" id="zv-mem-runes"></div>
@@ -187,6 +183,7 @@ window.ZilverweideSchaduw = (function () {
     document.body.appendChild(root);
 
     el.root = root;
+    el.vloekmerk = root.querySelector('#zv-vloekmerk');
     el.rook = root.querySelector('#zv-rook');
     el.fluister = root.querySelector('#zv-fluister');
     el.meter = root.querySelector('#zv-meter');
@@ -330,6 +327,19 @@ window.ZilverweideSchaduw = (function () {
     meter = 100; updateSmoke();
     stopFluisterGeluid();                       // geen 2 geluiden door elkaar
     whisperReadyAt = Date.now() + 9e8;          // blokkeer gefluister tijdens puzzel
+    // Sta je niet op een locatie (overworld/straat)? De schaduw trekt je eerst
+    // naar een lege huls, zodat de puzzel over die locatie-achtergrond speelt.
+    if (!opLocatie && typeof CFG.onDropLocatie === 'function') {
+      gedroptVoorPuzzel = true;
+      CFG.onDropLocatie(function (locId) {
+        if (locId) { opLocatie = true; CFG.huidigeLocatie = locId; }
+        startMemoryUI();
+      });
+      return;
+    }
+    startMemoryUI();
+  }
+  function startMemoryUI() {
     el.memory.classList.add('zv-open');
     // Symbolen alvast tonen (zichtbaar maar nog niet aanklikbaar).
     el.memRunes.innerHTML = RUNES.map((r, i) =>
@@ -351,7 +361,7 @@ window.ZilverweideSchaduw = (function () {
     el.memTitle.style.display = '';
     el.memInstr.style.display = '';
     renderMemProgress(0);
-    el.memInstr.textContent = 'Let goed op…';
+    el.memInstr.textContent = 'let goed op';
     setTimeout(playMemSeq, 500);
   }
   function renderMemProgress(filled) {
@@ -389,6 +399,13 @@ window.ZilverweideSchaduw = (function () {
       el.memory.classList.remove('zv-open');
       meter = 0; updateSmoke();
       whisperReadyAt = Date.now() + 2000;
+      // Was je hierheen getrokken (lege huls)? Dan wandel je nu terug naar de
+      // straat. Was je al écht op een locatie, dan blijf je daar (verhaal gaat door).
+      if (gedroptVoorPuzzel) {
+        gedroptVoorPuzzel = false;
+        opLocatie = false;
+        if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+      }
     }, 1100);
   }
   function memFout() {
@@ -453,6 +470,7 @@ window.ZilverweideSchaduw = (function () {
   function bevrijd() {
     vergrendeld = false;
     actieveCode = null;
+    gedroptVoorPuzzel = false;   // terugkeer naar de straat regelt de host
     wisLock();
     el.lock.classList.remove('zv-open');
     // korte bevrijdings-flits via het lock-scherm? Houd het simpel: rook trekt op.
@@ -501,6 +519,7 @@ window.ZilverweideSchaduw = (function () {
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
     cursed = true;
     el.rook.classList.add('zv-actief');
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0.3';   // vloekmerk zichtbaar zolang de vloek loopt
     updateSmoke();
     scheduleFluister(true);                      // eerste fluistering snel (3-5s)
   }
@@ -552,7 +571,7 @@ window.ZilverweideSchaduw = (function () {
     }, 950);
   }
   function kalmeer() {
-    cursed = false; meter = 0;
+    cursed = false; meter = 0; gedroptVoorPuzzel = false;
     if (vergrendeld) {                          // ook een lopende vergrendeling opheffen
       vergrendeld = false; actieveCode = null;
       el.lock.classList.remove('zv-open');
@@ -561,6 +580,7 @@ window.ZilverweideSchaduw = (function () {
     el.memory.classList.remove('zv-open');
     wisLock();                                  // opgeslagen vergrendeling weg
     el.rook.classList.remove('zv-actief');
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
     clearTimeout(fluisterTimer);
     updateSmoke();
   }
