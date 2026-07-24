@@ -194,11 +194,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #schaduw-status{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim);margin-top:.5rem;padding-top:.45rem;border-top:1px solid rgba(201,168,76,.12)}
 /* Missie-teller: flash animatie wanneer er een key wordt aangevinkt. */
 #missie-teller.missie-flash{
-  background:rgba(201,168,76,.25)!important;
-  border-color:rgba(201,168,76,.7)!important;
-  color:var(--parchment)!important;
-  box-shadow:0 0 18px rgba(201,168,76,.5);
-  transform:scale(1.08);
+  background:rgba(240,210,90,.6)!important;
+  border-color:rgba(255,226,110,.95)!important;
+  color:#1a1208!important;
+  box-shadow:0 0 26px rgba(240,205,80,.85);
+  transform:scale(1.1);
 }
 /* Archieven-lijst bij de archivaris — stijlvolle "kaarten" per stuk. */
 .archief-lijst{display:flex;flex-direction:column;gap:.6rem}
@@ -1185,7 +1185,14 @@ function initSharedFirebase(sessieId) {
 // gedeelde verhaal-flags over in de lokale visited-set (met missie-toast),
 // spiegelt de gok-statussen, en ververst de teller.
 var _kkSleutelGemeld = {};
+// Bij de allereerste gedeelde snapshot (bv. iemand herlaadt tijdens het spel)
+// mag de teller niet een reeks flashes/geluiden afvuren voor stappen die al
+// af waren. Deze vlaggen onderdrukken de effecten tijdens die eerste sync.
+var _verhaalInitieleSnapshotBezig = false;
+var _verhaalSnapshotGehad = false;
 function verwerkBinnengekomenShared(data) {
+  var eersteSnapshot = !_verhaalSnapshotGehad;
+  if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
   var ietsNieuws = false;
   try {
     for (var key in data) {
@@ -1221,7 +1228,10 @@ function verwerkBinnengekomenShared(data) {
     }
     if (data.heks_opgelost && !state.heksOpgelost) { state.heksOpgelost = true; ietsNieuws = true; }
     if (data.tobbe_gok_opgelost && !state.tobbeGokOpgelost) { state.tobbeGokOpgelost = true; ietsNieuws = true; }
+    // Verhaal-fase gewijzigd door een ander apparaat: teller moet verversen.
+    if (data.verhaal_fase) ietsNieuws = true;
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
+  if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
 }
 
@@ -1653,11 +1663,28 @@ function actieveMissieZone() {
   return null;
 }
 
+// De teller volgt het VERHAAL, niet waar de speler zelf is. Zodra een wijk
+// opengaat wordt dat gedeeld (verhaal_fase), zodat alle tablets dezelfde
+// wijk-score tonen. We nemen de verst gevorderde van de gedeelde fase en de
+// lokale zone, zodat een speler die zelf al verder is niet terugvalt. Zonder
+// Firebase (solo) valt hij terug op de lokale zone.
+var VERHAAL_FASE_ORDE = { kraaienkwartier: 1, dorendael: 2, sintdonatuslaan: 3 };
+function verhaalFaseZone() {
+  var lokaal = actieveMissieZone();
+  var gedeeld = getSharedState('verhaal_fase');
+  var beste = null, besteRang = 0;
+  [lokaal, gedeeld].forEach(function(z) {
+    var rang = z && VERHAAL_FASE_ORDE[z];
+    if (rang && rang > besteRang) { besteRang = rang; beste = z; }
+  });
+  return beste || lokaal;
+}
+
 function dorendaelMissieVoltooid() {
-  return DORENDAEL_MISSIE_KEYS.filter(function(f) { return state.visited.has(f); }).length;
+  return DORENDAEL_MISSIE_KEYS.filter(function(f) { return hasVisited(f); }).length;
 }
 function heerDonatuslaanMissieVoltooid() {
-  return HEER_DONATUSLAAN_MISSIE_KEYS.filter(function(f) { return state.visited.has(f); }).length;
+  return HEER_DONATUSLAAN_MISSIE_KEYS.filter(function(f) { return hasVisited(f); }).length;
 }
 function kraaienMissieVoltooid() {
   // Bij de juiste gok worden de drie sleutels uit de inventaris genomen
@@ -1670,7 +1697,7 @@ function updateMissieTeller() {
   const wrap = document.getElementById('missie-teller');
   const tekst = document.getElementById('missie-teller-tekst');
   if (!wrap || !tekst) return;
-  const zone = actieveMissieZone();
+  const zone = verhaalFaseZone();
   if (!zone) {
     // Geen actieve zone (nog geen rol gekozen): verberg.
     wrap.style.display = 'none';
@@ -1698,7 +1725,11 @@ function onMissieKeyVoltooid(label) {
   // Bij een debug-skip willen we geen flash of toast — die zou overbodig
   // bovenin alles tegelijk knipperen omdat we meerdere flags ineens zetten.
   if (state.debugSkipBezig) return;
-  // Korte flash op de teller — voor het visuele "hé, er gebeurde iets".
+  // Bij de allereerste gedeelde snapshot (bv. herladen tijdens het spel) niet
+  // een reeks flashes/geluiden afvuren voor stappen die al af waren; alleen
+  // bij een echte nieuwe stap tijdens het spelen.
+  if (_verhaalInitieleSnapshotBezig) return;
+  // Korte gele flash op de teller, voor het visuele "hé, er gebeurde iets".
   const wrap = document.getElementById('missie-teller');
   if (wrap) {
     wrap.classList.remove('missie-flash');
@@ -1706,7 +1737,26 @@ function onMissieKeyVoltooid(label) {
     wrap.classList.add('missie-flash');
     setTimeout(function(){ wrap.classList.remove('missie-flash'); }, 1500);
   }
+  // Geluid bij een nieuwe verhaalstap (op elke tablet die de stap binnenkrijgt).
+  try {
+    var geluid = new Audio('geluid/keuzegeluid/goed.mp3');
+    geluid.volume = 0.7;
+    geluid.play().catch(function(){});
+  } catch (e) {}
   toonMissieToast(label);
+  // Is de wijk-score nu vol, dan de finale-popup tonen (op elke tablet).
+  checkVerhaalFinale();
+}
+
+// Toont de finale-popup van de huidige verhaal-fase zodra de score vol is.
+// Draait op elke tablet: onMissieKeyVoltooid gaat ook af op binnenkomende
+// gedeelde stappen, dus iedereen krijgt de popup. Elke check bewaakt zichzelf
+// (eigen "al getoond"-vlag en eigen voorwaarde), dus dubbel tonen kan niet.
+function checkVerhaalFinale() {
+  var zone = verhaalFaseZone();
+  if (zone === 'sintdonatuslaan')      { if (typeof checkHeerDonatusTokens === 'function') checkHeerDonatusTokens(); }
+  else if (zone === 'dorendael')       { if (typeof checkDorendaelTokens === 'function') checkDorendaelTokens(); }
+  else if (zone === 'kraaienkwartier') { if (typeof checkAllTokens === 'function') checkAllTokens(); }
 }
 
 // Niet-blokkerende toast onderaan beeld. Toont kort welke stap voltooid
@@ -1719,7 +1769,7 @@ function toonMissieToast(label) {
     toast.style.cssText = 'position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%) translateY(20px);z-index:400;background:rgba(13,10,6,.95);border:1px solid rgba(201,168,76,.5);border-radius:6px;padding:.9rem 1.4rem;max-width:420px;text-align:center;box-shadow:0 0 30px rgba(0,0,0,.6);opacity:0;transition:opacity .3s ease, transform .3s ease;pointer-events:none';
     document.body.appendChild(toast);
   }
-  const zone = actieveMissieZone();
+  const zone = verhaalFaseZone();
   if (!zone) return;
   let aantal, totaal;
   if (zone === 'sintdonatuslaan') { aantal = heerDonatuslaanMissieVoltooid(); totaal = HEER_DONATUSLAAN_MISSIE_KEYS.length; }
@@ -10646,6 +10696,14 @@ function visitZone(zone, inputVal) {
 }
 function unlockZone(zone) {
   zoneUnlocked[zone] = true;
+  // Deel de verhaal-fase (alleen vooruit) zodat alle tablets dezelfde wijk-
+  // score tonen, ongeacht waar elke speler zelf op dat moment is.
+  if (VERHAAL_FASE_ORDE[zone]) {
+    var huidigeFase = getSharedState('verhaal_fase');
+    if (!huidigeFase || VERHAAL_FASE_ORDE[zone] > (VERHAAL_FASE_ORDE[huidigeFase] || 0)) {
+      setSharedState('verhaal_fase', zone);
+    }
+  }
   if (zone === 'kraaienkwartier') {
     state.inventory = state.inventory.filter(i => i.naam !== 'Kraaienveer');
     updateInventoryBar();
@@ -11249,7 +11307,12 @@ function dorendaelFinaleKlaar() {
 
 function checkAllTokens() {
   const popupOpen = document.getElementById('spel-melding') && document.getElementById('spel-melding').style.display === 'block';
-  if (alleFinaleCodesVerzameld() && !state.finalePopupGetoond && !popupOpen) {
+  // Naast de eigen inventory ook de gedeelde teamscore: zo krijgt ook een
+  // speler die de drie sleutels niet zelf draagt de finale-popup zodra het
+  // team compleet is (3/3).
+  const kraaienScoreVol = (typeof kraaienMissieVoltooid === 'function' && !state.heksOpgelost &&
+    kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length);
+  if ((alleFinaleCodesVerzameld() || kraaienScoreVol) && !state.finalePopupGetoond && !popupOpen) {
     state.finalePopupGetoond = true;
     toonLade(
     '🌹  Alles verzameld',
