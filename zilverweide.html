@@ -91,9 +91,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
-   onzichtbare rand). Statisch: de video speelt niet af, alleen het
-   startframe is zichtbaar. mix-blend-mode:screen maakt de zwarte
-   achtergrond van de mp4 transparant. */
+   onzichtbare rand). Statische PNG (werkt ook op iOS, waar een video zijn
+   eerste frame niet toont). mix-blend-mode:screen maakt de zwarte
+   achtergrond van de afbeelding transparant. */
 .gargoyle-wacht{
   position:absolute;
   top:1.5rem;
@@ -922,7 +922,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 
 <div class="screen" id="screen-sintdonatuslaan" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
-  <video class="gargoyle-wacht" id="donatus-gargoyle" src="ui/heerdonatuslaan/donatusduivel.mp4" muted playsinline preload="auto" aria-hidden="true"></video>
+  <img class="gargoyle-wacht" id="donatus-gargoyle" src="ui/heerdonatuslaan/donatusduivel.png" alt="" aria-hidden="true">
   <div class="kwartier-header"><h2>Heer Donatuslaan</h2><p>Een lange laan met hoge huizen — stil, maar niet leeg</p></div>
   <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
   <div class="code-section">
@@ -10787,7 +10787,6 @@ function toonLegeHuls(locId) {
 // opgezet (state.zone, indicator, gargoyle-video), net als bij normaal navigeren.
 function schaduwTerugNaarStraat(metPopup) {
   var zone = state.lastZone;
-  console.log('[schaduw] terug naar straat via visitZone, zone:', zone);
   state.locAfbeelding = null;
   state.schaduwGedropt = false;
   var backBtn = document.getElementById('locatie-back-btn');
@@ -10843,7 +10842,6 @@ function schaduwRedderIntercept(locId, zone) {
     }
   } catch (e) { console.warn('schaduwRedderIntercept:', e); }
   if (!gevondenRol) return false;
-  console.log('[schaduw] redder-intercept: iemand vast op', locId, '| zone gezet op', zone);
   state.lastOpenedLocatie = locId;
   state.lastZone = zone;
   toonLegeHuls(locId);
@@ -15347,16 +15345,18 @@ function dorendaelIntroPopup() {
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:radial-gradient(ellipse at center,rgba(13,10,6,.94),rgba(4,2,6,.98));animation:fadeIn .4s ease';
   overlay.innerHTML =
-    '<div style="display:flex;flex-direction:column;max-width:600px;width:100%;max-height:92vh;text-align:center;' +
+    '<div style="display:flex;flex-direction:column;max-width:600px;width:100%;max-height:calc(var(--vh100, 100vh) - 1.5rem);text-align:center;' +
          'background:linear-gradient(180deg,rgba(18,13,7,.96),rgba(10,7,4,.98));border:1px solid rgba(201,168,76,.3);' +
          'border-radius:12px;overflow:hidden;box-shadow:0 16px 50px rgba(0,0,0,.6)">' +
       '<img src="locaties/zone-dorendael.jpg" alt="Dorendael" ' +
-           'style="width:100%;aspect-ratio:16/9;object-fit:cover;object-position:center 60%;display:block">' +
-      '<div style="padding:1.4rem 1.6rem 1.6rem">' +
-        '<div style="font-family:Cinzel,serif;font-size:1.5rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.9rem">Dorendael</div>' +
-        '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.08rem;color:var(--parchment);line-height:1.65;margin:0 0 .5rem">Jullie avontuur leidt jullie naar Dorendael. Een buitengewoon mooie en groene straat. Dorendael huist de stiltevijver en grenst aan het woud.</p>' +
-        '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.08rem;color:#e0b54a;line-height:1.55;margin:.5rem 0 0"><strong>Let op!</strong> Keuzes hier kunnen vervelende gevolgen hebben!</p>' +
-        '<button id="dorendael-intro-sluit" class="btn" style="margin-top:1.5rem">Volgende →</button>' +
+           'style="width:100%;max-height:40vh;object-fit:cover;object-position:center 60%;display:block;flex:0 1 auto;min-height:0">' +
+      '<div style="padding:1.2rem 1.6rem .4rem;overflow-y:auto;flex:1 1 auto;min-height:0">' +
+        '<div style="font-family:Cinzel,serif;font-size:1.4rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.7rem">Dorendael</div>' +
+        '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.05rem;color:var(--parchment);line-height:1.55;margin:0 0 .5rem">Jullie avontuur leidt jullie naar Dorendael. Een buitengewoon mooie en groene straat. Dorendael huist de stiltevijver en grenst aan het woud.</p>' +
+        '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.05rem;color:#e0b54a;line-height:1.5;margin:.5rem 0 0"><strong>Let op!</strong> Keuzes hier kunnen vervelende gevolgen hebben!</p>' +
+      '</div>' +
+      '<div style="padding:.5rem 1.6rem 1.2rem;flex:0 0 auto">' +
+        '<button id="dorendael-intro-sluit" class="btn">Volgende →</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(overlay);
@@ -15684,7 +15684,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=9"></script>
+<script src="technischefiles/schaduw.js?v=10"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,

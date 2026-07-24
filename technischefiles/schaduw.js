@@ -127,7 +127,7 @@ window.ZilverweideSchaduw = (function () {
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
       <img id="zv-vloekmerk" src="karakters/special/schaduwvloek.png" alt="" aria-hidden="true"
-           style="position:fixed;right:0;bottom:0;height:42vh;max-height:430px;width:auto;opacity:0;pointer-events:none;z-index:700;transition:opacity 1.5s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
+           style="position:fixed;right:0;bottom:0;width:46vw;height:auto;max-width:none;opacity:0;pointer-events:none;z-index:700;transition:opacity .8s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
       <div id="zv-rook">
         <div class="zv-rand zv-l"></div><div class="zv-rand zv-r"></div>
         <div class="zv-rand zv-t"></div><div class="zv-rand zv-b"></div>
@@ -322,6 +322,13 @@ window.ZilverweideSchaduw = (function () {
       || el.lock.classList.contains('zv-open')
       || el.redder.classList.contains('zv-open');
   }
+  // Vloekmerk alleen tonen tijdens de puzzel of het vergrendelscherm.
+  function updateVloekmerk() {
+    if (!el.vloekmerk) return;
+    var toon = (el.memory && el.memory.classList.contains('zv-open'))
+            || (el.lock && el.lock.classList.contains('zv-open'));
+    el.vloekmerk.style.opacity = toon ? '0.3' : '0';
+  }
   function startMemory() {
     if (overlayOpen()) return;
     meter = 100; updateSmoke();
@@ -341,6 +348,7 @@ window.ZilverweideSchaduw = (function () {
   }
   function startMemoryUI() {
     el.memory.classList.add('zv-open');
+    updateVloekmerk();
     // Symbolen alvast tonen (zichtbaar maar nog niet aanklikbaar).
     el.memRunes.innerHTML = RUNES.map((r, i) =>
       `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
@@ -397,6 +405,7 @@ window.ZilverweideSchaduw = (function () {
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
     setTimeout(() => {
       el.memory.classList.remove('zv-open');
+      updateVloekmerk();
       meter = 0; updateSmoke();
       whisperReadyAt = Date.now() + 2000;
       // Was je hierheen getrokken (lege huls)? Dan wandel je nu terug naar de
@@ -443,6 +452,7 @@ window.ZilverweideSchaduw = (function () {
       el.lockLoc.style.display = waar ? '' : 'none';
     }
     el.lock.classList.add('zv-open');
+    updateVloekmerk();
     if (typeof CFG.onVergrendel === 'function') CFG.onVergrendel(actieveCode);
   }
 
@@ -473,6 +483,7 @@ window.ZilverweideSchaduw = (function () {
     gedroptVoorPuzzel = false;   // terugkeer naar de straat regelt de host
     wisLock();
     el.lock.classList.remove('zv-open');
+    updateVloekmerk();
     // korte bevrijdings-flits via het lock-scherm? Houd het simpel: rook trekt op.
     meter = 0; updateSmoke();
     whisperReadyAt = Date.now() + 2500;
@@ -519,7 +530,6 @@ window.ZilverweideSchaduw = (function () {
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
     cursed = true;
     el.rook.classList.add('zv-actief');
-    if (el.vloekmerk) el.vloekmerk.style.opacity = '0.3';   // vloekmerk zichtbaar zolang de vloek loopt
     updateSmoke();
     scheduleFluister(true);                      // eerste fluistering snel (3-5s)
   }
