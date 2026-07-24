@@ -8018,9 +8018,15 @@ function renderK1Naaldmasker(loc) {
     hasVisited('h7_gedronken')
   );
   const kellyBlijftBuiten = (p === 'kelly' && hasVisited('kelly_hand_incident'));
+  // Staat de rouwstof-quest open en heeft niemand het lapje al? Dan mag Kelly
+  // nog naar binnen (voor de keuze hand / iets anders), ook als ze de echte
+  // schaduw al heeft. Alleen zolang ze de hand nog nooit gaf.
+  const kellyRouwstofNodig = (p === 'kelly') && !hasVisited('kelly_hand_incident') &&
+    !!getSharedState('apotheker_quest_actief') && !getSharedState('ing_rouwstof');
 
   // Kelly met echte schaduw: winkel is gewoon een winkel, niets voor haar hier.
-  if (kellyHeeftEchteSchaduw && !kellyBlijftBuiten) {
+  // Uitzondering: de rouwstof-quest staat open, dan mag ze wél nog binnen.
+  if (kellyHeeftEchteSchaduw && !kellyBlijftBuiten && !kellyRouwstofNodig) {
     verbergNpcPop();
     renderLocatieScene({
       container: document.getElementById('locatie-content'),
