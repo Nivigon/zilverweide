@@ -200,7 +200,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-divider::after{background:linear-gradient(to left,transparent,rgba(201,168,76,.55))}
 .inv-ov-divider span{color:var(--gold);font-size:.85rem;text-shadow:0 0 12px rgba(201,168,76,.5)}
 .inv-ov-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1rem;align-content:start;justify-content:center;margin:1.5rem auto 0;max-width:760px;width:100%;flex:0 0 auto}
-.inv-ov-kaart{aspect-ratio:1/1;background:linear-gradient(160deg,rgba(46,32,14,.7),rgba(20,14,7,.6));border:1px solid rgba(201,168,76,.28);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:.7rem .5rem;cursor:pointer;transition:all .2s ease;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.inv-ov-kaart{aspect-ratio:1/1;background:linear-gradient(160deg,rgba(46,32,14,.7),rgba(20,14,7,.6));border:1px solid rgba(201,168,76,.28);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:.7rem .5rem;cursor:pointer;transition:all .2s ease;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.4);animation:invKaartIn .4s ease both}
+@keyframes invKaartIn{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
 .inv-ov-kaart:hover{border-color:rgba(201,168,76,.65);background:linear-gradient(160deg,rgba(64,44,18,.8),rgba(30,20,10,.7));box-shadow:0 0 22px rgba(201,168,76,.22) inset,0 6px 18px rgba(0,0,0,.45);transform:translateY(-2px)}
 /* Leeg compartiment (vaste vakjes-look). */
 .inv-ov-vak-leeg{background:linear-gradient(160deg,rgba(22,15,7,.5),rgba(10,7,3,.42));border:1px dashed rgba(201,168,76,.15);box-shadow:inset 0 2px 12px rgba(0,0,0,.45);cursor:default}
@@ -214,10 +215,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.95rem;color:var(--parchment);text-align:center;line-height:1.2}
 .inv-ov-leeg{color:var(--mist);font-style:italic;text-align:center;line-height:1.9;margin-top:3rem}
 .inv-ov-leeg::before{content:'❦';display:block;font-family:'Cinzel',serif;font-size:2rem;color:var(--gold-dim);opacity:.55;margin-bottom:.8rem}
-.inv-ov-detail{max-width:520px;width:100%;text-align:center;margin-top:1rem;overflow-y:auto;flex:1}
-.inv-ov-detail-emoji{font-size:4.2rem;line-height:1}
-.inv-ov-detail-naam{font-family:'Cinzel',serif;color:var(--gold);font-size:1.25rem;letter-spacing:.06em;margin:.5rem 0 .7rem}
-.inv-ov-detail-tekst{font-family:'Crimson Text',Georgia,serif;font-style:italic;color:var(--parchment);line-height:1.6}
+.inv-ov-detail{max-width:560px;width:100%;text-align:center;margin-top:1rem;flex:1;flex-direction:column;align-items:center;justify-content:flex-start}
+.inv-ov-detail.actief{animation:invDetailIn .38s ease}
+@keyframes invDetailIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.inv-ov-detail-visual{position:relative;display:inline-flex;align-items:center;justify-content:center;margin:1rem 0 .2rem;padding:1.4rem}
+.inv-ov-detail-visual::before{content:'';position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(201,168,76,.3) 0%,rgba(201,168,76,0) 70%);pointer-events:none}
+.inv-ov-detail-emoji{font-size:4.6rem;line-height:1;position:relative}
+.inv-ov-detail-naam{font-family:'Cinzel',serif;color:var(--gold);font-size:1.35rem;letter-spacing:.06em;margin:.4rem 0 .1rem;text-shadow:0 0 24px rgba(201,168,76,.35)}
+.inv-ov-detail-note{max-width:440px;margin:1rem auto 0;padding:1.1rem 1.35rem;background:linear-gradient(160deg,#efe1bf,#e2cf9f);border:1px solid rgba(120,90,40,.55);border-radius:5px;box-shadow:0 10px 28px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.14) inset}
+.inv-ov-detail-note p{font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1rem;line-height:1.6;color:#3f2f16;margin:0}
+.inv-ov-detail-terug{margin-top:1.3rem}
 .back-btn{background:none;border:none;color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.12em;cursor:pointer;padding:.5rem 0;display:flex;align-items:center;gap:6px;text-transform:uppercase;margin-bottom:1rem}
 .back-btn:hover{color:var(--gold)}
 .overworld{padding:1.5rem 0 4rem}
@@ -3217,13 +3224,14 @@ function bouwInventarisGrid() {
   var html = '';
   for (var idx = 0; idx < totaal; idx++) {
     var i = state.inventory[idx];
+    var vertraging = ' style="animation-delay:' + (idx * 0.04).toFixed(2) + 's"';
     if (i) {
-      html += '<button class="inv-ov-kaart" onclick="toonInventarisItem(' + idx + ')">' +
+      html += '<button class="inv-ov-kaart" onclick="toonInventarisItem(' + idx + ')"' + vertraging + '>' +
                 itemVisueel(i.naam, i.emoji, 'inv-ov-emoji') +
                 '<span class="inv-ov-naam">' + i.naam + '</span>' +
               '</button>';
     } else {
-      html += '<div class="inv-ov-kaart inv-ov-vak-leeg" aria-hidden="true"></div>';
+      html += '<div class="inv-ov-kaart inv-ov-vak-leeg" aria-hidden="true"' + vertraging + '></div>';
     }
   }
   grid.innerHTML = html;
@@ -3231,8 +3239,10 @@ function bouwInventarisGrid() {
 function toonInventarisGridView() {
   var g = document.getElementById('inv-ov-grid');
   var d = document.getElementById('inv-ov-detail');
-  if (g) g.style.display = 'flex';
-  if (d) d.style.display = 'none';
+  if (g) g.style.display = 'grid';   // 'grid' i.p.v. 'flex': anders overschrijft
+                                     // de inline stijl het CSS-raster en klappen
+                                     // de vakjes tot een rij smalle stroken.
+  if (d) { d.classList.remove('actief'); d.style.display = 'none'; }
 }
 function toonInventarisItem(idx) {
   var i = state.inventory[idx];
@@ -3240,12 +3250,14 @@ function toonInventarisItem(idx) {
   var g = document.getElementById('inv-ov-grid');
   if (!i || !d) return;
   d.innerHTML =
-    '<div>' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
+    '<div class="inv-ov-detail-visual">' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
     '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
-    '<div class="inv-ov-detail-tekst">[Placeholder: hier komt de uitleg over ' + i.naam + '.]</div>' +
-    '<button class="back-btn" style="margin-top:1rem" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
+    '<div class="inv-ov-detail-note"><p>[Placeholder: hier komt de uitleg over ' + i.naam + '.]</p></div>' +
+    '<button class="back-btn inv-ov-detail-terug" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
   if (g) g.style.display = 'none';
-  d.style.display = 'block';
+  d.style.display = 'flex';
+  void d.offsetWidth;            // reflow zodat de animatie opnieuw start
+  d.classList.add('actief');
 }
 
 // Melding "Nieuw voorwerp" bij de inventaris-knop: muziek stopt, de gele badge
@@ -11435,7 +11447,12 @@ function toonToast(emoji, naam) {
   clearTimeout(_toastTimer);
   const el = document.getElementById('spel-toast');
   const balk = document.getElementById('spel-toast-balk');
-  document.getElementById('spel-toast-icon').textContent = emoji;
+  const iconEl = document.getElementById('spel-toast-icon');
+  if (typeof ITEM_AFBEELDINGEN !== 'undefined' && ITEM_AFBEELDINGEN[naam]) {
+    iconEl.innerHTML = '<img src="' + ITEM_AFBEELDINGEN[naam] + '" alt="" style="width:1.8rem;height:1.8rem;object-fit:contain;vertical-align:middle">';
+  } else {
+    iconEl.textContent = emoji;
+  }
   document.getElementById('spel-toast-tekst').textContent = naam.replace(' 🔑','');
   el.classList.remove('zichtbaar','aftellen');
   balk.style.transition = 'none';
