@@ -695,6 +695,25 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #screen-locatie .sc-header { margin: 0 0 .25rem !important; }
 #screen-locatie .sc-titel { margin: .1rem 0 .1rem !important; }
 #screen-locatie .sc-sub { margin: 0 0 .35rem !important; }
+/* ── Korte schermen (telefoon liggend, ~380 tot 430px hoog) ──
+   Het spel is voor tablets liggend; een telefoon liggend is ongeveer half zo
+   hoog. Op zo'n hoogte eet het vaste 330px-reserve bijna alle ruimte op (de
+   afbeelding werd een sliver) en valt de grote titel plus de pop over de
+   dialoog. Deze media-query schaalt de scene proportioneel terug: kleiner
+   reserve, kleinere titel, kleinere pop, en de dialoogtekst begint na de pop
+   zodat niets meer bedekt wordt. Tablets (hoger dan 520px) blijven exact zoals
+   ze waren; de regels raken alleen schermen tot 520px hoog. */
+@media (max-height: 520px) {
+  .sc-image { max-height: min(42vh, calc(var(--vh100) - 155px)) !important; }
+  #screen-locatie.screen { padding: .4rem 0 .6rem !important; }
+  #screen-locatie .sc-titel { font-size: clamp(1.1rem, 4.5vh, 1.5rem) !important; margin: .1rem 0 !important; }
+  #screen-locatie .sc-sub { font-size: .6rem !important; margin: 0 0 .2rem !important; }
+  #screen-locatie .sc-dialog { min-height: 0 !important; margin-bottom: .5rem !important; }
+  #screen-locatie .sc-dialog-body { padding: .5rem .8rem .5rem 128px !important; }
+  #screen-locatie .sc-dialog-tekst { font-size: .9rem !important; line-height: 1.4 !important; }
+  #char-pop img { height: 46vh !important; max-height: 240px !important; }
+  #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
+}
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
 /* De speler-pop (links onder) valt over de eerste verdachte-tegel op het
