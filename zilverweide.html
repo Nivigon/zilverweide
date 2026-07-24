@@ -794,12 +794,17 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 }
 /* Speler-pop valt over de dialoogtekst (tablet en telefoon). Zodra de pop
    zichtbaar is (inline opacity 1, gezet door toonCharPop), begint de
-   dialoogtekst rechts van de pop, zodat de tekst er nooit onder valt. De
-   linkerruimte schaalt mee met de pop-hoogte, dus klopt op elk schermformaat.
-   Is er geen pop, dan verschuift er niets en blijft de tekst normaal staan.
-   Oudere browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
+   dialoogtekst rechts van de pop, zodat de tekst er nooit onder valt.
+   De pop staat op de schermrand (links:0), de dialoog staat in de gecentreerde
+   kolom (#app, max 820px). De benodigde ruimte is dus de pop-breedte MINUS de
+   linkermarge van die kolom ((100vw - 820)/2 = 50vw - 410px). Op brede schermen
+   (desktop/tablet-liggend) is dat verschil nul of negatief, dus dan schuift er
+   niets meer op; op smalle schermen (telefoon) waar de pop de dialoog echt
+   overlapt, ontstaat precies genoeg ruimte. Pop-breedte is ongeveer 0.33 van de
+   schermhoogte, met een plafond (de pop heeft een max-hoogte). Oudere browsers
+   zonder :has negeren de regel (oude gedrag, geen regressie). */
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: calc(var(--vh100) * 0.32) !important;
+  padding-left: max(0px, calc(min(290px, var(--vh100) * 0.33) - 50vw + 410px)) !important;
 }
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
