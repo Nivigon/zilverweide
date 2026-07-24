@@ -705,6 +705,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    ze waren; de regels raken alleen schermen tot 520px hoog. */
 @media (max-height: 520px) {
   .sc-image { max-height: min(42vh, calc(var(--vh100) - 155px)) !important; }
+  /* Het heks-keuzegrid is op dit scherm de hoofdinhoud (geen grote dialoog
+     eronder), dus krijgt meer hoogte dan een gewone scene-afbeelding, zodat de
+     portretten niet tot alleen de bovenkant van de hoofden worden afgeknipt.
+     De portretten worden ook iets lager gericht zodat de gezichten in beeld
+     komen op deze brede, lage tegels. */
+  #screen-locatie .sc-image-slot { max-height: min(62vh, calc(var(--vh100) - 104px)) !important; }
+  #screen-locatie .heks-keuze-bg { background-position: center 22% !important; }
   #screen-locatie.screen { padding: .4rem 0 .6rem !important; }
   #screen-locatie .sc-titel { font-size: clamp(1.1rem, 4.5vh, 1.5rem) !important; margin: .1rem 0 !important; }
   #screen-locatie .sc-sub { font-size: .6rem !important; margin: 0 0 .2rem !important; }
