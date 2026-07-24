@@ -1735,14 +1735,20 @@ function onMissieKeyVoltooid(label) {
     wrap.classList.remove('missie-flash');
     void wrap.offsetWidth; // forceer reflow zodat animatie opnieuw triggert
     wrap.classList.add('missie-flash');
-    setTimeout(function(){ wrap.classList.remove('missie-flash'); }, 1500);
+    setTimeout(function(){ wrap.classList.remove('missie-flash'); }, 2500);
   }
   // Geluid bij een nieuwe verhaalstap (op elke tablet die de stap binnenkrijgt).
+  // Vast, vooraf geladen element: een vers new Audio() wordt door de browser
+  // soms opgeruimd voordat het klaar is met laden en speelt dan niet.
   try {
-    var geluid = new Audio('geluid/keuzegeluid/goed.mp3');
-    geluid.volume = 0.7;
-    geluid.play().catch(function(){});
-  } catch (e) {}
+    if (!window._missieGeluid) {
+      window._missieGeluid = new Audio('geluid/keuzegeluid/goed.mp3');
+      window._missieGeluid.volume = 0.85;
+      window._missieGeluid.addEventListener('error', function(){ console.warn('goed.mp3 niet gevonden op geluid/keuzegeluid/goed.mp3'); });
+    }
+    window._missieGeluid.currentTime = 0;
+    window._missieGeluid.play().catch(function(e){ console.warn('goed.mp3 afspelen mislukt:', e); });
+  } catch (e) { console.warn('goed.mp3 fout:', e); }
   toonMissieToast(label);
   // Is de wijk-score nu vol, dan de finale-popup tonen (op elke tablet).
   checkVerhaalFinale();
