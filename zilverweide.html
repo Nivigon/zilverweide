@@ -10787,7 +10787,6 @@ function toonLegeHuls(locId) {
 // opgezet (state.zone, indicator, gargoyle-video), net als bij normaal navigeren.
 function schaduwTerugNaarStraat(metPopup) {
   var zone = state.lastZone;
-  console.log('[schaduw] terug naar straat via visitZone, zone:', zone);
   state.locAfbeelding = null;
   state.schaduwGedropt = false;
   var backBtn = document.getElementById('locatie-back-btn');
@@ -10843,7 +10842,6 @@ function schaduwRedderIntercept(locId, zone) {
     }
   } catch (e) { console.warn('schaduwRedderIntercept:', e); }
   if (!gevondenRol) return false;
-  console.log('[schaduw] redder-intercept: iemand vast op', locId, '| zone gezet op', zone);
   state.lastOpenedLocatie = locId;
   state.lastZone = zone;
   toonLegeHuls(locId);
@@ -15684,7 +15682,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=9"></script>
+<script src="technischefiles/schaduw.js?v=10"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
