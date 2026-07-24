@@ -12090,6 +12090,7 @@ function buildDebugPanel() {
       // ── Algemeen
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
+      ['🚪 Reset ingang-geheugen',   function(){ debugResetIngangen(); close(); }, true, 'Algemeen'],
       // ── Herberg
       ['🍺 Forceer herberg-succes',  function(){ debugHerbergSucces(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🌑 Forceer herberg-faal',    function(){ debugHerbergFaal(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
@@ -12649,7 +12650,37 @@ function debugJanSleutel() {
   updateInventoryBar();
 }
 
+// Ingangscodes onthouden per rol (firebase-proof). Zodra je de ingangscode van
+// een straat een keer hebt ingevoerd, bewaren we dat in de gedeelde stand onder
+// een per-rol sleutel. Dat overleeft een herlaad: na (opnieuw) je rol kiezen
+// gaan de al-bezochte straten meteen naar het invoerscherm, zonder code.
+var ZONE_HOOFDCODE = { dorpsplein: 'D1', kraaienkwartier: 'K1', dorendael: 'DD1', sintdonatuslaan: 'H1' };
+function entreeGedaan(zone) {
+  if (!state.personage) return false;
+  return !!getSharedState('entree__' + state.personage + '__' + zone);
+}
+function markEntree(zone) {
+  if (!state.personage || !ZONE_HOOFDCODE[zone]) return;
+  setSharedState('entree__' + state.personage + '__' + zone, true);
+}
+// Debug: wis het ingang-geheugen van alle rollen (om de eerste-keer-flow met de
+// code opnieuw te testen). De volledige Firebase-reset wist dit ook.
+function debugResetIngangen() {
+  var rollen = ['jan', 'kelly', 'fenna', 'felix'];
+  Object.keys(ZONE_HOOFDCODE).forEach(function(zone) {
+    rollen.forEach(function(r) { setSharedState('entree__' + r + '__' + zone, null); });
+  });
+}
+
 function toonZoneInvoer(zone) {
+  // Al eerder deze straat binnen geweest en de straat is nu gewoon
+  // toegankelijk (geen finale-afscherming): sla de code-popup over en ga direct
+  // naar het invoerscherm van die straat.
+  var hoofdcode = ZONE_HOOFDCODE[zone];
+  if (hoofdcode && entreeGedaan(zone) && !checkCodeToegankelijk(hoofdcode)) {
+    visitZone(zone, hoofdcode);
+    return;
+  }
   const labels = {
     dorpsplein: 'Het Dorpsplein',
     kraaienkwartier: 'Het Kraaienkwartier',
@@ -12692,6 +12723,7 @@ function checkZoneInvoer(val) {
   if (codes.includes(val)) {
     msg.className = 'code-success';
     msg.textContent = '✦ Toegang verleend!';
+    markEntree(zone); // onthoud dat deze straat binnen is, ook na een herlaad
     document.getElementById('zone-invoer-input').disabled = true;
     setTimeout(() => {
       sluitZoneInvoer();
