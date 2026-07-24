@@ -142,8 +142,12 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  width: 100%;
-  height: 100%;
+  /* Vul de slot via absolute inset i.p.v. height:100%. Een percentage-hoogte
+     tegen een aspect-ratio-box met max-height resolvet in Safari niet goed
+     (grid werd te hoog en de onderkant, de namen, viel weg). Absolute inset:0
+     matcht exact de zichtbare slot op elke browser. */
+  position: absolute;
+  inset: 0;
   background: #000;
 }
 .heks-keuze {
