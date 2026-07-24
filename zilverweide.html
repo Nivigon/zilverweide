@@ -2791,6 +2791,14 @@ function startDagboekMuziek() {
   clearTimeout(window._bgDuckTimer);
   window._bgGeduckt = false;
   var m = document.getElementById('bg-music');
+  // Vangnet: WELKE functie de achtergrond ook probeert te hervatten tijdens het
+  // lezen (verhaalstap-geluid, nieuw-voorwerp-melding, scherm-wissels...), we
+  // pauzeren hem meteen weer zolang de dagboekmuziek speelt. De listener blijft
+  // hangen maar doet niets meer zodra _dagboekMuziekAan uit is.
+  if (m && !m._dagboekGuard) {
+    m._dagboekGuard = function() { if (window._dagboekMuziekAan && !m.paused) m.pause(); };
+    m.addEventListener('play', m._dagboekGuard);
+  }
   if (m && !m.paused) m.pause();
   window._bgMuziekPauze = true;
   if (!_dagboekAudio) {
