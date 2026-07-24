@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   SCHADUW-MODULE — engine  (hoort bij schaduw.css + fog.png)
+   SCHADUW-MODULE, engine  (hoort bij schaduw.css + fog.png)
 
    Eén zelfstandige laag die overal in het spel actief kan zijn. De
    hoofdgame (zilverweide.html) stuurt 'm aan met een handvol regels:
@@ -170,7 +170,7 @@ window.ZilverweideSchaduw = (function () {
           Laat het zien aan wie je komt halen.</div>
         <div class="zv-code" id="zv-lock-code">····</div>
         <div class="zv-sub">Pas als zij het teken kennen, laat de schaduw je los.</div>
-        <div class="zv-wacht">Roep een medespeler — hardop, hier waar je staat</div>
+        <div class="zv-wacht">Roep een medespeler, hardop, hier waar je staat</div>
         <button id="zv-lock-test" class="zv-test" style="display:none">● ontgrendel (test)</button>
       </div>
 
@@ -451,7 +451,7 @@ window.ZilverweideSchaduw = (function () {
     el.redderInput.classList.add('zv-shake');
   }
 
-  // Bevrijding — geldt voor beide spelers (server heeft beiden vrijgegeven).
+  // Bevrijding, geldt voor beide spelers (server heeft beiden vrijgegeven).
   function bevrijd() {
     vergrendeld = false;
     actieveCode = null;
@@ -463,7 +463,7 @@ window.ZilverweideSchaduw = (function () {
     if (typeof CFG.onBevrijd === 'function') CFG.onBevrijd();
   }
 
-  // ── Persistentie (stub) — vergrendeling onthouden bij verversen ──
+  // ── Persistentie (stub), vergrendeling onthouden bij verversen ──
   // Lokaal via localStorage zodat een per ongeluk verversen je niet bevrijdt.
   // In productie is de SERVER de waarheid; dit is enkel een lokale vangnet.
   function bewaarLock(code) {
@@ -524,7 +524,7 @@ window.ZilverweideSchaduw = (function () {
   }
   async function toonVloekIntro(onDone) {
     const o = el.vloekIntro, t = el.vloekIntroTekst, fl = el.flits;
-    // Witte flits — de schok op het moment dat de vloek toeslaat.
+    // Witte flits, de schok op het moment dat de vloek toeslaat.
     fl.style.transition = 'none';
     fl.style.display = 'block';
     fl.style.opacity = '1';                       // vol wit
