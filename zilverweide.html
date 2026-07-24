@@ -9060,6 +9060,7 @@ function kellyMaarPlots() {
     function() {
       if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) {
         window.ZilverweideSchaduw.startHandRitueel({
+          eyebrow: 'Een schim en stemmen in je hoofd dringen zich op',
           onDone: kellyVoorbodeNaRitueel,   // (compat) beide namen mogen
           onKlaar: kellyVoorbodeNaRitueel
         });
@@ -12566,7 +12567,7 @@ function buildDebugPanel() {
         }
       }, true, 'Kelly & de put'],
       // ── Kelly & de hand (Naald en Masker)
-      ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
+      ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ eyebrow: 'Een schim en stemmen in je hoofd dringen zich op', onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
       ['🖤 Rouwstof-quest openzetten', function(){ setSharedState('apotheker_quest_actief', true); close(); }, p === 'kelly', 'Kelly & de hand'],
       // ── Tobbe & Stoop
       ['👦 Tobbe is al opgehaald',    function(){ markVisited('tobbe_gevonden'); setSharedState('tobbe_gevonden', true); close(); }, true, 'Tobbe & Stoop'],

@@ -50,6 +50,7 @@ window.ZilverweideSchaduw = (function () {
   const BANK_BASE = [0.95, 0.9, 1.0, 0.92, 0.88, 0.97]; // basis-opacity per fogbank
   const MIST_BODEM = 0.14;             // fog-aanwezigheid bij meter 0 (heel licht begin)
   const RUNES = ['ᛟ', 'ᚦ', 'ᛉ'];
+  const MEM_EYEBROW_STANDAARD = 'Een schim en de stemmen dringen zich op';
   const FLUISTERS = [
     'zij komt…', 'stil nu…', 'je hoort het ook…', 'niemand luistert…',
     'blijf…', 'dichterbij…', 'het wordt donker…', 'nog even…'
@@ -194,6 +195,7 @@ window.ZilverweideSchaduw = (function () {
     el.meter = root.querySelector('#zv-meter');
     el.meterFill = root.querySelector('#zv-meter-fill');
     el.memory = root.querySelector('#zv-memory');
+    el.memEyebrow = root.querySelector('#zv-memory .zv-eyebrow');
     el.memIntro = root.querySelector('#zv-mem-intro');
     el.memTitle = root.querySelector('#zv-mem-title');
     el.memInstr = root.querySelector('#zv-mem-instr');
@@ -353,6 +355,7 @@ window.ZilverweideSchaduw = (function () {
   }
   function startMemoryUI() {
     el.memory.classList.add('zv-open');
+    if (el.memEyebrow) el.memEyebrow.textContent = MEM_EYEBROW_STANDAARD;  // echte vloek: standaardtekst
     updateVloekmerk();
     // Symbolen alvast tonen (zichtbaar maar nog niet aanklikbaar).
     el.memRunes.innerHTML = RUNES.map((r, i) =>
@@ -476,6 +479,9 @@ window.ZilverweideSchaduw = (function () {
     handActief = true;
     // De schim + het zegel: dezelfde puzzel-overlay, maar zonder meter/lock.
     el.memory.classList.add('zv-open');
+    // Eigen aanhef voor het hand-ritueel (Kelly bij Naald en Masker); valt
+    // terug op de standaardtekst als de host niets meegeeft.
+    if (el.memEyebrow) el.memEyebrow.textContent = opts.eyebrow || MEM_EYEBROW_STANDAARD;
     updateVloekmerk();                                   // toont het vloekmerk (de schim)
     el.memRunes.innerHTML = RUNES.map((r, i) =>
       `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
