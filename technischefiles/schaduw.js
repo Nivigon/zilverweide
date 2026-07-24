@@ -161,16 +161,14 @@ window.ZilverweideSchaduw = (function () {
       </div>
 
       <div id="zv-lock" class="zv-overlay">
-        <div class="zv-eyebrow">Vervloekt</div>
+        <div class="zv-eyebrow">De druk in je hoofd wordt te veel</div>
         <div class="zv-line" id="zv-lock-loc" style="display:none;color:#ffd27a;font-style:normal;font-weight:600"></div>
-        <div class="zv-line">Het zegel brandt. De fluisteringen kruipen over elkaar heen
-          tot je je eigen gedachten niet meer hoort. De grond kantelt onder je.</div>
-        <div class="zv-line">Je kunt geen kant op. Niet alleen.</div>
-        <div class="zv-sub">Dit is het teken dat de schaduw op je heeft achtergelaten.
-          Laat het zien aan wie je komt halen.</div>
+        <div class="zv-line">Je voelt je vervloekt. De fluisteringen kruipen over elkaar heen
+          tot je je eigen gedachten niet meer hoort. Een duistere schim verschijnt heel vaag
+          achter in je hoofd. Je zakt naar de grond en kunt geen kant op. Iemand moet je helpen.</div>
+        <div class="zv-sub">Laat een medespeler op jouw locatie deze code invoeren om je te helpen.</div>
         <div class="zv-code" id="zv-lock-code">····</div>
-        <div class="zv-sub">Pas als zij het teken kennen, laat de schaduw je los.</div>
-        <div class="zv-wacht">Roep een medespeler, hardop, hier waar je staat</div>
+        <div class="zv-wacht">Roep een medespeler. Hardop, hier waar je staat.</div>
         <button id="zv-lock-test" class="zv-test" style="display:none">● ontgrendel (test)</button>
       </div>
 
