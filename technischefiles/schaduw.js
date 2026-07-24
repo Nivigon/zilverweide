@@ -127,7 +127,7 @@ window.ZilverweideSchaduw = (function () {
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
       <img id="zv-vloekmerk" src="karakters/special/schaduwvloek.png" alt="" aria-hidden="true"
-           style="position:fixed;right:1.6rem;bottom:1.6rem;height:24vh;max-height:230px;width:auto;opacity:0;pointer-events:none;z-index:700;transition:opacity 1.5s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
+           style="position:fixed;right:0;bottom:0;height:42vh;max-height:430px;width:auto;opacity:0;pointer-events:none;z-index:700;transition:opacity 1.5s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
       <div id="zv-rook">
         <div class="zv-rand zv-l"></div><div class="zv-rand zv-r"></div>
         <div class="zv-rand zv-t"></div><div class="zv-rand zv-b"></div>
