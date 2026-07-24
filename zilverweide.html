@@ -168,6 +168,36 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-label{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase}
 .inv-items{display:flex;gap:6px;flex-wrap:wrap}
 .inv-item{font-size:1.1rem;cursor:default}
+/* Inventaris-balk klikbaar en sierlijk (opent het overzicht). */
+.inventory-bar{cursor:pointer;transition:background .25s ease}
+.inventory-bar:hover{background:rgba(30,22,10,.95)}
+.inventory-bar:hover .inv-label{color:var(--gold)}
+.inv-label{display:flex;align-items:center;gap:.4rem;transition:color .25s ease}
+.inv-label::before{content:'🎒';font-size:.95rem}
+.inv-open-hint{font-size:.58rem;color:var(--gold-dim);letter-spacing:.14em;opacity:.7;margin-left:.35rem;text-transform:none}
+/* Nieuw-voorwerp-melding bij de balk. */
+#nieuw-voorwerp-badge{position:fixed;top:.55rem;left:50%;transform:translateX(-50%) translateY(-10px);z-index:560;background:rgba(240,210,90,.96);color:#1a1208;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;padding:.42rem .95rem;border-radius:50px;box-shadow:0 0 26px rgba(240,205,80,.85);opacity:0;pointer-events:none;transition:opacity .3s ease, transform .3s ease}
+#nieuw-voorwerp-badge.zichtbaar{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Inventaris-overzicht: sfeervolle fade-in over het hele scherm. Onder de
+   schaduw-lagen (fog 400, meter 540, puzzel 600), zodat de schaduw eroverheen
+   valt; een observer sluit dit overzicht zodra de schaduw-puzzel verschijnt. */
+#inventaris-overzicht{position:fixed;inset:0;z-index:350;display:none;background:rgba(9,7,4,.975);opacity:0;transition:opacity .45s ease}
+#inventaris-overzicht.zichtbaar{opacity:1}
+.inv-ov-inner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 1.3rem) 1.2rem 1.3rem}
+#inventaris-overzicht.zichtbaar .inv-ov-inner{animation:invRise .5s ease}
+@keyframes invRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.inv-ov-titel{font-family:'Cinzel',serif;font-size:clamp(1.4rem,4.2vh,2.1rem);color:var(--gold);letter-spacing:.18em;text-transform:uppercase;text-shadow:0 0 30px rgba(201,168,76,.35)}
+.inv-ov-orn{color:var(--gold-dim);letter-spacing:.4em;font-size:.62rem;text-transform:uppercase;margin-top:.35rem}
+.inv-ov-grid{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;align-content:flex-start;margin-top:1.5rem;max-width:900px;width:100%;flex:1;overflow-y:auto}
+.inv-ov-kaart{width:120px;min-height:132px;background:rgba(28,20,10,.6);border:1px solid rgba(201,168,76,.25);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.55rem;padding:.8rem .5rem;cursor:pointer;transition:all .2s ease;font-family:inherit}
+.inv-ov-kaart:hover{border-color:rgba(201,168,76,.6);background:rgba(42,30,12,.72);box-shadow:0 0 20px rgba(201,168,76,.18) inset}
+.inv-ov-emoji{font-size:3rem;line-height:1}
+.inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.82rem;color:var(--parchment);text-align:center;line-height:1.2}
+.inv-ov-leeg{color:var(--mist);font-style:italic;margin-top:2.5rem}
+.inv-ov-detail{max-width:520px;width:100%;text-align:center;margin-top:1rem;overflow-y:auto;flex:1}
+.inv-ov-detail-emoji{font-size:4.2rem;line-height:1}
+.inv-ov-detail-naam{font-family:'Cinzel',serif;color:var(--gold);font-size:1.25rem;letter-spacing:.06em;margin:.5rem 0 .7rem}
+.inv-ov-detail-tekst{font-family:'Crimson Text',Georgia,serif;font-style:italic;color:var(--parchment);line-height:1.6}
 .back-btn{background:none;border:none;color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.12em;cursor:pointer;padding:.5rem 0;display:flex;align-items:center;gap:6px;text-transform:uppercase;margin-bottom:1rem}
 .back-btn:hover{color:var(--gold)}
 .overworld{padding:1.5rem 0 4rem}
@@ -761,9 +791,23 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <p>De Rozen van Zilverweide speel je in liggende stand. Draai je telefoon of tablet een kwartslag.</p>
 </div>
 
-<div class="inventory-bar" id="inv-bar" style="display:none">
-  <span class="inv-label">Inventaris</span>
+<div class="inventory-bar" id="inv-bar" style="display:none" onclick="openInventarisOverzicht()" title="Open je rugzak">
+  <span class="inv-label">Inventaris<span class="inv-open-hint">tik om te openen</span></span>
   <div class="inv-items" id="inv-items"></div>
+</div>
+
+<!-- ══ NIEUW-VOORWERP-MELDING ══ -->
+<div id="nieuw-voorwerp-badge">Nieuw voorwerp</div>
+
+<!-- ══ INVENTARIS-OVERZICHT (sfeervolle fade-in) ══ -->
+<div id="inventaris-overzicht" aria-hidden="true">
+  <div class="inv-ov-inner">
+    <div class="inv-ov-titel">Inventaris</div>
+    <div class="inv-ov-orn">je rugzak</div>
+    <div class="inv-ov-grid" id="inv-ov-grid"></div>
+    <div class="inv-ov-detail" id="inv-ov-detail" style="display:none"></div>
+    <button class="back-btn" style="margin-top:1.1rem" onclick="sluitInventarisOverzicht()">← Terug naar Zilverweide</button>
+  </div>
 </div>
 
 <!-- ══ TOAST ══ -->
@@ -3058,6 +3102,7 @@ function addInventory(emoji, naam, toonPopup=true) {
     }
     if (toonPopup) {
       toonToast(emoji, naam);
+      nieuwVoorwerpMelding();
     }
     // Als dit item een Kraaienkwartier-key is, ook story-teller updaten.
     // Alleen als KK actief is (Dorendael niet open, want dan switcht
@@ -3083,6 +3128,109 @@ function updateInventoryBar() {
   // Missie-teller verschijnt rechts naast de items zodra Dorendael open is.
   updateMissieTeller();
 }
+
+// ── Inventaris-overzicht (rugzak) ─────────────────────────────────────
+// Sfeervolle fade-in over het hele scherm. Openen is stil (alleen opacity);
+// het gele licht plus goed.mp3 zit bij een nieuw voorwerp, niet bij openen.
+function openInventarisOverzicht() {
+  var ov = document.getElementById('inventaris-overzicht');
+  if (!ov) return;
+  bouwInventarisGrid();
+  toonInventarisGridView();
+  ov.style.display = 'block';
+  void ov.offsetWidth;            // reflow zodat de opacity-transitie loopt
+  ov.classList.add('zichtbaar');
+  ov.setAttribute('aria-hidden', 'false');
+}
+function sluitInventarisOverzicht() {
+  var ov = document.getElementById('inventaris-overzicht');
+  if (!ov || ov.style.display === 'none') return;
+  ov.classList.remove('zichtbaar');
+  ov.setAttribute('aria-hidden', 'true');
+  clearTimeout(ov._sluitTimer);
+  ov._sluitTimer = setTimeout(function () { ov.style.display = 'none'; }, 450);
+}
+function bouwInventarisGrid() {
+  var grid = document.getElementById('inv-ov-grid');
+  if (!grid) return;
+  if (!state.inventory.length) {
+    grid.innerHTML = '<div class="inv-ov-leeg">Je rugzak is nog leeg.</div>';
+    return;
+  }
+  grid.innerHTML = state.inventory.map(function (i, idx) {
+    return '<button class="inv-ov-kaart" onclick="toonInventarisItem(' + idx + ')">' +
+             '<span class="inv-ov-emoji">' + i.emoji + '</span>' +
+             '<span class="inv-ov-naam">' + i.naam + '</span>' +
+           '</button>';
+  }).join('');
+}
+function toonInventarisGridView() {
+  var g = document.getElementById('inv-ov-grid');
+  var d = document.getElementById('inv-ov-detail');
+  if (g) g.style.display = 'flex';
+  if (d) d.style.display = 'none';
+}
+function toonInventarisItem(idx) {
+  var i = state.inventory[idx];
+  var d = document.getElementById('inv-ov-detail');
+  var g = document.getElementById('inv-ov-grid');
+  if (!i || !d) return;
+  d.innerHTML =
+    '<div class="inv-ov-detail-emoji">' + i.emoji + '</div>' +
+    '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
+    '<div class="inv-ov-detail-tekst">[Placeholder: hier komt de uitleg over ' + i.naam + '.]</div>' +
+    '<button class="back-btn" style="margin-top:1rem" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
+  if (g) g.style.display = 'none';
+  d.style.display = 'block';
+}
+
+// Melding "Nieuw voorwerp" bij de inventaris-knop: muziek stopt, de gele badge
+// licht op en goed.mp3 speelt; na 3 seconden verdwijnt de badge en komt de
+// muziek terug. Eigen geluidselement en pauze-vlag, los van het verhaalstap-
+// geluid, zodat ze elkaar niet in de weg zitten.
+function nieuwVoorwerpMelding() {
+  var badge = document.getElementById('nieuw-voorwerp-badge');
+  if (!badge) return;
+  var bg = document.getElementById('bg-music');
+  if (bg && !bg.paused) { bg.pause(); window._nvMuziekPauze = true; }
+  badge.classList.add('zichtbaar');
+  try {
+    if (!window._nvGeluid) {
+      window._nvGeluid = new Audio('geluid/keuzegeluid/goed.mp3');
+      window._nvGeluid.volume = 0.85;
+    }
+    window._nvGeluid.currentTime = 0;
+    window._nvGeluid.play().catch(function () {});
+  } catch (e) {}
+  clearTimeout(window._nvTimer);
+  window._nvTimer = setTimeout(function () {
+    badge.classList.remove('zichtbaar');
+    if (window._nvMuziekPauze) {
+      window._nvMuziekPauze = false;
+      var b = document.getElementById('bg-music');
+      if (b) b.play().catch(function () {});
+    }
+  }, 3000);
+}
+
+// Sluit het inventaris-overzicht zodra de schaduw-puzzel of het vergrendel-
+// scherm opent (die mogen over de inventaris heen, maar het overzicht zelf moet
+// dan weg; de speler opent het later opnieuw met een tik op de balk).
+(function () {
+  function bekijk(elm) {
+    if (!elm) return;
+    new MutationObserver(function () {
+      if (elm.classList.contains('zv-open')) sluitInventarisOverzicht();
+    }).observe(elm, { attributes: true, attributeFilter: ['class'] });
+  }
+  function setup() {
+    var m = document.getElementById('zv-memory');
+    var l = document.getElementById('zv-lock');
+    if (m || l) { bekijk(m); bekijk(l); }
+    else setTimeout(setup, 1000);   // schaduw-module nog niet ingeladen
+  }
+  setup();
+})();
 
 // Helper: bepaalt of een locatiecode op dit moment toegankelijk is.
 // Retourneert null als oké, anders een foutmelding-string.
