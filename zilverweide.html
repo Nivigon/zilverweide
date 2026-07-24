@@ -1720,6 +1720,22 @@ function updateMissieTeller() {
   tekst.textContent = 'Verhaal: ' + aantal + ' / ' + totaal;
 }
 
+// Achtergrondmuziek even dempen zodat het verhaalstap-geluid (goed.mp3) er
+// vrij overheen speelt. Eigen vlag (_bgGeduckt), losstaand van de andere
+// pauze/hervat-systemen, zodat we alleen hervatten als wij zelf dempten.
+function duckAchtergrondVoorStap() {
+  var bg = document.getElementById('bg-music');
+  if (bg && !bg.paused) { bg.pause(); window._bgGeduckt = true; }
+}
+function hervatAchtergrondNaStap() {
+  if (!window._bgGeduckt) return;
+  window._bgGeduckt = false;
+  // Niet hervatten als het heks-keuzegeluid nu de achtergrond vervangt.
+  if (typeof _keuzeAudio !== 'undefined' && _keuzeAudio && !_keuzeAudio.paused) return;
+  var bg = document.getElementById('bg-music');
+  if (bg) bg.play().catch(function(){});
+}
+
 function onMissieKeyVoltooid(label) {
   updateMissieTeller();
   // Bij een debug-skip willen we geen flash of toast — die zou overbodig
@@ -1745,10 +1761,20 @@ function onMissieKeyVoltooid(label) {
       window._missieGeluid = new Audio('geluid/keuzegeluid/goed.mp3');
       window._missieGeluid.volume = 0.85;
       window._missieGeluid.addEventListener('error', function(){ console.warn('goed.mp3 niet gevonden op geluid/keuzegeluid/goed.mp3'); });
+      // Een seconde nadat het stapgeluid klaar is, de achtergrondmuziek weer aan.
+      window._missieGeluid.addEventListener('ended', function(){
+        clearTimeout(window._bgDuckTimer);
+        window._bgDuckTimer = setTimeout(hervatAchtergrondNaStap, 1000);
+      });
     }
+    duckAchtergrondVoorStap();
+    clearTimeout(window._bgDuckTimer);
     window._missieGeluid.currentTime = 0;
-    window._missieGeluid.play().catch(function(e){ console.warn('goed.mp3 afspelen mislukt:', e); });
-  } catch (e) { console.warn('goed.mp3 fout:', e); }
+    window._missieGeluid.play().catch(function(e){
+      console.warn('goed.mp3 afspelen mislukt:', e);
+      hervatAchtergrondNaStap(); // geen geluid: achtergrond meteen terug
+    });
+  } catch (e) { console.warn('goed.mp3 fout:', e); hervatAchtergrondNaStap(); }
   toonMissieToast(label);
   // Is de wijk-score nu vol, dan de finale-popup tonen (op elke tablet).
   checkVerhaalFinale();
@@ -12064,6 +12090,7 @@ function buildDebugPanel() {
       // ── Algemeen
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
+      ['🚪 Reset ingang-geheugen',   function(){ debugResetIngangen(); close(); }, true, 'Algemeen'],
       // ── Herberg
       ['🍺 Forceer herberg-succes',  function(){ debugHerbergSucces(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🌑 Forceer herberg-faal',    function(){ debugHerbergFaal(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
@@ -12623,7 +12650,37 @@ function debugJanSleutel() {
   updateInventoryBar();
 }
 
+// Ingangscodes onthouden per rol (firebase-proof). Zodra je de ingangscode van
+// een straat een keer hebt ingevoerd, bewaren we dat in de gedeelde stand onder
+// een per-rol sleutel. Dat overleeft een herlaad: na (opnieuw) je rol kiezen
+// gaan de al-bezochte straten meteen naar het invoerscherm, zonder code.
+var ZONE_HOOFDCODE = { dorpsplein: 'D1', kraaienkwartier: 'K1', dorendael: 'DD1', sintdonatuslaan: 'H1' };
+function entreeGedaan(zone) {
+  if (!state.personage) return false;
+  return !!getSharedState('entree__' + state.personage + '__' + zone);
+}
+function markEntree(zone) {
+  if (!state.personage || !ZONE_HOOFDCODE[zone]) return;
+  setSharedState('entree__' + state.personage + '__' + zone, true);
+}
+// Debug: wis het ingang-geheugen van alle rollen (om de eerste-keer-flow met de
+// code opnieuw te testen). De volledige Firebase-reset wist dit ook.
+function debugResetIngangen() {
+  var rollen = ['jan', 'kelly', 'fenna', 'felix'];
+  Object.keys(ZONE_HOOFDCODE).forEach(function(zone) {
+    rollen.forEach(function(r) { setSharedState('entree__' + r + '__' + zone, null); });
+  });
+}
+
 function toonZoneInvoer(zone) {
+  // Al eerder deze straat binnen geweest en de straat is nu gewoon
+  // toegankelijk (geen finale-afscherming): sla de code-popup over en ga direct
+  // naar het invoerscherm van die straat.
+  var hoofdcode = ZONE_HOOFDCODE[zone];
+  if (hoofdcode && entreeGedaan(zone) && !checkCodeToegankelijk(hoofdcode)) {
+    visitZone(zone, hoofdcode);
+    return;
+  }
   const labels = {
     dorpsplein: 'Het Dorpsplein',
     kraaienkwartier: 'Het Kraaienkwartier',
@@ -12666,6 +12723,7 @@ function checkZoneInvoer(val) {
   if (codes.includes(val)) {
     msg.className = 'code-success';
     msg.textContent = '✦ Toegang verleend!';
+    markEntree(zone); // onthoud dat deze straat binnen is, ook na een herlaad
     document.getElementById('zone-invoer-input').disabled = true;
     setTimeout(() => {
       sluitZoneInvoer();
