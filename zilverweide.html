@@ -88,17 +88,97 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    scheiding onder de titel en boven het invoerveld ligt. Geen sfeersilhouet
    zoals de kraai, maar bewust zichtbare versiering die de identiteit van het
    district draagt. */
+/* De wrapper draagt nu de maat en centrering; de lichteffect-lagen liggen als
+   absolute overlays exact over de roos. */
+.doorn-siersel-wrap{
+  position:relative;
+  display:block;
+  width:min(30vw, 240px);
+  margin:0 auto -10px;   /* negatief: de png heeft een ingebakken transparante rand onderaan */
+  line-height:0;
+}
 .doorn-siersel{
   display:block;
-  margin:0 auto -10px;   /* negatief: de png heeft een ingebakken transparante rand onderaan */
-  width:min(30vw, 240px);
+  width:100%;
   height:auto;
+  margin:0;
   opacity:.55;
   pointer-events:none;
   filter:drop-shadow(0 6px 14px rgba(0,0,0,.6));
 }
+/* De drie lichtlagen. Veeg en gloed gebruiken de PNG als masker, zodat het
+   licht precies de roos-en-doorn-vorm volgt; screen-blend telt licht op tegen
+   de donkere achtergrond. Een knipoog naar de blauwe, gloeiende rozen van
+   Zilverweide: het goud strijkt, maar de magie eronder ademt blauw. */
+.doorn-veeg,.doorn-gloed,.doorn-hart{
+  position:absolute;
+  pointer-events:none;
+  mix-blend-mode:screen;
+}
+.doorn-veeg,.doorn-gloed{
+  inset:0;
+  -webkit-mask:url("ui/dorendael/dddoorn.png") center/contain no-repeat;
+          mask:url("ui/dorendael/dddoorn.png") center/contain no-repeat;
+}
+/* 1. Gouden glans-veeg: strijkt 1x per 5s schuin over de roos. */
+.doorn-veeg{
+  background:linear-gradient(115deg,
+     rgba(255,240,205,0) 42%,
+     rgba(255,246,220,.92) 50%,
+     rgba(255,240,205,0) 58%);
+  background-size:260% 100%;
+  background-repeat:no-repeat;
+  opacity:0;
+  animation:doornVeeg 5s ease-in-out infinite;
+}
+@keyframes doornVeeg{
+  0%   {background-position:-35% 0; opacity:0;}
+  6%   {opacity:1;}
+  26%  {background-position:135% 0; opacity:1;}
+  34%  {opacity:0;}
+  100% {background-position:135% 0; opacity:0;}
+}
+/* 2. Blauwe ondergloed die traag meeademt: de magie onder het goud. */
+.doorn-gloed{
+  background:rgba(96,158,255,.6);
+  opacity:.04;
+  animation:doornGloed 7.5s ease-in-out infinite;
+}
+@keyframes doornGloed{
+  0%,100%{opacity:.04;}
+  50%    {opacity:.20;}
+}
+/* 3. Blauwe hart-flits in het hart van de roos: elke ~5s zacht, elke 3e fel. */
+.doorn-hart{
+  left:49%; top:46%;
+  width:27%; height:66%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(ellipse at center,
+     rgba(198,228,255,.95) 0%,
+     rgba(120,185,255,.55) 34%,
+     rgba(90,160,255,0) 72%);
+  filter:blur(1.5px);
+  opacity:0;
+  animation:doornHart 15s ease-in-out infinite;
+}
+@keyframes doornHart{
+  0%,4% {opacity:0;   transform:translate(-50%,-50%) scale(.85);}
+  6%    {opacity:.5;  transform:translate(-50%,-50%) scale(1);}
+  11%   {opacity:0;}
+  39%   {opacity:0;}
+  41%   {opacity:.5;  transform:translate(-50%,-50%) scale(1);}
+  46%   {opacity:0;}
+  72%   {opacity:0;   transform:translate(-50%,-50%) scale(.9);}
+  76%   {opacity:1;   transform:translate(-50%,-50%) scale(1.16);}
+  82%   {opacity:0;}
+  100%  {opacity:0;}
+}
 @media (max-width:640px){
-  .doorn-siersel{width:50vw;margin:0 auto -8px}
+  .doorn-siersel-wrap{width:50vw;margin:0 auto -8px}
+}
+@media (prefers-reduced-motion: reduce){
+  .doorn-veeg,.doorn-hart{animation:none;opacity:0;}
+  .doorn-gloed{animation:none;opacity:.10;}
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
@@ -1145,7 +1225,12 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <div class="kwartier-header"><h2>Dorendael</h2><p>Groen, doorgegroeid, doornen en klimop</p></div>
   <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
   <div class="code-section">
-    <img class="doorn-siersel" src="ui/dorendael/dddoorn.png" alt="" aria-hidden="true">
+    <span class="doorn-siersel-wrap" aria-hidden="true">
+      <img class="doorn-siersel" src="ui/dorendael/dddoorn.png" alt="">
+      <span class="doorn-gloed"></span>
+      <span class="doorn-veeg"></span>
+      <span class="doorn-hart"></span>
+    </span>
     <input class="code-input" id="code-dd-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkDorendaelLocatie(this.value)">
     <div class="code-error" id="code-dd-locatie-msg"></div>
   </div>
