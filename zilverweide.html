@@ -2,8 +2,18 @@
 <html lang="nl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>De Rozen van Zilverweide</title>
+<!-- Full-screen vanaf het startscherm. iOS leest de apple-tags bij het toevoegen
+     aan het beginscherm, Android/Samsung leest het manifest. Na wijziging moet
+     het icoon op elk toestel opnieuw toegevoegd worden, anders blijft het oude
+     gedrag hangen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Zilverweide">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=La+Belle+Aurore&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="technischefiles/doolhof.css">
 <link rel="stylesheet" href="technischefiles/lockpick.css">
