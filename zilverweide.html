@@ -705,14 +705,30 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    ze waren; de regels raken alleen schermen tot 520px hoog. */
 @media (max-height: 520px) {
   .sc-image { max-height: min(42vh, calc(var(--vh100) - 155px)) !important; }
+  /* Het heks-keuzegrid is op dit scherm de hoofdinhoud (geen grote dialoog
+     eronder), dus krijgt meer hoogte dan een gewone scene-afbeelding, zodat de
+     portretten niet tot alleen de bovenkant van de hoofden worden afgeknipt.
+     De portretten worden ook iets lager gericht zodat de gezichten in beeld
+     komen op deze brede, lage tegels. */
+  #screen-locatie .sc-image-slot { max-height: min(62vh, calc(var(--vh100) - 104px)) !important; }
+  #screen-locatie .heks-keuze-bg { background-position: center 22% !important; }
   #screen-locatie.screen { padding: .4rem 0 .6rem !important; }
   #screen-locatie .sc-titel { font-size: clamp(1.1rem, 4.5vh, 1.5rem) !important; margin: .1rem 0 !important; }
   #screen-locatie .sc-sub { font-size: .6rem !important; margin: 0 0 .2rem !important; }
   #screen-locatie .sc-dialog { min-height: 0 !important; margin-bottom: .5rem !important; }
-  #screen-locatie .sc-dialog-body { padding: .5rem .8rem .5rem 128px !important; }
+  #screen-locatie .sc-dialog-body { padding: .5rem .8rem !important; }
   #screen-locatie .sc-dialog-tekst { font-size: .9rem !important; line-height: 1.4 !important; }
   #char-pop img { height: 46vh !important; max-height: 240px !important; }
   #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
+}
+/* Speler-pop valt over de dialoogtekst (tablet en telefoon). Zodra de pop
+   zichtbaar is (inline opacity 1, gezet door toonCharPop), begint de
+   dialoogtekst rechts van de pop, zodat de tekst er nooit onder valt. De
+   linkerruimte schaalt mee met de pop-hoogte, dus klopt op elk schermformaat.
+   Is er geen pop, dan verschuift er niets en blijft de tekst normaal staan.
+   Oudere browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
+body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
+  padding-left: calc(var(--vh100) * 0.32) !important;
 }
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
