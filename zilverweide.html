@@ -110,36 +110,17 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    licht precies de roos-en-doorn-vorm volgt; screen-blend telt licht op tegen
    de donkere achtergrond. Een knipoog naar de blauwe, gloeiende rozen van
    Zilverweide: het goud strijkt, maar de magie eronder ademt blauw. */
-.doorn-veeg,.doorn-gloed,.doorn-hart{
+.doorn-gloed,.doorn-hart{
   position:absolute;
   pointer-events:none;
   mix-blend-mode:screen;
 }
-.doorn-veeg,.doorn-gloed{
+.doorn-gloed{
   inset:0;
   -webkit-mask:url("ui/dorendael/dddoorn.png") center/contain no-repeat;
           mask:url("ui/dorendael/dddoorn.png") center/contain no-repeat;
 }
-/* 1. Gouden glans-veeg: strijkt traag en zacht over de roos (langzaam glijden,
-   dan een lange rust). */
-.doorn-veeg{
-  background:linear-gradient(115deg,
-     rgba(255,240,205,0) 42%,
-     rgba(255,246,220,.82) 50%,
-     rgba(255,240,205,0) 58%);
-  background-size:260% 100%;
-  background-repeat:no-repeat;
-  opacity:0;
-  animation:doornVeeg 9s ease-in-out infinite;
-}
-@keyframes doornVeeg{
-  0%   {background-position:-30% 0; opacity:0;}
-  6%   {opacity:.82;}
-  50%  {background-position:130% 0; opacity:.82;}
-  58%  {opacity:0;}
-  100% {background-position:130% 0; opacity:0;}
-}
-/* 2. Neon-blauwe gloed over de hele roos, pulseert mee met het hart zodat de
+/* Neon-blauwe gloed over de hele roos, pulseert mee met het hart zodat de
    bloem als geheel blauw opgloeit en weer wegzakt. */
 .doorn-gloed{
   background:rgba(56,150,255,.8);   /* neon blauw */
@@ -156,7 +137,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   89%  {opacity:.08;}
   100% {opacity:.08;}
 }
-/* 3. Neon-blauwe puls in het hart van de roos: de intensiteit komt en gaat,
+/* Neon-blauwe puls in het hart van de roos: de intensiteit komt en gaat,
    twee zachte pulsen en elke derde wat feller. Bewust blauw, geen wit. */
 .doorn-hart{
   left:49%; top:46%;
@@ -184,7 +165,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   .doorn-siersel-wrap{width:50vw;margin:0 auto -8px}
 }
 @media (prefers-reduced-motion: reduce){
-  .doorn-veeg,.doorn-hart{animation:none;opacity:0;}
+  .doorn-hart{animation:none;opacity:0;}
   .doorn-gloed{animation:none;opacity:.10;}
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
@@ -1235,7 +1216,6 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <span class="doorn-siersel-wrap" aria-hidden="true">
       <img class="doorn-siersel" src="ui/dorendael/dddoorn.png" alt="">
       <span class="doorn-gloed"></span>
-      <span class="doorn-veeg"></span>
       <span class="doorn-hart"></span>
     </span>
     <input class="code-input" id="code-dd-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkDorendaelLocatie(this.value)">
