@@ -957,6 +957,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
     <input type="range" min="0.1" max="8" step="0.1" value="0.4" oninput="schaduwSnelheid(this.value)">
   </label>
   <button class="schaduw-mi" onclick="schaduwRedderTest()">Redder-invoer openen</button>
+  <button class="schaduw-mi" onclick="schaduwBevrijdTest()">Bevrijd-gesprek (test)</button>
   <button class="schaduw-mi" id="schaduw-anderevast-btn" onclick="schaduwAndereVastTest()">Teamgenoot vast: uit</button>
   <button class="schaduw-mi" onclick="schaduwFirebaseReset()">Firebase reset</button>
   <div id="schaduw-status">Status: uit</div>
@@ -1089,7 +1090,8 @@ function initSharedFirebase(sessieId) {
     // de redder elders de juiste code invoerde (de lock verdween wel uit
     // Firebase, maar niet uit de lokale kopie).
     for (var lk in state.shared) {
-      if (state.shared.hasOwnProperty(lk) && lk.indexOf('schaduw_lock_') === 0
+      if (state.shared.hasOwnProperty(lk)
+          && (lk.indexOf('schaduw_lock_') === 0 || lk.indexOf('schaduw_bevrijd_') === 0)
           && !(data && data.hasOwnProperty(lk))) {
         delete state.shared[lk];
       }
@@ -1845,7 +1847,10 @@ window.ZilverweideSchaduwServer = {
     setSharedState('schaduw_lock_' + rol, {
       loc:  state.lastOpenedLocatie || '',
       zone: state.lastZone || '',
-      code: code
+      code: code,
+      // Als het slachtoffer Felix is, onthoud zijn vermomming zodat de redder
+      // (op een ander tablet) hem straks in de juiste gedaante ziet.
+      vermomming: (rol === 'felix' ? (state.vermomming || null) : null)
     });
     return code;
   },
@@ -1855,7 +1860,28 @@ window.ZilverweideSchaduwServer = {
     for (var i = 0; i < rollen.length; i++) {
       var l = getSharedState('schaduw_lock_' + rollen[i]);
       if (l && l.code && String(l.code).toUpperCase() === ingevoerd) {
-        setSharedState('schaduw_lock_' + rollen[i], null);
+        var slachtofferRol = rollen[i];
+        var slachtofferVerm = (l && l.vermomming) || null;
+        // Briefje voor het slachtoffer: wie hielp (en, als dat Felix is, welke
+        // vermomming), zodat zijn tablet het juiste portret en de naam toont.
+        // Eerst dit schrijven, dan pas de lock wissen, zodat het slachtoffer
+        // het briefje ziet voordat hij zichzelf ontgrendelt.
+        setSharedState('schaduw_bevrijd_' + slachtofferRol, {
+          door: state.personage || 'speler',
+          vermomming: (state.personage === 'felix' ? (state.vermomming || null) : null)
+        });
+        setSharedState('schaduw_lock_' + slachtofferRol, null);
+        // De helper ziet zijn eigen kant van het tweegesprek, nadat het
+        // redder-invoerscherm is gesloten.
+        (function (sr, sv) {
+          setTimeout(function () {
+            toonBevrijdInteractie({
+              helperIsZelf: true,
+              zelfRol: state.personage || 'speler', zelfVermomming: state.vermomming || null,
+              anderRol: sr, anderVermomming: sv
+            });
+          }, 450);
+        })(slachtofferRol, slachtofferVerm);
         return true;
       }
     }
@@ -1871,10 +1897,24 @@ setInterval(function () {
         window.ZilverweideSchaduw.isVergrendeld()) {
       var rol = state.personage || 'speler';
       if (!getSharedState('schaduw_lock_' + rol)) {
+        // Wie heeft me geholpen? (briefje van de redder, kan er net zijn.)
+        var bevrijd = getSharedState('schaduw_bevrijd_' + rol);
         window.ZilverweideSchaduw._ontgrendel();
+        if (bevrijd && bevrijd.door) {
+          setSharedState('schaduw_bevrijd_' + rol, null);   // briefje opruimen
+          (function (b) {
+            setTimeout(function () {
+              toonBevrijdInteractie({
+                helperIsZelf: false,
+                zelfRol: rol, zelfVermomming: state.vermomming || null,
+                anderRol: b.door, anderVermomming: b.vermomming || null
+              });
+            }, 500);
+          })(bevrijd);
+        }
       }
     }
-  } catch (e) {}
+  } catch (e) { console.warn('schaduw zelf-ontgrendel poll:', e); }
 }, 1000);
 
 function schaduwRedderCheckOpLocatie(locId, renderCallback) {
@@ -10571,6 +10611,109 @@ function popImgVoorSpeler(p) {
     return cfg.vermommingen[state.vermomming];
   }
   return cfg.basis;
+}
+
+// Portret voor een expliciete rol + vermomming (nodig om de ANDER te tonen:
+// die staat op een ander tablet, dus we mogen niet op de lokale state leunen).
+function popImgVoorRol(rol, vermomming) {
+  const cfg = personagePopImgs[rol];
+  if (!cfg) return null;
+  if (vermomming && cfg.vermommingen && cfg.vermommingen[vermomming]) {
+    return cfg.vermommingen[vermomming];
+  }
+  return cfg.basis;
+}
+// Naam voor een rol. Is Felix vermomd, dan noemen anderen hem bij zijn
+// vermomming (Lola, Liu-Yen, Lucinde).
+function schaduwNaamVoorRol(rol, vermomming) {
+  if (rol === 'felix' && vermomming) return vermomming;
+  var namen = { jan: 'Jan', kelly: 'Kelly', fenna: 'Fenna', felix: 'Felix' };
+  return namen[rol] || 'Iemand';
+}
+
+// Bevrijdings-tweegesprek: zelfstandig overlay dat het locatiescherm met rust
+// laat. Jezelf links, de ander rechts (niet gespiegeld). De helper vraagt
+// "Gaat het weer, ...?", het slachtoffer antwoordt, dan gaat het spel verder.
+function toonBevrijdInteractie(opts) {
+  var zelfImg  = popImgVoorRol(opts.zelfRol,  opts.zelfVermomming);
+  var anderImg = popImgVoorRol(opts.anderRol, opts.anderVermomming);
+  if (!zelfImg || !anderImg) return;   // onbekende rol (bijv. ongekozen): sla over
+  var zelfNaam  = schaduwNaamVoorRol(opts.zelfRol,  opts.zelfVermomming);
+  var anderNaam = schaduwNaamVoorRol(opts.anderRol, opts.anderVermomming);
+  var slachtofferNaam = opts.helperIsZelf ? anderNaam : zelfNaam;
+  var vraag = 'Gaat het weer, ' + slachtofferNaam + '?';
+  var antwoord = 'Ja, dank je. Ik had even iemand nodig. Ik werd gek.';
+  // Wie spreekt op welke stap. links = zelf, rechts = ander.
+  var stappen = opts.helperIsZelf
+    ? [ { spreker: 'links',  tekst: vraag }, { spreker: 'rechts', tekst: antwoord } ]
+    : [ { spreker: 'rechts', tekst: vraag }, { spreker: 'links',  tekst: antwoord } ];
+
+  var bubbelStijl = 'position:absolute;bottom:56vh;max-width:min(280px,42vw);background:rgba(13,10,6,.94);' +
+    'border:1px solid rgba(201,168,76,.4);padding:.7rem .9rem';
+  var naamStijl = 'font-family:Cinzel,serif;font-size:.6rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.3rem';
+  var tekstStijl = 'font-style:italic;font-size:.9rem;line-height:1.55;color:var(--parchment)';
+  var imgStijl = 'position:absolute;bottom:0;height:55vh;max-height:480px;width:auto;object-fit:contain;object-position:bottom';
+
+  var overlay = document.createElement('div');
+  overlay.id = 'zv-bevrijd';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:560;pointer-events:auto;opacity:0;transition:opacity .4s ease;' +
+    'background:radial-gradient(ellipse at center,rgba(10,7,12,.82),rgba(4,2,6,.94))';
+  overlay.innerHTML =
+    '<div class="zvb-links" style="position:absolute;bottom:0;left:0;width:50vw;transition:opacity .35s ease">' +
+      '<div class="zvb-bubble" style="' + bubbelStijl + ';left:.75rem;border-radius:8px 8px 8px 2px">' +
+        '<div class="zvb-naam" style="' + naamStijl + '"></div><div class="zvb-tekst" style="' + tekstStijl + '"></div></div>' +
+      '<img class="zvb-img" style="' + imgStijl + ';left:6vw;filter:drop-shadow(4px 4px 16px rgba(0,0,0,.7))" src="' + zelfImg + '" alt="">' +
+    '</div>' +
+    '<div class="zvb-rechts" style="position:absolute;bottom:0;right:0;width:50vw;transition:opacity .35s ease">' +
+      '<div class="zvb-bubble" style="' + bubbelStijl + ';right:.5rem;border-radius:8px 8px 2px 8px">' +
+        '<div class="zvb-naam" style="' + naamStijl + '"></div><div class="zvb-tekst" style="' + tekstStijl + '"></div></div>' +
+      '<img class="zvb-img" style="' + imgStijl + ';right:6vw;filter:drop-shadow(-4px 4px 16px rgba(0,0,0,.7))" src="' + anderImg + '" alt="">' +
+    '</div>' +
+    '<button class="zvb-knop" style="position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);' +
+      'font-family:Cinzel,serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;' +
+      'border:1px solid rgba(201,168,76,.45);background:rgba(13,10,6,.9);color:var(--gold);cursor:pointer;border-radius:2px"></button>';
+  document.body.appendChild(overlay);
+
+  var linksPop  = overlay.querySelector('.zvb-links');
+  var rechtsPop = overlay.querySelector('.zvb-rechts');
+  linksPop.querySelector('.zvb-naam').textContent  = zelfNaam;
+  rechtsPop.querySelector('.zvb-naam').textContent = anderNaam;
+  var knop = overlay.querySelector('.zvb-knop');
+
+  var i = 0;
+  function toonStap() {
+    var linksSpreekt = stappen[i].spreker === 'links';
+    linksPop.querySelector('.zvb-tekst').textContent  = linksSpreekt ? stappen[i].tekst : '';
+    rechtsPop.querySelector('.zvb-tekst').textContent = linksSpreekt ? '' : stappen[i].tekst;
+    linksPop.querySelector('.zvb-bubble').style.display  = linksSpreekt ? '' : 'none';
+    rechtsPop.querySelector('.zvb-bubble').style.display = linksSpreekt ? 'none' : '';
+    linksPop.style.opacity  = linksSpreekt ? '1' : '.4';
+    rechtsPop.style.opacity = linksSpreekt ? '.4' : '1';
+    knop.textContent = (i === stappen.length - 1) ? 'Begrepen →' : 'Verder →';
+  }
+  knop.addEventListener('click', function () {
+    if (i < stappen.length - 1) { i++; toonStap(); }
+    else {
+      overlay.style.opacity = '0';
+      setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+    }
+  });
+  toonStap();
+  requestAnimationFrame(function () { overlay.style.opacity = '1'; });
+}
+
+// Debug: het bevrijd-gesprek solo bekijken (zonder tweede tablet). Toont jou
+// als slachtoffer, geholpen door een medespeler (Felix als Lola bij niet-Felix,
+// zodat je meteen de vermomming-weergave ziet).
+function schaduwBevrijdTest() {
+  var zelf = state.personage || 'kelly';
+  var ander = (zelf === 'felix') ? 'jan' : 'felix';
+  var anderVerm = (ander === 'felix') ? 'Lola' : null;
+  toonBevrijdInteractie({
+    helperIsZelf: false,
+    zelfRol: zelf, zelfVermomming: state.vermomming || null,
+    anderRol: ander, anderVermomming: anderVerm
+  });
 }
 
 function toonCharPop(tekst) {
