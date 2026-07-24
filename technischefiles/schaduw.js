@@ -138,7 +138,7 @@ window.ZilverweideSchaduw = (function () {
       </div>
 
       <div id="zv-memory" class="zv-overlay">
-        <div class="zv-eyebrow">De schaduw sluit zich</div>
+        <div class="zv-eyebrow">Een schim en de stemmen dringen zich op</div>
         <div id="zv-mem-intro">
           <svg class="zv-schim" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs><radialGradient id="zvsg" cx="50%" cy="34%" r="68%">
@@ -153,7 +153,7 @@ window.ZilverweideSchaduw = (function () {
             Uit de nevel kijkt een schim je recht aan.</div>
           <div class="zv-sub">"Wijs de juiste volgorde van tekens aan… of de schaduw houdt je."</div>
         </div>
-        <div class="zv-title" id="zv-mem-title" style="display:none">Herinner het zegel</div>
+        <div class="zv-title" id="zv-mem-title" style="display:none">Orden je gedachten</div>
         <div class="zv-line" id="zv-mem-instr" style="display:none">Let goed op…</div>
         <div class="zv-progress" id="zv-mem-progress"></div>
         <div class="zv-runes" id="zv-mem-runes"></div>
@@ -351,7 +351,7 @@ window.ZilverweideSchaduw = (function () {
     el.memTitle.style.display = '';
     el.memInstr.style.display = '';
     renderMemProgress(0);
-    el.memInstr.textContent = 'Let goed op…';
+    el.memInstr.textContent = 'let goed op';
     setTimeout(playMemSeq, 500);
   }
   function renderMemProgress(filled) {
