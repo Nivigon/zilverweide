@@ -174,7 +174,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-knop{position:relative;display:inline-flex;align-items:center;cursor:pointer}
 .inv-label{display:inline-flex;align-items:center;border:1px solid rgba(201,168,76,.5);border-radius:50px;padding:.32rem 2.1rem .32rem 1rem;transition:all .22s ease}
 .inv-knop:hover .inv-label{color:var(--gold);border-color:rgba(201,168,76,.9);background:rgba(201,168,76,.08);box-shadow:0 0 14px rgba(201,168,76,.22)}
-.inv-teller{position:absolute;top:50%;right:-.4rem;transform:translateY(-50%);width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(18,12,6,.96);border:1px solid rgba(201,168,76,.6);color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5);transition:all .22s ease}
+.inv-teller{position:absolute;top:68%;right:-.45rem;transform:translateY(-50%);width:1.95rem;height:1.95rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(18,12,6,.98);border:1px solid rgba(201,168,76,.6);color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5);transition:all .22s ease}
 .inv-knop:hover .inv-teller{border-color:rgba(201,168,76,.9)}
 .inv-teller.knippert{animation:invTellerKnipper 1.05s ease-in-out infinite}
 @keyframes invTellerKnipper{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.5);border-color:rgba(201,168,76,.6);background:rgba(18,12,6,.96);color:var(--gold)}50%{box-shadow:0 0 16px 3px rgba(240,205,80,.75);border-color:rgba(255,226,110,.95);background:rgba(240,210,90,.45);color:#1a1208}}
@@ -3123,10 +3123,15 @@ function addInventory(emoji, naam, toonPopup=true) {
     }
     if (toonPopup) {
       toonToast(emoji, naam);
-      nieuwVoorwerpMelding(emoji, naam);
-      // Rugzak heeft iets nieuws dat nog niet bekeken is: laat de teller knipperen.
+    }
+    // Elk echt nieuw voorwerp: teller gaat knipperen (tot de rugzak geopend is)
+    // en het item licht kort op naast de knop met naam plus goed.mp3. Ook voor
+    // stille adds (geefItem/addInventory(...,false)), want dat zijn ook echte
+    // voorwerpen. Alleen bij een debug-bulk niet (die zet meerdere ineens).
+    if (!state.debugSkipBezig) {
       window._rugzakNieuw = true;
       updateInvTeller();
+      nieuwVoorwerpMelding(emoji, naam);
     }
     // Als dit item een Kraaienkwartier-key is, ook story-teller updaten.
     // Alleen als KK actief is (Dorendael niet open, want dan switcht
