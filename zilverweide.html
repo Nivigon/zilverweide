@@ -1987,6 +1987,9 @@ function duckAchtergrondVoorStap() {
 function hervatAchtergrondNaStap() {
   if (!window._bgGeduckt) return;
   window._bgGeduckt = false;
+  // Het dagboek speelt zijn eigen muziek: dan blijft de achtergrond stil.
+  // (stopDagboekMuziek zet 'm later zelf weer aan.)
+  if (window._dagboekMuziekAan) return;
   // Niet hervatten als het heks-keuzegeluid nu de achtergrond vervangt.
   if (typeof _keuzeAudio !== 'undefined' && _keuzeAudio && !_keuzeAudio.paused) return;
   var bg = document.getElementById('bg-music');
@@ -2780,7 +2783,16 @@ function hervatAchtergrondMuziek() {
 // laatste ~2s zijn stil, dus we loopen bij 22s terug naar het begin.
 var _dagboekAudio = null;
 function startDagboekMuziek() {
-  pauzeerAchtergrondMuziek();
+  window._dagboekMuziekAan = true;
+  // Een lopende verhaalstap-duck (goed.mp3, zie duckAchtergrondVoorStap) mag de
+  // achtergrond nu NIET meer hervatten, anders speelt die over de dagboekmuziek
+  // heen. We annuleren die hervat-timer en nemen het pauzeren zelf over, zodat
+  // stopDagboekMuziek de achtergrond straks weer aanzet.
+  clearTimeout(window._bgDuckTimer);
+  window._bgGeduckt = false;
+  var m = document.getElementById('bg-music');
+  if (m && !m.paused) m.pause();
+  window._bgMuziekPauze = true;
   if (!_dagboekAudio) {
     _dagboekAudio = new Audio('videos/dagboek/dagboekachtergrond.mp3');
     _dagboekAudio.addEventListener('timeupdate', function() {
@@ -2791,6 +2803,7 @@ function startDagboekMuziek() {
   _dagboekAudio.play().catch(function(){});
 }
 function stopDagboekMuziek() {
+  window._dagboekMuziekAan = false;
   if (_dagboekAudio) {
     _dagboekAudio.pause();
     try { _dagboekAudio.currentTime = 0; } catch(e) {}
@@ -8061,6 +8074,11 @@ function renderK1Naaldmasker(loc) {
       });
       return;
     }
+    // Staat de rouwstof-quest open en heeft niemand het lapje al gehaald?
+    // Dan biedt Madeleine Kelly een keuze: haar hand, of "iets anders" (de
+    // rouwstof). Kelly kan de rouwstof alleen halen zolang ze de hand nog
+    // nooit heeft gegeven; daarna komt ze hier niet meer binnen.
+    const rouwstofBeschikbaar = !!getSharedState('apotheker_quest_actief') && !getSharedState('ing_rouwstof');
     if (!skipDialog) {
       if (!hasVisited('kelly_naaldmasker_bezoek')) {
         markVisited('kelly_naaldmasker_bezoek');
@@ -8069,12 +8087,22 @@ function renderK1Naaldmasker(loc) {
       } else {
         dialog.push({ spreker: 'Madeleine', tekst: '*(kijkt op. Glimlacht.)* "Daar ben je weer, lieverd. Wist ik wel." *(legt naaiwerk neer, leunt voorover)* "Kom, laat me die handjes nog \'s zien. Ik ga ze heus niet stelen, hoor." *(strekt haar hand uit. Open. Wachtend.)*' });
       }
+      if (rouwstofBeschikbaar) {
+        dialog.push({ spreker: 'Madeleine', tekst: '*(haar blik glijdt naar de donkere lappen achterin)* "Kind, kom je je hand aanbieden, zo poezelig? Of kom je voor iets anders?"' });
+      }
     }
-    // Twee knoppen voor de hand-keuze
-    acties = [
-      { label: '✋ Geef je hand',          onclick: kellyGeeftHand },
-      { label: '🚫 Trek je hand terug',    onclick: kellyWeigertHand, stijl: 'blood' }
-    ];
+    // Knoppen: normaal de hand-keuze; met open rouwstof-quest een derde weg.
+    if (rouwstofBeschikbaar) {
+      acties = [
+        { label: '✋ Bied je hand aan',        onclick: kellyGeeftHand },
+        { label: '🖤 Ik kom voor iets anders', onclick: kellyKiestRouwstof }
+      ];
+    } else {
+      acties = [
+        { label: '✋ Geef je hand',          onclick: kellyGeeftHand },
+        { label: '🚫 Trek je hand terug',    onclick: kellyWeigertHand, stijl: 'blood' }
+      ];
+    }
   }
 
   // ── JAN ────────────────────────────────────────────────────
@@ -8191,6 +8219,22 @@ function k8VraagRouwstof(loc) {
     '\ud83d\udda4  Rouwstof',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Madeleine knipt zonder vragen een klein lapje af van een donkere jurk. Fluweel, versleten aan de randen.</p>' +
     '<div class="npc-line" style="margin-top:.75rem;border-left-color:var(--rose)"><div class="npc-avatar">\ud83e\uddf5</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Van een weduwejurk. Oud verdriet knipt makkelijk."</em> *(geeft het lapje af alsof het niets is)*</div></div></div>' +
+    '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.5rem">Breng dit naar de apotheker in Heer Donatuslaan.</p>',
+    'Verder',
+    function() { openLocatie('k1_naaldmasker'); }
+  );
+}
+
+// Kelly kiest bij Madeleine "iets anders": ze biedt haar hand niet aan en
+// krijgt in plaats daarvan de rouwstof (mits een medespeler het nog niet
+// heeft gehaald). Race-condition-vrij via pakIngredient.
+function kellyKiestRouwstof() {
+  const gelukt = pakIngredient('ing_rouwstof', ITEMS.rouwstof, function() { openLocatie('k1_naaldmasker'); });
+  if (!gelukt) return;
+  toonLade(
+    '🖤  Rouwstof',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Madeleine kijkt je even aan, dan knipt ze zonder verder vragen een klein lapje af van een donkere jurk. Fluweel, versleten aan de randen.</p>' +
+    '<div class="npc-line" style="margin-top:.75rem;border-left-color:var(--rose)"><div class="npc-avatar">🧵</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Ach, ook goed. Van een weduwejurk. Oud verdriet knipt makkelijk."</em> *(geeft het lapje af alsof het niets is, maar haar blik blijft nog even op je handen rusten)*</div></div></div>' +
     '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.5rem">Breng dit naar de apotheker in Heer Donatuslaan.</p>',
     'Verder',
     function() { openLocatie('k1_naaldmasker'); }
@@ -8868,8 +8912,22 @@ function checkKellyOntsnap(val) {
   }
 }
 
+// Heeft Kelly op dit moment de ECHTE schaduw-vloek al? (doolhof, H7-drank of
+// het losse Schaduw-item). Los van de render, zodat ook de hand-flow het weet.
+function kellyHeeftEchteSchaduwNu() {
+  return !!state.inventory.find(function(i) { return i.naam === 'De Schaduw'; }) ||
+    (window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVervloekt && window.ZilverweideSchaduw.isVervloekt()) ||
+    hasVisited('h7_gedronken');
+}
+
 function kellyGeeftHand() {
   markVisited('kelly_hand_incident');
+
+  // Krijgt het hand-moment een gevolg (koude greep + mini-game op straat)?
+  // Alleen als Kelly nog geen echte schaduw heeft EN Heer Donatuslaan nog niet
+  // open is. Zodra HD open is krijgt ze de schaduw sowieso; het handmoment is
+  // dan enkel nog een nare herinnering, geen voorbode meer.
+  window._kellyHandGevolg = !zoneUnlocked['sintdonatuslaan'] && !kellyHeeftEchteSchaduwNu();
 
   // 1. Pauzeer achtergrondmuziek
   const bgMusic = document.getElementById('bg-music');
@@ -8947,6 +9005,23 @@ function kellyBuitenK8() {
   const loc = locatiesK1.find(function(l) { return l.id === 'k1_naaldmasker'; });
   const cont = document.getElementById('locatie-content');
   if (!cont) { goBackFromLocatie(); return; }
+  // Geen gevolg (Heer Donatuslaan open of ze had de schaduw al): ze staat
+  // buiten met een koude hand, maar er grijpt niets. Geen mini-game.
+  if (!window._kellyHandGevolg) {
+    renderLocatieScene({
+      container: cont,
+      titel: loc ? loc.naam : 'Naald & Masker',
+      sub: loc ? loc.sub : '',
+      image: 'locaties/kraaienkwartier/naaldenmasker.jpeg',
+      dialog: [
+        'Je staat weer buiten. De avondlucht is koel op je gezicht.',
+        { spreker: 'Kelly', tekst: '"Wat een raar mens." *(wrijft over haar hand)* "Mijn hand is koud. Maar verder... niets. Gelukkig."' }
+      ],
+      acties: [{ label: 'Verder lopen...', onclick: goBackFromLocatie }]
+    });
+    state.lastZone = 'kraaienkwartier';
+    return;
+  }
   renderLocatieScene({
     container: cont,
     titel: loc ? loc.naam : 'Naald & Masker',
@@ -8975,32 +9050,31 @@ function kellyMaarPlots() {
     '<p style="font-size:.95rem;color:var(--mist);font-style:italic;margin-top:.5rem">Je hand tintelt. Iets donkers kruipt door je vingers omhoog.</p>',
     'Wat gebeurt er...',
     function() {
-      if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.teaser) {
-        window.ZilverweideSchaduw.teaser({
-          teksten: [
-            'Alles wordt donker.',
-            'Iets grijpt je. Van binnenuit.'
-          ],
-          onDone: function() {
-            // Achtergrondmuziek weer aanzetten
-            var bgMusic = document.getElementById('bg-music');
-            if (bgMusic) { try { bgMusic.play().catch(function(){}); } catch(e) {} }
-            // Na het oplossen: Kelly's reactie
-            toonLade(
-              '\ud83d\udc41\ufe0f  Wat was dat?',
-              '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">' +
-              '<em>"Wat was dat?"</em> Kelly kijkt naar haar handen. <em>"Dat voelde... kwaad. Alsof iets me wilde vasthouden."</em></p>' +
-              '<p style="font-size:.95rem;color:var(--parchment);font-style:italic;margin-top:.75rem">*(schudt haar hand)* <em>"Het is weg. Geloof ik."</em></p>',
-              'Verder \u2192',
-              goBackFromLocatie
-            );
-          }
+      if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) {
+        window.ZilverweideSchaduw.startHandRitueel({
+          onDone: kellyVoorbodeNaRitueel,   // (compat) beide namen mogen
+          onKlaar: kellyVoorbodeNaRitueel
         });
       } else {
         if (bgMusic) { try { bgMusic.play().catch(function(){}); } catch(e) {} }
         goBackFromLocatie();
       }
     }
+  );
+}
+
+// Na het losstaande hand-ritueel: de schim is geweken. Kelly vraagt zich af
+// wat het was, een voorbode? Het voelde als een vloek.
+function kellyVoorbodeNaRitueel() {
+  var bgMusic = document.getElementById('bg-music');
+  if (bgMusic) { try { bgMusic.play().catch(function(){}); } catch(e) {} }
+  toonLade(
+    '\ud83d\udc41\ufe0f  Wat was dat?',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">' +
+    '<em>"Wat was dat?"</em> Kelly kijkt naar haar handen. De schim is weg, de tinteling ebt weg. <em>"Het is weg. Maar het voelde... kwaad. Alsof iets me wilde vasthouden."</em></p>' +
+    '<p style="font-size:.95rem;color:var(--parchment);font-style:italic;margin-top:.75rem">*(huivert)* <em>"Was dat een voorbode? Het voelde als een vloek."</em></p>',
+    'Verder \u2192',
+    goBackFromLocatie
   );
 }
 
@@ -12483,6 +12557,9 @@ function buildDebugPanel() {
           if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
         }
       }, true, 'Kelly & de put'],
+      // ── Kelly & de hand (Naald en Masker)
+      ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
+      ['🖤 Rouwstof-quest openzetten', function(){ setSharedState('apotheker_quest_actief', true); close(); }, p === 'kelly', 'Kelly & de hand'],
       // ── Tobbe & Stoop
       ['👦 Tobbe is al opgehaald',    function(){ markVisited('tobbe_gevonden'); setSharedState('tobbe_gevonden', true); close(); }, true, 'Tobbe & Stoop'],
       ['✓ Felix: Stoop-flow voltooid', function(){ markVisited('tobbe_gevonden'); setSharedState('tobbe_gevonden', true); markVisited('stoop_beloning_ontvangen'); close(); }, true, 'Tobbe & Stoop'],
