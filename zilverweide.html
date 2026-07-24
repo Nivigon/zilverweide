@@ -15442,12 +15442,13 @@ function toonStemmenStil(stil) {
       });
 
       // Fallback: nog niets bezocht in deze straat → de speler wordt aan het
-      // begin of einde van de straat neergezet (DD2/DD8, H2/H8). In het
-      // Kraaienkwartier volstaat de eerste locatie.
+      // begin of einde van de straat neergezet: de "2 of 8"-locaties
+      // (DD2/DD8, H2/H8, K2/K8). K2 is Stoop de Groenteboer, K8 Naald en Masker.
       if (bezocht.length === 0) {
         var uiteindeIds = null;
         if (fase === 'dorendael') uiteindeIds = ['dd2_nummer2', 'dd8_stiltevijver'];
         else if (fase === 'sintdonatuslaan') uiteindeIds = ['h2_felixkamer', 'h8_steegje'];
+        else if (fase === 'kraaienkwartier') uiteindeIds = ['k1_groenteboer', 'k1_naaldmasker'];
         if (uiteindeIds) {
           bezocht = locaties.filter(function (l) { return uiteindeIds.indexOf(l.id) !== -1; });
         }
