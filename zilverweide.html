@@ -168,13 +168,9 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-label{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase}
 .inv-items{display:flex;gap:6px;flex-wrap:wrap}
 .inv-item{font-size:1.1rem;cursor:default}
-/* Inventaris-balk klikbaar en sierlijk (opent het overzicht). */
-.inventory-bar{cursor:pointer;transition:background .25s ease}
-.inventory-bar:hover{background:rgba(30,22,10,.95)}
-.inventory-bar:hover .inv-label{color:var(--gold)}
-.inv-label{display:flex;align-items:center;gap:.4rem;transition:color .25s ease}
-.inv-label::before{content:'🎒';font-size:.95rem}
-.inv-open-hint{font-size:.58rem;color:var(--gold-dim);letter-spacing:.14em;opacity:.7;margin-left:.35rem;text-transform:none}
+/* Het woord "Inventaris" is een klikbare knop met rand (opent het overzicht). */
+.inv-label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid rgba(201,168,76,.45);border-radius:50px;padding:.28rem .85rem;transition:all .22s ease}
+.inv-label:hover{color:var(--gold);border-color:rgba(201,168,76,.85);background:rgba(201,168,76,.1);box-shadow:0 0 14px rgba(201,168,76,.25)}
 /* Nieuw-voorwerp-melding bij de balk. */
 #nieuw-voorwerp-badge{position:fixed;top:.55rem;left:50%;transform:translateX(-50%) translateY(-10px);z-index:560;background:rgba(240,210,90,.96);color:#1a1208;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;padding:.42rem .95rem;border-radius:50px;box-shadow:0 0 26px rgba(240,205,80,.85);opacity:0;pointer-events:none;transition:opacity .3s ease, transform .3s ease}
 #nieuw-voorwerp-badge.zichtbaar{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -791,8 +787,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <p>De Rozen van Zilverweide speel je in liggende stand. Draai je telefoon of tablet een kwartslag.</p>
 </div>
 
-<div class="inventory-bar" id="inv-bar" style="display:none" onclick="openInventarisOverzicht()" title="Open je rugzak">
-  <span class="inv-label">Inventaris<span class="inv-open-hint">tik om te openen</span></span>
+<div class="inventory-bar" id="inv-bar" style="display:none">
+  <span class="inv-label" onclick="openInventarisOverzicht()" title="Open je rugzak">Inventaris</span>
   <div class="inv-items" id="inv-items"></div>
 </div>
 
