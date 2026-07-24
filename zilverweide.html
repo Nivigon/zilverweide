@@ -168,16 +168,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-label{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase}
 .inv-items{display:flex;gap:6px;flex-wrap:wrap}
 .inv-item{font-size:1.1rem;cursor:default}
-/* Inventaris-balk klikbaar en sierlijk (opent het overzicht). */
-.inventory-bar{cursor:pointer;transition:background .25s ease}
-.inventory-bar:hover{background:rgba(30,22,10,.95)}
-.inventory-bar:hover .inv-label{color:var(--gold)}
-.inv-label{display:flex;align-items:center;gap:.4rem;transition:color .25s ease}
-.inv-label::before{content:'🎒';font-size:.95rem}
-.inv-open-hint{font-size:.58rem;color:var(--gold-dim);letter-spacing:.14em;opacity:.7;margin-left:.35rem;text-transform:none}
-/* Nieuw-voorwerp-melding bij de balk. */
-#nieuw-voorwerp-badge{position:fixed;top:.55rem;left:50%;transform:translateX(-50%) translateY(-10px);z-index:560;background:rgba(240,210,90,.96);color:#1a1208;font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;padding:.42rem .95rem;border-radius:50px;box-shadow:0 0 26px rgba(240,205,80,.85);opacity:0;pointer-events:none;transition:opacity .3s ease, transform .3s ease}
-#nieuw-voorwerp-badge.zichtbaar{opacity:1;transform:translateX(-50%) translateY(0)}
+/* Het woord "Inventaris" is een klikbare knop met rand (opent het overzicht). */
+.inv-label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid rgba(201,168,76,.45);border-radius:50px;padding:.28rem .85rem;transition:all .22s ease}
+.inv-label:hover{color:var(--gold);border-color:rgba(201,168,76,.85);background:rgba(201,168,76,.1);box-shadow:0 0 14px rgba(201,168,76,.25)}
+/* Nieuw-voorwerp-melding naast de inventaris-knop: het item zelf licht 3s op. */
+#nieuw-voorwerp-melding{display:inline-flex;align-items:center;gap:.5rem;opacity:0;transform:translateX(-6px);transition:opacity .3s ease, transform .3s ease;pointer-events:none;padding:.24rem .7rem;border-radius:50px;background:rgba(240,210,90,.16);border:1px solid rgba(240,210,90,.55);box-shadow:0 0 20px rgba(240,205,80,.55)}
+#nieuw-voorwerp-melding.zichtbaar{opacity:1;transform:translateX(0)}
+#nieuw-voorwerp-melding .nvm-emoji{font-size:1.35rem;line-height:1}
+#nieuw-voorwerp-melding .nvm-naam{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.12em;color:#f4dd82;text-transform:uppercase;white-space:nowrap}
 /* Inventaris-overzicht: sfeervolle fade-in over het hele scherm. Onder de
    schaduw-lagen (fog 400, meter 540, puzzel 600), zodat de schaduw eroverheen
    valt; een observer sluit dit overzicht zodra de schaduw-puzzel verschijnt. */
@@ -791,13 +789,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <p>De Rozen van Zilverweide speel je in liggende stand. Draai je telefoon of tablet een kwartslag.</p>
 </div>
 
-<div class="inventory-bar" id="inv-bar" style="display:none" onclick="openInventarisOverzicht()" title="Open je rugzak">
-  <span class="inv-label">Inventaris<span class="inv-open-hint">tik om te openen</span></span>
-  <div class="inv-items" id="inv-items"></div>
+<div class="inventory-bar" id="inv-bar" style="display:none">
+  <span class="inv-label" onclick="openInventarisOverzicht()" title="Open je rugzak">Inventaris</span>
+  <div id="nieuw-voorwerp-melding" aria-live="polite"></div>
 </div>
-
-<!-- ══ NIEUW-VOORWERP-MELDING ══ -->
-<div id="nieuw-voorwerp-badge">Nieuw voorwerp</div>
 
 <!-- ══ INVENTARIS-OVERZICHT (sfeervolle fade-in) ══ -->
 <div id="inventaris-overzicht" aria-hidden="true">
@@ -3102,7 +3097,7 @@ function addInventory(emoji, naam, toonPopup=true) {
     }
     if (toonPopup) {
       toonToast(emoji, naam);
-      nieuwVoorwerpMelding();
+      nieuwVoorwerpMelding(emoji, naam);
     }
     // Als dit item een Kraaienkwartier-key is, ook story-teller updaten.
     // Alleen als KK actief is (Dorendael niet open, want dan switcht
@@ -3122,10 +3117,9 @@ function updateInventoryBar() {
   // Reset finale popup flag if tokens are no longer all present
   if (!alleFinaleCodesVerzameld()) state.finalePopupGetoond = false;
   const bar = document.getElementById('inv-bar');
-  const items = document.getElementById('inv-items');
-  bar.style.display = 'flex';
-  items.innerHTML = state.inventory.map(i => '<span class="inv-item" title="' + i.naam + '">' + i.emoji + '</span>').join('');
-  // Missie-teller verschijnt rechts naast de items zodra Dorendael open is.
+  if (bar) bar.style.display = 'flex';
+  // De voorwerpen staan niet meer op de balk; ze zijn te vinden in het
+  // inventaris-overzicht. Een nieuw voorwerp verschijnt kort naast de knop.
   updateMissieTeller();
 }
 
@@ -3188,12 +3182,14 @@ function toonInventarisItem(idx) {
 // licht op en goed.mp3 speelt; na 3 seconden verdwijnt de badge en komt de
 // muziek terug. Eigen geluidselement en pauze-vlag, los van het verhaalstap-
 // geluid, zodat ze elkaar niet in de weg zitten.
-function nieuwVoorwerpMelding() {
-  var badge = document.getElementById('nieuw-voorwerp-badge');
-  if (!badge) return;
+function nieuwVoorwerpMelding(emoji, naam) {
+  var box = document.getElementById('nieuw-voorwerp-melding');
+  if (!box) return;
+  box.innerHTML = '<span class="nvm-emoji">' + (emoji || '') + '</span>' +
+                  '<span class="nvm-naam">' + (naam || 'Nieuw voorwerp') + '</span>';
   var bg = document.getElementById('bg-music');
   if (bg && !bg.paused) { bg.pause(); window._nvMuziekPauze = true; }
-  badge.classList.add('zichtbaar');
+  box.classList.add('zichtbaar');
   try {
     if (!window._nvGeluid) {
       window._nvGeluid = new Audio('geluid/keuzegeluid/goed.mp3');
@@ -3204,7 +3200,7 @@ function nieuwVoorwerpMelding() {
   } catch (e) {}
   clearTimeout(window._nvTimer);
   window._nvTimer = setTimeout(function () {
-    badge.classList.remove('zichtbaar');
+    box.classList.remove('zichtbaar');
     if (window._nvMuziekPauze) {
       window._nvMuziekPauze = false;
       var b = document.getElementById('bg-music');
