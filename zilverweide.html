@@ -168,14 +168,16 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-label{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase}
 .inv-items{display:flex;gap:6px;flex-wrap:wrap}
 .inv-item{font-size:1.1rem;cursor:default}
-/* Het woord "Inventaris" is een klikbare knop met rand (opent het overzicht). */
-.inv-label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid rgba(201,168,76,.45);border-radius:50px;padding:.28rem .85rem;transition:all .22s ease}
-.inv-label:hover{color:var(--gold);border-color:rgba(201,168,76,.85);background:rgba(201,168,76,.1);box-shadow:0 0 14px rgba(201,168,76,.25)}
-/* Rond telcirkeltje: aantal voorwerpen. Knippert zolang er iets nieuws in zit
-   dat nog niet bekeken is; stopt zodra de rugzak geopend wordt. */
-.inv-teller{display:inline-flex;align-items:center;justify-content:center;width:1.55rem;height:1.55rem;border-radius:50%;border:1px solid rgba(201,168,76,.45);background:rgba(201,168,76,.1);color:var(--gold);font-family:'Cinzel',serif;font-size:.72rem;line-height:1;cursor:pointer;flex-shrink:0;transition:all .22s ease}
+/* Inventaris-knop: het woord in een pil-rand met een telcirkeltje dat rechts
+   overlapt (opent het overzicht). Het cirkeltje toont het aantal, of een
+   streepje als de rugzak leeg is, en knippert bij iets nieuws. */
+.inv-knop{position:relative;display:inline-flex;align-items:center;cursor:pointer}
+.inv-label{display:inline-flex;align-items:center;border:1px solid rgba(201,168,76,.5);border-radius:50px;padding:.32rem 2.1rem .32rem 1rem;transition:all .22s ease}
+.inv-knop:hover .inv-label{color:var(--gold);border-color:rgba(201,168,76,.9);background:rgba(201,168,76,.08);box-shadow:0 0 14px rgba(201,168,76,.22)}
+.inv-teller{position:absolute;top:50%;right:-.4rem;transform:translateY(-50%);width:2rem;height:2rem;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(18,12,6,.96);border:1px solid rgba(201,168,76,.6);color:var(--gold);font-family:'Cinzel',serif;font-size:.8rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.5);transition:all .22s ease}
+.inv-knop:hover .inv-teller{border-color:rgba(201,168,76,.9)}
 .inv-teller.knippert{animation:invTellerKnipper 1.05s ease-in-out infinite}
-@keyframes invTellerKnipper{0%,100%{box-shadow:0 0 0 0 rgba(240,205,80,0);border-color:rgba(201,168,76,.45);background:rgba(201,168,76,.1);color:var(--gold)}50%{box-shadow:0 0 14px 2px rgba(240,205,80,.7);border-color:rgba(255,226,110,.95);background:rgba(240,210,90,.4);color:#1a1208}}
+@keyframes invTellerKnipper{0%,100%{box-shadow:0 2px 8px rgba(0,0,0,.5);border-color:rgba(201,168,76,.6);background:rgba(18,12,6,.96);color:var(--gold)}50%{box-shadow:0 0 16px 3px rgba(240,205,80,.75);border-color:rgba(255,226,110,.95);background:rgba(240,210,90,.45);color:#1a1208}}
 /* Nieuw-voorwerp-melding naast de inventaris-knop: het item zelf licht 3s op. */
 #nieuw-voorwerp-melding{display:inline-flex;align-items:center;gap:.5rem;opacity:0;transform:translateX(-6px);transition:opacity .3s ease, transform .3s ease;pointer-events:none;padding:.24rem .7rem;border-radius:50px;background:rgba(240,210,90,.16);border:1px solid rgba(240,210,90,.55);box-shadow:0 0 20px rgba(240,205,80,.55)}
 #nieuw-voorwerp-melding.zichtbaar{opacity:1;transform:translateX(0)}
@@ -197,8 +199,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-divider::before{background:linear-gradient(to right,transparent,rgba(201,168,76,.55))}
 .inv-ov-divider::after{background:linear-gradient(to left,transparent,rgba(201,168,76,.55))}
 .inv-ov-divider span{color:var(--gold);font-size:.85rem;text-shadow:0 0 12px rgba(201,168,76,.5)}
-.inv-ov-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;align-content:flex-start;justify-content:center;margin-top:1.5rem;max-width:540px;width:100%;flex:1;overflow-y:auto}
-.inv-ov-kaart{min-height:118px;background:linear-gradient(160deg,rgba(46,32,14,.7),rgba(20,14,7,.6));border:1px solid rgba(201,168,76,.28);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:.7rem .5rem;cursor:pointer;transition:all .2s ease;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.inv-ov-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:112px;gap:.9rem;align-content:start;justify-content:center;margin:1.5rem auto 0;max-width:480px;width:100%;flex:0 0 auto;overflow-y:auto}
+.inv-ov-kaart{background:linear-gradient(160deg,rgba(46,32,14,.7),rgba(20,14,7,.6));border:1px solid rgba(201,168,76,.28);border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;padding:.6rem .4rem;cursor:pointer;transition:all .2s ease;font-family:inherit;box-shadow:0 6px 18px rgba(0,0,0,.4)}
 .inv-ov-kaart:hover{border-color:rgba(201,168,76,.65);background:linear-gradient(160deg,rgba(64,44,18,.8),rgba(30,20,10,.7));box-shadow:0 0 22px rgba(201,168,76,.22) inset,0 6px 18px rgba(0,0,0,.45);transform:translateY(-2px)}
 /* Leeg compartiment (vaste vakjes-look). */
 .inv-ov-vak-leeg{background:linear-gradient(160deg,rgba(22,15,7,.5),rgba(10,7,3,.42));border:1px dashed rgba(201,168,76,.15);box-shadow:inset 0 2px 12px rgba(0,0,0,.45);cursor:default}
@@ -810,8 +812,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 </div>
 
 <div class="inventory-bar" id="inv-bar" style="display:none">
-  <span class="inv-label" onclick="openInventarisOverzicht()" title="Open je rugzak">Inventaris</span>
-  <span id="inv-teller" class="inv-teller" title="Aantal voorwerpen" onclick="openInventarisOverzicht()" style="display:none">0</span>
+  <span class="inv-knop" onclick="openInventarisOverzicht()" title="Open je rugzak">
+    <span class="inv-label">Inventaris</span>
+    <span id="inv-teller" class="inv-teller" title="Aantal voorwerpen">&#8210;</span>
+  </span>
   <div id="nieuw-voorwerp-melding" aria-live="polite"></div>
 </div>
 
@@ -3155,8 +3159,7 @@ function updateInvTeller() {
   var t = document.getElementById('inv-teller');
   if (!t) return;
   var n = state.inventory.length;
-  t.textContent = n;
-  t.style.display = n > 0 ? 'inline-flex' : 'none';
+  t.textContent = n > 0 ? n : '‒';   // figuur-streepje als de rugzak leeg is
   if (window._rugzakNieuw && n > 0) t.classList.add('knippert');
   else t.classList.remove('knippert');
 }
@@ -3186,7 +3189,12 @@ function sluitInventarisOverzicht() {
   ov._sluitTimer = setTimeout(function () { ov.style.display = 'none'; }, 450);
 }
 // Items met een eigen afbeelding i.p.v. een emoji (op naam). Uitbreidbaar.
-var ITEM_AFBEELDINGEN = { 'Nat Dagboek': 'items/viesdagboekitem.png' };
+var ITEM_AFBEELDINGEN = {
+  'Nat Dagboek':  'items/viesdagboekitem.png',
+  'Microfoon':    'items/microfoonitem.png',   // Fenna's microfoon
+  'Breiwerkje':   'items/lucindeitem.png',      // Felix' Lucinde-vermomming
+  'Kromme Speld': 'items/spijkeritem.png'       // Jan's lockpick-speld
+};
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
 function itemVisueel(naam, emoji, klasse) {
@@ -9259,9 +9267,28 @@ function ontvangRoddels() {
   );
 }
 
+// Het herstelde dagboek blijft in het dorpsarchief; Kelly draagt het niet als
+// item. Deze helper zet de gedeelde vlaggen die anders via geefItem zouden
+// lopen: dagboek_gerestaureerd (archief/filmpje) en kk_sleutel_dagboek
+// (teamteller). De _kkSleutelGemeld-markering voorkomt dat de gedeelde-state-
+// listener straks dezelfde stap-melding nog eens geeft.
+function dagboekHersteldFlags() {
+  setSharedState('dagboek_gerestaureerd', true);
+  _kkSleutelGemeld['kk_sleutel_dagboek'] = true;
+  setSharedState('kk_sleutel_dagboek', true);
+}
+
 function restaureerDagboek() {
   state.inventory = state.inventory.filter(i => i.naam !== 'Nat Dagboek');
-  geefItem('📖', 'Leesbaar Dagboek 🔑');
+  // Herstelde dagboek blijft in het archief (geen inventaris-item bij Kelly).
+  dagboekHersteldFlags();
+  updateInventoryBar();
+  // Verhaalstap "dagboek leesbaar" laten afgaan (flash + geluid + teller), net
+  // zoals de andere Kraaienkwartier-keys dat via addInventory deden.
+  if (actieveMissieZone() === 'kraaienkwartier') {
+    var dagboekKey = KRAAIEN_MISSIE_KEYS.find(function(k){ return k.id === 'dagboek'; });
+    if (dagboekKey) onMissieKeyVoltooid(dagboekKey.label);
+  }
   setTimeout(checkAllTokens, 3000);
   toonLade(
     '📖  Dagboek hersteld',
@@ -11514,7 +11541,10 @@ function debugVermomFelix(naam) {
 
 function alleFinaleCodesVerzameld() {
   const h = (naam) => !!state.inventory.find(i => i.naam === naam);
-  return h('Leesbaar Dagboek 🔑') && h('Sleutel Wallingen 🔑') && h('Robbie staat klaar 🔑');
+  // Het dagboek is geen inventaris-item meer (blijft in het archief); we kijken
+  // naar de gedeelde teamvlag i.p.v. het item. De andere twee sleutels blijven
+  // per inventaris gecheckt.
+  return !!getSharedState('kk_sleutel_dagboek') && h('Sleutel Wallingen 🔑') && h('Robbie staat klaar 🔑');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -12217,7 +12247,7 @@ function buildDebugPanel() {
     const p = state.personage;
     const heeftMicro   = !!state.inventory.find(i => i.naam === 'Microfoon');
     const robbieKlaar  = !!state.inventory.find(i => i.naam === 'Robbie staat klaar 🔑');
-    const dagboekKlaar = !!state.inventory.find(i => i.naam === 'Leesbaar Dagboek 🔑');
+    const dagboekKlaar = !!getSharedState('dagboek_gerestaureerd');
     const sleutelKlaar = !!state.inventory.find(i => i.naam === 'Sleutel Wallingen 🔑');
     btns = [
       // ── Kelly & de put
@@ -12256,7 +12286,7 @@ function buildDebugPanel() {
       ['🔑 + Robbie akkoord (skip lied)', function(){ debugItem('🔑','Robbie staat klaar 🔑'); }, !robbieKlaar, 'Robbie & het lied'],
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
-      ['📖 + Leesbaar Dagboek',       function(){ geefItem('📖','Leesbaar Dagboek 🔑'); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
+      ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
       // ── Felix & vermommingen
       ['💰 + Munten van Stoop',       function(){ debugItem('💰','Munten van Stoop'); }, p === 'felix', 'Felix & vermommingen'],
       ['💰 + Munten van Bewoner',     function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix', 'Felix & vermommingen'],
@@ -12267,7 +12297,7 @@ function buildDebugPanel() {
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
-      ['🏆 Alle 3 tokens geven',      function(){ geefItem('📖','Leesbaar Dagboek 🔑'); addInventory('🔑','Sleutel Wallingen 🔑',false); addInventory('🔑','Robbie staat klaar 🔑',false); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🏆 Alle 3 tokens geven',      function(){ dagboekHersteldFlags(); addInventory('🔑','Sleutel Wallingen 🔑',false); addInventory('🔑','Robbie staat klaar 🔑',false); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
