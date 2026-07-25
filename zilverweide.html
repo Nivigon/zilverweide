@@ -210,6 +210,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   border-radius:50%;
   overflow:hidden;
   pointer-events:none;
+  animation:dpHeksKijk 6s ease-in-out infinite;   /* kijkt subtiel rond terwijl het open is */
+}
+/* De beweging blijft binnen het dikste deel van de sikkel, zodat het oog nooit
+   op het goud komt. */
+@keyframes dpHeksKijk{
+  0%, 74%   { left:64.5%; top:28%; }
+  80%       { left:66%;   top:28.3%; }   /* even naar rechts kijken */
+  86%       { left:63.4%; top:27.8%; }   /* dan naar links */
+  92%, 100% { left:64.5%; top:28%; }
 }
 .dp-oog-heks{
   position:absolute;
@@ -227,6 +236,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 }
 @media (prefers-reduced-motion: reduce){
   .dp-oog-heks{animation:none;opacity:0;}
+  .dp-oog-slot{animation:none;}
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
