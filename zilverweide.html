@@ -198,21 +198,32 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    masker opent, heel even kijkt, en weer sluit. Geen pupil, alleen rechts.
    Een knipoog naar de heks van deze straat. Het schijnt door het transparante
    oog-gat; het masker zelf blijft gewoon staan. */
-.dp-oog-heks{
+/* Slot dat exact over het RECHTER oog-gat ligt; overflow:hidden kapselt de
+   rode gloed in, zodat die nooit buiten het gat op het goud valt. Zo lijkt het
+   oog echt door het gat te komen, ook al is het masker ijl. Ligt achter het
+   masker (z-index 0). */
+.dp-oog-slot{
   position:absolute;
   z-index:0;
-  left:66.5%; top:26%; width:13%; height:7.5%;
+  left:66%; top:25.5%;
+  width:15%; height:11%;
   border-radius:50%;
-  background:radial-gradient(ellipse at center, #ff6a55 0%, #ff0c22 48%, rgba(190,0,18,0) 82%);
-  box-shadow:0 0 7px 2px rgba(255,24,34,.6);
+  overflow:hidden;
+  pointer-events:none;
+}
+.dp-oog-heks{
+  position:absolute;
+  inset:-35%;   /* vult het slot ruim; de zachte gloed-randen worden geklipt */
+  border-radius:50%;
+  background:radial-gradient(ellipse at center, #ff7a63 0%, #ff0c22 50%, rgba(150,0,14,0) 85%);
   opacity:0;
   animation:dpHeksOog 6s ease-in-out infinite;
 }
 @keyframes dpHeksOog{
-  0%, 68%   { opacity:0; }   /* dicht: donker gat */
-  78%       { opacity:1; }   /* het oog opent */
-  90%       { opacity:1; }   /* kijkt heel even */
-  97%, 100% { opacity:0; }   /* en sluit weer */
+  0%, 68%   { opacity:0; }    /* dicht: donker gat */
+  78%       { opacity:.7; }   /* het oog opent (70%) */
+  90%       { opacity:.7; }   /* kijkt heel even */
+  97%, 100% { opacity:0; }    /* en sluit weer */
 }
 @media (prefers-reduced-motion: reduce){
   .dp-oog-heks{animation:none;opacity:0;}
@@ -332,6 +343,11 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-emoji.item-afbeelding{width:6rem;height:6rem}
 .inv-ov-detail-emoji.item-afbeelding{width:7rem;height:7rem}
 .nvm-emoji.item-afbeelding{width:1.5rem;height:1.5rem;vertical-align:middle;filter:none}
+/* Het muntenzakje vult maar een klein deel van zijn canvas (veel lege ruimte),
+   waardoor het klein oogt. Schaal het op zodat het net zo groot oogt als de
+   andere item-plaatjes zoals het dagboek. */
+.inv-ov-emoji.item-afbeelding[src$="munten.png"],
+.inv-ov-detail-emoji.item-afbeelding[src$="munten.png"]{transform:scale(1.6)}
 .inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.95rem;color:var(--parchment);text-align:center;line-height:1.2}
 .inv-ov-leeg{color:var(--mist);font-style:italic;text-align:center;line-height:1.9;margin-top:3rem}
 .inv-ov-leeg::before{content:'❦';display:block;font-family:'Cinzel',serif;font-size:2rem;color:var(--gold-dim);opacity:.55;margin-bottom:.8rem}
@@ -1233,8 +1249,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <div class="screen" id="screen-dorpsplein" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
   <span class="dp-maskers-wrap" aria-hidden="true">
+    <span class="dp-oog-slot"><span class="dp-oog-heks"></span></span>
     <img class="dp-maskers" src="ui/dorpsplein/maskers.png" alt="">
-    <span class="dp-oog-heks"></span>
   </span>
   <div style="padding:4rem 0 1rem;text-align:center;position:relative;z-index:1">
     <div style="font-size:2rem;margin-bottom:.5rem">👥</div>
