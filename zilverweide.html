@@ -748,13 +748,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    'm hier in CSS zodat hij ongeveer dezelfde lichaamsmaat in beeld toont.
    Hij wordt iets uit beeld geschoven aan de onderkant, net als Kelly. */
 #char-pop img.pop-jan{height:78vh;max-height:680px;margin-bottom:-8vh}
-#char-bubble{position:absolute;left:75%;bottom:65%;width:max-content;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
+#char-bubble{position:absolute;left:75%;bottom:65%;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
 #char-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-left:0;transform:skewX(-15deg)}
-/* Rechter tekstballon (bij de npc-pop): spiegelbeeld van char-bubble, staart
-   naar rechts richting het portret. Gebruikt o.a. bij de put-reünie. */
-#npc-bubble{position:absolute;right:72%;bottom:65%;width:max-content;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal;text-align:left}
-#npc-bubble::after{content:'';position:absolute;bottom:-12px;right:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-right:0;transform:skewX(15deg)}
-@media (max-width:900px){#char-bubble,#npc-bubble{max-width:210px;font-size:.88rem}}
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 /* ══ TOAST ══ */
 #spel-toast{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%) translateY(16px);z-index:450;width:min(340px,90vw);background:rgba(13,10,6,.97);border:1px solid rgba(201,168,76,.45);border-radius:6px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.75rem;opacity:0;transition:opacity .35s ease,transform .35s ease;pointer-events:none;overflow:hidden}
@@ -9160,46 +9155,28 @@ function checkKellyOntsnap(val) {
   }
 }
 
-// Tekstballon bij de rechter (npc-)pop tonen of verbergen; de pop zelf blijft
-// staan (toonNpcPop regelt het portret).
-function zetNpcBubbel(tekst) {
-  var b = document.getElementById('npc-bubble');
-  if (!b) return;
-  if (tekst) { b.textContent = tekst; b.style.display = 'block'; }
-  else { b.style.display = 'none'; b.textContent = ''; }
-}
-
-// De reünie na de put-redding: Kelly (eigen pop links) en Jan (npc-pop rechts)
-// praten via speechbubbels, één regel per keer, met een Verder-knop. Zo staat
-// hun communicatie bij de pops aan de zijkant, net als na de intro.
+// De reünie na de put-redding: exact dezelfde tweezijdige pop-dialoog als na de
+// intro (toonPopDialoog), met de donkere naam-tekstballonnen bij de pops.
+// Kelly links, Jan rechts; per regel een Verder-knop.
 function speelPutReunie() {
   var cont = document.getElementById('locatie-content');
-  if (cont) {
-    cont.innerHTML =
-      '<div style="position:absolute;left:0;right:0;bottom:2.4rem;display:flex;justify-content:center;z-index:160">' +
-        '<button class="btn" id="put-reunie-knop" style="min-width:150px">Verder →</button>' +
-      '</div>';
-  }
+  if (cont) cont.innerHTML = '';                 // code-invoer + dialoog weg
+  var charPop = document.getElementById('char-pop');
+  if (charPop) charPop.style.display = 'none';    // eigen pop wijkt voor de dialoog-pops
   var gegniffel = !tobbeIsWeg();
-  toonNpcPop('karakters/spelers/jan-pop.png');   // Jan rechtsonder
+  var kelly = { img: 'karakters/spelers/kelly-pop.png', naam: 'Kelly', tekst: 'Jan! Je bent er. Ik wist dat jij me eruit zou krijgen.' };
   var stappen = [
-    { kant: 'kelly', tekst: 'Je klimt de put uit, doorweekt en dolblij, en vliegt Jan om zijn nek.' },
-    { kant: 'jan',   tekst: 'Hohoho, graag gedaan! Maar misschien moet je je eerst even afborstelen, boekenwurm.' }
+    { links: kelly, rechts: null },
+    { links: kelly, rechts: { img: 'karakters/spelers/jan-pop.png', naam: 'Jan', tekst: 'Hohoho, graag gedaan! Maar misschien moet je je eerst even afborstelen, boekenwurm.' } }
   ];
-  if (gegniffel) stappen.push({ kant: 'jan', tekst: 'Hé maar Kel... hoor je dat gegniffel ook?' });
-  var i = 0;
-  function toon() {
-    var s = stappen[i];
-    if (s.kant === 'kelly') { toonCharPop(s.tekst); zetNpcBubbel(null); }
-    else                    { toonCharPop(null);    zetNpcBubbel(s.tekst); }
+  if (gegniffel) {
+    stappen.push({ links: kelly, rechts: { img: 'karakters/spelers/jan-pop.png', naam: 'Jan', tekst: 'Hé, maar Kel... hoor je dat gegniffel ook?' } });
   }
-  var knop = document.getElementById('put-reunie-knop');
-  if (knop) knop.onclick = function() {
-    i++;
-    if (i >= stappen.length) { zetNpcBubbel(null); goBackFromLocatie(); return; }
-    toon();
-  };
-  toon();
+  toonPopDialoog(stappen, function() {
+    var cp = document.getElementById('char-pop');
+    if (cp) cp.style.display = '';
+    goBackFromLocatie();
+  });
 }
 
 // Heeft Kelly op dit moment de ECHTE schaduw-vloek al? (doolhof, H7-drank of
@@ -11892,10 +11869,6 @@ function toonNpcPop(imgPath) {
 function verbergNpcPop(instant) {
   const el = document.getElementById('npc-pop');
   if (!el) return;
-  // Een eventuele reünie-tekstballon meteen opruimen, zodat die niet blijft
-  // hangen bij een volgende npc-pop.
-  var bub = document.getElementById('npc-bubble');
-  if (bub) { bub.style.display = 'none'; bub.textContent = ''; }
   if (instant) {
     // Directe hide zonder transitie (vanuit showScreen).
     el.style.transition = 'none';
