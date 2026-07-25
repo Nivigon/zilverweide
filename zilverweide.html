@@ -443,6 +443,38 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .schaduw-range input[type=range]{width:100%;accent-color:#8b1a1a;margin-top:.25rem}
 #schaduw-speed-val{color:var(--gold)}
 #schaduw-status{font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim);margin-top:.5rem;padding-top:.45rem;border-top:1px solid rgba(201,168,76,.12)}
+/* ── Overworld-introductie (eerste aankomst op de kaart) ──
+   Zelfde verduistering als de schaduwmeter- en archief-uitleg. Het uitgelichte
+   element wordt tijdelijk boven de overlay getild (ow-intro-lift op de vaste
+   container, ow-intro-spot op het doel zelf voor de gouden gloed). Tijdens de
+   uitleg is niets klikbaar behalve de Verder-knop. */
+#ow-intro-overlay{position:fixed;inset:0;z-index:9000;background:rgba(3,2,5,.9);animation:fadeIn .5s ease;touch-action:none}
+/* Het paneel staat LOS van de overlay in de body (z-index boven de opgelichte
+   elementen), zodat een groot uitgelicht element (zoals de dorpsplein-tegel op
+   telefoon) er nooit overheen valt. */
+.ow-intro-paneel{position:fixed;z-index:9600;left:50%;transform:translateX(-50%);bottom:max(1.2rem,env(safe-area-inset-bottom,0px));width:min(560px,calc(100vw - 2rem));background:rgba(13,10,6,.96);border:1px solid rgba(201,168,76,.45);border-radius:8px;padding:1.1rem 1.4rem 1.2rem;text-align:center;box-shadow:0 0 44px rgba(0,0,0,.65);animation:fadeIn .5s ease}
+.ow-intro-paneel.midden{bottom:auto;top:50%;transform:translate(-50%,-50%)}
+.ow-intro-tekst{font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1.08rem;line-height:1.65;color:var(--parchment);margin:0 0 1rem;transition:opacity .22s ease}
+.ow-intro-knop{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.7rem 2rem;border:1px solid rgba(201,168,76,.5);background:transparent;color:var(--gold);cursor:pointer;border-radius:3px;transition:background .2s}
+.ow-intro-knop:hover{background:rgba(201,168,76,.12)}
+.ow-intro-lift{z-index:9500 !important;pointer-events:none !important}
+.ow-intro-spot{animation:owIntroGloed 1.6s ease-in-out infinite;border-radius:50px}
+.zone-tile.ow-intro-spot{border-radius:6px;z-index:9500;pointer-events:none}
+.ow-intro-dim{opacity:.15 !important}
+@keyframes owIntroGloed{
+  0%,100%{box-shadow:0 0 14px rgba(240,205,80,.4)}
+  50%{box-shadow:0 0 0 4px rgba(240,210,90,.15),0 0 32px rgba(240,205,80,.85)}
+}
+/* Telefoon liggend: compacter paneel, rechtsonder gedokt. Daar is bij elke
+   stap vrije ruimte: de dorpsplein-tegel staat links op de kaart, en de
+   uitgelichte knoppen bovenin raken de hoek rechtsonder niet. De welkomst
+   (.midden) blijft gewoon gecentreerd. */
+@media (max-height:520px){
+  .ow-intro-paneel{padding:.7rem 1rem .75rem;left:auto;right:.7rem;transform:none;width:min(46vw,380px);bottom:.7rem}
+  .ow-intro-paneel.midden{right:auto;left:50%;width:min(520px,calc(100vw - 1.4rem))}
+  .ow-intro-tekst{font-size:.92rem;line-height:1.5;margin-bottom:.6rem}
+  .ow-intro-knop{padding:.5rem 1.5rem;font-size:.72rem}
+}
 /* Missie-teller: flash animatie wanneer er een key wordt aangevinkt. */
 #missie-teller.missie-flash{
   background:rgba(240,210,90,.6)!important;
@@ -1843,6 +1875,7 @@ const VISITED_FLAGS = {
   dorendael_intro_gezien:     'De welkomst-pop-up bij Dorendael is getoond',
   sintdonatuslaan_unlocked:   'Heer Donatuslaan is ontgrendeld',
   intro_filmpje_gezien:       'Het intro-filmpje op het podium is bekeken',
+  overworld_intro_gezien:     'De kaart-introductie (eerste aankomst op de overworld) is getoond',
 
   // Kelly bij de put
   kelly_in_put:               'Kelly is in de dorpsput gevallen',
@@ -2126,8 +2159,15 @@ function updateMissieTeller() {
   if (!wrap || !tekst) return;
   const zone = verhaalFaseZone();
   if (!zone) {
-    // Geen actieve zone (nog geen rol gekozen): verberg.
-    wrap.style.display = 'none';
+    // Nog geen verhaal-fase (voor het Kraaienkwartier): toon de teller alvast
+    // neutraal zodra er een rol gekozen is, zodat spelers hem vanaf de kaart
+    // al kennen (overworld-introductie). Zonder rol blijft hij verborgen.
+    if (state.personage) {
+      wrap.style.display = 'flex';
+      tekst.textContent = 'Verhaal: ‒';
+    } else {
+      wrap.style.display = 'none';
+    }
     return;
   }
   wrap.style.display = 'flex';
@@ -2233,6 +2273,104 @@ function sluitMissiePaneel() {
 function _missieBuitenklik(e) {
   var teller = document.getElementById('missie-teller');
   if (teller && !teller.contains(e.target)) sluitMissiePaneel();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Overworld-introductie — eerste aankomst op de kaart. Zelfde
+// verduistering als de schaduwmeter- en archief-uitleg: alles wordt
+// donker, per stap licht één element op en alleen de Verder-knop is
+// klikbaar. Pas na de laatste stap ontgrendelt het scherm weer.
+// De uitleg-tekst staat op een vaste plek onderin (behalve de welkomst,
+// die staat in het midden), zodat hij nergens de kaart bedekt.
+// ─────────────────────────────────────────────────────────────────
+var _owIntroBezig = false;
+function startOverworldIntro() {
+  if (_owIntroBezig || hasVisited('overworld_intro_gezien')) return;
+  var scherm = document.getElementById('screen-overworld');
+  if (!scherm || !scherm.classList.contains('active')) return;
+  _owIntroBezig = true;
+  // Zorg dat de (neutrale) verhaal-teller zichtbaar is voordat hij oplicht.
+  updateMissieTeller();
+
+  var stappen = [
+    { midden: true,
+      tekst: 'Welkom in Zilverweide. We gaan je kort op weg helpen.' },
+    { lift: '#inv-bar', doel: '#inv-bar .inv-knop',
+      tekst: 'Dit is je inventaris. Druk hierop om te zien welke voorwerpen je hebt verzameld. Het kleine rondje geeft aan hoeveel voorwerpen je hebt. Knippert het rondje, dan zit er een nieuw voorwerp in je inventaris.' },
+    { lift: '#topright-cluster', doel: '#missie-teller', dim: ['#avatar-badge'],
+      tekst: 'Dit is jullie verhaalscore. Als deze vol is, kunnen jullie naar een volgend deel van het verhaal. Je kunt erop drukken om terug te lezen wat jullie al gedaan hebben. Er staat niet wat er nog moet gebeuren, dat moeten jullie zelf uitvinden.' },
+    { lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller'],
+      tekst: 'Vraag je je af hoe je gekozen karakter ook alweer was? Druk dan hierop, dan kun je het altijd nog even teruglezen.' },
+    { doel: '#tile-dorpsplein',
+      tekst: 'Door op deze knoppen op de kaart te drukken bezoek je een deel van het dorp. Voer je daarna de code van de bordjes in, dan bezoek je een locatie. Jullie verhaal gaat starten bij het podium. Ik zou daar snel heen gaan. Succes!' }
+  ];
+
+  var overlay = document.createElement('div');
+  overlay.id = 'ow-intro-overlay';
+  document.body.appendChild(overlay);
+  // Het paneel staat los van de overlay in de body: zo tekent het boven de
+  // opgelichte elementen (die tot boven de overlay getild worden).
+  var paneel = document.createElement('div');
+  paneel.className = 'ow-intro-paneel';
+  paneel.innerHTML =
+    '<p class="ow-intro-tekst"></p>' +
+    '<button class="ow-intro-knop">Verder →</button>';
+  document.body.appendChild(paneel);
+  var tekstEl = paneel.querySelector('.ow-intro-tekst');
+  var knop    = paneel.querySelector('.ow-intro-knop');
+
+  var opruimSpot = null;
+  function zetSpot(stap) {
+    if (opruimSpot) { opruimSpot(); opruimSpot = null; }
+    if (!stap.doel) return;
+    var doel = document.querySelector(stap.doel);
+    var lift = stap.lift ? document.querySelector(stap.lift) : doel;
+    var dims = (stap.dim || []).map(function (s) { return document.querySelector(s); }).filter(Boolean);
+    if (lift) lift.classList.add('ow-intro-lift');
+    if (doel) {
+      doel.classList.add('ow-intro-spot');
+      // Op korte schermen kan de dorpsplein-tegel deels buiten beeld staan.
+      try { doel.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    }
+    dims.forEach(function (d) { d.classList.add('ow-intro-dim'); });
+    opruimSpot = function () {
+      if (lift) lift.classList.remove('ow-intro-lift');
+      if (doel) doel.classList.remove('ow-intro-spot');
+      dims.forEach(function (d) { d.classList.remove('ow-intro-dim'); });
+    };
+  }
+
+  var i = -1;
+  function toonStap(nieuw) {
+    var eerste = i < 0;
+    i = nieuw;
+    var s = stappen[i];
+    tekstEl.style.opacity = '0';
+    setTimeout(function () {
+      paneel.classList.toggle('midden', !!s.midden);
+      tekstEl.textContent = s.tekst;
+      zetSpot(s);
+      tekstEl.style.opacity = '1';
+    }, eerste ? 0 : 220);
+  }
+
+  knop.addEventListener('click', function () {
+    if (i < stappen.length - 1) { toonStap(i + 1); return; }
+    // Klaar: opruimen en het scherm weer vrijgeven.
+    if (opruimSpot) { opruimSpot(); opruimSpot = null; }
+    markVisited('overworld_intro_gezien');
+    [overlay, paneel].forEach(function (el) {
+      el.style.transition = 'opacity .5s';
+      el.style.opacity = '0';
+    });
+    setTimeout(function () {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (paneel.parentNode) paneel.parentNode.removeChild(paneel);
+      _owIntroBezig = false;
+    }, 500);
+  });
+
+  toonStap(0);
 }
 
 // Achtergrondmuziek even dempen zodat het verhaalstap-geluid (goed.mp3) er
@@ -2942,6 +3080,14 @@ function showScreen(id) {
     }
   }
   if (id === 'screen-overworld') { state.activeKwartier = null; setTimeout(checkAllTokens, 500); setTimeout(checkDorendaelTokens, 500); setTimeout(checkHeerDonatusTokens, 500); setTimeout(updateOverworldTiles, 50); }
+  // Eerste aankomst op de kaart: korte introductie (inventaris, verhaalscore,
+  // rol, dorpsplein). Niet tijdens debug-skips; die markeren de flag zelf.
+  if (id === 'screen-overworld' && state.personage && !state.debugSkipBezig &&
+      !hasVisited('overworld_intro_gezien')) {
+    setTimeout(function () {
+      if (!state.debugSkipBezig) startOverworldIntro();
+    }, 600);
+  }
   if (id === 'screen-locatie' && state.lastZone === 'kraaienkwartier') setTimeout(checkAllTokens, 600);
   if (id === 'screen-kwartier1' || id === 'screen-dorpsplein') setTimeout(checkAllTokens, 500);
   if (id === 'screen-dorendael' || id === 'screen-dorpsplein') setTimeout(checkDorendaelTokens, 500);
@@ -13076,6 +13222,7 @@ function buildDebugPanel() {
     label = 'Algemeen';
     btns = [
       ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
+      ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
       ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
       ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }],
@@ -13194,6 +13341,8 @@ function debugSkipIntroFilmpje() {
   // Markeer intro-filmpje als gezien
   markVisited('intro_filmpje_gezien');
   markVisited('dorpsplein_incident');
+  // Kaart-introductie niet alsnog tonen bij een test-skip.
+  markVisited('overworld_intro_gezien');
   // Ontgrendel beide zones
   zoneUnlocked['dorpsplein'] = true;
   unlockZone('kraaienkwartier');
@@ -13212,6 +13361,7 @@ function debugSkipNaarDorendael() {
   // Alle vlaggen die nodig zouden zijn als de speler de hele Kraaienkwartier-route had gespeeld
   markVisited('intro_filmpje_gezien');
   markVisited('dorpsplein_incident');
+  markVisited('overworld_intro_gezien');
   markVisited('kelly_in_put');
   markVisited('kelly_gered');
   markVisited('tobbe_gevonden');
