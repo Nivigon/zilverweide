@@ -1081,6 +1081,24 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   #screen-locatie .sc-dialog-tekst { font-size: .9rem !important; line-height: 1.4 !important; }
   #char-pop img { height: 46vh !important; max-height: 240px !important; }
   #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
+  /* NPC-pop krijgt dezelfde verkleining als de speler-pop hierboven. */
+  #npc-pop img { height: 46vh !important; max-height: 240px !important; }
+  /* Pop-beleid op korte schermen: een pop mag over de RAND VAN DE AFBEELDING
+     vallen (het personage staat voor de scene, dat oogt bewust zo), maar
+     nooit over tekst of knoppen. Daarom eindigen de dialoogbox (inclusief de
+     verder-knop aan de rechterkant) en de acties-zone (knoppen, code-invoer)
+     voor de pop-strook. Zelfde rekentruc als de char-pop regel verderop:
+     popbreedte minus de vrije marge naast de kolom (50vw - 410px); op brede
+     schermen wordt dat nul en verandert er niets. De NPC-reserve is 0.39 van
+     de schermhoogte (breedste pop, Stoop met hoed, is ~0.85 van zijn hoogte
+     van 46vh), met een plafond passend bij de max-hoogte van 240px. */
+  body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog,
+  body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-acties-mount {
+    margin-right: max(0px, calc(min(205px, var(--vh100) * .39) - 50vw + 410px)) !important;
+  }
+  body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-acties-mount {
+    margin-left: max(0px, calc(min(290px, var(--vh100) * .33) - 50vw + 410px)) !important;
+  }
 }
 /* Speler-pop valt over de dialoogtekst (tablet en telefoon). Zodra de pop
    zichtbaar is (inline opacity 1, gezet door toonCharPop), begint de
@@ -9205,8 +9223,15 @@ function checkKellyOntsnap(val) {
 // intro (toonPopDialoog), met de donkere naam-tekstballonnen bij de pops.
 // Kelly links, Jan rechts; per regel een Verder-knop.
 function speelPutReunie() {
+  // De scene zelf (titel plus put-afbeelding) blijft gewoon staan; alleen de
+  // dialoogbox en de code-invoer gaan weg. De Verder-knop van de dialoog
+  // landt dan netjes in de acties-zone, zoals bij de intro.
   var cont = document.getElementById('locatie-content');
-  if (cont) cont.innerHTML = '';                 // code-invoer + dialoog weg
+  if (cont) {
+    cont.querySelectorAll('.sc-dialog').forEach(function (el) { el.remove(); });
+    var mount = cont.querySelector('.sc-acties-mount');
+    if (mount) { mount.innerHTML = ''; mount.style.display = ''; }
+  }
   var charPop = document.getElementById('char-pop');
   if (charPop) charPop.style.display = 'none';    // eigen pop wijkt voor de dialoog-pops
   verbergNpcPop(true);                             // Kelly-NPC rechtsonder weg: de
