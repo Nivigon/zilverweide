@@ -1137,6 +1137,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
   /* NPC-pop krijgt dezelfde verkleining als de speler-pop hierboven. */
   #npc-pop img { height: 46vh !important; max-height: 240px !important; }
+  /* toonPopDialoog (bv. de put-reünie): eigen los overlay-systeem, dus een
+     eigen verkleining nodig. Zonder dit botste de linker/rechter bubbel met
+     de rol-badge/verhaalscore rechtsboven, en de pop-afbeelding met de
+     locatie-aanduider rechtsonder (getest en bevestigd op 375-520px hoogte,
+     inclusief Jans grotere variant). */
+  .pop-bubble { bottom: 42vh !important; max-width: min(220px, 40vw) !important; padding: .5rem .7rem !important; }
+  .pop-bubble .pop-naam { font-size: .55rem !important; margin-bottom: .2rem !important; }
+  .pop-bubble .pop-tekst { font-size: .8rem !important; line-height: 1.4 !important; }
+  /* bottom:50px tilt de pop op, boven de locatie-aanduider rechtsonder uit
+     (die zit op dit formaat rond de 37px hoog inclusief marge); de hogere
+     bubbel-positie hierboven voorkomt dat de twee elkaar overlappen. */
+  .pop-img { height: 28vh !important; max-height: 145px !important; bottom: 50px !important; }
   /* Pop-beleid op korte schermen: een pop mag over de RAND VAN DE AFBEELDING
      vallen (het personage staat voor de scene, dat oogt bewust zo), maar
      nooit over tekst of knoppen. Daarom eindigen de dialoogbox (inclusief de
