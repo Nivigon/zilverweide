@@ -3653,7 +3653,8 @@ var ITEM_AFBEELDINGEN = {
   'Kromme Speld':         'items/spijkeritem.png',      // Jan's lockpick-speld
   'Zakje Munten':         'items/munten.png',           // Jan in Heer Donatuslaan
   'Munten van de Bewoner':'items/munten.png',           // Felix bij DD2
-  'Munten van Stoop':     'items/munten.png'            // Felix bij K2 (Stoop)
+  'Munten van Stoop':     'items/munten.png',           // Felix bij K2 (Stoop)
+  'Tobbe':                'items/tobbeitem.png'          // het jongetje (Kraaienkwartier)
 };
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
@@ -9129,7 +9130,7 @@ function neemTobbeeMee() {
   setSharedState('tobbe_gevonden', true);
   addInventory('👦', 'Tobbe', false);
   toonLade(
-    '👦  Tobbe gevonden',
+    'Tobbe gevonden',
     '<p style="font-size:1rem;color:var(--parchment);font-style:italic">Een schichtige jongen die beweert verdwaald te zijn. Hij zegt bij Stoop de groenteboer te werken.</p>',
     'Verder →',
     // Hij heeft Tobbe nu bij zich: terug de straat op, richting Stoop.
