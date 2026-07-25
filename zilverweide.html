@@ -1174,11 +1174,25 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    linkermarge van die kolom ((100vw - 820)/2 = 50vw - 410px). Op brede schermen
    (desktop/tablet-liggend) is dat verschil nul of negatief, dus dan schuift er
    niets meer op; op smalle schermen (telefoon) waar de pop de dialoog echt
-   overlapt, ontstaat precies genoeg ruimte. Pop-breedte is ongeveer 0.33 van de
-   schermhoogte, met een plafond (de pop heeft een max-hoogte). Oudere browsers
-   zonder :has negeren de regel (oude gedrag, geen regressie). */
+   overlapt, ontstaat precies genoeg ruimte. Gemeten (niet aangenomen): elke
+   pop-afbeelding heeft een vaste breedte/hoogte-verhouding van exact 2/3, dus
+   bij het plafond van 480px is de reserve 320px (480 * 2/3), schalend met
+   0.55vh * 2/3 = 0.367vh zolang de pop nog niet tegen het plafond zit. De
+   eerdere 290px/0.33-aanname was net te krap: onopgemerkt op brede laptop-
+   schermen (daar was toch al genoeg natuurlijke marge), maar gaf een kleine
+   overlap op tablet-breedte (1180px), de belangrijkste doelgroep. Oudere
+   browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, calc(min(290px, var(--vh100) * 0.33) - 50vw + 410px)) !important;
+  padding-left: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
+/* Zelfde probleem, spiegelbeeld: een NPC-pop (bv. Stoop) staat rechts op de
+   schermrand en kan de dialoogbox (en de verder-knop daarin) overlappen.
+   Deze regel bestond alleen binnen de korte-scherm-media-query hieronder,
+   dus was er op grotere hoogtes (bv. tablet-liggend, 1180x820) helemaal geen
+   bescherming: Stoop overlapte daar de tekst en de verder-knop. Zelfde
+   rekentruc en dezelfde 2/3-verhouding als de char-pop-regel hierboven. */
+body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
+  margin-right: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
 }
 /* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
    van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
