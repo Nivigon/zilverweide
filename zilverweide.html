@@ -11054,9 +11054,12 @@ function podiumAftellen(tellerEl, beginKnop, actiesMount, locContent) {
   var bgMusic = document.getElementById('bg-music');
   if (bgMusic) bgMusic.pause();
 
-  // Speel intro-geluid eenmalig
-  var introSound = new Audio('geluid/intro/introsound.mp3');
-  introSound.play().catch(function () {});
+  // Speel intro-geluid eenmalig. Referentie vasthouden op window: een vers
+  // new Audio() wordt door de browser soms opgeruimd voordat het klaar is
+  // met laden en speelt dan niet (zelfde reden als window._missieGeluid
+  // hierboven).
+  window._podiumIntroSound = new Audio('geluid/intro/introsound.mp3');
+  window._podiumIntroSound.play().catch(function () {});
 
   var aftelInterval = setInterval(function () {
     tel--;
@@ -11156,18 +11159,21 @@ function podiumVillagerSequence(locContent) {
     }, 200);
   }, 12100);
 
-  // Fase 6: shock-geluid net voor het trillen
+  // Fase 6: shock-geluid net voor het trillen. Referentie op window (zelfde
+  // reden als window._podiumIntroSound hierboven): dit zijn al de derde en
+  // vierde losse new Audio()-instanties in deze ene sequence, en zonder
+  // vaste referentie kan de browser er eentje opruimen voor hij is geladen.
   setTimeout(function () {
-    var shockSound = new Audio('geluid/intro/shock.mp3');
-    shockSound.play().catch(function () {});
+    window._podiumShockSound = new Audio('geluid/intro/shock.mp3');
+    window._podiumShockSound.play().catch(function () {});
   }, 15800);
 
   // Fase 6b: na 2.5 seconden zichtbaar, scherm trillen (2 seconden)
   setTimeout(function () {
     document.body.classList.add('zv-schud');
-    var lachSound = new Audio('geluid/intro/lach.mp3');
-    lachSound.play().catch(function () {});
-    lachSound.addEventListener('ended', function () {
+    window._podiumLachSound = new Audio('geluid/intro/lach.mp3');
+    window._podiumLachSound.play().catch(function () {});
+    window._podiumLachSound.addEventListener('ended', function () {
       window._introLoop = new Audio('geluid/intro/introsound2.mp3');
       window._introLoop.loop = true;
       window._introLoop.play().catch(function () {});
