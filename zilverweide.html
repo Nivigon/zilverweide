@@ -1102,7 +1102,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    zodat niets meer bedekt wordt. Tablets (hoger dan 520px) blijven exact zoals
    ze waren; de regels raken alleen schermen tot 520px hoog. */
 @media (max-height: 520px) {
-  .sc-image { max-height: min(42vh, calc(var(--vh100) - 155px)) !important; }
+  /* Gemeten (niet aangenomen): met de oude 42vh/155px-reserve scrolde het
+     scherm alsnog bij een langere dialoogregel (bv. Felix die Kelly in de
+     put herkent), zelfs tot aan de bovengrens van 520px hoogte. Deze reserve
+     is gefit op de langste voorkomende openingsregel, met een kleine marge,
+     zodat er op geen enkele hoogte in dit bereik meer gescrold hoeft te
+     worden — de harde regel uit CLAUDE.md ("geen scrollen, nooit"). */
+  .sc-image { max-height: min(20vh, calc(var(--vh100) - 290px)) !important; }
   /* Het heks-keuzegrid is op dit scherm de hoofdinhoud (geen grote dialoog
      eronder), dus krijgt meer hoogte dan een gewone scene-afbeelding, zodat de
      portretten niet tot alleen de bovenkant van de hoofden worden afgeknipt.
