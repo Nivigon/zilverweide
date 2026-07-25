@@ -168,27 +168,58 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   .doorn-hart{animation:none;opacity:0;}
   .doorn-gloed{animation:none;opacity:.10;}
 }
-/* De theatermaskers boven het Dorpsplein-invoerveld: subtiel en klein. Ze
-   'knipperen' 1x per 6s (een korte, snelle oog-dip via scaleY plus een
-   lichte opacity-dip), zodat het masker heel even levend lijkt. */
+/* De theatermaskers als achtergrond-silhouet op het Dorpsplein (zoals de
+   gargoyle op Heer Donatuslaan): groot en ijl, achter de inhoud. Het masker
+   blijft de hele tijd zichtbaar; alleen de ogen 'knipperen' 1x per 6s, alsof
+   er iemand achter het masker zit. De oog-gaten zijn transparant; een goud
+   ooglid (mask-kleur) vult ze heel even => oog dicht, en verdwijnt weer. */
+.dp-maskers-wrap{
+  position:absolute;
+  top:1.4rem;
+  right:1.6rem;
+  width:min(20vw, 132px);
+  aspect-ratio:443 / 537;
+  pointer-events:none;
+  z-index:0;
+}
+@media (max-width:640px){
+  .dp-maskers-wrap{width:26vw;top:1rem;right:1rem}
+}
 .dp-maskers{
   display:block;
-  width:min(15vw, 70px);
+  width:100%;
   height:auto;
-  margin:0 auto;
-  opacity:.5;
-  pointer-events:none;
-  filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));
-  transform-origin:center 42%;   /* rond de ooghoogte, zodat de dip als knipperen leest */
-  animation:maskerKnipper 6s ease-in-out infinite;
+  opacity:.16;
+  position:relative;
+  z-index:1;   /* boven de oog-gloed, die door de transparante gaten schijnt */
+  filter:drop-shadow(0 8px 20px rgba(0,0,0,.5));
 }
-@keyframes maskerKnipper{
-  0%, 90%, 100% { transform:scaleY(1);  opacity:.5;  }
-  92.5%         { transform:scaleY(.9); opacity:.24; }   /* ogen dicht: korte dip */
-  95%           { transform:scaleY(1);  opacity:.5;  }   /* weer open */
+/* Zachte gloed achter de twee oog-gaten: alsof er iemand achter het masker zit
+   en door de ogen kijkt. Ze schijnen door de transparante gaten. De gloed
+   'knippert' 1x per 6s (heel even uit), dus de ogen lijken te knipperen; het
+   masker zelf blijft gewoon staan. */
+.dp-oog{
+  position:absolute;
+  z-index:0;
+  border-radius:50%;
+  background:radial-gradient(ellipse at center,
+     rgba(255,236,198,.9) 0%,
+     rgba(232,192,120,.5) 45%,
+     rgba(210,170,90,0) 75%);
+  filter:blur(2px);
+  opacity:.42;
+  animation:dpOogKnipper 6s ease-in-out infinite;
+}
+/* Gecentreerd op de twee gemeten oog-gaten, iets ruimer voor een zachte gloed. */
+.dp-oog-l{ left:15%;   top:34.5%; width:29%; height:16%; }
+.dp-oog-r{ left:59.5%; top:21%;   width:28%; height:18%; }
+@keyframes dpOogKnipper{
+  0%, 89%, 100% { opacity:.42; }   /* ogen 'aan': iemand kijkt door de gaten */
+  92%           { opacity:0;   }   /* knippert: heel even dicht */
+  95%           { opacity:.42; }   /* weer open */
 }
 @media (prefers-reduced-motion: reduce){
-  .dp-maskers{animation:none;}
+  .dp-oog{animation:none;}
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
@@ -1203,15 +1234,19 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   </div>
 
 </div>
-<div class="screen" id="screen-dorpsplein">
+<div class="screen" id="screen-dorpsplein" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
-  <div style="padding:4rem 0 1rem;text-align:center">
+  <span class="dp-maskers-wrap" aria-hidden="true">
+    <img class="dp-maskers" src="ui/dorpsplein/maskers.png" alt="">
+    <span class="dp-oog dp-oog-l"></span>
+    <span class="dp-oog dp-oog-r"></span>
+  </span>
+  <div style="padding:4rem 0 1rem;text-align:center;position:relative;z-index:1">
     <div style="font-size:2rem;margin-bottom:.5rem">👥</div>
     <h2 style="font-family:'Cinzel',serif;font-size:1.4rem;color:var(--gold);letter-spacing:.08em">Het Dorpsplein</h2>
     <p style="color:var(--mist);font-style:italic;font-size:.9rem;margin-top:.3rem">Het hart van Zilverweide — waar alles begon</p>
   </div>
-  <div style="margin-top:1.5rem;display:flex;flex-direction:column;align-items:center;gap:10px">
-    <img class="dp-maskers" src="ui/dorpsplein/maskers.png" alt="" aria-hidden="true">
+  <div style="margin-top:1.5rem;display:flex;flex-direction:column;align-items:center;gap:10px;position:relative;z-index:1">
     <div style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.3rem">Welke locatie ga je bezoeken?</div>
     <input class="code-input" id="dp-locatie-input" type="text" placeholder="Voer code in..." maxlength="5" oninput="checkDorpspleinLocatie(this.value)">
     <div class="code-error" id="dp-locatie-msg"></div>
