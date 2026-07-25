@@ -1162,6 +1162,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
   padding-left: max(0px, calc(min(290px, var(--vh100) * 0.33) - 50vw + 410px)) !important;
 }
+/* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
+   van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
+   afmetingen) was te krap: op brede schermen (laptop, tablet-liggend) viel
+   de dialoogtekst onder zijn schouder. Gemeten (niet aangenomen): Jans pop
+   heeft een breedte/hoogte-verhouding van exact 2/3, dus bij zijn plafond
+   van 680px is de reserve 453px (680 * 2/3), en die schaalt mee met 0.78vh
+   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. Hogere
+   specificiteit dan de regel hierboven (extra id + klasse in :has), dus
+   deze wint automatisch wanneer Jan in beeld is. */
+body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .sc-dialog-body {
+  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
+}
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
 /* De speler-pop (links onder) valt over de eerste verdachte-tegel op het
