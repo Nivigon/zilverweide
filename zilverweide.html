@@ -749,6 +749,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .crawl-text .crawl-rose{font-size:2rem;display:block;margin:2rem 0;animation:roseGlow 2s ease-in-out infinite}
 .crawl-skip{position:absolute;bottom:1.5rem;right:1.5rem;z-index:100;background:rgba(0,0,0,.6);border:1px solid rgba(201,168,76,.3);border-radius:3px;padding:.5rem 1rem;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--gold-dim);cursor:pointer;text-transform:uppercase}
 .crawl-skip:hover{color:var(--gold);border-color:var(--gold)}
+/* TIJDELIJK (testmodus): schuifje boven de snelstart-namen dat bepaalt of
+   de kaart-introductie (oplichtende knoppen) bij een snelstart meespeelt. */
+.ssi-toggle{display:flex;align-items:center;gap:.45rem;justify-content:flex-end;cursor:pointer;user-select:none;margin-bottom:.2rem}
+.ssi-toggle .ssi-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase}
+.ssi-toggle input{display:none}
+.ssi-schuif{position:relative;width:30px;height:16px;border-radius:50px;background:rgba(0,0,0,.6);border:1px solid rgba(201,168,76,.35);transition:background .25s,border-color .25s;flex:0 0 auto}
+.ssi-schuif::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--gold-dim);transition:left .25s,background .25s}
+.ssi-toggle input:checked + .ssi-schuif{background:rgba(201,168,76,.3);border-color:var(--gold)}
+.ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
 @keyframes roseGlow{0%,100%{text-shadow:0 0 8px rgba(155,58,74,.6)}50%{text-shadow:0 0 20px rgba(155,58,74,1),0 0 40px rgba(155,58,74,.4)}}
 @keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.85}94%{opacity:1}96%{opacity:.9}97%{opacity:1}}
 .interactie-btn{position:fixed;bottom:4.5rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.3);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -1093,7 +1102,13 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    zodat niets meer bedekt wordt. Tablets (hoger dan 520px) blijven exact zoals
    ze waren; de regels raken alleen schermen tot 520px hoog. */
 @media (max-height: 520px) {
-  .sc-image { max-height: min(42vh, calc(var(--vh100) - 155px)) !important; }
+  /* Gemeten (niet aangenomen): met de oude 42vh/155px-reserve scrolde het
+     scherm alsnog bij een langere dialoogregel (bv. Felix die Kelly in de
+     put herkent), zelfs tot aan de bovengrens van 520px hoogte. Deze reserve
+     is gefit op de langste voorkomende openingsregel, met een kleine marge,
+     zodat er op geen enkele hoogte in dit bereik meer gescrold hoeft te
+     worden — de harde regel uit CLAUDE.md ("geen scrollen, nooit"). */
+  .sc-image { max-height: min(20vh, calc(var(--vh100) - 290px)) !important; }
   /* Het heks-keuzegrid is op dit scherm de hoofdinhoud (geen grote dialoog
      eronder), dus krijgt meer hoogte dan een gewone scene-afbeelding, zodat de
      portretten niet tot alleen de bovenkant van de hoofden worden afgeknipt.
@@ -1122,6 +1137,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
   /* NPC-pop krijgt dezelfde verkleining als de speler-pop hierboven. */
   #npc-pop img { height: 46vh !important; max-height: 240px !important; }
+  /* toonPopDialoog (bv. de put-reünie): eigen los overlay-systeem, dus een
+     eigen verkleining nodig. Zonder dit botste de linker/rechter bubbel met
+     de rol-badge/verhaalscore rechtsboven, en de pop-afbeelding met de
+     locatie-aanduider rechtsonder (getest en bevestigd op 375-520px hoogte,
+     inclusief Jans grotere variant). */
+  .pop-bubble { bottom: 42vh !important; max-width: min(220px, 40vw) !important; padding: .5rem .7rem !important; }
+  .pop-bubble .pop-naam { font-size: .55rem !important; margin-bottom: .2rem !important; }
+  .pop-bubble .pop-tekst { font-size: .8rem !important; line-height: 1.4 !important; }
+  /* bottom:50px tilt de pop op, boven de locatie-aanduider rechtsonder uit
+     (die zit op dit formaat rond de 37px hoog inclusief marge); de hogere
+     bubbel-positie hierboven voorkomt dat de twee elkaar overlappen. */
+  .pop-img { height: 28vh !important; max-height: 145px !important; bottom: 50px !important; }
   /* Pop-beleid op korte schermen: een pop mag over de RAND VAN DE AFBEELDING
      vallen (het personage staat voor de scene, dat oogt bewust zo), maar
      nooit over tekst of knoppen. Daarom eindigen de dialoogbox (inclusief de
@@ -1147,11 +1174,37 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    linkermarge van die kolom ((100vw - 820)/2 = 50vw - 410px). Op brede schermen
    (desktop/tablet-liggend) is dat verschil nul of negatief, dus dan schuift er
    niets meer op; op smalle schermen (telefoon) waar de pop de dialoog echt
-   overlapt, ontstaat precies genoeg ruimte. Pop-breedte is ongeveer 0.33 van de
-   schermhoogte, met een plafond (de pop heeft een max-hoogte). Oudere browsers
-   zonder :has negeren de regel (oude gedrag, geen regressie). */
+   overlapt, ontstaat precies genoeg ruimte. Gemeten (niet aangenomen): elke
+   pop-afbeelding heeft een vaste breedte/hoogte-verhouding van exact 2/3, dus
+   bij het plafond van 480px is de reserve 320px (480 * 2/3), schalend met
+   0.55vh * 2/3 = 0.367vh zolang de pop nog niet tegen het plafond zit. De
+   eerdere 290px/0.33-aanname was net te krap: onopgemerkt op brede laptop-
+   schermen (daar was toch al genoeg natuurlijke marge), maar gaf een kleine
+   overlap op tablet-breedte (1180px), de belangrijkste doelgroep. Oudere
+   browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, calc(min(290px, var(--vh100) * 0.33) - 50vw + 410px)) !important;
+  padding-left: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
+/* Zelfde probleem, spiegelbeeld: een NPC-pop (bv. Stoop) staat rechts op de
+   schermrand en kan de dialoogbox (en de verder-knop daarin) overlappen.
+   Deze regel bestond alleen binnen de korte-scherm-media-query hieronder,
+   dus was er op grotere hoogtes (bv. tablet-liggend, 1180x820) helemaal geen
+   bescherming: Stoop overlapte daar de tekst en de verder-knop. Zelfde
+   rekentruc en dezelfde 2/3-verhouding als de char-pop-regel hierboven. */
+body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
+  margin-right: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
+/* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
+   van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
+   afmetingen) was te krap: op brede schermen (laptop, tablet-liggend) viel
+   de dialoogtekst onder zijn schouder. Gemeten (niet aangenomen): Jans pop
+   heeft een breedte/hoogte-verhouding van exact 2/3, dus bij zijn plafond
+   van 680px is de reserve 453px (680 * 2/3), en die schaalt mee met 0.78vh
+   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. Hogere
+   specificiteit dan de regel hierboven (extra id + klasse in :has), dus
+   deze wint automatisch wanneer Jan in beeld is. */
+body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .sc-dialog-body {
+  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
 }
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
@@ -1247,6 +1300,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <!-- TIJDELIJK (testmodus): snelstart-knoppen, rechtstreeks naar de
        overworld als dat personage. Verwijderen vóór productie. -->
   <div style="position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:.6rem">
+    <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
+      <span class="ssi-label">Kaart-uitleg</span>
+      <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
+      <span class="ssi-schuif"></span>
+    </label>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
@@ -3690,9 +3748,27 @@ function resetSpel() {
   showScreen('screen-personages');
 }
 
+// TIJDELIJK (testmodus): schuifje op het splash-scherm dat bepaalt of de
+// kaart-introductie bij een snelstart meespeelt. De keuze wordt in
+// localStorage bewaard zodat hij testronde na testronde blijft staan.
+function zetSnelstartIntro(aan) {
+  window._snelstartIntroAan = !!aan;
+  try { localStorage.setItem('zw_snelstart_intro', aan ? '1' : '0'); } catch (e) {}
+}
+(function initSnelstartIntro() {
+  var bewaard = null;
+  try { bewaard = localStorage.getItem('zw_snelstart_intro'); } catch (e) {}
+  // Standaard aan: zo zie je wat een echte speler ziet, tenzij je hem uitzet.
+  window._snelstartIntroAan = bewaard !== '0';
+  var check = document.getElementById('snelstart-intro-check');
+  if (check) check.checked = window._snelstartIntroAan;
+})();
+
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
 // achtergrondmuziek, die normaal pas bij "Begin" aangaat.
 function debugSnelstart(p) {
+  // Kaart-introductie overslaan als het schuifje uit staat.
+  if (!window._snelstartIntroAan) markVisited('overworld_intro_gezien');
   var m = document.getElementById('bg-music');
   if (m) { m.volume = 0.45; m.play().catch(function(){}); }
   // Reset de cruciale gedeelde vlaggen zodat oude Firebase-data van een
