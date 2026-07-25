@@ -168,6 +168,28 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   .doorn-hart{animation:none;opacity:0;}
   .doorn-gloed{animation:none;opacity:.10;}
 }
+/* De theatermaskers boven het Dorpsplein-invoerveld: subtiel en klein. Ze
+   'knipperen' 1x per 6s (een korte, snelle oog-dip via scaleY plus een
+   lichte opacity-dip), zodat het masker heel even levend lijkt. */
+.dp-maskers{
+  display:block;
+  width:min(15vw, 70px);
+  height:auto;
+  margin:0 auto;
+  opacity:.5;
+  pointer-events:none;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));
+  transform-origin:center 42%;   /* rond de ooghoogte, zodat de dip als knipperen leest */
+  animation:maskerKnipper 6s ease-in-out infinite;
+}
+@keyframes maskerKnipper{
+  0%, 90%, 100% { transform:scaleY(1);  opacity:.5;  }
+  92.5%         { transform:scaleY(.9); opacity:.24; }   /* ogen dicht: korte dip */
+  95%           { transform:scaleY(1);  opacity:.5;  }   /* weer open */
+}
+@media (prefers-reduced-motion: reduce){
+  .dp-maskers{animation:none;}
+}
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
    onzichtbare rand). Statische PNG (werkt ook op iOS, waar een video zijn
@@ -1189,6 +1211,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <p style="color:var(--mist);font-style:italic;font-size:.9rem;margin-top:.3rem">Het hart van Zilverweide — waar alles begon</p>
   </div>
   <div style="margin-top:1.5rem;display:flex;flex-direction:column;align-items:center;gap:10px">
+    <img class="dp-maskers" src="ui/dorpsplein/maskers.png" alt="" aria-hidden="true">
     <div style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.3rem">Welke locatie ga je bezoeken?</div>
     <input class="code-input" id="dp-locatie-input" type="text" placeholder="Voer code in..." maxlength="5" oninput="checkDorpspleinLocatie(this.value)">
     <div class="code-error" id="dp-locatie-msg"></div>
