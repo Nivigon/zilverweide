@@ -194,32 +194,28 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   z-index:1;   /* boven de oog-gloed, die door de transparante gaten schijnt */
   filter:drop-shadow(0 8px 20px rgba(0,0,0,.5));
 }
-/* Zachte gloed achter de twee oog-gaten: alsof er iemand achter het masker zit
-   en door de ogen kijkt. Ze schijnen door de transparante gaten. De gloed
-   'knippert' 1x per 6s (heel even uit), dus de ogen lijken te knipperen; het
-   masker zelf blijft gewoon staan. */
-.dp-oog{
+/* Eén klein neon-rood oogje dat 1x per 6s in het RECHTER oog-gat van het
+   masker opent, heel even kijkt, en weer sluit. Geen pupil, alleen rechts.
+   Een knipoog naar de heks van deze straat. Het schijnt door het transparante
+   oog-gat; het masker zelf blijft gewoon staan. */
+.dp-oog-heks{
   position:absolute;
   z-index:0;
+  left:66.5%; top:26%; width:13%; height:7.5%;
   border-radius:50%;
-  background:radial-gradient(ellipse at center,
-     rgba(255,236,198,.9) 0%,
-     rgba(232,192,120,.5) 45%,
-     rgba(210,170,90,0) 75%);
-  filter:blur(2px);
-  opacity:.42;
-  animation:dpOogKnipper 6s ease-in-out infinite;
+  background:radial-gradient(ellipse at center, #ff6a55 0%, #ff0c22 48%, rgba(190,0,18,0) 82%);
+  box-shadow:0 0 7px 2px rgba(255,24,34,.6);
+  opacity:0;
+  animation:dpHeksOog 6s ease-in-out infinite;
 }
-/* Gecentreerd op de twee gemeten oog-gaten, iets ruimer voor een zachte gloed. */
-.dp-oog-l{ left:15%;   top:34.5%; width:29%; height:16%; }
-.dp-oog-r{ left:59.5%; top:21%;   width:28%; height:18%; }
-@keyframes dpOogKnipper{
-  0%, 89%, 100% { opacity:.42; }   /* ogen 'aan': iemand kijkt door de gaten */
-  92%           { opacity:0;   }   /* knippert: heel even dicht */
-  95%           { opacity:.42; }   /* weer open */
+@keyframes dpHeksOog{
+  0%, 68%   { opacity:0; }   /* dicht: donker gat */
+  78%       { opacity:1; }   /* het oog opent */
+  90%       { opacity:1; }   /* kijkt heel even */
+  97%, 100% { opacity:0; }   /* en sluit weer */
 }
 @media (prefers-reduced-motion: reduce){
-  .dp-oog{animation:none;}
+  .dp-oog-heks{animation:none;opacity:0;}
 }
 /* De gargoyle van Heer Donatuslaan: waakt hoog rechts in de kolom, volledig
    in beeld (de kolom is 680px; negatieve offsets kappen hem af op een
@@ -1238,8 +1234,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
   <span class="dp-maskers-wrap" aria-hidden="true">
     <img class="dp-maskers" src="ui/dorpsplein/maskers.png" alt="">
-    <span class="dp-oog dp-oog-l"></span>
-    <span class="dp-oog dp-oog-r"></span>
+    <span class="dp-oog-heks"></span>
   </span>
   <div style="padding:4rem 0 1rem;text-align:center;position:relative;z-index:1">
     <div style="font-size:2rem;margin-bottom:.5rem">👥</div>
