@@ -437,7 +437,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   top:calc(100% + .55rem);
   right:0;
   z-index:320;
-  width:min(320px,82vw);
+  width:min(340px,88vw);
   max-height:0;
   overflow:hidden;
   opacity:0;
@@ -450,6 +450,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   backdrop-filter:blur(8px);
   text-transform:none;
   letter-spacing:normal;
+  white-space:normal;   /* niet de nowrap van de teller-pill erven: regels mogen afbreken */
   transition:opacity .3s ease,transform .3s ease,max-height .35s ease,padding .35s ease;
   cursor:default;
 }
@@ -497,10 +498,20 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   text-shadow:0 0 8px rgba(201,168,76,.6);
 }
 .missie-paneel-tekst{
+  flex:1 1 auto;
+  min-width:0;              /* laat de tekst binnen de flex-regel afbreken */
+  overflow-wrap:break-word;
   font-family:'Crimson Text',Georgia,serif;
   font-size:.95rem;
   line-height:1.35;
   color:var(--parchment);
+}
+/* Korte schermen (telefoon in landscape): iets compacter zodat de hele lijst
+   in beeld past zonder te scrollen. */
+@media (max-height:520px){
+  .missie-paneel-tekst{font-size:.86rem;line-height:1.3}
+  .missie-paneel-lijn{padding:.3rem 0}
+  #missie-paneel.open{padding:.7rem .85rem .8rem}
 }
 .missie-paneel-leeg{
   font-family:'Crimson Text',Georgia,serif;
