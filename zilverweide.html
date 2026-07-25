@@ -205,20 +205,21 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .dp-oog-slot{
   position:absolute;
   z-index:0;
-  left:64.5%; top:28%;
-  width:6%; height:5%;
+  left:67.7%; top:30.15%;   /* midden van de grootste cirkel die in het gat past */
+  width:5%; height:4.1%;
   border-radius:50%;
   overflow:hidden;
   pointer-events:none;
-  animation:dpHeksKijk 6s ease-in-out infinite;   /* kijkt subtiel rond terwijl het open is */
+  animation:dpHeksKijk 6s ease-in-out infinite;   /* traag glarend oog */
 }
-/* De beweging blijft binnen het dikste deel van de sikkel, zodat het oog nooit
-   op het goud komt. */
+/* Een langzaam "glarend" oog: heel traag even naar links, dan naar rechts, dan
+   weg. De beweging blijft binnen de veilige cirkel in het gat, zodat het oog
+   nooit op het goud komt. */
 @keyframes dpHeksKijk{
-  0%, 74%   { left:64.5%; top:28%; }
-  80%       { left:66%;   top:28.3%; }   /* even naar rechts kijken */
-  86%       { left:63.4%; top:27.8%; }   /* dan naar links */
-  92%, 100% { left:64.5%; top:28%; }
+  0%, 54%   { left:67.7%; top:30.15%; }
+  72%       { left:66.8%; top:30.05%; }   /* heel langzaam naar links */
+  87%       { left:68.6%; top:30.3%; }    /* dan heel langzaam naar rechts */
+  94%, 100% { left:67.7%; top:30.15%; }
 }
 .dp-oog-heks{
   position:absolute;
@@ -229,10 +230,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   animation:dpHeksOog 6s ease-in-out infinite;
 }
 @keyframes dpHeksOog{
-  0%, 68%   { opacity:0; }    /* dicht: donker gat */
-  78%       { opacity:.7; }   /* het oog opent (70%) */
-  90%       { opacity:.7; }   /* kijkt heel even */
-  97%, 100% { opacity:0; }    /* en sluit weer */
+  0%, 48%   { opacity:0; }    /* dicht: donker gat */
+  56%       { opacity:.7; }   /* het oog opent langzaam (70%) */
+  88%       { opacity:.7; }   /* blijft even glaren */
+  94%, 100% { opacity:0; }    /* en dooft weer weg */
 }
 @media (prefers-reduced-motion: reduce){
   .dp-oog-heks{animation:none;opacity:0;}
