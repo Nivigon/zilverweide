@@ -11938,16 +11938,34 @@ function toonNpcPop(imgPath) {
     console.warn('NPC-pop kon niet laden: ' + imgPath);
     verbergNpcPop();
   };
+  // Flits-fix: het img-element houdt zijn OUDE beeld vast totdat het nieuwe
+  // bestand gedecodeerd is. Direct in-faden liet daardoor heel even de vorige
+  // NPC (bijvoorbeeld Stoop) op de nieuwe locatie zien. Daarom: eerst hard
+  // onzichtbaar (zonder transitie), en pas in-faden zodra het nieuwe beeld er
+  // echt is. el._gevraagd bewaakt dat een laat binnenkomende load geen pop
+  // meer toont als er intussen iets anders gevraagd of verborgen is.
+  el._gevraagd = imgPath;
+  var fadeIn = function () {
+    if (el._gevraagd !== imgPath) return;
+    el.style.opacity = '0';
+    void el.offsetWidth;
+    el.style.opacity = '1';
+  };
+  el.style.transition = 'none';
+  el.style.opacity = '0';
+  void el.offsetWidth;
+  el.style.transition = 'opacity .5s ease';
   img.src = imgPath;
   const moetSpiegelen = imgPath.includes('madeleine');
   img.style.transform = moetSpiegelen ? 'scaleX(-1)' : '';
-  el.style.opacity = '0';
-  void el.offsetWidth;
-  el.style.opacity = '1';
+  if (img.complete && img.naturalWidth > 0) fadeIn();
+  else img.onload = fadeIn;
 }
 function verbergNpcPop(instant) {
   const el = document.getElementById('npc-pop');
   if (!el) return;
+  // Late loads van een eerder gevraagde pop mogen niet meer in-faden.
+  el._gevraagd = null;
   if (instant) {
     // Directe hide zonder transitie (vanuit showScreen).
     el.style.transition = 'none';
