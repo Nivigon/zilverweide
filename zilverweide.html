@@ -205,20 +205,21 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .dp-oog-slot{
   position:absolute;
   z-index:0;
-  left:64.5%; top:28%;
-  width:6%; height:5%;
+  left:67.7%; top:30.15%;   /* midden van de grootste cirkel die in het gat past */
+  width:5%; height:4.1%;
   border-radius:50%;
   overflow:hidden;
   pointer-events:none;
-  animation:dpHeksKijk 6s ease-in-out infinite;   /* kijkt subtiel rond terwijl het open is */
+  animation:dpHeksKijk 6s ease-in-out infinite;   /* traag glarend oog */
 }
-/* De beweging blijft binnen het dikste deel van de sikkel, zodat het oog nooit
-   op het goud komt. */
+/* Een langzaam "glarend" oog: heel traag even naar links, dan naar rechts, dan
+   weg. De beweging blijft binnen de veilige cirkel in het gat, zodat het oog
+   nooit op het goud komt. */
 @keyframes dpHeksKijk{
-  0%, 74%   { left:64.5%; top:28%; }
-  80%       { left:66%;   top:28.3%; }   /* even naar rechts kijken */
-  86%       { left:63.4%; top:27.8%; }   /* dan naar links */
-  92%, 100% { left:64.5%; top:28%; }
+  0%, 54%   { left:67.7%; top:30.15%; }
+  72%       { left:66.8%; top:30.05%; }   /* heel langzaam naar links */
+  87%       { left:68.6%; top:30.3%; }    /* dan heel langzaam naar rechts */
+  94%, 100% { left:67.7%; top:30.15%; }
 }
 .dp-oog-heks{
   position:absolute;
@@ -229,10 +230,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   animation:dpHeksOog 6s ease-in-out infinite;
 }
 @keyframes dpHeksOog{
-  0%, 68%   { opacity:0; }    /* dicht: donker gat */
-  78%       { opacity:.7; }   /* het oog opent (70%) */
-  90%       { opacity:.7; }   /* kijkt heel even */
-  97%, 100% { opacity:0; }    /* en sluit weer */
+  0%, 48%   { opacity:0; }    /* dicht: donker gat */
+  56%       { opacity:.7; }   /* het oog opent langzaam (70%) */
+  88%       { opacity:.7; }   /* blijft even glaren */
+  94%, 100% { opacity:0; }    /* en dooft weer weg */
 }
 @media (prefers-reduced-motion: reduce){
   .dp-oog-heks{animation:none;opacity:0;}
@@ -8132,7 +8133,7 @@ function renderK1Nachtenwens(loc) {
     if (state.vermomming === 'Lucinde') {
       // Lucinde-flow: drie sub-staten
       dialog.push('Een groter huis met een beeldig tuintje. Na lang kloppen gaat de deur open. Mevr. van Wallingen ziet je en haar gezicht klaart op.');
-      const heeftToken = heeftItem('Sleutel Wallingen 🔑');
+      const heeftToken = !!getSharedState('kk_sleutel_wallingen');
       const infoAlOntvangen = hasVisited('wallingen_informatie_ontvangen');
       const eersteKeerToken = heeftToken && !hasVisited('wallingen_uitzwaai_gezien');
       if (!heeftToken && !infoAlOntvangen) {
@@ -8534,7 +8535,7 @@ function renderK1Nummer5(loc) {
   // snel doorklikt, kan gewoon terug naar dit scherm en het opnieuw lezen.
   if (!_robbieAangeklopt) {
     verbergNpcPop();
-    const robbieAf      = heeftItem('Robbie staat klaar 🔑');
+    const robbieAf      = !!getSharedState('kk_sleutel_robbie');
     const heeftMicro    = heeftItem('Microfoon');
     // Fenna wordt binnen verwacht zodra ze de microfoon heeft, én daarna nog
     // steeds: na het lied is ze hier vertrouwd. Ze klopt niet meer aan.
@@ -8593,7 +8594,7 @@ function renderK1Nummer5(loc) {
 
   if (p === 'fenna') {
     afbeelding = K1_BINNEN_ROBBIE;
-    const robbieKlaar = heeftItem('Robbie staat klaar 🔑');
+    const robbieKlaar = !!getSharedState('kk_sleutel_robbie');
     if (robbieKlaar) {
       // Token al verdiend: afsluiting van de Fenna-Robbie-flow
       dialog.push({ tekst: 'Je duwt de deur open. Robbie zit in zijn stoel, en veert overeind zodra hij je ziet. Hij hoeft niets meer te vragen.', onShow: toonRobbie });
@@ -9028,7 +9029,7 @@ function fennaZingtVoorRobbie() {
     ],
     extra: function (mount) {
       FennaLied.mount(mount, 'robbie', function () {
-        addInventory('🔑', 'Robbie staat klaar 🔑', false);
+        kkSleutelVerkregen('robbie');
         toonLade(
           '🎙️  Robbie is verkocht',
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Als de laatste regel wegsterft, blijft het even helemaal stil.</p>' +
@@ -9789,7 +9790,7 @@ function ontvangMunten() {
 
 function ontvangRoddels() {
   markVisited('wallingen_informatie_ontvangen');
-  addInventory('🔑', 'Sleutel Wallingen 🔑', false);
+  kkSleutelVerkregen('wallingen');
   setTimeout(checkAllTokens, 1500);
   toonLade(
     '🔑  Sleutel Wallingen verkregen',
@@ -9808,6 +9809,23 @@ function dagboekHersteldFlags() {
   setSharedState('dagboek_gerestaureerd', true);
   _kkSleutelGemeld['kk_sleutel_dagboek'] = true;
   setSharedState('kk_sleutel_dagboek', true);
+}
+
+// Kraaienkwartier-eindsleutel (Wallingen, Robbie) verkregen. Deze "sleutels"
+// zijn geen fysieke items meer (ze komen niet in de rugzak), maar tellen als
+// verhaalstap: we zetten de gedeelde teamvlag en geven dezelfde stap-melding
+// die voorheen via de item-flow kwam. _kkSleutelGemeld voorkomt dat de
+// gedeelde-state-listener dezelfde stap nog eens meldt op deze tablet.
+function kkSleutelVerkregen(id) {
+  var key = 'kk_sleutel_' + id;
+  var wasNieuw = !getSharedState(key);
+  _kkSleutelGemeld[key] = true;
+  setSharedState(key, true);
+  updateInventoryBar();   // verhaal-teller en finale-check verversen
+  if (wasNieuw && actieveMissieZone() === 'kraaienkwartier') {
+    var kkDef = KRAAIEN_MISSIE_KEYS.find(function(k){ return k.id === id; });
+    if (kkDef) onMissieKeyVoltooid(kkDef.label);
+  }
 }
 
 function restaureerDagboek() {
@@ -12077,11 +12095,12 @@ function debugVermomFelix(naam) {
 }
 
 function alleFinaleCodesVerzameld() {
-  const h = (naam) => !!state.inventory.find(i => i.naam === naam);
-  // Het dagboek is geen inventaris-item meer (blijft in het archief); we kijken
-  // naar de gedeelde teamvlag i.p.v. het item. De andere twee sleutels blijven
-  // per inventaris gecheckt.
-  return !!getSharedState('kk_sleutel_dagboek') && h('Sleutel Wallingen 🔑') && h('Robbie staat klaar 🔑');
+  // De drie eindsleutels zijn geen inventaris-items meer: het dagboek blijft in
+  // het archief, en Wallingen en Robbie zijn verhaalstappen. We kijken naar de
+  // gedeelde teamvlaggen i.p.v. de items.
+  return !!getSharedState('kk_sleutel_dagboek') &&
+         !!getSharedState('kk_sleutel_wallingen') &&
+         !!getSharedState('kk_sleutel_robbie');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -12783,9 +12802,9 @@ function buildDebugPanel() {
     label = 'Kraaienkwartier';
     const p = state.personage;
     const heeftMicro   = !!state.inventory.find(i => i.naam === 'Microfoon');
-    const robbieKlaar  = !!state.inventory.find(i => i.naam === 'Robbie staat klaar 🔑');
+    const robbieKlaar  = !!getSharedState('kk_sleutel_robbie');
     const dagboekKlaar = !!getSharedState('dagboek_gerestaureerd');
-    const sleutelKlaar = !!state.inventory.find(i => i.naam === 'Sleutel Wallingen 🔑');
+    const sleutelKlaar = !!getSharedState('kk_sleutel_wallingen');
     btns = [
       // ── Kelly & de put
       ['🕳️ Kelly valt in de put',    function(){ markVisited('kelly_in_put'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Kelly & de put'],
@@ -12823,7 +12842,7 @@ function buildDebugPanel() {
       // Ook het eerste bezoek meemarkeren: anders krijgt Fenna alsnog de volle
       // kennismakingsscene bij Robbie, terwijl je in de test al verder bent.
       ['🎤 + Microfoon',              function(){ markVisited('fenna_robbie_bezoek'); debugItem('🎙️','Microfoon'); }, p === 'fenna' && !heeftMicro, 'Robbie & het lied'],
-      ['🔑 + Robbie akkoord (skip lied)', function(){ debugItem('🔑','Robbie staat klaar 🔑'); }, !robbieKlaar, 'Robbie & het lied'],
+      ['✦ Robbie akkoord (skip lied)', function(){ kkSleutelVerkregen('robbie'); document.getElementById('debug-panel').style.display='none'; }, !robbieKlaar, 'Robbie & het lied'],
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
@@ -12833,11 +12852,11 @@ function buildDebugPanel() {
       ['🧶 + Lucinde-outfit',         function(){ addInventory('🧶','Breiwerkje',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
       ['💃 + Lola-outfit',            function(){ addInventory('💃','Latin Jurk',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
       // ── Sleutel
-      ['🔑 + Sleutel Wallingen',      function(){ debugItem('🔑','Sleutel Wallingen 🔑'); }, !sleutelKlaar, 'Sleutel'],
+      ['✦ Sleutel Wallingen',      function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Sleutel'],
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
-      ['🏆 Alle 3 tokens geven',      function(){ dagboekHersteldFlags(); addInventory('🔑','Sleutel Wallingen 🔑',false); addInventory('🔑','Robbie staat klaar 🔑',false); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🏆 Alle 3 sleutels geven',      function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
