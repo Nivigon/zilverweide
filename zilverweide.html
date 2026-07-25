@@ -1560,6 +1560,7 @@ function verwerkBinnengekomenShared(data) {
   var eersteSnapshot = !_verhaalSnapshotGehad;
   if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
   var ietsNieuws = false;
+  var putFlagBinnen = false, kellyGeredBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -1567,6 +1568,8 @@ function verwerkBinnengekomenShared(data) {
         if (data[key] && !state.visited.has(f)) {
           state.visited.add(f);
           ietsNieuws = true;
+          if (f === 'kelly_in_put' || f === 'kelly_gered') putFlagBinnen = true;
+          if (f === 'kelly_gered') kellyGeredBinnen = true;
           if (typeof DORENDAEL_MISSIE_KEYS !== 'undefined' && DORENDAEL_MISSIE_KEYS.indexOf(f) !== -1) {
             onMissieKeyVoltooid(DORENDAEL_MISSIE_LABELS[f] || 'Stap voltooid');
           } else if (typeof HEER_DONATUSLAAN_MISSIE_KEYS !== 'undefined' && HEER_DONATUSLAAN_MISSIE_KEYS.indexOf(f) !== -1) {
@@ -1599,6 +1602,22 @@ function verwerkBinnengekomenShared(data) {
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
+  // Put-status veranderde via een ander apparaat (of een rolwissel): sta je nu
+  // bij de put, dan het scherm meteen herzien zodat je de reddings-scene ziet
+  // zonder opnieuw te openen. Voor Jan speelt bovendien dezelfde reünie mee
+  // zodra Kelly de code invoert. Niet tijdens de eerste snapshot (herladen).
+  if (putFlagBinnen && !eersteSnapshot &&
+      state.lastOpenedLocatie === 'k1_dorpsput' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active')) {
+    if (kellyGeredBinnen && state.personage === 'jan' && hasVisited('jan_kelly_code_gezien') &&
+        typeof speelPutReunie === 'function') {
+      speelPutReunie();
+    } else if (typeof renderK1Dorpsput === 'function') {
+      var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
+      if (_putLoc) renderK1Dorpsput(_putLoc);
+    }
+  }
 }
 
 function getSharedState(key) {
