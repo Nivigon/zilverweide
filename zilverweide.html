@@ -1104,11 +1104,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 @media (max-height: 520px) {
   /* Gemeten (niet aangenomen): met de oude 42vh/155px-reserve scrolde het
      scherm alsnog bij een langere dialoogregel (bv. Felix die Kelly in de
-     put herkent), zelfs tot aan de bovengrens van 520px hoogte. Deze reserve
-     is gefit op de langste voorkomende openingsregel, met een kleine marge,
-     zodat er op geen enkele hoogte in dit bereik meer gescrold hoeft te
-     worden — de harde regel uit CLAUDE.md ("geen scrollen, nooit"). */
-  .sc-image { max-height: min(20vh, calc(var(--vh100) - 290px)) !important; }
+     put herkent), zelfs tot aan de bovengrens van 520px hoogte. De eerste
+     fix (20vh/290px) loste het scrollen op maar maakte de afbeelding een
+     nietszeggend streepje op telefoon. Deze reserve geeft de afbeelding
+     merkbaar meer ruimte (~30% i.p.v. ~20% van de schermhoogte) en is
+     opnieuw geverifieerd tegen de langste openingsregel (Felix/put) EN de
+     langste twee-regelige (Stoop/Tobbe) over het hele bereik 375-520px:
+     geen scroll, met een kleine marge. */
+  .sc-image { max-height: min(30vh, calc(var(--vh100) - 260px)) !important; }
   /* Het heks-keuzegrid is op dit scherm de hoofdinhoud (geen grote dialoog
      eronder), dus krijgt meer hoogte dan een gewone scene-afbeelding, zodat de
      portretten niet tot alleen de bovenkant van de hoofden worden afgeknipt.
