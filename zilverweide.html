@@ -3653,7 +3653,8 @@ var ITEM_AFBEELDINGEN = {
   'Kromme Speld':         'items/spijkeritem.png',      // Jan's lockpick-speld
   'Zakje Munten':         'items/munten.png',           // Jan in Heer Donatuslaan
   'Munten van de Bewoner':'items/munten.png',           // Felix bij DD2
-  'Munten van Stoop':     'items/munten.png'            // Felix bij K2 (Stoop)
+  'Munten van Stoop':     'items/munten.png',           // Felix bij K2 (Stoop)
+  'Tobbe':                'items/tobbeitem.png'          // het jongetje (Kraaienkwartier)
 };
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
@@ -9129,7 +9130,7 @@ function neemTobbeeMee() {
   setSharedState('tobbe_gevonden', true);
   addInventory('👦', 'Tobbe', false);
   toonLade(
-    '👦  Tobbe gevonden',
+    'Tobbe gevonden',
     '<p style="font-size:1rem;color:var(--parchment);font-style:italic">Een schichtige jongen die beweert verdwaald te zijn. Hij zegt bij Stoop de groenteboer te werken.</p>',
     'Verder →',
     // Hij heeft Tobbe nu bij zich: terug de straat op, richting Stoop.
@@ -9146,26 +9147,36 @@ function checkKellyOntsnap(val) {
     msg.textContent = '✦ Juist! Jan trekt je eruit!';
     document.getElementById('code-kelly-ontsnap').disabled = true;
     markVisited('kelly_gered');
-    // Jan trekt haar eruit: hij verschijnt rechtsonder bij de redding.
-    toonNpcPop('karakters/spelers/jan-pop.png');
-    const nogGegniffel = !tobbeIsWeg();
-    const uitleg = nogGegniffel
-      ? 'Kelly is vies en bespringt Jan die ervan schrikt. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em> Jan kijkt om zich heen. <em>"He maar Kel, hoor je dat gegniffel ook?"</em>'
-      : 'Kelly is vies en bespringt Jan die ervan schrikt. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em>';
-    setTimeout(() => {
-      toonLade(
-    '🤝  Kelly is gered',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7">' + uitleg + '</p>',
-    'Verder →',
-    // Niet de put opnieuw laden (dan speelt de aankomst nog eens): ze klimt
-    // eruit en staat weer op straat.
-    goBackFromLocatie
-  );
-    }, 800);
+    // Reünie als speechbubbels bij de pops (zoals de intro), geen pop-up.
+    setTimeout(speelPutReunie, 700);
   } else if (val.length >= 2) {
     msg.className = 'code-error';
     msg.textContent = 'Dat is niet de juiste code...';
   }
+}
+
+// De reünie na de put-redding: exact dezelfde tweezijdige pop-dialoog als na de
+// intro (toonPopDialoog), met de donkere naam-tekstballonnen bij de pops.
+// Kelly links, Jan rechts; per regel een Verder-knop.
+function speelPutReunie() {
+  var cont = document.getElementById('locatie-content');
+  if (cont) cont.innerHTML = '';                 // code-invoer + dialoog weg
+  var charPop = document.getElementById('char-pop');
+  if (charPop) charPop.style.display = 'none';    // eigen pop wijkt voor de dialoog-pops
+  var gegniffel = !tobbeIsWeg();
+  var kelly = { img: 'karakters/spelers/kelly-pop.png', naam: 'Kelly', tekst: 'Jan, ik kan je wel kapot knuffelen! Ik wist dat jij me eruit zou krijgen.' };
+  var stappen = [
+    { links: kelly, rechts: null },
+    { links: kelly, rechts: { img: 'karakters/spelers/jan-pop.png', naam: 'Jan', tekst: 'Hohoho, graag gedaan! Maar misschien moet je je eerst even afborstelen, boekenwurm.' } }
+  ];
+  if (gegniffel) {
+    stappen.push({ links: kelly, rechts: { img: 'karakters/spelers/jan-pop.png', naam: 'Jan', tekst: 'Hé, maar Kel... hoor je dat gegniffel ook?' } });
+  }
+  toonPopDialoog(stappen, function() {
+    var cp = document.getElementById('char-pop');
+    if (cp) cp.style.display = '';
+    goBackFromLocatie();
+  });
 }
 
 // Heeft Kelly op dit moment de ECHTE schaduw-vloek al? (doolhof, H7-drank of
@@ -12856,7 +12867,7 @@ function buildDebugPanel() {
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
-      ['🏆 Alle 3 sleutels geven',      function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
