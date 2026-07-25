@@ -12856,7 +12856,7 @@ function buildDebugPanel() {
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
-      ['🏆 Alle 3 sleutels geven',      function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
