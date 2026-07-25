@@ -749,6 +749,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .crawl-text .crawl-rose{font-size:2rem;display:block;margin:2rem 0;animation:roseGlow 2s ease-in-out infinite}
 .crawl-skip{position:absolute;bottom:1.5rem;right:1.5rem;z-index:100;background:rgba(0,0,0,.6);border:1px solid rgba(201,168,76,.3);border-radius:3px;padding:.5rem 1rem;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--gold-dim);cursor:pointer;text-transform:uppercase}
 .crawl-skip:hover{color:var(--gold);border-color:var(--gold)}
+/* TIJDELIJK (testmodus): schuifje boven de snelstart-namen dat bepaalt of
+   de kaart-introductie (oplichtende knoppen) bij een snelstart meespeelt. */
+.ssi-toggle{display:flex;align-items:center;gap:.45rem;justify-content:flex-end;cursor:pointer;user-select:none;margin-bottom:.2rem}
+.ssi-toggle .ssi-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase}
+.ssi-toggle input{display:none}
+.ssi-schuif{position:relative;width:30px;height:16px;border-radius:50px;background:rgba(0,0,0,.6);border:1px solid rgba(201,168,76,.35);transition:background .25s,border-color .25s;flex:0 0 auto}
+.ssi-schuif::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--gold-dim);transition:left .25s,background .25s}
+.ssi-toggle input:checked + .ssi-schuif{background:rgba(201,168,76,.3);border-color:var(--gold)}
+.ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
 @keyframes roseGlow{0%,100%{text-shadow:0 0 8px rgba(155,58,74,.6)}50%{text-shadow:0 0 20px rgba(155,58,74,1),0 0 40px rgba(155,58,74,.4)}}
 @keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.85}94%{opacity:1}96%{opacity:.9}97%{opacity:1}}
 .interactie-btn{position:fixed;bottom:4.5rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.3);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -1247,6 +1256,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <!-- TIJDELIJK (testmodus): snelstart-knoppen, rechtstreeks naar de
        overworld als dat personage. Verwijderen vóór productie. -->
   <div style="position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:.6rem">
+    <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
+      <span class="ssi-label">Kaart-uitleg</span>
+      <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
+      <span class="ssi-schuif"></span>
+    </label>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
@@ -3690,9 +3704,27 @@ function resetSpel() {
   showScreen('screen-personages');
 }
 
+// TIJDELIJK (testmodus): schuifje op het splash-scherm dat bepaalt of de
+// kaart-introductie bij een snelstart meespeelt. De keuze wordt in
+// localStorage bewaard zodat hij testronde na testronde blijft staan.
+function zetSnelstartIntro(aan) {
+  window._snelstartIntroAan = !!aan;
+  try { localStorage.setItem('zw_snelstart_intro', aan ? '1' : '0'); } catch (e) {}
+}
+(function initSnelstartIntro() {
+  var bewaard = null;
+  try { bewaard = localStorage.getItem('zw_snelstart_intro'); } catch (e) {}
+  // Standaard aan: zo zie je wat een echte speler ziet, tenzij je hem uitzet.
+  window._snelstartIntroAan = bewaard !== '0';
+  var check = document.getElementById('snelstart-intro-check');
+  if (check) check.checked = window._snelstartIntroAan;
+})();
+
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
 // achtergrondmuziek, die normaal pas bij "Begin" aangaat.
 function debugSnelstart(p) {
+  // Kaart-introductie overslaan als het schuifje uit staat.
+  if (!window._snelstartIntroAan) markVisited('overworld_intro_gezien');
   var m = document.getElementById('bg-music');
   if (m) { m.volume = 0.45; m.play().catch(function(){}); }
   // Reset de cruciale gedeelde vlaggen zodat oude Firebase-data van een
