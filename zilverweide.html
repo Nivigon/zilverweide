@@ -175,13 +175,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
    ooglid (mask-kleur) vult ze heel even => oog dicht, en verdwijnt weer. */
 .dp-maskers-wrap{
   position:absolute;
-  top:4%;
-  left:50%;
-  transform:translateX(-50%);
-  width:min(46vw, 320px);
+  top:1.4rem;
+  right:1.6rem;
+  width:min(20vw, 132px);
   aspect-ratio:443 / 537;
   pointer-events:none;
   z-index:0;
+}
+@media (max-width:640px){
+  .dp-maskers-wrap{width:26vw;top:1rem;right:1rem}
 }
 .dp-maskers{
   display:block;
