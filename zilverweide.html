@@ -391,6 +391,22 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-emoji.item-afbeelding[src$="munten.png"],
 .inv-ov-detail-emoji.item-afbeelding[src$="munten.png"]{transform:scale(1.6)}
 .inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.95rem;color:var(--parchment);text-align:center;line-height:1.2}
+/* Korte schermen (telefoon in landscape): kleinere vakjes en een scrollbare
+   grid-zone met de Terug-knop vast onderin, zodat die altijd bereikbaar blijft
+   (voorheen viel hij onder de rand weg). */
+@media (max-height:520px){
+  .inv-ov-inner{padding:calc(env(safe-area-inset-top,0px) + .55rem) 1rem .6rem}
+  .inv-ov-titel{font-size:clamp(1rem,4.4vh,1.4rem)}
+  .inv-ov-orn{font-size:.5rem;margin-top:.15rem}
+  .inv-ov-divider{margin:.45rem 0 .1rem}
+  .inv-ov-grid{max-width:min(92vw,430px);gap:.5rem;margin:.5rem auto 0;flex:1 1 auto;min-height:0;overflow-y:auto}
+  .inv-ov-emoji{font-size:2.6rem}
+  .inv-ov-emoji.item-afbeelding{width:3rem;height:3rem}
+  .inv-ov-naam{font-size:.72rem}
+  .inv-ov-kaart{padding:.4rem .3rem;gap:.25rem;border-radius:7px}
+  .inv-ov-detail{min-height:0;overflow-y:auto}
+  #inventaris-overzicht .back-btn,#rol-overzicht .back-btn{margin-top:.5rem !important}
+}
 .inv-ov-leeg{color:var(--mist);font-style:italic;text-align:center;line-height:1.9;margin-top:3rem}
 .inv-ov-leeg::before{content:'❦';display:block;font-family:'Cinzel',serif;font-size:2rem;color:var(--gold-dim);opacity:.55;margin-bottom:.8rem}
 .inv-ov-detail{max-width:560px;width:100%;text-align:center;margin-top:1rem;flex:1;flex-direction:column;align-items:center;justify-content:flex-start}
