@@ -288,6 +288,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #locatie-indicator{position:fixed;bottom:1.2rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.35);border-radius:50px;padding:.5rem 1rem;display:none;align-items:center;gap:.5rem;backdrop-filter:blur(4px);box-shadow:0 0 20px rgba(0,0,0,.5)}
 #locatie-indicator .ind-symbol{font-size:1.2rem}
 #locatie-indicator .ind-name{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+/* Op korte schermen (telefoon in landscape) de locatie-aanduider kleiner en
+   subtieler, en strakker in de hoek, zodat hij de doorklik-knoppen niet in de
+   weg zit. */
+@media (max-height:520px){
+  #locatie-indicator{bottom:.55rem;right:.55rem;padding:.26rem .6rem;gap:.35rem;opacity:.82;box-shadow:0 0 10px rgba(0,0,0,.4)}
+  #locatie-indicator .ind-symbol{font-size:.82rem}
+  #locatie-indicator .ind-name{font-size:.54rem;letter-spacing:.07em}
+}
 .zone-code-panel{border-top:1px solid rgba(201,168,76,.15);padding:1rem 1.25rem;background:rgba(0,0,0,.2);display:none}
 .zone-code-panel.open{display:block}
 .zone-code-row{display:flex;gap:8px;align-items:center}
