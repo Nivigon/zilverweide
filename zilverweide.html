@@ -1210,6 +1210,13 @@ body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
   padding-left: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
 }
+/* Zelfde, spiegelbeeld: Stazia's eigen NPC-pop staat rechts en overlapte het
+   LAATSTE district-label ("De Schaduw") — bevestigd via render (Tom meldde
+   het ook expliciet op tablet). Padding-right schuift de knoppen gelijk op
+   naar links, zodat de laatste knop niet meer onder Stazia valt. */
+body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
+  padding-right: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
 /* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
    van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
    afmetingen) was te krap: op brede schermen (laptop, tablet-liggend) viel
