@@ -1037,8 +1037,15 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .vh-strip.vh-strip-zichtbaar {
   transform: translateY(0);
 }
+/* min-width:0 overschrijft de flexbox-standaard (min-width:auto), die een
+   knop nooit kleiner laat worden dan zijn eigen tekstbreedte. Zonder deze
+   regel weigerden de knoppen te krimpen zodra de padding-reserves van beide
+   pops tegelijk (links + rechts) genoeg ruimte opeisten, en schoof de laatste
+   knop alsnog onder de pop uit de strip. Met min-width:0 verdeelt flex de
+   overblijvende ruimte altijd eerlijk, ook als dat kleine, meerregelige
+   knoppen oplevert (label loopt dan gewoon over op de volgende regel). */
 .vh-strip-btn {
-  flex: 1; padding: 1.6rem .2rem; border: none; background: transparent;
+  flex: 1; min-width: 0; padding: 1.6rem .2rem; border: none; background: transparent;
   font-family: 'Cinzel', serif; font-size: .62rem; letter-spacing: .1em;
   text-transform: uppercase; text-align: center; line-height: 1.3;
   transition: background .2s, opacity .2s;
@@ -1096,6 +1103,17 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #screen-locatie .sc-header { margin: 0 0 .25rem !important; }
 #screen-locatie .sc-titel { margin: .1rem 0 .1rem !important; }
 #screen-locatie .sc-sub { margin: 0 0 .35rem !important; }
+/* De schaduwmeter (linksboven, alleen zichtbaar als de speler vervloekt is)
+   overlapt anders de "Terug"-knop van de scene: bevestigd op tablet. De
+   meter-hoogte is vast (niet schaalbaar), dus de scene-header schuift een
+   stukje naar beneden zodra de meter in beeld is. Alleen boven de korte-
+   scherm-grens (521px+): op kortere telefoonschermen is de ruimte al krap
+   en gaf dezelfde marge daar juist een nieuwe, echte scroll-overflow. */
+@media (min-height:521px){
+  body:has(#zv-meter.zv-zichtbaar) #screen-locatie .sc-header {
+    margin-top: 1.8rem !important;
+  }
+}
 /* ── Korte schermen (telefoon liggend, ~380 tot 430px hoog) ──
    Het spel is voor tablets liggend; een telefoon liggend is ongeveer half zo
    hoog. Op zo'n hoogte eet het vaste 330px-reserve bijna alle ruimte op (de
@@ -1202,13 +1220,40 @@ body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
 }
 /* Zelfde probleem, in de Verborgen Hand (Stazia, D4): de districten-strip
    (Kraaienkwartier/Dorendael/...) zit onderin de scene-afbeelding, en de
-   speler-pop viel over het eerste (linker) district-label heen — bevestigd:
-   "Kraaienkwartier" werd tot "AIENKWARTIER" afgesneden. Padding-left op de
+   speler-pop viel over het eerste (linker) district-label heen (bevestigd:
+   "Kraaienkwartier" werd tot "AIENKWARTIER" afgesneden). Padding-left op de
    strip zelf schuift alle knoppen (ze zijn flex:1, dus verdelen de
    overblijvende breedte opnieuw) gelijk op naar rechts. Zelfde rekentruc en
    2/3-verhouding als de char-pop-regel hierboven. */
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
   padding-left: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
+/* Zelfde, spiegelbeeld: Stazia's eigen NPC-pop staat rechts en overlapte het
+   LAATSTE district-label ("De Schaduw"), bevestigd via render (Tom meldde
+   het ook expliciet op tablet). Padding-right schuift de knoppen gelijk op
+   naar links, zodat de laatste knop niet meer onder Stazia valt. */
+body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
+  padding-right: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
+/* Als BEIDE pops tegelijk zichtbaar zijn (bv. Stoop naast Jan), telden de
+   twee dialoogtekst-reserves hierboven bij elkaar op tot een zo smalle
+   tekstkolom dat de dialoogtekst in veel meer regels omslaat dan verwacht.
+   De dialoogbox werd daardoor torenhoog en overflowde alsnog, precies op
+   breedtes/hoogtes die de losse tests niet standaard raakten (bv. 812x600,
+   niet 812x375 of 1180x820). Gemeten (niet aangenomen) over de volle
+   breedte/hoogte-matrix (700-1024px breed, 375-820px hoog): een vaste,
+   kleinere reserve van 80px aan elke kant houdt de tekstkolom overal ruim
+   genoeg. Dit geldt NIET voor de districtenstrip hieronder: die heeft geen
+   tekst-omloop-risico (de strip zit met overflow:hidden in de afbeelding,
+   kan de pagina niet groter maken), dus daar blijft de volle per-kant
+   reserve gewoon gelden, ook als beide pops actief zijn. Hogere
+   specificiteit dan de losse regels hierboven (twee :has()-clausules i.p.v.
+   één), dus wint automatisch zodra beide pops tegelijk actief zijn. */
+body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
+  padding-left: 80px !important;
+}
+body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
+  margin-right: 80px !important;
 }
 /* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
    van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
