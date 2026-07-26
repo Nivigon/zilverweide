@@ -1240,20 +1240,37 @@ body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
    tekstkolom dat de dialoogtekst in veel meer regels omslaat dan verwacht.
    De dialoogbox werd daardoor torenhoog en overflowde alsnog, precies op
    breedtes/hoogtes die de losse tests niet standaard raakten (bv. 812x600,
-   niet 812x375 of 1180x820). Gemeten (niet aangenomen) over de volle
-   breedte/hoogte-matrix (700-1024px breed, 375-820px hoog): een vaste,
-   kleinere reserve van 80px aan elke kant houdt de tekstkolom overal ruim
-   genoeg. Dit geldt NIET voor de districtenstrip hieronder: die heeft geen
-   tekst-omloop-risico (de strip zit met overflow:hidden in de afbeelding,
-   kan de pagina niet groter maken), dus daar blijft de volle per-kant
-   reserve gewoon gelden, ook als beide pops actief zijn. Hogere
-   specificiteit dan de losse regels hierboven (twee :has()-clausules i.p.v.
-   één), dus wint automatisch zodra beide pops tegelijk actief zijn. */
+   niet 812x375 of 1180x820). Een vaste 80px per kant loste die overflow op,
+   maar was op tablet-breedte (rond 1024px) te krap om de pop-afbeelding
+   zelf nog te ontwijken: de tekst en de "Verder"-knop vielen daar alsnog
+   deels onder de pop (gemeten en bevestigd bij het Dorendael-onderzoek).
+   De volle per-kant formule van de losse regels hierboven ontwijkt de pop
+   wel altijd, maar gaf op zijn beurt weer de oorspronkelijke overflow
+   terug. Gemeten (niet aangenomen) over de volle breedte/hoogte-matrix:
+   de formule gekapt op 26vw per kant, plus een iets compactere dialoog-
+   tekst zolang beide pops actief zijn, ontwijkt de pop overal op
+   tablet-breedte (900-1440px) zonder nieuwe overflow. Op telefoon-breedte
+   (rond 700px) blijft een krappe marge over. Dit valt samen met een apart,
+   al eerder gevonden en nog niet opgelost probleem: op hoogtes rond de
+   521-700px overflowt de dialoogbox soms al zonder dat er ook maar één pop
+   in beeld is (zie de aantekening bij Tom). Dit geldt NIET voor de
+   districtenstrip hieronder: die heeft geen tekst-omloop-risico (de strip
+   zit met overflow:hidden in de afbeelding, kan de pagina niet groter
+   maken), dus daar blijft de volle per-kant reserve gewoon gelden, ook als
+   beide pops actief zijn. Hogere specificiteit dan de losse regels
+   hierboven (twee :has()-clausules i.p.v. één), dus wint automatisch
+   zodra beide pops tegelijk actief zijn (behalve met Jan, zie hieronder:
+   zijn eigen regel heeft toevallig dezelfde specificiteit als deze, dus
+   heeft een aparte, nog specifiekere dual-pop-variant nodig). */
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: 80px !important;
+  padding-left: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
 }
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
-  margin-right: 80px !important;
+  margin-right: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
+}
+body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-tekst {
+  font-size: .85rem !important;
+  line-height: 1.28 !important;
 }
 /* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
    van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
@@ -1261,11 +1278,22 @@ body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #scr
    de dialoogtekst onder zijn schouder. Gemeten (niet aangenomen): Jans pop
    heeft een breedte/hoogte-verhouding van exact 2/3, dus bij zijn plafond
    van 680px is de reserve 453px (680 * 2/3), en die schaalt mee met 0.78vh
-   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. Hogere
-   specificiteit dan de regel hierboven (extra id + klasse in :has), dus
-   deze wint automatisch wanneer Jan in beeld is. */
+   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. */
 body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .sc-dialog-body {
   padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
+}
+/* Deze Jan-regel en de dual-pop-regel hierboven hebben toevallig exact
+   dezelfde specificiteit (allebei één :has()-clausule met een ID erin,
+   respectievelijk twee simpelere :has()-clausules). Bij zo'n gelijke stand
+   wint de regel die later in het bestand staat, en dat was tot nu toe
+   steeds deze Jan-regel: zodra Jan met een NPC-pop tegelijk in beeld was,
+   werd de dual-pop-veilige reserve stilzwijgend genegeerd (gevonden bij
+   het Dorendael-onderzoek, Jan + Tobbe bij de woudpoort). Deze aparte
+   Jan-plus-dual-pop-regel heeft drie :has()-achtige onderdelen in plaats
+   van twee, dus altijd hogere specificiteit dan beide regels hierboven, en
+   wint dus gegarandeerd zodra Jan én een NPC-pop tegelijk actief zijn. */
+body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
+  padding-left: max(0px, min(34vw, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px))) !important;
 }
 /* Zelfde Jan-uitzondering voor de Verborgen Hand-districtenstrip. */
 body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .vh-strip {
