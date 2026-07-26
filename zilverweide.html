@@ -2651,6 +2651,7 @@ const ITEMS = {
   muntenDD2:          { emoji: '💰', naam: 'Munten van de Bewoner' }, // bestaat al
   lolaOutfit:         { emoji: '💃', naam: 'Latin Jurk' },             // bestaat al
   muziekdoosje:       { emoji: '🎵', naam: 'Muziekdoosje (roetbedekt)' },
+  muziekdoosjeKlaar:  { emoji: '🎵', naam: 'Muziekdoosje' }, // dezelfde doos, na reparatie door de klokkenmaker
   briefjeRobbie:      { emoji: '📜', naam: 'Briefje van Robbie' },
   meisje:             { emoji: '👧', naam: 'Het Meisje' },
   // Heer Donatuslaan — Felix' Liu-Yen-vermomming
@@ -4009,7 +4010,14 @@ var ITEM_AFBEELDINGEN = {
   'Zakje Munten':         'items/munten.png',           // Jan in Heer Donatuslaan
   'Munten van de Bewoner':'items/munten.png',           // Felix bij DD2
   'Munten van Stoop':     'items/munten.png',           // Felix bij K2 (Stoop)
-  'Tobbe':                'items/tobbeitem.png'          // het jongetje (Kraaienkwartier)
+  'Tobbe':                'items/tobbeitem.png',         // het jongetje (Kraaienkwartier)
+  'Het Meisje':           'items/merelitem.png',         // Merel
+  'Klei':                 'items/kleiitem.png',          // Jan haalt klei op bij de put
+  'Klei-afdruk van slot': 'items/kleisleutelitem.png',
+  'Latin Jurk':           'items/lolaitem.png',          // Felix' Lola-vermomming
+  'Muziekdoosje (roetbedekt)': 'items/muziekdoosjebeschadigditem.png',
+  'Muziekdoosje':         'items/muziekdoosjemooiitem.png', // na reparatie door de klokkenmaker
+  'Sleutel Woudpoort':    'items/woudsleutelitem.png'
 };
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
@@ -6768,8 +6776,8 @@ function renderH8Steegje(loc) {
     } else {
       dialog.push('Het vrouwtje zit er nog. Als ze je ziet, verschijnt die kleine grijns weer even. Je knikt naar haar. Zij knikt terug.');
     }
-    // Muziekdoosje geven: als Kelly het bij zich heeft en het nog niet gegeven is.
-    if (heeftItem(ITEMS.muziekdoosje.naam) && !hasVisited('muziekdoosje_bij_aaltje')) {
+    // Muziekdoosje geven: als Kelly het (gerepareerd) bij zich heeft en het nog niet gegeven is.
+    if (heeftItem(ITEMS.muziekdoosjeKlaar.naam) && !hasVisited('muziekdoosje_bij_aaltje')) {
       acties = [{ label: '\ud83c\udfb5 Geef het muziekdoosje aan haar', onclick: function() { kellyGeeftDoosjeAanAaltje(loc); } }];
     }
   }
@@ -6791,7 +6799,7 @@ function renderH8Steegje(loc) {
 // Kelly geeft het muziekdoosje aan Aaltje. Kritieke finale-stap.
 function kellyGeeftDoosjeAanAaltje(loc) {
   markVisited('muziekdoosje_bij_aaltje');
-  state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.muziekdoosje.naam; });
+  state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.muziekdoosjeKlaar.naam; });
   updateInventoryBar();
   toonLade(
     '\ud83c\udfb5  Voor haar',
@@ -13344,7 +13352,7 @@ function buildDebugPanel() {
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
       ['⏰ Klokkenmaker-scene gezien', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien', true); setSharedState('muziekdoosje_klaar_hd', true); close(); }, true, 'H6 Het Hol'],
       ['🎵 Muziekdoosje klaar (unlock ophalen)', function(){ setSharedState('muziekdoosje_klaar_hd', true); close(); }, true, 'H6 Het Hol'],
-      ['🎵 Muziekdoosje bij Aaltje afgeleverd', function(){ markVisited('muziekdoosje_hd_opgehaald'); markVisited('muziekdoosje_bij_aaltje'); state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.muziekdoosje.naam; }); updateInventoryBar(); close(); }, true, 'H6 Het Hol'],
+      ['🎵 Muziekdoosje bij Aaltje afgeleverd', function(){ markVisited('muziekdoosje_hd_opgehaald'); markVisited('muziekdoosje_bij_aaltje'); state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.muziekdoosjeKlaar.naam; }); updateInventoryBar(); close(); }, true, 'H6 Het Hol'],
       ['😨 Kelly: schrikmoment gehad', function(){ markVisited('h6_roet_gezien_kelly'); close(); }, true, 'H6 Het Hol'],
       ['🔮 Fenna: amuletmoment gehad', function(){ markVisited('h6_roet_gezien_fenna'); close(); }, true, 'H6 Het Hol'],
       ['🚶 Jan: langsgelopen', function(){ markVisited('h6_jan_gezien'); close(); }, true, 'H6 Het Hol'],
@@ -14768,7 +14776,7 @@ function renderH6OfDd6Refresh() {
 // De reactie hangt af van of ze Aaltje in het Steegje al ontmoet heeft.
 function dd7KellyHaaltDoosjeOp(loc) {
   markVisited('muziekdoosje_hd_opgehaald');
-  geefItem(ITEMS.muziekdoosje.emoji, ITEMS.muziekdoosje.naam);
+  geefItem(ITEMS.muziekdoosjeKlaar.emoji, ITEMS.muziekdoosjeKlaar.naam);
   const kentAaltje = hasVisited('h8_vrouwtje_gezien');
   const reactie = kentAaltje
     ? '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Je draait het doosje voorzichtig om in je handen. Het is prachtig geworden. En terwijl je kijkt, weet je het ineens.</p>' +
