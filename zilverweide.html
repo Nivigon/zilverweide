@@ -826,6 +826,21 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #char-bubble{position:absolute;left:75%;bottom:65%;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
 #char-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-left:0;transform:skewX(-15deg)}
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+/* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
+   Prefix wt- (Wacht-Teksten), losstaand van char-pop (dat hoort bij
+   dialoogschermen tijdens het spel, niet bij dit wachtscherm). Alles in
+   normale document-flow boven de bestaande rollijst/spinner, dus geen
+   losse positionering nodig om overlap te voorkomen. */
+#wt-pop-img{display:block;height:26vh;max-height:220px;width:auto;margin:0 auto;filter:drop-shadow(4px 4px 16px rgba(0,0,0,.7));opacity:0;transition:opacity .6s ease}
+#wt-pop-img.wt-zichtbaar{opacity:1}
+#wt-tekstzone{min-height:3.6rem;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;margin-bottom:.4rem}
+#wt-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.3rem;opacity:0;transition:opacity .8s ease}
+#wt-label.wt-zichtbaar{opacity:1}
+#wt-tekst{font-family:'Crimson Text',Georgia,serif;font-size:1.05rem;line-height:1.4;opacity:0;transition:opacity .8s ease}
+#wt-tekst.wt-zichtbaar{opacity:1}
+#wt-tekst.wt-belofte{font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.04em;color:var(--gold);text-transform:uppercase}
+#wt-tekst.wt-tip{color:var(--parchment);font-style:normal}
+#wt-tekst.wt-sfeer{color:var(--gold);font-style:italic}
 /* ══ TOAST ══ */
 #spel-toast{position:fixed;bottom:5rem;left:50%;transform:translateX(-50%) translateY(16px);z-index:450;width:min(340px,90vw);background:rgba(13,10,6,.97);border:1px solid rgba(201,168,76,.45);border-radius:6px;padding:.85rem 1rem;display:flex;align-items:flex-start;gap:.75rem;opacity:0;transition:opacity .35s ease,transform .35s ease;pointer-events:none;overflow:hidden}
 #spel-toast.zichtbaar{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
@@ -3678,14 +3693,160 @@ function updateRolTest() {
 }
 
 // ── Wachtscherm tot alle vier de rollen bezet zijn ──
+// ── Wachtscherm: floatende tips en sfeerteksten per rol ──────────────
+// Teksten komen later uit een apart tekstdocument; tot die tijd staan
+// hier placeholders zodat structuur, timing en opmaak al te testen zijn.
+// Per rol: de rolbelofte (verschijnt precies één keer) plus één kant-en-
+// klare, geordende lijst (roltips/rolsfeer/algemene tips al in de
+// definitieve volgorde neergezet, dus geen interweave-logica nodig in de
+// code). Elk item heeft een type (tip of sfeer) voor de opmaak.
+var WACHTSCHERM_TEKSTEN = {
+  jan: {
+    rolbelofte: '[Placeholder: rolbelofte Jan]',
+    lijst: [
+      { type: 'tip',   tekst: '[Placeholder: roltip Jan 1]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Jan 2]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 1]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 1]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Jan 3]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 2]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 2]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Jan 4]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 3]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Jan 5]' }
+    ]
+  },
+  kelly: {
+    rolbelofte: '[Placeholder: rolbelofte Kelly]',
+    lijst: [
+      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 1]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 2]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 1]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 3]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 3]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 2]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 4]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 4]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 3]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 5]' }
+    ]
+  },
+  fenna: {
+    rolbelofte: '[Placeholder: rolbelofte Fenna-Vivienne]',
+    lijst: [
+      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 1]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 2]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 1]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 5]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 3]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 2]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 6]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 4]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 3]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 5]' }
+    ]
+  },
+  felix: {
+    rolbelofte: '[Placeholder: rolbelofte Felix]',
+    lijst: [
+      { type: 'tip',   tekst: '[Placeholder: roltip Felix 1]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Felix 2]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 1]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 7]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Felix 3]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 2]' },
+      { type: 'tip',   tekst: '[Placeholder: algemene tip 8]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Felix 4]' },
+      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 3]' },
+      { type: 'tip',   tekst: '[Placeholder: roltip Felix 5]' }
+    ]
+  }
+};
+
+// Startwaarden, Tom test dit op de tablet en stelt bij.
+var WT_TIMING = { fadeIn: 800, zicht: 5000, fadeUit: 800, rust: 1000 };
+
+var _wtTimers = [];
+function _wtSetTimeout(fn, ms) {
+  var id = setTimeout(fn, ms);
+  _wtTimers.push(id);
+  return id;
+}
+function stopWachtschermTeksten() {
+  _wtTimers.forEach(function(id) { clearTimeout(id); });
+  _wtTimers = [];
+}
+
+// Vult de personage-pop (dezelfde plaatjes als char-pop, uit
+// karakters/spelers/) en start de rolbelofte + cyclus. De pop moet
+// eerst zichtbaar zijn voor de cyclus begint, dus een korte vertraging
+// gelijk aan de pop-fade voordat de rolbelofte start.
+function startWachtschermTeksten() {
+  stopWachtschermTeksten();
+  var rol = state.personage;
+  var popImg = document.getElementById('wt-pop-img');
+  if (popImg) {
+    var src = (typeof popImgVoorSpeler === 'function') ? popImgVoorSpeler(rol) : null;
+    popImg.classList.remove('wt-zichtbaar');
+    if (src) {
+      popImg.src = src;
+      void popImg.offsetWidth;
+      popImg.classList.add('wt-zichtbaar');
+    }
+  }
+  var data = WACHTSCHERM_TEKSTEN[rol];
+  var labelEl = document.getElementById('wt-label');
+  var tekstEl = document.getElementById('wt-tekst');
+  if (!data || !labelEl || !tekstEl) return;
+  var index = -1; // -1 = rolbelofte, nog niet getoond
+
+  function toonRegel(type, tekst) {
+    labelEl.classList.remove('wt-zichtbaar');
+    tekstEl.classList.remove('wt-zichtbaar');
+    _wtSetTimeout(function() {
+      tekstEl.className = 'wt-' + type;
+      tekstEl.textContent = tekst;
+      var isTip = (type === 'tip');
+      labelEl.style.display = isTip ? '' : 'none';
+      labelEl.textContent = isTip ? 'Tip' : '';
+      // Reflow forceren zodat de fade-in altijd echt vanaf 0 start, ook
+      // als dezelfde klasse net verwijderd is.
+      void tekstEl.offsetWidth;
+      tekstEl.classList.add('wt-zichtbaar');
+      if (isTip) labelEl.classList.add('wt-zichtbaar');
+      _wtSetTimeout(function() {
+        labelEl.classList.remove('wt-zichtbaar');
+        tekstEl.classList.remove('wt-zichtbaar');
+        _wtSetTimeout(volgende, WT_TIMING.fadeUit + WT_TIMING.rust);
+      }, WT_TIMING.zicht);
+    }, 40);
+  }
+
+  function volgende() {
+    index = (index + 1) % data.lijst.length;
+    var item = data.lijst[index];
+    toonRegel(item.type, item.tekst);
+  }
+
+  // Start pas na de pop-fade (zie CSS: opacity .6s), niet er dwars doorheen.
+  _wtSetTimeout(function() { toonRegel('belofte', data.rolbelofte); }, 700);
+}
+
 function toonWachtscherm() {
   var oud = document.getElementById('rol-wacht');
   if (oud) oud.remove();
+  stopWachtschermTeksten();
   var ov = document.createElement('div');
   ov.id = 'rol-wacht';
   ov.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem;background:radial-gradient(ellipse at center,#160f08,#0d0a06)';
-  ov.innerHTML = '<div id="rol-wacht-inhoud" style="max-width:32rem"></div>';
+  ov.innerHTML =
+    '<div style="max-width:32rem;display:flex;flex-direction:column;align-items:center">' +
+      '<img id="wt-pop-img" src="" alt="">' +
+      '<div id="wt-tekstzone"><div id="wt-label"></div><div id="wt-tekst"></div></div>' +
+      '<div id="rol-wacht-inhoud" style="width:100%"></div>' +
+    '</div>';
   document.body.appendChild(ov);
+  startWachtschermTeksten();
   if (window._rolWachtInterval) clearInterval(window._rolWachtInterval);
   window._rolWachtInterval = setInterval(controleerWachten, 1000);
   controleerWachten();
@@ -3717,6 +3878,7 @@ function controleerWachten() {
   vulWachtscherm();
   if (alleRollenBezet()) {
     if (window._rolWachtInterval) { clearInterval(window._rolWachtInterval); window._rolWachtInterval = null; }
+    stopWachtschermTeksten();
     var ov = document.getElementById('rol-wacht');
     if (ov) ov.remove();
     rolTestFase = false;
