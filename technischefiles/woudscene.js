@@ -92,9 +92,10 @@
       panDuurTerug: 1100,                 // lang uitdempen (met licht doorschieten)
       terugDuur: 1000,                    // rustiger dan de heenweg
       blurPan: 6,                         // px bewegingsonscherpte tijdens het pannen
+      wisselBlurDuur: 220,                // ms onscherpte voor/na de a0->a1-wissel, tijdens de hold rechts
       holdRust: 2000,                     // 1. rust op het lege veld
       holdLinks: 1500,                    // 4. vasthouden na pan naar links
-      holdRechts: 1500,                   // 7. vasthouden na pan naar rechts
+      holdRechts: 1500,                   // 7. vasthouden na pan naar rechts, incl. de wissel naar a1
       holdHeks1: 3000                     // 10. vasthouden nadat heks 1 er blijkt te staan
     },
     // Deel 3: de draai-sequentie.
@@ -116,6 +117,20 @@
   function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
   function kies(arr) { return arr[randInt(0, arr.length - 1)]; }
   function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+  // Maximale pan-afstand (in %, zelfde eenheid als deel2.panAfstand) die bij
+  // een gegeven zoomfactor nog veilig is: de afbeelding is schaal keer zo
+  // groot als de container en wordt door translateX(P%) verschoven met een
+  // zichtbare afstand van P/100 * breedte * schaal (percentages resolven
+  // tegen de eigen, ongeschaalde breedte, maar de daaropvolgende scale()
+  // vermenigvuldigt de resulterende verschuiving mee). Die verschuiving mag
+  // niet groter zijn dan de overhangende marge van (schaal - 1) / 2 keer de
+  // breedte, anders schuift de rand van de afbeelding in beeld. Opgelost
+  // naar P geeft: 50 * (schaal - 1) / schaal. Empirisch geverifieerd (niet
+  // aangenomen) met getBoundingClientRect() bij verschillende schalen.
+  function maxPanVoorSchaal(schaal) {
+    return 50 * (schaal - 1) / schaal;
+  }
 
   // Diepe merge: opts overschrijft alleen de velden die het zelf heeft,
   // de rest komt uit DEFAULTS. Voorkomt dat een gedeeltelijke override
@@ -530,40 +545,57 @@
       self._setTimeout(cb, duur);
     }
 
+    // Pan-afstand nooit groter dan wat bij de huidige zoomfactor nog veilig
+    // is (anders schuift de rand van de afbeelding in beeld); opnieuw
+    // berekend per pan, zodat live bijstellen van de zoomfactor (debug-
+    // paneel) meteen klopt.
+    function effectiefPan() {
+      return Math.min(cfg.panAfstand, maxPanVoorSchaal(cfg.schaal));
+    }
+
     this._setTimeout(function () {
       // 2. geritsel links, 3. pan naar links
       self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
-      pan(-cfg.panAfstand, cfg.panDuurHeen, true, function () {
+      pan(-effectiefPan(), cfg.panDuurHeen, true, function () {
         // 4. hold
         self._setTimeout(function () {
           // 5. terug naar midden
           pan(0, cfg.terugDuur, true, function () {
             // 6. geritsel rechts, 7. pan naar rechts
             self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
-            pan(cfg.panAfstand, cfg.panDuurHeen, true, function () {
-              // 8. hold
+            var panRechts = effectiefPan();
+            pan(panRechts, cfg.panDuurHeen, true, function () {
+              // 8. hold rechts. De wissel naar a1 (heks 1) gebeurt HIER,
+              // terwijl de camera stilstaat aan de rechterkant: haar plek
+              // (iets links van het midden) is dan het verst uit beeld. Een
+              // korte bewegingsonscherpte over het wisselmoment zelf
+              // verbergt de omruil; de camera staat op dat moment stil.
+              beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-in';
+              beeld.style.filter = 'blur(' + cfg.blurPan + 'px)';
               self._setTimeout(function () {
-                // 9. terug naar midden, de wissel naar a1 (heks 1) gebeurt
-                // tijdens déze terugdraai, onder de beweging/onscherpte.
-                beeld.style.transition = 'transform ' + cfg.terugDuur + 'ms cubic-bezier(.19,1,.22,1), filter 260ms ease';
-                beeld.style.filter = 'blur(' + cfg.blurPan + 'px)';
+                var nieuw = self._vulLaag(self._laagA, im.a1);
+                nieuw.style.transition = 'none';
+                nieuw.style.transform = 'scale(' + cfg.schaal + ') translateX(' + panRechts + '%)';
+                nieuw.style.filter = 'blur(' + cfg.blurPan + 'px)';
+                beeld = nieuw;
+                void beeld.offsetWidth;
+                beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-out';
+                beeld.style.filter = 'blur(0px)';
+              }, cfg.wisselBlurDuur);
+              self._setTimeout(function () {
+                // Rest van de hold, na de (nu al onzichtbaar gemaakte) wissel.
                 self._setTimeout(function () {
-                  var nieuw = self._vulLaag(self._laagA, im.a1);
-                  nieuw.style.transition = 'none';
-                  nieuw.style.transform = 'scale(' + cfg.schaal + ') translateX(0%)';
-                  nieuw.style.filter = 'blur(' + cfg.blurPan + 'px)';
-                  beeld = nieuw;
-                  self._setTimeout(function () {
-                    beeld.style.transition = 'filter 260ms ease';
-                    beeld.style.filter = 'blur(0px)';
-                  }, 20);
-                }, cfg.terugDuur * 0.4);
-                self._setTimeout(function () {
-                  // 10. heks 1 staat er, geen geluid, meteen 3s vasthouden
-                  self._setTimeout(function () { self._deel3(); }, cfg.holdHeks1);
-                }, cfg.terugDuur);
-              }, cfg.panDuurTerug);
-            }, cfg.holdRechts);
+                  // 9. terug naar midden. Heks 1 zit al in het beeld, dus dit
+                  // is een gewone, ononderbroken pan: ze "verschijnt" niet,
+                  // ze komt gewoon in beeld zoals de rest van het beeld.
+                  pan(0, cfg.terugDuur, true, function () {
+                    // 10. bij aankomst in het midden: geen geluid, meteen
+                    // vasthouden.
+                    self._setTimeout(function () { self._deel3(); }, cfg.holdHeks1);
+                  });
+                }, Math.max(0, cfg.holdRechts - cfg.wisselBlurDuur * 2));
+              }, cfg.wisselBlurDuur * 2);
+            });
           });
         }, cfg.panDuurTerug);
       }, cfg.holdLinks);

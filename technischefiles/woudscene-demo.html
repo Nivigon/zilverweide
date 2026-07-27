@@ -236,8 +236,27 @@ function padWaarde(obj, pad) {
       var v = +this.value;
       label.textContent = v;
       scene.set(rij.pad, v);
+      if (rij.pad === 'deel2.schaal') bijwerkenPanMax(v);
     };
   });
+
+  // De pan-afstand-schuif toont hier de daadwerkelijk veilige max voor de
+  // huidige zoomfactor (zelfde formule als maxPanVoorSchaal in
+  // woudscene.js): de module begrenst dit zelf al, dit is puur zodat het
+  // paneel niet een waarde toont die geen effect meer heeft.
+  function bijwerkenPanMax(schaal) {
+    var maxPan = Math.round(50 * (schaal - 1) / schaal);
+    var panInput = document.getElementById('ws-r-deel2-panAfstand');
+    var panLabel = document.getElementById('ws-r-deel2-panAfstand-val');
+    if (!panInput) return;
+    panInput.max = maxPan;
+    if (+panInput.value > maxPan) {
+      panInput.value = maxPan;
+      panLabel.textContent = maxPan;
+      scene.set('deel2.panAfstand', maxPan);
+    }
+  }
+  bijwerkenPanMax(scene.getConfig().deel2.schaal);
 
   function metGestarteScherm(fn) {
     // Springknoppen mogen ook vanaf het startscherm gebruikt worden.
