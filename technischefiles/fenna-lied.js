@@ -124,14 +124,14 @@
   var ROBBIE_VIDEO = {
     bestand: 'geluid/fenna/liedvoorrobbie.mp4',
     duurMs: 19000,
-    regelVertragingMs: [2200, 6900, 11600, 16800]
+    regelVertragingMs: [2200, 6900, 11600, 15800]
   };
 
   // ── Interne toestand ──
   var root = null, stageEl = null, panelEl = null;
   var vragen = null, titel = '', liedHint = '', liedTitel = '', liedRegels = null;
   var huidigLiedKey = null;
-  var _robbieAudio = null, _robbieBackBtn = null;
+  var _robbieAudio = null;
   var currentIndex = 0, selections = {}, onKlaarCb = null;
 
   // ─────────────────────────────────────────────────────────────────
@@ -429,6 +429,14 @@
     // de ruimte krijgt en de speler niet hoeft te scrollen.
     if (panelEl) panelEl.classList.add('fl-zingt');
 
+    // De scene-brede terug-knop is hier overbodig en levert een bug op:
+    // klik je na het lied op terug i.p.v. op Verder, dan slaat de
+    // verhaal-voortgang (onKlaarCb) over. Vanaf hier dus alleen nog de
+    // Verder-knop; een volgende scene bouwt zijn eigen terug-knop weer
+    // gewoon opnieuw op, dus hier hoeft niets teruggezet te worden.
+    var backBtn = document.querySelector('.sc-back-btn');
+    if (backBtn) backBtn.style.display = 'none';
+
     var wrap = el('div', 'fl-lied');
     wrap.appendChild(el('div', 'fl-lied-eyebrow', 'Ze zingt'));
     if (liedTitel) wrap.appendChild(el('h3', 'fl-lied-titel', liedTitel));
@@ -504,13 +512,9 @@
   }
 
   // Speelt liedvoorrobbie.mp4 als geluid (geen zichtbaar videovlak: de
-  // scene is bewust geenMedia, en dit fragment dient als geluidslaag,
-  // net als de achtergrondmuziek die het tijdelijk vervangt). Verbergt
-  // ondertussen de scene-brede terug-knop, zodat de speler pas verder of
-  // terug kan zodra het fragment voorbij is.
+  // scene is bewust geenMedia, en dit fragment dient als geluidslaag, net
+  // als de achtergrondmuziek die het tijdelijk vervangt).
   function speelRobbieVideo() {
-    _robbieBackBtn = document.querySelector('.sc-back-btn');
-    if (_robbieBackBtn) _robbieBackBtn.style.display = 'none';
     if (typeof zetSpelMuziek === 'function') zetSpelMuziek(false);
 
     try {
@@ -523,14 +527,14 @@
     }
   }
 
-  // Terug-knop en achtergrondmuziek herstellen zodra de 19 seconden om
-  // zijn (aangeroepen vanuit dezelfde timer als de Verder-knop hierboven).
+  // Achtergrondmuziek herstellen zodra de 19 seconden om zijn (aangeroepen
+  // vanuit dezelfde timer als de Verder-knop hierboven). De terug-knop komt
+  // hier bewust niet terug, zie de toelichting in toonLied().
   function herstelNaRobbieVideo() {
     if (_robbieAudio) {
       try { _robbieAudio.pause(); _robbieAudio.currentTime = 0; } catch (e) {}
       _robbieAudio = null;
     }
-    if (_robbieBackBtn) { _robbieBackBtn.style.display = ''; _robbieBackBtn = null; }
     if (typeof zetSpelMuziek === 'function') zetSpelMuziek(true);
   }
 
@@ -644,8 +648,8 @@
 
     close: function () {
       // Defensief: als de scene wegvalt terwijl Robbie's fragment nog
-      // speelt, geluid stoppen en de terug-knop/achtergrondmuziek niet
-      // blijvend verstoord laten.
+      // speelt, geluid stoppen en de achtergrondmuziek niet blijvend
+      // verstoord laten.
       herstelNaRobbieVideo();
       // Alleen de eigen overlay opruimen; een meegegeven container niet slopen.
       if (root && root.id === 'fl-root' && root.parentNode) root.parentNode.removeChild(root);
