@@ -117,14 +117,14 @@
 
   var cfg = { rollMs: 2500, emergeMs: 900 };
 
-  // Robbie-lied: dit ene lied speelt een echt geluidsfragment
-  // (19s) i.p.v. stil op te komen. eersteRegelMs is het moment waarop de
-  // zang in het fragment ook echt begint — een startwaarde, Tom
-  // beluistert liedvoorrobbie.mp4 en stelt 'm bij.
+  // Robbie-lied: dit ene lied speelt een echt geluidsfragment (19s)
+  // i.p.v. stil op te komen. regelVertragingMs is per regel het moment
+  // waarop die regel in de zang ook echt klinkt, zodat Tom elke regel
+  // los kan bijstellen na het beluisteren van liedvoorrobbie.mp4.
   var ROBBIE_VIDEO = {
     bestand: 'geluid/fenna/liedvoorrobbie.mp4',
     duurMs: 19000,
-    eersteRegelMs: 2200
+    regelVertragingMs: [2200, 6900, 11600, 16800]
   };
 
   // ── Interne toestand ──
@@ -453,17 +453,23 @@
     var wachtMs;
 
     if (isRobbie) {
-      // Robbie's lied klinkt echt (liedvoorrobbie.mp4, 19s): de eerste
-      // regel synct met het moment waarop de zang in het fragment begint,
-      // de rest verdeelt zich daarna gelijkmatig over wat er van het
-      // fragment overblijft. Geen tijdstip per regel bekend, dus dit is
-      // een gelijkmatige nadering, geen exacte sync per regel.
+      // Robbie's lied klinkt echt (liedvoorrobbie.mp4, 19s): elke regel
+      // krijgt zijn eigen vertraging in ROBBIE_VIDEO.regelVertragingMs,
+      // zodat Tom per regel kan bijsturen na het beluisteren. Regels
+      // zonder eigen tijdstip (bv. als er ooit meer regels bijkomen dan
+      // vastgelegd) vallen terug op een gelijkmatige verdeling na de
+      // laatste bekende regel.
       wachtMs = ROBBIE_VIDEO.duurMs;
-      var restMs = Math.max(0, ROBBIE_VIDEO.duurMs - ROBBIE_VIDEO.eersteRegelMs - 1200);
-      var stapMs = regels.length > 1 ? restMs / (regels.length - 1) : 0;
+      var vertragingen = ROBBIE_VIDEO.regelVertragingMs;
+      var laatsteBekend = vertragingen[vertragingen.length - 1] || 0;
+      var restMs = Math.max(0, ROBBIE_VIDEO.duurMs - laatsteBekend - 1200);
+      var extraStapMs = regels.length > vertragingen.length ? restMs / (regels.length - vertragingen.length) : 0;
       regels.forEach(function (regel, i) {
         var r = el('p', regel === '' ? 'fl-lied-regel leeg' : 'fl-lied-regel', regel);
-        r.style.animationDelay = Math.round(ROBBIE_VIDEO.eersteRegelMs + i * stapMs) + 'ms';
+        var delay = (i < vertragingen.length)
+          ? vertragingen[i]
+          : Math.round(laatsteBekend + (i - vertragingen.length + 1) * extraStapMs);
+        r.style.animationDelay = delay + 'ms';
         regelsEl.appendChild(r);
       });
       speelRobbieVideo();
