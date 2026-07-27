@@ -23,10 +23,16 @@
    Placeholders: elk beeld wordt vooraf geprobeerd te laden (Image met
    onload/onerror, nooit een reject die de sequentie blokkeert). Lukt het
    niet, dan komt er een effen gekleurd vlak met de bestandsnaam erop in
-   de plaats, en draait de scène gewoon door met correcte timing. Geluid
-   heeft geen aparte placeholder nodig: een falende Audio.play() faalt
-   altijd stil (try/catch + promise-catch), dus ontbrekend geluid is
-   gewoon stilte, precies zoals bij Regen/Bliksem elders in dit project.
+   de plaats, en draait de scène gewoon door met correcte timing.
+
+   Geluid wordt op dezelfde manier vooraf gecontroleerd (Audio met
+   loadedmetadata/error). Bij een vaste, enkele geluidslaag (muziek,
+   bosgeluiden, adem, zwelling) betekent een ontbrekend bestand gewoon
+   stilte, precies zoals bij Regen/Bliksem elders in dit project. Bij een
+   lijst met varianten (geritsel, fluister) kiest de scène alleen tussen
+   de varianten die ook echt bestaan, en valt terug op de eerste variant
+   als de rest ontbreekt, zodat er altijd geluid is zolang er minstens
+   één bestand aanwezig is.
    ══════════════════════════════════════════════════════════════════ */
 (function (global) {
   'use strict';
@@ -49,15 +55,17 @@
       b1: 'locaties/dorendael/ws-b1.jpg'
     },
     audio: {
-      muziek:   'geluid/doolhof/ws-muziek.mp3',
-      geritsel: ['geluid/doolhof/ws-geritsel-1.mp3', 'geluid/doolhof/ws-geritsel-2.mp3'],
-      fluister: ['geluid/doolhof/ws-fluister-1.mp3', 'geluid/doolhof/ws-fluister-2.mp3'],
-      adem:     'geluid/doolhof/ws-adem.mp3',
-      zwelling: 'geluid/doolhof/ws-zwelling.mp3',
-      draai:    'geluid/doolhof/ws-draai.mp3'
+      muziek:     'geluid/doolhof/ws-muziek.mp3',
+      bosgeluiden: 'geluid/doolhof/ws-scarywood.mp3',   // los bosgeluidenlaag, loopt onder de aanloop naast de muziek
+      geritsel:   ['geluid/doolhof/ws-geritsel-1.mp3', 'geluid/doolhof/ws-geritsel-2.mp3'],
+      fluister:   ['geluid/doolhof/ws-fluister-1.mp3', 'geluid/doolhof/ws-fluister-2.mp3'],
+      adem:       'geluid/doolhof/ws-adem.mp3',
+      zwelling:   'geluid/doolhof/ws-zwelling.mp3',
+      draai:      'geluid/doolhof/ws-draai.mp3'
     },
     volumes: {
       muziek: 0.5,
+      bosgeluiden: 0.45,
       geritsel: 0.6,
       fluister: 0.7,
       adem: 0.35,
@@ -151,6 +159,7 @@
     this._timers = [];
     this._audio = {};              // key → Audio-instantie (persistent, geen vroege GC)
     this._beeldStatus = {};        // src → true (geladen) / false (placeholder)
+    this._audioStatus = {};        // src → true (bestaat) / false (ontbreekt)
     this._huidigDeel = 0;
     this._onKlaar = null;
   }
@@ -174,12 +183,41 @@
     return [].concat(im.bos, im.spook, [im.a0, im.a1, im.a3, im.b0, im.b1]);
   };
 
+  // Probeert een geluidsbestand te laden; onthoudt alleen of het lukte
+  // (loadedmetadata = bestaat, error = niet). Rejecteert nooit, zelfde
+  // aanpak als _laadBeeld hierboven.
+  WoudScene.prototype._laadGeluid = function (src) {
+    var self = this;
+    return new Promise(function (resolve) {
+      if (self._audioStatus.hasOwnProperty(src)) { resolve(); return; }
+      var a = new Audio();
+      a.oncanplaythrough = a.onloadedmetadata = function () { self._audioStatus[src] = true; resolve(); };
+      a.onerror = function () { self._audioStatus[src] = false; resolve(); };
+      a.src = src;
+    });
+  };
+
+  WoudScene.prototype._alleGeluidPaden = function () {
+    var au = this.config.audio;
+    return [].concat(au.geritsel, au.fluister, [au.muziek, au.bosgeluiden, au.adem, au.zwelling, au.draai]);
+  };
+
   WoudScene.prototype._voorladen = function (cb) {
     var self = this;
-    var paden = this._alleBeeldPaden();
-    Promise.all(paden.map(function (src) { return self._laadBeeld(src); })).then(function () {
+    var paden = this._alleBeeldPaden().map(function (src) { return self._laadBeeld(src); })
+      .concat(this._alleGeluidPaden().map(function (src) { return self._laadGeluid(src); }));
+    Promise.all(paden).then(function () {
       if (typeof cb === 'function') cb();
     });
+  };
+
+  // Kiest willekeurig tussen de varianten die ook echt bestaan; valt terug
+  // op de eerste variant (arr[0]) als de rest ontbreekt, zodat er altijd
+  // een geluid gekozen wordt zolang er minstens één bestand aanwezig is.
+  WoudScene.prototype._kiesGeluid = function (arr) {
+    var self = this;
+    var bestaande = arr.filter(function (src) { return self._audioStatus[src]; });
+    return bestaande.length ? kies(bestaande) : arr[0];
   };
 
   // ── DOM opbouwen ────────────────────────────────────────────────
@@ -359,12 +397,18 @@
     var muziekAudio = this._audio['muziek_0'];
     if (muziekAudio) this._faadIn(muziekAudio, this.config.volumes.muziek, cfg.muziekFadeIn);
 
+    // Los bosgeluidenlaag, loopt onder de aanloop naast de muziek en zakt
+    // in deel 2 op hetzelfde moment weg als de muziek.
+    this._speel('bosgeluiden', this.config.audio.bosgeluiden, { volume: 0, loop: true });
+    var bosgeluidenAudio = this._audio['bosgeluiden_0'];
+    if (bosgeluidenAudio) this._faadIn(bosgeluidenAudio, this.config.volumes.bosgeluiden, cfg.muziekFadeIn);
+
     // Losse geritsel/fluister-achtige omgevingsgeluidjes, willekeurig
     // verspreid, puur sfeer, niet gesynchroniseerd met een beeldwissel.
     var aantalOmgevingsgeluiden = randInt(2, 3);
     for (var g = 0; g < aantalOmgevingsgeluiden; g++) {
       this._setTimeout(function () {
-        self._speel('geritsel', kies(self.config.audio.geritsel));
+        self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
       }, rand(0.15, 0.85) * totaalDuur);
     }
 
@@ -454,9 +498,11 @@
     var cfg = this.config.deel2;
     var im = this.config.images;
 
-    // Muziek weg, lage adem-laag blijft over.
+    // Muziek en bosgeluidenlaag samen weg, lage adem-laag blijft over.
     var muziekAudio = this._audio['muziek_0'];
     if (muziekAudio) this._faadUit(muziekAudio, cfg.muziekFadeOutDuur);
+    var bosgeluidenAudio = this._audio['bosgeluiden_0'];
+    if (bosgeluidenAudio) this._faadUit(bosgeluidenAudio, cfg.muziekFadeOutDuur);
     this._speel('adem', this.config.audio.adem, { volume: 0, loop: true });
     var ademAudio = this._audio['adem_0'];
     if (ademAudio) this._faadIn(ademAudio, this.config.volumes.adem, cfg.muziekFadeOutDuur);
@@ -486,14 +532,14 @@
 
     this._setTimeout(function () {
       // 2. geritsel links, 3. pan naar links
-      self._speel('geritsel', kies(self.config.audio.geritsel));
+      self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
       pan(-cfg.panAfstand, cfg.panDuurHeen, true, function () {
         // 4. hold
         self._setTimeout(function () {
           // 5. terug naar midden
           pan(0, cfg.terugDuur, true, function () {
             // 6. geritsel rechts, 7. pan naar rechts
-            self._speel('geritsel', kies(self.config.audio.geritsel));
+            self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
             pan(cfg.panAfstand, cfg.panDuurHeen, true, function () {
               // 8. hold
               self._setTimeout(function () {
@@ -558,7 +604,7 @@
     }
 
     // 1. fluistering vlak achter de speler
-    this._speel('fluister', kies(this.config.audio.fluister));
+    this._speel('fluister', this._kiesGeluid(this.config.audio.fluister));
 
     this._setTimeout(function () {
       // 2. omdraaien naar heks 2, dichtbij
@@ -573,7 +619,7 @@
             // 5. hold
             self._setTimeout(function () {
               // 6. tweede, andere fluistering
-              self._speel('fluister', kies(self.config.audio.fluister));
+              self._speel('fluister', self._kiesGeluid(self.config.audio.fluister));
               self._setTimeout(function () {
                 // 7. omdraaien, er is niets
                 draaiNaar(im.b0, cfg.draaiDuur, cfg.blurDraai, function () {
