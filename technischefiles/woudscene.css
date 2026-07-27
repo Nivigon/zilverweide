@@ -1,0 +1,99 @@
+/* ══════════════════════════════════════════════════════════════════
+   WOUDSCENE (stijl voor de filmische aanloop/aankomst/draai-sequentie)
+   ------------------------------------------------------------------
+   Alle klassen met prefix ws-, om botsingen met bestaande modules te
+   voorkomen. Verwacht dat de host-pagina de --vh100 custom property
+   definieert (zie zilverweide.html / de demo-pagina hieronder); zonder
+   die variabele valt 100dvh terug op de losse @supports-regel hier.
+   ══════════════════════════════════════════════════════════════════ */
+
+.ws-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.ws-laag {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.ws-laag-a { opacity: 1; }
+
+.ws-beeld {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  will-change: transform, filter;
+}
+
+.ws-beeld-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(245, 234, 214, .55);
+}
+
+.ws-spooklaag {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ws-spook {
+  position: absolute;
+  width: min(22vw, 220px);
+  height: min(38vh, calc(var(--vh100, 100vh) * .5));
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* Rozen-gloed: kind van .ws-beeld, dus deelt automatisch diens transform
+   (pan/zoom) en blijft altijd exact op de roos staan. z-index 3, boven de
+   achtergrond van .ws-beeld maar onder de deeltjeslaag (4) en de
+   spooklaag (5). */
+.ws-gloedlaag {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ws-gloed {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation-name: ws-gloed-puls;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes ws-gloed-puls {
+  0%, 100% { opacity: var(--ws-gloed-max, 0.55); }
+  50% { opacity: var(--ws-gloed-min, 0.3); }
+}
+
+/* Deeltjeslaag: ook kind van .ws-beeld (zelfde reden als .ws-gloedlaag),
+   z-index 4 zodat de lichtpuntjes boven de gloed maar onder de spooklaag
+   tekenen. Losstaand aan/uit te zetten via config.deeltjes.aan. */
+.ws-deeltjes-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 4;
+}
