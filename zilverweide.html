@@ -21,6 +21,7 @@
 <link rel="stylesheet" href="technischefiles/scene.css?v=2">
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
+<link rel="stylesheet" href="technischefiles/woudscene.css">
 <style>
 :root{
   /* 100vh met dvh-upgrade: iOS Safari telt de adresbalk mee in 100vh,
@@ -1695,6 +1696,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- Storm-modules voor het woud-doolhof (regen-overlay + bliksem + donder) -->
 <script src="technischefiles/regen.js"></script>
 <script src="technischefiles/bliksem.js"></script>
+<script src="technischefiles/woudscene.js"></script>
 
 <!-- Scene-engine (generieke locatie-layout: scene-engine.js + scene.css) -->
 <script src="technischefiles/scene-engine.js"></script>
@@ -13628,6 +13630,8 @@ function buildDebugPanel() {
       // ── Woud
       ['🌲 Alle 4 uit doolhof',      function(){ debugWoudAlleVoltooid(); close(); }, inWoudWinScreen, 'Woud'],
       ['👍 Alle 4 Klaar gedrukt',    function(){ ['jan','kelly','fenna','felix'].forEach(function(r){ woudKlaarZet(r); }); toonWoudEindBlok(); close(); }, inWoudWinScreen, 'Woud'],
+      ['🎬 Start woudscène nu',      function(){ close(); startWoudSceneInSpel(); }, inWoudWinScreen && !hasVisited('woud_filmpje_gezien'), 'Woud'],
+      ['⏭️ Woudscène overslaan',      function(){ close(); beeindigWoudScene(); }, !!woudSceneContainer, 'Woud'],
     ];
   } else if (inHeerDonatuslaan) {
     label = 'Heer Donatuslaan';
@@ -16863,11 +16867,12 @@ function toonWoudEindBlok() {
   const engineWinBlock = winScreen.querySelector('.dh-win-block');
   if (engineWinBlock) engineWinBlock.style.display = 'none';
 
-  // Iedereen heeft Klaar gedrukt → door naar vloek + ontgrendeling.
+  // Iedereen heeft Klaar gedrukt → eerst de woudscène, daarna (via de
+  // placeholder-dialoog en de Verder-knop) vloek + ontgrendeling.
   if (woudKlaarAlle()) {
     clearTimeout(woudEindBlokTimer);
     woudEindBlokTimer = null;
-    openHeerDonatuslaanVanuitWoud();
+    startWoudSceneInSpel();
     return;
   }
 
@@ -16894,6 +16899,75 @@ function toonWoudEindBlok() {
 function woudKlaarGedrukt() {
   if (state.personage) woudKlaarZet(state.personage);
   toonWoudEindBlok();
+}
+
+// ── Woudscène (filmische scène na het doolhof) ─────────────────────
+// Start zodra alle 4 Klaar hebben gedrukt, op elke tablet lokaal: de
+// poll ziet de gedeelde 4/4-stand en elk tablet draait zijn eigen
+// exemplaar, hetzelfde patroon als openHeerDonatuslaanVanuitWoud.
+// Na deel 3 volgt een placeholder-dialoogscherm; deel 4 (de echte
+// dialoog) schuift daar later tussen. Pas na de Verder-knop valt de
+// vloek en opent Heer Donatuslaan.
+var woudSceneInstantie = null;
+var woudSceneContainer = null;
+
+function startWoudSceneInSpel() {
+  if (hasVisited('woud_filmpje_gezien')) return;   // vervolg draaide al
+  if (woudSceneContainer) return;                  // scène loopt al
+  if (typeof WoudScene === 'undefined') {          // module niet geladen: sla over
+    openHeerDonatuslaanVanuitWoud();
+    return;
+  }
+
+  clearTimeout(woudEindBlokTimer);
+  woudEindBlokTimer = null;
+
+  // Storm en doolhof-audio uit vóórdat de scène begint, niet erna.
+  stopWoudStorm();
+  if (huidigDoolhof) {
+    try { huidigDoolhof.destroy(); } catch (e) {}
+    huidigDoolhof = null;
+  }
+
+  // Beeldvullende laag boven het spel maar onder de testknoppen
+  // (z-index 300), zodat de nood-overslaan in het debug-paneel
+  // bereikbaar blijft als een tablet hapert.
+  woudSceneContainer = document.createElement('div');
+  woudSceneContainer.id = 'woudscene-container';
+  woudSceneContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
+  document.body.appendChild(woudSceneContainer);
+
+  woudSceneInstantie = new WoudScene(woudSceneContainer);
+  woudSceneInstantie.start(toonWoudSceneDialoogPlaceholder);
+}
+
+// [Placeholder: hier schuift deel 4 (de dialoog) later tussen.]
+// De scène blijft na deel 3 op het laatste beeld staan; dit paneel
+// komt eroverheen.
+function toonWoudSceneDialoogPlaceholder() {
+  if (!woudSceneContainer) return;
+  var paneel = document.createElement('div');
+  paneel.id = 'woudscene-dialoog-placeholder';
+  paneel.style.cssText = 'position:absolute;left:50%;bottom:8%;transform:translateX(-50%);z-index:600;max-width:80%;text-align:center;padding:1.25rem 2rem;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:6px';
+  paneel.innerHTML =
+    '<p style="font-family:Cinzel,serif;font-size:1rem;color:var(--gold);letter-spacing:.05em;margin:0">[Placeholder: hier komt dialoog]</p>' +
+    '<button class="dh-btn" style="margin-top:1rem" onclick="beeindigWoudScene()">Verder</button>';
+  woudSceneContainer.appendChild(paneel);
+}
+
+// Ruimt de scène op en draait daarna het bestaande vervolg (vloek,
+// ontgrendeling Heer Donatuslaan). Ook de nood-overslaan in het
+// debug-paneel komt hier uit.
+function beeindigWoudScene() {
+  if (woudSceneInstantie) {
+    try { woudSceneInstantie.destroy(); } catch (e) {}
+    woudSceneInstantie = null;
+  }
+  if (woudSceneContainer) {
+    woudSceneContainer.remove();
+    woudSceneContainer = null;
+  }
+  openHeerDonatuslaanVanuitWoud();
 }
 
 // Alle 4 hebben Klaar gedrukt. Volgorde: eerst de vloek (of, als deze
