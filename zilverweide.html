@@ -828,17 +828,61 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
    Prefix wt- (Wacht-Teksten), losstaand van char-pop (dat hoort bij
-   dialoogschermen tijdens het spel, niet bij dit wachtscherm). Alles in
-   normale document-flow boven de bestaande rollijst/spinner, dus geen
-   losse positionering nodig om overlap te voorkomen. */
-#wt-pop-img{display:block;height:26vh;max-height:220px;width:auto;margin:0 auto;filter:drop-shadow(4px 4px 16px rgba(0,0,0,.7));opacity:0;transition:opacity .6s ease}
+   dialoogschermen tijdens het spel, niet bij dit wachtscherm).
+   Het personage staat groot en vast bovenaan (zelfde beeldbestanden als
+   char-pop, eigen maatvoering); de wacht-inhoud (rollijst/spinner) zit
+   los daaronder in de gewone, onderaan uitgelijnde flex-kolom van
+   #rol-wacht. De tekst-box zweeft rechtsboven, los van beide, en
+   verschijnt/verdwijnt als geheel (niet losse regels/labels). Geen
+   emoji's of iconen, alleen typografie en gouden lijnwerk. */
+#wt-pop-img{
+  position:fixed; left:50%; top:3vh; transform:translateX(-50%);
+  z-index:1; height:40vh; max-height:340px; width:auto;
+  filter:drop-shadow(6px 10px 26px rgba(0,0,0,.75));
+  opacity:0; transition:opacity .8s ease;
+  pointer-events:none;
+}
 #wt-pop-img.wt-zichtbaar{opacity:1}
-#wt-tekstzone{min-height:3.6rem;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 .5rem;margin-bottom:.4rem}
-#wt-label{font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.3rem;opacity:0;transition:opacity .8s ease}
-#wt-label.wt-zichtbaar{opacity:1}
-#wt-tekst{font-family:'Crimson Text',Georgia,serif;font-size:1.05rem;line-height:1.4;opacity:0;transition:opacity .8s ease}
-#wt-tekst.wt-zichtbaar{opacity:1}
-#wt-tekst.wt-belofte{font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.04em;color:var(--gold);text-transform:uppercase}
+/* Jans PNG is wijder ingekaderd, zelfde correctie als bij char-pop. */
+#wt-pop-img.pop-jan{height:50vh;max-height:420px}
+/* Korte schermen (telefoon liggend): zelfde grens als de rest van het
+   spel (zie de andere @media (max-height:520px)-blokken). De wacht-
+   inhoud eronder is niet schaalbaar qua tekstgrootte, dus de pop moet
+   hier extra plaats afstaan. */
+@media (max-height:520px){
+  #wt-pop-img{height:26vh;max-height:220px;top:1.5vh}
+  #wt-pop-img.pop-jan{height:32vh;max-height:260px}
+}
+/* Extreem kort (telefoon liggend op de kleinste modellen): de vaste
+   rollijst/spinner alleen al vult zo'n scherm bijna volledig. Geen
+   scroll, nergens, dus de pop gaat hier helemaal weg in plaats van
+   verder te krimpen tot een sliver die toch overlapt. */
+@media (max-height:420px){
+  #wt-pop-img{display:none}
+}
+
+#wt-box{
+  position:fixed; top:2.2rem; right:2.2rem; z-index:3;
+  width:min(24rem,38vw);
+  background:linear-gradient(160deg,rgba(24,17,10,.95),rgba(13,10,6,.97));
+  border:1px solid rgba(201,168,76,.4);
+  border-radius:8px;
+  padding:1.15rem 1.35rem;
+  box-shadow:0 10px 34px rgba(0,0,0,.6),0 0 0 1px rgba(201,168,76,.08) inset;
+  opacity:0; transform:translateY(-10px);
+  transition:opacity .8s ease,transform .8s ease;
+  pointer-events:none;
+}
+#wt-box.wt-zichtbaar{opacity:1;transform:translateY(0)}
+#wt-label{
+  font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--gold-dim);margin-bottom:.55rem;padding-bottom:.5rem;position:relative;
+}
+#wt-label::after{
+  content:'';position:absolute;left:0;bottom:0;width:2.4rem;height:1px;
+  background:linear-gradient(to right,var(--gold-dim),transparent);
+}
+#wt-tekst{font-family:'Crimson Text',Georgia,serif;font-size:1.05rem;line-height:1.45}
 #wt-tekst.wt-tip{color:var(--parchment);font-style:normal}
 #wt-tekst.wt-sfeer{color:var(--gold);font-style:italic}
 /* ══ TOAST ══ */
@@ -3702,67 +3746,32 @@ function updateRolTest() {
 // klare, geordende lijst (roltips/rolsfeer/algemene tips al in de
 // definitieve volgorde neergezet, dus geen interweave-logica nodig in de
 // code). Elk item heeft een type (tip of sfeer) voor de opmaak.
+// Algemene tip: staat voor elke rol als eerste in de cyclus.
+var WT_ALGEMENE_TIP = 'Hou elkaar op de hoogte van wat je ziet, hoort en leest. Alleen dan kom je verder.';
+
+// Per rol drie regels (algemene tip, roltip, rolsfeer); na de derde
+// begint de cyclus weer vanaf de eerste.
 var WACHTSCHERM_TEKSTEN = {
-  jan: {
-    rolbelofte: '[Placeholder: rolbelofte Jan]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 2]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 5]' }
-    ]
-  },
-  kelly: {
-    rolbelofte: '[Placeholder: rolbelofte Kelly]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 4]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 5]' }
-    ]
-  },
-  fenna: {
-    rolbelofte: '[Placeholder: rolbelofte Fenna-Vivienne]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 5]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 6]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 5]' }
-    ]
-  },
-  felix: {
-    rolbelofte: '[Placeholder: rolbelofte Felix]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 7]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 8]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 5]' }
-    ]
-  }
+  jan: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Hoogte geeft overzicht. Vertel je team wat jij ziet.' },
+    { type: 'sfeer', tekst: 'Jan zegt dat hij niets heeft met boekenwijsheid. Kelly zegt dat hij haar boek nog moet teruggeven.' }
+  ],
+  kelly: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Jij ziet de patronen. Wat twee keer opduikt, is nooit toeval.' },
+    { type: 'sfeer', tekst: 'Kelly klaagt bij iedereen dat Jan haar irriteert. Ze vergeet erbij te zeggen dat hij de enige is naar wie ze luistert.' }
+  ],
+  fenna: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Jij krijgt de mooie momenten. Geniet ervan, maar blijf opletten.' },
+    { type: 'sfeer', tekst: 'Waar de Rode Parel zingt, vergeten mensen hun zorgen. En soms meer dan dat.' }
+  ],
+  felix: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Gaat een deur voor jou dicht? Bedenk wie hem wél open zou krijgen.' },
+    { type: 'sfeer', tekst: 'In donkere stegen fluistert een naam: De Vos.' }
+  ]
 };
 
 // Startwaarden, Tom test dit op de tablet en stelt bij.
@@ -3780,9 +3789,9 @@ function stopWachtschermTeksten() {
 }
 
 // Vult de personage-pop (dezelfde plaatjes als char-pop, uit
-// karakters/spelers/) en start de rolbelofte + cyclus. De pop moet
-// eerst zichtbaar zijn voor de cyclus begint, dus een korte vertraging
-// gelijk aan de pop-fade voordat de rolbelofte start.
+// karakters/spelers/) en start de cyclus. De pop moet eerst zichtbaar
+// zijn voor de cyclus begint, dus een korte vertraging gelijk aan de
+// pop-fade voordat de eerste regel start.
 function startWachtschermTeksten() {
   stopWachtschermTeksten();
   var rol = state.personage;
@@ -3790,48 +3799,48 @@ function startWachtschermTeksten() {
   if (popImg) {
     var src = (typeof popImgVoorSpeler === 'function') ? popImgVoorSpeler(rol) : null;
     popImg.classList.remove('wt-zichtbaar');
+    popImg.classList.toggle('pop-jan', rol === 'jan');
     if (src) {
       popImg.src = src;
       void popImg.offsetWidth;
       popImg.classList.add('wt-zichtbaar');
     }
   }
-  var data = WACHTSCHERM_TEKSTEN[rol];
+  var lijst = WACHTSCHERM_TEKSTEN[rol];
+  var boxEl = document.getElementById('wt-box');
   var labelEl = document.getElementById('wt-label');
   var tekstEl = document.getElementById('wt-tekst');
-  if (!data || !labelEl || !tekstEl) return;
-  var index = -1; // -1 = rolbelofte, nog niet getoond
+  if (!lijst || !lijst.length || !boxEl || !labelEl || !tekstEl) return;
+  var index = -1;
 
-  function toonRegel(type, tekst) {
-    labelEl.classList.remove('wt-zichtbaar');
-    tekstEl.classList.remove('wt-zichtbaar');
+  // De box verschijnt/verdwijnt als één geheel (niet los per regel/label):
+  // eerst de box laten wegfaden, de inhoud pas verwisselen terwijl hij
+  // onzichtbaar is, dan de box weer laten infaden.
+  function toonRegel(item) {
+    boxEl.classList.remove('wt-zichtbaar');
     _wtSetTimeout(function() {
-      tekstEl.className = 'wt-' + type;
-      tekstEl.textContent = tekst;
-      var isTip = (type === 'tip');
+      var isTip = (item.type === 'tip');
+      tekstEl.className = 'wt-' + item.type;
+      tekstEl.textContent = item.tekst;
       labelEl.style.display = isTip ? '' : 'none';
       labelEl.textContent = isTip ? 'Tip' : '';
-      // Reflow forceren zodat de fade-in altijd echt vanaf 0 start, ook
-      // als dezelfde klasse net verwijderd is.
-      void tekstEl.offsetWidth;
-      tekstEl.classList.add('wt-zichtbaar');
-      if (isTip) labelEl.classList.add('wt-zichtbaar');
+      // Reflow forceren zodat de fade-in altijd echt vanaf 0 start.
+      void boxEl.offsetWidth;
+      boxEl.classList.add('wt-zichtbaar');
       _wtSetTimeout(function() {
-        labelEl.classList.remove('wt-zichtbaar');
-        tekstEl.classList.remove('wt-zichtbaar');
+        boxEl.classList.remove('wt-zichtbaar');
         _wtSetTimeout(volgende, WT_TIMING.fadeUit + WT_TIMING.rust);
       }, WT_TIMING.zicht);
     }, 40);
   }
 
   function volgende() {
-    index = (index + 1) % data.lijst.length;
-    var item = data.lijst[index];
-    toonRegel(item.type, item.tekst);
+    index = (index + 1) % lijst.length;
+    toonRegel(lijst[index]);
   }
 
-  // Start pas na de pop-fade (zie CSS: opacity .6s), niet er dwars doorheen.
-  _wtSetTimeout(function() { toonRegel('belofte', data.rolbelofte); }, 700);
+  // Start pas na de pop-fade (zie CSS: opacity .8s), niet er dwars doorheen.
+  _wtSetTimeout(volgende, 850);
 }
 
 function toonWachtscherm() {
@@ -3840,13 +3849,14 @@ function toonWachtscherm() {
   stopWachtschermTeksten();
   var ov = document.createElement('div');
   ov.id = 'rol-wacht';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem;background:radial-gradient(ellipse at center,#160f08,#0d0a06)';
+  // Het personage staat groot en vast bovenaan (zie #wt-pop-img, fixed),
+  // dus de wacht-inhoud zelf wordt onderaan uitgelijnd in plaats van
+  // verticaal gecentreerd, zodat de pop er nooit overheen valt.
+  ov.style.cssText = 'position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;padding:2rem;background:radial-gradient(ellipse at center,#160f08,#0d0a06)';
   ov.innerHTML =
-    '<div style="max-width:32rem;display:flex;flex-direction:column;align-items:center">' +
-      '<img id="wt-pop-img" src="" alt="">' +
-      '<div id="wt-tekstzone"><div id="wt-label"></div><div id="wt-tekst"></div></div>' +
-      '<div id="rol-wacht-inhoud" style="width:100%"></div>' +
-    '</div>';
+    '<img id="wt-pop-img" src="" alt="">' +
+    '<div id="wt-box"><div id="wt-label"></div><div id="wt-tekst"></div></div>' +
+    '<div id="rol-wacht-inhoud" style="max-width:32rem;width:100%"></div>';
   document.body.appendChild(ov);
   startWachtschermTeksten();
   if (window._rolWachtInterval) clearInterval(window._rolWachtInterval);
