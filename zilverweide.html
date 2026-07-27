@@ -4991,6 +4991,11 @@ function felixBekijkKratje() {
 // deur open. Daarna pakt hij zijn vermommingen en loopt naar buiten.
 function felixVermomEscape() {
   state.vermomming = 'Liu-Yen';
+  // Het Kegelhoedje werd nooit fysiek gegeven in deze vlucht-scene (alleen de
+  // vermomming-status werd gezet); dit is het echte moment waarop hij 'm krijgt.
+  if (!state.inventory.find(function(i){ return i.naam === ITEMS.coneHoedje.naam; })) {
+    geefItem(ITEMS.coneHoedje.emoji, ITEMS.coneHoedje.naam, false);
+  }
   if (typeof updateVermommingBadge === 'function') updateVermommingBadge();
   if (typeof toonCharPop === 'function') toonCharPop(null);
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
@@ -13921,6 +13926,15 @@ function debugSkipNaarHeerDonatuslaan() {
   // wordt wakker" zet hem in H2 vast.
   if (state.personage !== 'felix') {
     markVisited('felix_hd2_vast');
+  } else {
+    // Voor Felix zelf stelt deze skip voor dat H2 (opsluiting + vlucht) al
+    // heeft plaatsgevonden: dus meteen vrij, en met het Kegelhoedje dat hij
+    // anders pas bij het echte vluchtmoment (felixVermomEscape) zou krijgen.
+    markVisited('felix_hd2_vrij');
+    setSharedState('felix_hd2_vrij', true);
+    if (!state.inventory.find(function(i){ return i.naam === ITEMS.coneHoedje.naam; })) {
+      addInventory(ITEMS.coneHoedje.emoji, ITEMS.coneHoedje.naam, false);
+    }
   }
   // Na de eindscène van Dorendael draagt iedereen De Schaduw.
   if (window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
