@@ -117,9 +117,21 @@
 
   var cfg = { rollMs: 2500, emergeMs: 900 };
 
+  // Robbie-lied: dit ene lied speelt een echt geluidsfragment
+  // (19s) i.p.v. stil op te komen. eersteRegelMs is het moment waarop de
+  // zang in het fragment ook echt begint — een startwaarde, Tom
+  // beluistert liedvoorrobbie.mp4 en stelt 'm bij.
+  var ROBBIE_VIDEO = {
+    bestand: 'geluid/fenna/liedvoorrobbie.mp4',
+    duurMs: 19000,
+    eersteRegelMs: 2200
+  };
+
   // ── Interne toestand ──
   var root = null, stageEl = null, panelEl = null;
   var vragen = null, titel = '', liedHint = '', liedTitel = '', liedRegels = null;
+  var huidigLiedKey = null;
+  var _robbieAudio = null, _robbieBackBtn = null;
   var currentIndex = 0, selections = {}, onKlaarCb = null;
 
   // ─────────────────────────────────────────────────────────────────
@@ -437,16 +449,37 @@
     // Regels een voor een laten opkomen. Lege regels in de data zijn
     // strofe-scheidingen en krijgen alleen ruimte, geen tekst.
     var regels = liedRegels || [];
-    var vertraging = 700;
-    regels.forEach(function (regel, i) {
-      var r = el('p', regel === '' ? 'fl-lied-regel leeg' : 'fl-lied-regel', regel);
-      r.style.animationDelay = (600 + i * vertraging) + 'ms';
-      regelsEl.appendChild(r);
-    });
+    var isRobbie = (huidigLiedKey === 'robbie');
+    var wachtMs;
 
-    // Verder-knop pas als het lied is uitgeklonken.
-    var wachtMs = 600 + regels.length * vertraging + 700;
+    if (isRobbie) {
+      // Robbie's lied klinkt echt (liedvoorrobbie.mp4, 19s): de eerste
+      // regel synct met het moment waarop de zang in het fragment begint,
+      // de rest verdeelt zich daarna gelijkmatig over wat er van het
+      // fragment overblijft. Geen tijdstip per regel bekend, dus dit is
+      // een gelijkmatige nadering, geen exacte sync per regel.
+      wachtMs = ROBBIE_VIDEO.duurMs;
+      var restMs = Math.max(0, ROBBIE_VIDEO.duurMs - ROBBIE_VIDEO.eersteRegelMs - 1200);
+      var stapMs = regels.length > 1 ? restMs / (regels.length - 1) : 0;
+      regels.forEach(function (regel, i) {
+        var r = el('p', regel === '' ? 'fl-lied-regel leeg' : 'fl-lied-regel', regel);
+        r.style.animationDelay = Math.round(ROBBIE_VIDEO.eersteRegelMs + i * stapMs) + 'ms';
+        regelsEl.appendChild(r);
+      });
+      speelRobbieVideo();
+    } else {
+      var vertraging = 700;
+      regels.forEach(function (regel, i) {
+        var r = el('p', regel === '' ? 'fl-lied-regel leeg' : 'fl-lied-regel', regel);
+        r.style.animationDelay = (600 + i * vertraging) + 'ms';
+        regelsEl.appendChild(r);
+      });
+      // Verder-knop pas als het lied is uitgeklonken.
+      wachtMs = 600 + regels.length * vertraging + 700;
+    }
+
     setTimeout(function () {
+      if (isRobbie) herstelNaRobbieVideo();
       if (!stageEl || !stageEl.contains(wrap)) return;   // scene is inmiddels weg
       var acts = el('div', 'fl-lied-actie');
       var btn = el('button', 'fl-btn', 'Verder');
@@ -462,6 +495,37 @@
         if (acts.scrollIntoView) acts.scrollIntoView();
       }
     }, wachtMs);
+  }
+
+  // Speelt liedvoorrobbie.mp4 als geluid (geen zichtbaar videovlak: de
+  // scene is bewust geenMedia, en dit fragment dient als geluidslaag,
+  // net als de achtergrondmuziek die het tijdelijk vervangt). Verbergt
+  // ondertussen de scene-brede terug-knop, zodat de speler pas verder of
+  // terug kan zodra het fragment voorbij is.
+  function speelRobbieVideo() {
+    _robbieBackBtn = document.querySelector('.sc-back-btn');
+    if (_robbieBackBtn) _robbieBackBtn.style.display = 'none';
+    if (typeof zetSpelMuziek === 'function') zetSpelMuziek(false);
+
+    try {
+      _robbieAudio = new Audio(ROBBIE_VIDEO.bestand);
+      _robbieAudio.play().catch(function (e) {
+        console.warn('liedvoorrobbie.mp4 afspelen mislukt:', e);
+      });
+    } catch (e) {
+      console.warn('liedvoorrobbie.mp4 fout:', e);
+    }
+  }
+
+  // Terug-knop en achtergrondmuziek herstellen zodra de 19 seconden om
+  // zijn (aangeroepen vanuit dezelfde timer als de Verder-knop hierboven).
+  function herstelNaRobbieVideo() {
+    if (_robbieAudio) {
+      try { _robbieAudio.pause(); _robbieAudio.currentTime = 0; } catch (e) {}
+      _robbieAudio = null;
+    }
+    if (_robbieBackBtn) { _robbieBackBtn.style.display = ''; _robbieBackBtn = null; }
+    if (typeof zetSpelMuziek === 'function') zetSpelMuziek(true);
   }
 
   function renderSpeed() {
@@ -508,6 +572,7 @@
     liedHint = data.hint || '';
     liedTitel = data.liedtitel || '';
     liedRegels = data.regels || [];
+    huidigLiedKey = liedKey;
     currentIndex = 0;
     selections = {};
     for (var i = 0; i < vragen.length; i++) selections[vragen[i].id] = 0;
@@ -572,10 +637,15 @@
     },
 
     close: function () {
+      // Defensief: als de scene wegvalt terwijl Robbie's fragment nog
+      // speelt, geluid stoppen en de terug-knop/achtergrondmuziek niet
+      // blijvend verstoord laten.
+      herstelNaRobbieVideo();
       // Alleen de eigen overlay opruimen; een meegegeven container niet slopen.
       if (root && root.id === 'fl-root' && root.parentNode) root.parentNode.removeChild(root);
       root = null; stageEl = null; panelEl = null;
       vragen = null; onKlaarCb = null; liedHint = ''; liedTitel = ''; liedRegels = null;
+      huidigLiedKey = null;
     }
   };
 
