@@ -585,9 +585,10 @@
     beeld.style.transform = 'scale(1)';
     beeld.style.filter = 'blur(0px)';
 
-    // Eén omdraaiing: kort blur-moment, wissel het beeld op het midden van
-    // de beweging, laat de blur weer wegtrekken. Geen tussenbeelden nodig,
-    // de veeg zelf dekt de wissel af.
+    // Eén schrik-omdraaiing: kort blur-moment, wissel het beeld op het
+    // midden van de beweging, laat de blur weer wegtrekken. Geen
+    // tussenbeelden nodig, de veeg zelf dekt de wissel af (de blur is fel
+    // en kort genoeg om de harde inhoud-wissel te verdoezelen).
     function draaiNaar(nieuweSrc, duur, blurPx, cb) {
       beeld.style.transition = 'filter ' + Math.round(duur / 2) + 'ms ease-in';
       beeld.style.filter = 'blur(' + blurPx + 'px)';
@@ -600,6 +601,32 @@
         beeld.style.transition = 'filter ' + Math.round(duur / 2) + 'ms ease-out';
         beeld.style.filter = 'blur(0px)';
       }, Math.round(duur / 2));
+      self._setTimeout(cb, duur);
+    }
+
+    // De laatste, rustige terugdraai is geen schrikreactie meer: de blur
+    // is met opzet licht, en licht genoeg maskeert de harde beeld-wissel
+    // van draaiNaar() niet meer (dat oogt dan zelf als een flits). Deze
+    // gebruikt daarom een echte overvloeiing tussen de twee beeld-lagen
+    // (dezelfde laag-crossfade als deel 1), met de nieuwe laag die tegelijk
+    // onwazig wordt terwijl hij invaagt.
+    function kalmTerugdraaien(nieuweSrc, duur, blurPx, cb) {
+      var ander = (actief === self._laagA) ? self._laagB : self._laagA;
+      var nieuwBeeld = self._vulLaag(ander, nieuweSrc);
+      nieuwBeeld.style.transition = 'none';
+      nieuwBeeld.style.transform = 'scale(1)';
+      nieuwBeeld.style.filter = 'blur(' + blurPx + 'px)';
+      ander.style.transition = 'none';
+      ander.style.opacity = '0';
+      void nieuwBeeld.offsetWidth;
+      ander.style.transition = 'opacity ' + duur + 'ms ease';
+      ander.style.opacity = '1';
+      actief.style.transition = 'opacity ' + duur + 'ms ease';
+      actief.style.opacity = '0';
+      nieuwBeeld.style.transition = 'filter ' + duur + 'ms ease-out';
+      nieuwBeeld.style.filter = 'blur(0px)';
+      actief = ander;
+      beeld = nieuwBeeld;
       self._setTimeout(cb, duur);
     }
 
@@ -625,8 +652,9 @@
                 draaiNaar(im.b0, cfg.draaiDuur, cfg.blurDraai, function () {
                   // 8. drie seconden volledige stilte
                   self._setTimeout(function () {
-                    // 9. rustig terugdraaien: langzamer, minder onscherpte
-                    draaiNaar(im.a3, cfg.draaiDuurRustig, cfg.blurDraaiRustig, function () {
+                    // 9. rustig terugdraaien: langzamer, minder onscherpte,
+                    // en een echte overvloeiing i.p.v. een harde wissel.
+                    kalmTerugdraaien(im.a3, cfg.draaiDuurRustig, cfg.blurDraaiRustig, function () {
                       // 11. vier seconden vasthouden, dan klaar
                       self._setTimeout(function () {
                         self._running = false;
