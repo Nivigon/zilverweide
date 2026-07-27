@@ -1407,7 +1407,6 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
     <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(13,10,6,.2) 0%,rgba(13,10,6,0) 30%,rgba(13,10,6,.65) 65%,rgba(13,10,6,.97) 100%)"></div>
     <div style="position:absolute;bottom:0;left:0;right:0;text-align:center;padding:2rem 1.5rem 3.5rem;z-index:2">
-      <div style="font-size:1.8rem;margin-bottom:.75rem;animation:roseGlow 2s ease-in-out infinite">🌹</div>
       <h1 style="font-family:'Cinzel',serif;font-size:clamp(1.6rem,6vw,2.8rem);font-weight:600;color:var(--gold);letter-spacing:.08em;text-shadow:0 0 60px rgba(201,168,76,.6),0 2px 20px rgba(0,0,0,.9);line-height:1.2;margin-bottom:.5rem">De Rozen van Zilverweide</h1>
 
       <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:.25rem">
@@ -2058,6 +2057,7 @@ const VISITED_FLAGS = {
   jan_toren_geklommen:        'Jan is de uitkijktoren opgeklommen',
   jan_heeft_speld:            'Jan heeft de kromme speld van de uitkijktoren',
   nummer7_filmpje_gezien:     'Het filmpje bij nummer 7 is afgespeeld',
+  terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na de podium-openingsdialoog)',
 
   // Dorendael — Nummer 2 (Felix)
   felix_dd2_gewacht:          'Felix heeft op de bewoner gewacht en het geld eerlijk gekregen',
@@ -10352,6 +10352,53 @@ function bouwArchiefOnthulling() {
   document.body.appendChild(ov);
 }
 
+// Eenmalige uitleg over de terug-knop, zelfde stijl als bouwArchiefOnthulling
+// hierboven (kloon van de knop, opgelicht op zijn eigen plek, tekst eronder).
+// Getriggerd na Fenna's laatste tekstregel in de podium-openingsdialoog
+// (naIntroFilmpje), vlak nadat de terug-knop weer zichtbaar wordt: zo leert
+// de speler bij de allereerste kans dat deze knop altijd terugbrengt naar de
+// straat of de kaart van het dorp. onKlaar draait pas na het wegklikken
+// (of meteen, als de uitleg al eerder gezien is).
+function toonTerugknopIntro(onKlaar) {
+  var knop = document.getElementById('locatie-back-btn');
+  if (hasVisited('terugknop_intro_gezien') || !knop) {
+    if (typeof onKlaar === 'function') onKlaar();
+    return;
+  }
+  markVisited('terugknop_intro_gezien');
+  var r = knop.getBoundingClientRect();
+
+  var ov = document.createElement('div');
+  ov.id = 'dgbk-reveal';
+
+  var kloon = knop.cloneNode(true);
+  kloon.removeAttribute('id');
+  kloon.classList.add('dgbk-pill-live');
+  kloon.style.position = 'fixed';
+  kloon.style.left = r.left + 'px';
+  kloon.style.top = r.top + 'px';
+  kloon.style.margin = '0';
+
+  var paneel = document.createElement('div');
+  paneel.className = 'dgbk-reveal-paneel';
+  paneel.style.left = (r.left + r.width / 2) + 'px';
+  paneel.style.top  = (r.bottom + 14) + 'px';
+  paneel.innerHTML =
+    '<p class="dgbk-archief-tekst">Je kunt hier altijd op deze knop drukken. Dan kom je terug op de straat, of bij de kaart van het dorp.</p>' +
+    '<button class="dgbk-plkknop">Ik begrijp het</button>';
+
+  var weg = function () {
+    ov.remove();
+    if (typeof onKlaar === 'function') onKlaar();
+  };
+  kloon.onclick = weg;
+  paneel.querySelector('button').onclick = weg;
+
+  ov.appendChild(kloon);
+  ov.appendChild(paneel);
+  document.body.appendChild(ov);
+}
+
 // "Over de Rozen" leesactie: iedereen kan het lezen zodra Kelly het boekje
 // via het kerkarchief-doolhof heeft geplaatst. Zelfde blader-model als het
 // dagboek (gedeelde voorkant en omslag-filmpjes), met eigen bladzijden.
@@ -11456,13 +11503,18 @@ function naIntroFilmpje() {
     if (backBtn) backBtn.style.display = '';
     const charPop = document.getElementById('char-pop');
     if (charPop) charPop.style.display = '';
-    unlockZone('kraaienkwartier');
-    toonLade(
-      '🔓 Het onderzoek begint',
-      '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Het Dorpsplein en het Kraaienkwartier liggen open. Begin je zoektocht.</p>',
-      'Laten we gaan →',
-      () => openToneel()
-    );
+    // Eenmalige terug-knop-uitleg: de knop is net weer zichtbaar geworden
+    // (verborgen tijdens filmpje/dialoog), dus dit is het eerste natuurlijke
+    // moment om te laten zien dat hij altijd terug naar straat/kaart brengt.
+    toonTerugknopIntro(function () {
+      unlockZone('kraaienkwartier');
+      toonLade(
+        '🔓 Het onderzoek begint',
+        '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Het Dorpsplein en het Kraaienkwartier liggen open. Begin je zoektocht.</p>',
+        'Laten we gaan →',
+        () => openToneel()
+      );
+    });
   });
 }
 
@@ -12584,7 +12636,7 @@ function checkAllTokens() {
   if ((alleFinaleCodesVerzameld() || kraaienScoreVol) && !state.finalePopupGetoond && !popupOpen) {
     state.finalePopupGetoond = true;
     toonLade(
-    '🌹  Alles verzameld',
+    'Alles verzameld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alles verzameld. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
       '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Voor die tijd: zorg dat je in ieder geval het dagboek bekeken hebt.</p>',
     'Verder →',
@@ -12652,7 +12704,7 @@ function checkHeerDonatusTokens() {
       window.ZilverweideSchaduw.kalmeer();
     }
     toonLade(
-      '🌹  Klaar in Heer Donatuslaan',
+      'Klaar in Heer Donatuslaan',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie zijn klaar in Heer Donatuslaan. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks in deze straat is.</p>' +
         '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
       'Verder →',
