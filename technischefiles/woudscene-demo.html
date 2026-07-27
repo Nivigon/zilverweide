@@ -89,6 +89,48 @@
     border-radius:2px; padding:.5rem .3rem; cursor:pointer;
   }
   .ws-dbg-btn2:hover{ background:rgba(201,168,76,.12); }
+  .ws-dbg-btn2.actief{ background:rgba(201,168,76,.28); color:#e0c06a; }
+  .ws-dbg-rij select{
+    width:100%; background:#0d0a06; color:#f5ead6;
+    border:1px solid rgba(201,168,76,.4); border-radius:2px; padding:.3rem;
+    font-family:'Crimson Text',Georgia,serif; font-size:.8rem;
+  }
+  .ws-dbg-hint{ color:#8a6f32; font-size:.68rem; line-height:1.4; margin:.3rem 0 .5rem; }
+
+  /* ── Plaatsmodus: kleine markers boven de scène, en een info-label
+     dat toont welke plaat nu in beeld is. Puur testgereedschap, geen
+     onderdeel van de scène zelf. ── */
+  #ws-plaats-laag{ position:absolute; inset:0; z-index:520; pointer-events:none; }
+  .ws-plaats-punt{
+    position:absolute; width:16px; height:16px; margin:-8px 0 0 -8px;
+    border-radius:50%; background:rgba(90,170,255,.35);
+    border:2px solid #5aaaff; box-shadow:0 0 6px rgba(90,170,255,.8);
+  }
+  #ws-plaats-info{
+    display:none;
+    position:fixed; top:1rem; left:50%; transform:translateX(-50%); z-index:531;
+    background:rgba(13,10,6,.9); border:1px solid rgba(90,170,255,.5);
+    border-radius:4px; padding:.5rem 1rem;
+    font-family:'Cinzel',serif; font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+    color:#8fc4ff; text-align:center;
+  }
+  #ws-plaats-info.aan{ display:block; }
+
+  /* ── Gloed-testmodus: eigen, losse scène-instantie boven de echte
+     scène, met een stilstaand beeld. Alleen voor het afstellen van de
+     gloed/deeltjes-instellingen, geen onderdeel van het spel zelf. ── */
+  #ws-glow-stage{
+    display:none;
+    position:absolute; inset:0; z-index:40;
+    background:#000;
+  }
+  #ws-glow-stage.aan{ display:block; }
+  .ws-test-verborgen .ws-gloed,
+  .ws-test-verborgen .ws-deeltjes-canvas{ visibility:hidden !important; }
+  input[type="color"]{
+    width:100%; height:1.8rem; border:1px solid rgba(201,168,76,.4);
+    border-radius:2px; background:#0d0a06; padding:2px; cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -99,8 +141,11 @@
     <p>De scène speelt pas na een klik (audio mag pas starten na een gebaar van de speler). Gebruik het tandwiel linksonder om de timing te verfijnen.</p>
     <button id="ws-start-btn">Start de scène</button>
   </div>
+  <div id="ws-plaats-laag"></div>
+  <div id="ws-glow-stage"></div>
 </div>
 
+<div id="ws-plaats-info"></div>
 <button id="ws-dbg-btn" title="Timing instellen">⚙</button>
 <div id="ws-dbg-panel"></div>
 
@@ -204,6 +249,30 @@ var SLIDER_RIJEN = [
   { label: 'Draai-geluid', pad: 'volumes.draai', min: 0, max: 1, step: 0.05 }
 ];
 
+// Regelaars voor de gloed-testmodus: los van SLIDER_RIJEN omdat deze niet
+// op de lopende scène werken maar op een eigen, stilstaande test-scène
+// (zie glowTestScene hieronder), en er ook een kleurkiezer en aan/uit-
+// knoppen bij zitten die geen gewone schuifregelaar zijn.
+var GLOW_SLIDER_RIJEN = [
+  { label: 'Grootte (px)', pad: 'gloed.grootte', min: 20, max: 220, step: 5 },
+  { label: 'Dekking', pad: 'gloed.dekking', min: 0, max: 1, step: 0.05 },
+  { label: 'Scherpte van de rand', pad: 'gloed.scherpte', min: 0, max: 1, step: 0.05 },
+  { label: 'Aandeel kern', pad: 'gloed.kernAandeel', min: 0, max: 0.9, step: 0.05 },
+  { label: 'Puls: tempo (ms)', pad: 'gloed.pulsTempo', min: 1000, max: 10000, step: 100 },
+  { label: 'Puls: diepte', pad: 'gloed.pulsDiepte', min: 0, max: 1, step: 0.05 },
+  { label: 'Flakker: sterkte', pad: 'gloed.flakkerSterkte', min: 0, max: 1, step: 0.05 },
+  { label: 'Flakker: duur (ms)', pad: 'gloed.flakkerDuur', min: 100, max: 3000, step: 50 }
+];
+var DEELTJES_SLIDER_RIJEN = [
+  { label: 'Aantal per roos', pad: 'deeltjes.aantalPerRoos', min: 0, max: 15, step: 1 },
+  { label: 'Stijgsnelheid (px/s)', pad: 'deeltjes.stijgSnelheid', min: 2, max: 60, step: 1 },
+  { label: 'Dwarreling (px)', pad: 'deeltjes.dwarreling', min: 0, max: 30, step: 1 },
+  { label: 'Grootte (px)', pad: 'deeltjes.grootte', min: 1, max: 12, step: 0.5 },
+  { label: 'Levensduur (ms)', pad: 'deeltjes.levensduur', min: 1000, max: 12000, step: 250 },
+  { label: 'Dekking', pad: 'deeltjes.dekking', min: 0, max: 1, step: 0.05 },
+  { label: 'Scherpte', pad: 'deeltjes.scherpte', min: 0, max: 1, step: 0.05 }
+];
+
 function padWaarde(obj, pad) {
   var delen = pad.split('.'), v = obj;
   for (var i = 0; i < delen.length; i++) v = v[delen[i]];
@@ -236,6 +305,74 @@ function padWaarde(obj, pad) {
       '<button class="ws-dbg-btn2" id="ws-dbg-d3">Deel 3</button>' +
       '<button class="ws-dbg-btn2" id="ws-dbg-config">Config → console</button>' +
     '</div>';
+  html +=
+    '<div class="ws-dbg-kop">Rozen plaatsen</div>' +
+    '<div class="ws-dbg-hint">Zet aan, klik daarna in de scène op een roos. Klikken op een bestaand punt verwijdert het.</div>' +
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-plaatsmodus">📍 Plaatsmodus</button>' +
+    '</div>' +
+    '<div class="ws-dbg-rij">' +
+      '<div class="ws-dbg-rij-label"><span>Kopieer van</span></div>' +
+      '<select id="ws-dbg-kopieer-van"><option value="a0">a0</option><option value="a1">a1</option><option value="a3">a3</option></select>' +
+    '</div>' +
+    '<div class="ws-dbg-rij">' +
+      '<div class="ws-dbg-rij-label"><span>Kopieer naar</span></div>' +
+      '<select id="ws-dbg-kopieer-naar"><option value="a1">a1</option><option value="a0">a0</option><option value="a3">a3</option></select>' +
+    '</div>' +
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-kopieer">Kopieer coördinaten</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-rozen-console">Rozen → console</button>' +
+    '</div>';
+
+  // Gloed-testmodus: eigen sectie, met een plaat-keuzelijst, alle
+  // gloed/deeltjes-regelaars, en de drie afsluitende knoppen (verbergen,
+  // config → console, reset).
+  html +=
+    '<div class="ws-dbg-kop">Gloed-testmodus</div>' +
+    '<div class="ws-dbg-hint">Stopt de scène en toont één stilstaande plaat, om de gloed en de deeltjes rustig af te stellen.</div>' +
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-gloedtest">🔬 Testmodus</button>' +
+    '</div>' +
+    '<div class="ws-dbg-rij">' +
+      '<div class="ws-dbg-rij-label"><span>Plaat</span></div>' +
+      '<select id="ws-gt-plaat"><option value="a0">a0</option><option value="a1">a1</option><option value="a3">a3</option></select>' +
+    '</div>' +
+    '<div class="ws-dbg-rij">' +
+      '<div class="ws-dbg-rij-label"><span>Gloed-kleur</span></div>' +
+      '<input type="color" id="ws-gt-kleur">' +
+    '</div>';
+  GLOW_SLIDER_RIJEN.forEach(function (rij) {
+    var id = 'ws-gt-' + rij.pad.replace(/\./g, '-');
+    var val = padWaarde(huidigeConfig, rij.pad);
+    html +=
+      '<div class="ws-dbg-rij">' +
+        '<div class="ws-dbg-rij-label"><span>' + rij.label + '</span><span id="' + id + '-val">' + val + '</span></div>' +
+        '<input type="range" id="' + id + '" data-pad="' + rij.pad + '" min="' + rij.min + '" max="' + rij.max + '" step="' + rij.step + '" value="' + val + '">' +
+      '</div>';
+  });
+  html +=
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-gt-flakker-nu">Flakker nu</button>' +
+    '</div>' +
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-gt-deeltjes-aan">Deeltjes: aan</button>' +
+    '</div>';
+  DEELTJES_SLIDER_RIJEN.forEach(function (rij) {
+    var id = 'ws-gt-' + rij.pad.replace(/\./g, '-');
+    var val = padWaarde(huidigeConfig, rij.pad);
+    html +=
+      '<div class="ws-dbg-rij">' +
+        '<div class="ws-dbg-rij-label"><span>' + rij.label + '</span><span id="' + id + '-val">' + val + '</span></div>' +
+        '<input type="range" id="' + id + '" data-pad="' + rij.pad + '" min="' + rij.min + '" max="' + rij.max + '" step="' + rij.step + '" value="' + val + '">' +
+      '</div>';
+  });
+  html +=
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-gt-verbergen">Verberg effecten</button>' +
+      '<button class="ws-dbg-btn2" id="ws-gt-console">Instellingen → console</button>' +
+      '<button class="ws-dbg-btn2" id="ws-gt-reset">Reset naar standaard</button>' +
+    '</div>';
+
   dbgPanel.innerHTML = html;
 
   SLIDER_RIJEN.forEach(function (rij) {
@@ -301,6 +438,238 @@ function padWaarde(obj, pad) {
   };
   document.getElementById('ws-dbg-config').onclick = function () {
     console.log('WOUDSCENE config:\n' + JSON.stringify(scene.getConfig(), null, 2));
+  };
+
+  /* ── Plaatsmodus: klik in de scène legt een rozen-coördinaat vast op
+     de plaat die op dat moment in beeld is (fractie t.o.v. het beeld
+     zelf, dus onafhankelijk van pan/zoom). Klikken vlak bij een bestaand
+     punt verwijdert het weer. ── */
+  var plaatsmodusAan = false;
+  var plaatsBtn = document.getElementById('ws-dbg-plaatsmodus');
+  var plaatsInfo = document.getElementById('ws-plaats-info');
+  var plaatsLaag = document.getElementById('ws-plaats-laag');
+  var stageEl = document.getElementById('ws-stage');
+  var PLAATS_TOLERANTIE = 0.035; // fractie van de beeld-breedte/hoogte
+
+  function actiefBeeld() {
+    var laagA = document.querySelector('.ws-laag-a');
+    var laagB = document.querySelector('.ws-laag-b');
+    if (!laagA || !laagB) return null;
+    var actieveLaag = (parseFloat(getComputedStyle(laagA).opacity) >= 0.5) ? laagA : laagB;
+    return actieveLaag.querySelector('.ws-beeld');
+  }
+
+  function verversPlaatsInfo() {
+    var beeld = actiefBeeld();
+    var sleutel = beeld && beeld.dataset.wsSleutel;
+    if (!plaatsmodusAan) { plaatsInfo.classList.remove('aan'); return; }
+    plaatsInfo.classList.add('aan');
+    if (!sleutel) {
+      plaatsInfo.textContent = 'Plaatsmodus aan, huidige plaat heeft geen rozen-sleutel (a0/a1/a3)';
+      return;
+    }
+    var aantal = (scene.config.rozen[sleutel] || []).length;
+    plaatsInfo.textContent = 'Plaatsmodus aan, plaat ' + sleutel + ' (' + aantal + ' roos/rozen)';
+  }
+
+  function verversPlaatsMarkers() {
+    plaatsLaag.innerHTML = '';
+    if (!plaatsmodusAan) return;
+    var beeld = actiefBeeld();
+    var sleutel = beeld && beeld.dataset.wsSleutel;
+    if (!sleutel) return;
+    var beeldRect = beeld.getBoundingClientRect();
+    var stageRect = stageEl.getBoundingClientRect();
+    (scene.config.rozen[sleutel] || []).forEach(function (pos) {
+      var dot = document.createElement('div');
+      dot.className = 'ws-plaats-punt';
+      dot.style.left = (beeldRect.left - stageRect.left + pos.x * beeldRect.width) + 'px';
+      dot.style.top = (beeldRect.top - stageRect.top + pos.y * beeldRect.height) + 'px';
+      plaatsLaag.appendChild(dot);
+    });
+  }
+
+  // Periodiek bijwerken: de plaatsmodus is bedoeld voor een (vrijwel)
+  // stilstaand beeld, maar dit vangt op als er tijdens het plaatsen nog
+  // een pan/zoom aan de gang is, zonder dat er een aparte hook nodig is
+  // voor elk moment waarop de scène zelf beweegt.
+  var plaatsMarkerTimer = null;
+  function plaatsModusAanzetten(aan) {
+    plaatsmodusAan = aan;
+    plaatsBtn.classList.toggle('actief', aan);
+    verversPlaatsInfo();
+    verversPlaatsMarkers();
+    if (plaatsMarkerTimer) { clearInterval(plaatsMarkerTimer); plaatsMarkerTimer = null; }
+    if (aan) {
+      plaatsMarkerTimer = setInterval(function () {
+        verversPlaatsInfo();
+        verversPlaatsMarkers();
+      }, 300);
+    }
+  }
+
+  plaatsBtn.onclick = function () { plaatsModusAanzetten(!plaatsmodusAan); };
+
+  stageEl.addEventListener('click', function (ev) {
+    if (!plaatsmodusAan) return;
+    if (ev.target.closest('#ws-startscherm')) return;
+    var beeld = actiefBeeld();
+    var sleutel = beeld && beeld.dataset.wsSleutel;
+    if (!sleutel) { console.log('Plaatsmodus: deze plaat heeft geen rozen-sleutel (a0/a1/a3).'); return; }
+    var rect = beeld.getBoundingClientRect();
+    var x = (ev.clientX - rect.left) / rect.width;
+    var y = (ev.clientY - rect.top) / rect.height;
+    var lijst = (scene.config.rozen[sleutel] || []).slice();
+    var gevondenIdx = -1;
+    for (var i = 0; i < lijst.length; i++) {
+      var dx = lijst[i].x - x, dy = lijst[i].y - y;
+      if (Math.sqrt(dx * dx + dy * dy) < PLAATS_TOLERANTIE) { gevondenIdx = i; break; }
+    }
+    if (gevondenIdx >= 0) {
+      var verwijderd = lijst.splice(gevondenIdx, 1)[0];
+      console.log('Plaatsmodus: roos verwijderd bij ' + sleutel + ', x=' + verwijderd.x.toFixed(4) + ' y=' + verwijderd.y.toFixed(4));
+    } else {
+      lijst.push({ x: +x.toFixed(4), y: +y.toFixed(4) });
+      console.log('Plaatsmodus: roos toegevoegd bij ' + sleutel + ', x=' + x.toFixed(4) + ' y=' + y.toFixed(4));
+    }
+    scene.set('rozen.' + sleutel, lijst);
+    scene.herbouwRozenLaag(sleutel);
+    verversPlaatsInfo();
+    verversPlaatsMarkers();
+  });
+
+  document.getElementById('ws-dbg-kopieer').onclick = function () {
+    var van = document.getElementById('ws-dbg-kopieer-van').value;
+    var naar = document.getElementById('ws-dbg-kopieer-naar').value;
+    if (van === naar) { console.log('Plaatsmodus: van en naar zijn dezelfde plaat, niets gekopieerd.'); return; }
+    var lijst = (scene.config.rozen[van] || []).map(function (p) { return { x: p.x, y: p.y }; });
+    scene.set('rozen.' + naar, lijst);
+    scene.herbouwRozenLaag(naar);
+    console.log('Plaatsmodus: ' + lijst.length + ' roos/rozen gekopieerd van ' + van + ' naar ' + naar + '.');
+    verversPlaatsInfo();
+    verversPlaatsMarkers();
+  };
+
+  document.getElementById('ws-dbg-rozen-console').onclick = function () {
+    console.log('WOUDSCENE rozen:\n' + JSON.stringify(scene.getConfig().rozen, null, 2));
+  };
+
+  /* ── Gloed-testmodus: eigen, losse WoudScene-instantie op een eigen
+     laag boven de echte scène, die alleen ooit één stilstaande plaat
+     toont. Een aparte instantie (i.p.v. de lopende scène hergebruiken)
+     zodat het afstellen hier de beat-machinery van de echte scène nooit
+     kan raken: die draait namelijk gewoon door op de achtergrond
+     (gepauzeerd zodra de testmodus aangaat). Regelaars schrijven naar
+     ZOWEL de echte scène als de test-scène, zodat afgestelde waarden ook
+     meteen gelden zodra de testmodus weer uitgaat. ── */
+  var glowTestScene = null;
+  var glowTestActief = false;
+  var glowStageEl = document.getElementById('ws-glow-stage');
+  var glowTestBtn = document.getElementById('ws-dbg-gloedtest');
+  var glowPlaatSelect = document.getElementById('ws-gt-plaat');
+
+  function syncGlowTestConfig() {
+    var cfg = scene.getConfig();
+    glowTestScene.set('gloed', cfg.gloed);
+    glowTestScene.set('deeltjes', cfg.deeltjes);
+    glowTestScene.set('rozen', cfg.rozen);
+  }
+
+  function glowTestZet(sleutel) {
+    if (!glowTestScene) return;
+    var src = glowTestScene.config.images[sleutel];
+    glowTestScene._laadBeeld(src).then(function () {
+      if (!glowTestActief) return; // ondertussen alweer uitgezet
+      glowTestScene._laagA.style.transition = 'none';
+      glowTestScene._laagA.style.opacity = '1';
+      glowTestScene._laagB.style.transition = 'none';
+      glowTestScene._laagB.style.opacity = '0';
+      var beeld = glowTestScene._vulLaag(glowTestScene._laagA, src);
+      beeld.style.transition = 'none';
+      beeld.style.transform = 'scale(1)';
+      beeld.style.filter = 'none';
+    });
+  }
+
+  function glowTestModusAanzetten(aan) {
+    glowTestActief = aan;
+    glowTestBtn.classList.toggle('actief', aan);
+    glowStageEl.classList.toggle('aan', aan);
+    if (aan) {
+      if (!glowTestScene) {
+        glowTestScene = new WoudScene(glowStageEl, DEMO_CONFIG);
+        glowTestScene._build();
+      }
+      if (scene._running && !scene._gepauzeerd) scene.pause();
+      syncGlowTestConfig();
+      glowTestZet(glowPlaatSelect.value);
+    }
+  }
+
+  glowTestBtn.onclick = function () { glowTestModusAanzetten(!glowTestActief); };
+  glowPlaatSelect.onchange = function () { glowTestZet(glowPlaatSelect.value); };
+
+  function pasGloedDeeltjesToe(pad, v) {
+    scene.set(pad, v);
+    if (glowTestScene) glowTestScene.set(pad, v);
+  }
+
+  GLOW_SLIDER_RIJEN.concat(DEELTJES_SLIDER_RIJEN).forEach(function (rij) {
+    var id = 'ws-gt-' + rij.pad.replace(/\./g, '-');
+    var input = document.getElementById(id);
+    var label = document.getElementById(id + '-val');
+    input.oninput = function () {
+      var v = +this.value;
+      label.textContent = v;
+      pasGloedDeeltjesToe(rij.pad, v);
+    };
+  });
+
+  var kleurInput = document.getElementById('ws-gt-kleur');
+  kleurInput.value = scene.getConfig().gloed.kleur;
+  kleurInput.oninput = function () { pasGloedDeeltjesToe('gloed.kleur', this.value); };
+
+  var deeltjesAanBtn = document.getElementById('ws-gt-deeltjes-aan');
+  function verversDeeltjesAanLabel() {
+    deeltjesAanBtn.textContent = 'Deeltjes: ' + (scene.getConfig().deeltjes.aan ? 'aan' : 'uit');
+  }
+  verversDeeltjesAanLabel();
+  deeltjesAanBtn.onclick = function () {
+    var nieuw = !scene.getConfig().deeltjes.aan;
+    pasGloedDeeltjesToe('deeltjes.aan', nieuw);
+    verversDeeltjesAanLabel();
+  };
+
+  document.getElementById('ws-gt-flakker-nu').onclick = function () {
+    if (glowTestScene) glowTestScene._flakkerGloed();
+  };
+
+  var verbergBtn = document.getElementById('ws-gt-verbergen');
+  var effectenVerborgen = false;
+  verbergBtn.onclick = function () {
+    effectenVerborgen = !effectenVerborgen;
+    glowStageEl.classList.toggle('ws-test-verborgen', effectenVerborgen);
+    verbergBtn.classList.toggle('actief', effectenVerborgen);
+  };
+
+  document.getElementById('ws-gt-console').onclick = function () {
+    var cfg = scene.getConfig();
+    console.log('WOUDSCENE gloed + deeltjes:\n' + JSON.stringify({ gloed: cfg.gloed, deeltjes: cfg.deeltjes }, null, 2));
+  };
+
+  document.getElementById('ws-gt-reset').onclick = function () {
+    var standaard = new WoudScene(document.createElement('div')).getConfig();
+    pasGloedDeeltjesToe('gloed', standaard.gloed);
+    pasGloedDeeltjesToe('deeltjes', standaard.deeltjes);
+    GLOW_SLIDER_RIJEN.concat(DEELTJES_SLIDER_RIJEN).forEach(function (rij) {
+      var id = 'ws-gt-' + rij.pad.replace(/\./g, '-');
+      var v = padWaarde(standaard, rij.pad);
+      document.getElementById(id).value = v;
+      document.getElementById(id + '-val').textContent = v;
+    });
+    kleurInput.value = standaard.gloed.kleur;
+    verversDeeltjesAanLabel();
+    console.log('Gloed en deeltjes teruggezet naar de standaardwaarden.');
   };
 })();
 </script>

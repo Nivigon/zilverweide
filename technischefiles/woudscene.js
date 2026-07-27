@@ -120,6 +120,41 @@
       deel1: { helderheid: 1, contrast: 1, schaduwlicht: 1 },
       deel2: { helderheid: 1, contrast: 1, schaduwlicht: 1 },
       deel3: { helderheid: 1, contrast: 1, schaduwlicht: 1 }
+    },
+    // Rozen-posities per plaat: {x, y} als fractie (0..1) van de eigen
+    // breedte/hoogte van het beeld, dus onafhankelijk van zoomfactor of
+    // schermformaat. Alleen a0/a1/a3 hebben rozen (dezelfde plek in a0/a1/
+    // a3, zie het bouwvoorstel); b0/b1 niet. Leeg totdat de plaatsmodus op
+    // de testpagina ze vastlegt.
+    rozen: {
+      a0: [],
+      a1: [],
+      a3: []
+    },
+    // Gloed rond elke roos. Puls via dekking (opacity), niet grootte.
+    gloed: {
+      grootte: 90,          // px doorsnee van de gloed-cirkel
+      dekking: 0.55,        // 0..1, dekking op het hoogtepunt van de puls
+      kleur: '#4aa8ff',
+      scherpte: 0.4,        // 0 = heel zacht/uitgewaaierd, 1 = strakke rand, korte uitloop
+      kernAandeel: 0.25,    // 0..1, aandeel van de straal dat een egale, felle kern is
+      pulsTempo: 4200,      // ms voor één volledige ademhaling, per roos willekeurig verschoven
+      pulsDiepte: 0.45,     // 0..1, hoe ver de dekking terugzakt op het dal van de puls
+      flakkerSterkte: 0.5,  // 0..1, extra dekking bovenop het plafond tijdens een onthulling
+      flakkerDuur: 700      // ms, op/af totaal
+    },
+    // Losse lichtdeeltjes per roos, volledig uit te zetten (canvas-
+    // gebaseerd, tekent elk frame, kan op een tablet zwaarder zijn dan de
+    // gloed zelf).
+    deeltjes: {
+      aan: true,
+      aantalPerRoos: 7,
+      stijgSnelheid: 14,     // px/s
+      dwarreling: 8,         // px, zijwaartse zwaai-amplitude tijdens het stijgen
+      grootte: 3,            // px doorsnee
+      levensduur: 5000,      // ms tot een deeltje dooft (altijd vóór de bovenkant)
+      dekking: 0.7,
+      scherpte: 0.5          // 0 = heel wazig bolletje, 1 = scherp puntje
     }
   };
 
@@ -178,6 +213,30 @@
     return PLACEHOLDER_PALET[h % PLACEHOLDER_PALET.length];
   }
 
+  // ── Rozen-gloed: kleur en verloop ────────────────────────────────
+  function hexNaarRgb(hex) {
+    hex = String(hex).replace('#', '');
+    if (hex.length === 3) {
+      hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    var getal = parseInt(hex, 16);
+    return { r: (getal >> 16) & 255, g: (getal >> 8) & 255, b: getal & 255 };
+  }
+
+  // Bouwt de radiale gradiënt voor één gloed-cirkel. kernAandeel bepaalt
+  // hoe groot het egale, felle hart is; scherpte bepaalt hoe kort de
+  // uitloop daarna is (0 = helemaal uitgewaaierd tot de rand, 1 = strak,
+  // met nog altijd een minimale uitloop zodat er geen harde rand ontstaat).
+  function maakGloedGradient(kleurHex, kernAandeel, scherpte) {
+    var rgb = hexNaarRgb(kleurHex);
+    var kernPct = clamp(kernAandeel, 0, 0.95) * 100;
+    var uitloop = Math.max(4, (1 - clamp(scherpte, 0, 1)) * (100 - kernPct));
+    var randPct = Math.min(100, kernPct + uitloop);
+    var vol = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',1)';
+    var leeg = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0)';
+    return 'radial-gradient(circle, ' + vol + ' 0%, ' + vol + ' ' + kernPct + '%, ' + leeg + ' ' + randPct + '%)';
+  }
+
   function WoudScene(container, opts) {
     this.container = (typeof container === 'string') ? document.querySelector(container) : container;
     this.config = diepeMerge(DEFAULTS, opts || {});
@@ -198,6 +257,9 @@
     this._gammaFilterId = 'ws-gamma-filter';
     this._gammaSvg = null;
     this._gammaFuncs = null;
+    this._deeltjesCanvassen = []; // { canvas, ctx, cssW, cssH, posities, deeltjes }
+    this._deeltjesRafId = null;
+    this._deeltjesPauzeStart = null;
     this._onKlaar = null;
   }
 
@@ -279,7 +341,9 @@
 
   // Vult een laag-element met óf de echte afbeelding, óf een placeholder-
   // vlak met de bestandsnaam erop. Retourneert het binnenste beeld-element
-  // (waarop transform/blur voor pan/zoom wordt toegepast).
+  // (waarop transform/blur voor pan/zoom wordt toegepast). De rozen-gloed
+  // (en later de deeltjeslaag) komt als kind van dit beeld-element, zodat
+  // hij automatisch meebeweegt met de pan/zoom-transform.
   WoudScene.prototype._vulLaag = function (laagEl, src) {
     laagEl.innerHTML = '';
     var beeld = document.createElement('div');
@@ -293,7 +357,295 @@
       beeld.textContent = '[Placeholder: ' + naam + ']';
     }
     laagEl.appendChild(beeld);
+    var sleutel = this._sleutelVoorBeeld(src);
+    // Altijd getagd, ook zonder rozen: de plaatsmodus in de testpagina moet
+    // kunnen zien welke plaat (a0/a1/a3) nu in beeld is, ook vóórdat er
+    // ooit een roos op vastgelegd is.
+    if (sleutel) beeld.dataset.wsSleutel = sleutel;
+    if (sleutel && this.config.rozen[sleutel] && this.config.rozen[sleutel].length) {
+      this._bouwRozenLaag(beeld, sleutel);
+      if (this.config.deeltjes.aan) this._bouwDeeltjesLaag(beeld, sleutel);
+    }
     return beeld;
+  };
+
+  // Herleidt welke rozen-sleutel (a0/a1/a3) bij een gegeven bestandspad
+  // hoort, puur op basis van de configuratie: geen aparte parameter nodig
+  // bij elke _vulLaag-aanroep, dus geen enkele bestaande aanroep (deel1,
+  // deel2, deel3) hoeft zijn eigen argumenten te veranderen.
+  WoudScene.prototype._sleutelVoorBeeld = function (src) {
+    var im = this.config.images;
+    if (src === im.a0) return 'a0';
+    if (src === im.a1) return 'a1';
+    if (src === im.a3) return 'a3';
+    return null;
+  };
+
+  // Zet duur en (negatieve) vertraging van de puls-animatie op één gloed-
+  // element, op basis van diens eigen vastgelegde tempo-factor en fase.
+  // Eén functie voor zowel het aanmaken (_bouwRozenLaag) als het live
+  // bijstellen (_verversGloeden) van het tempo, zodat beide altijd gelijk
+  // lopen.
+  WoudScene.prototype._zetGloedTiming = function (el, gloedCfg) {
+    var tempoFactor = parseFloat(el.dataset.wsTempoFactor);
+    var faseFractie = parseFloat(el.dataset.wsFaseFractie);
+    var tempo = gloedCfg.pulsTempo * tempoFactor;
+    el.style.animationDuration = tempo + 'ms';
+    // Negatieve delay: de animatie begint meteen halverwege zijn eigen
+    // cyclus, in plaats van dat alle rozen een tijdlang synchroon "in rust"
+    // staan voor ze voor het eerst pulseren.
+    el.style.animationDelay = '-' + (faseFractie * tempo) + 'ms';
+  };
+
+  // Bouwt de gloedlaag (één ws-gloed per vastgelegde rozen-coördinaat) als
+  // kind van het beeld-element, zodat panning/zoomen 'm automatisch meeneemt.
+  WoudScene.prototype._bouwRozenLaag = function (beeld, sleutel) {
+    var posities = this.config.rozen[sleutel];
+    if (!posities || !posities.length) return;
+    var gloedCfg = this.config.gloed;
+    var gradient = maakGloedGradient(gloedCfg.kleur, gloedCfg.kernAandeel, gloedCfg.scherpte);
+    var max = gloedCfg.dekking;
+    var min = Math.max(0, gloedCfg.dekking * (1 - gloedCfg.pulsDiepte));
+    var laag = document.createElement('div');
+    laag.className = 'ws-gloedlaag';
+    for (var i = 0; i < posities.length; i++) {
+      var pos = posities[i];
+      var el = document.createElement('div');
+      el.className = 'ws-gloed';
+      el.style.left = (pos.x * 100) + '%';
+      el.style.top = (pos.y * 100) + '%';
+      el.style.width = gloedCfg.grootte + 'px';
+      el.style.height = gloedCfg.grootte + 'px';
+      el.style.background = gradient;
+      el.style.setProperty('--ws-gloed-max', max);
+      el.style.setProperty('--ws-gloed-min', min);
+      el.style.opacity = String(max);
+      el.dataset.wsTempoFactor = String(0.8 + Math.random() * 0.45);
+      el.dataset.wsFaseFractie = String(Math.random());
+      this._zetGloedTiming(el, gloedCfg);
+      laag.appendChild(el);
+    }
+    beeld.appendChild(laag);
+  };
+
+  // Werkt alle op dit moment bestaande gloed-elementen live bij wanneer een
+  // gloed.*-instelling verandert (testmodus), zonder de scène opnieuw te
+  // hoeven starten. Elke roos behoudt zijn eigen tempo-factor en fase.
+  WoudScene.prototype._verversGloeden = function () {
+    if (!this.el) return;
+    var gloedCfg = this.config.gloed;
+    var gradient = maakGloedGradient(gloedCfg.kleur, gloedCfg.kernAandeel, gloedCfg.scherpte);
+    var max = gloedCfg.dekking;
+    var min = Math.max(0, gloedCfg.dekking * (1 - gloedCfg.pulsDiepte));
+    var els = this.el.querySelectorAll('.ws-gloed');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      el.style.width = gloedCfg.grootte + 'px';
+      el.style.height = gloedCfg.grootte + 'px';
+      el.style.background = gradient;
+      el.style.setProperty('--ws-gloed-max', max);
+      el.style.setProperty('--ws-gloed-min', min);
+      this._zetGloedTiming(el, gloedCfg);
+    }
+  };
+
+  // Laat alle op dit moment zichtbare gloeden kort feller oplichten en
+  // daarna weer terugzakken naar hun normale plafond: gebruikt op de
+  // momenten waarop een heks zichtbaar wordt. Gebruikt _setTimeout (de
+  // pauzeerbare timer-wrapper) zodat dit ook correct pauzeert/hervat als
+  // de speler middenin de flakkering op pauze drukt.
+  WoudScene.prototype._flakkerGloed = function () {
+    if (!this.el) return;
+    var self = this;
+    var gloedCfg = this.config.gloed;
+    var stap = Math.max(1, Math.round(gloedCfg.flakkerDuur / 2));
+    var piek = clamp(gloedCfg.dekking + gloedCfg.flakkerSterkte, 0, 1);
+    var basis = gloedCfg.dekking;
+    var els = this.el.querySelectorAll('.ws-gloed');
+    for (var i = 0; i < els.length; i++) {
+      (function (el) {
+        // Een CSS-animatie op dezelfde eigenschap wint altijd van een
+        // transitie, ook als hij gepauzeerd is (animationPlayState alleen
+        // volstaat dus niet): de animatie moet er echt even helemaal af.
+        el.style.animationName = 'none';
+        el.style.transition = 'opacity ' + stap + 'ms ease-out';
+        el.style.opacity = String(piek);
+        self._setTimeout(function () {
+          el.style.transition = 'opacity ' + stap + 'ms ease-in';
+          el.style.opacity = String(basis);
+          self._setTimeout(function () {
+            el.style.transition = '';
+            el.style.opacity = '';
+            el.style.animationName = '';
+          }, stap);
+        }, stap);
+      })(els[i]);
+    }
+  };
+
+  // ── Deeltjes (losse lichtpuntjes bij elke roos) ─────────────────
+  // Canvas-gebaseerd (niet DOM/CSS-elementen): veel goedkoper om een klein
+  // aantal deeltjes per frame te tekenen dan evenveel los geanimeerde
+  // DOM-nodes te onderhouden. Eén canvas per beeld-met-rozen, als kind van
+  // hetzelfde beeld-element als de gloed, zodat hij automatisch meedraait
+  // met diens pan/zoom-transform.
+  WoudScene.prototype._nieuwDeeltje = function (pos, nu, cfg) {
+    var duur = cfg.levensduur * (0.85 + Math.random() * 0.3);
+    // Elk deeltje begint zogenaamd al een stukje "onderweg" (net als de
+    // negatieve delay bij de gloed-puls), anders ontstaan bij het laden
+    // van een plaat alle deeltjes tegelijk onderaan.
+    var vertraging = Math.random() * duur;
+    return {
+      ox: pos.x,
+      oy: pos.y,
+      geboorte: nu - vertraging,
+      duur: duur,
+      faseDwarreling: Math.random() * Math.PI * 2,
+      dwarrelSnelheid: 0.8 + Math.random() * 0.6
+    };
+  };
+
+  WoudScene.prototype._bouwDeeltjesLaag = function (beeld, sleutel) {
+    var posities = this.config.rozen[sleutel];
+    if (!posities || !posities.length || !this.el) return;
+    var rect = this.el.getBoundingClientRect();
+    var cssW = rect.width || 1;
+    var cssH = rect.height || 1;
+    var dpr = window.devicePixelRatio || 1;
+    var canvas = document.createElement('canvas');
+    canvas.className = 'ws-deeltjes-canvas';
+    canvas.width = Math.max(1, Math.round(cssW * dpr));
+    canvas.height = Math.max(1, Math.round(cssH * dpr));
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    beeld.appendChild(canvas);
+
+    var cfg = this.config.deeltjes;
+    var nu = performance.now();
+    var lijst = [];
+    for (var i = 0; i < posities.length; i++) {
+      for (var j = 0; j < cfg.aantalPerRoos; j++) {
+        lijst.push(this._nieuwDeeltje(posities[i], nu, cfg));
+      }
+    }
+    this._deeltjesCanvassen.push({
+      canvas: canvas, ctx: ctx, cssW: cssW, cssH: cssH, posities: posities, deeltjes: lijst
+    });
+    this._startDeeltjesLoopAlsNodig();
+  };
+
+  WoudScene.prototype._startDeeltjesLoopAlsNodig = function () {
+    if (this._deeltjesRafId || this._gepauzeerd || this._gestopt) return;
+    if (!this.config.deeltjes.aan || !this._deeltjesCanvassen.length) return;
+    var self = this;
+    (function frame() {
+      self._tekenDeeltjes();
+      self._deeltjesRafId = requestAnimationFrame(frame);
+    })();
+  };
+
+  WoudScene.prototype._stopDeeltjesLoop = function () {
+    if (this._deeltjesRafId) {
+      cancelAnimationFrame(this._deeltjesRafId);
+      this._deeltjesRafId = null;
+    }
+  };
+
+  WoudScene.prototype._tekenDeeltjes = function () {
+    // Canvassen van intussen vervangen platen (elke _vulLaag-aanroep zet
+    // laagEl.innerHTML leeg) hier opruimen; anders groeit deze lijst
+    // ongelimiteerd door bij elke plaatwissel of beat-herhaling.
+    this._deeltjesCanvassen = this._deeltjesCanvassen.filter(function (d) {
+      return d.canvas.isConnected;
+    });
+    var cfg = this.config.deeltjes;
+    var rgb = hexNaarRgb(this.config.gloed.kleur);
+    var kleur = 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',1)';
+    var nu = performance.now();
+    for (var c = 0; c < this._deeltjesCanvassen.length; c++) {
+      var d = this._deeltjesCanvassen[c];
+      var ctx = d.ctx;
+      ctx.clearRect(0, 0, d.cssW, d.cssH);
+      for (var i = 0; i < d.deeltjes.length; i++) {
+        var p = d.deeltjes[i];
+        var elapsed = nu - p.geboorte;
+        var t = elapsed / p.duur;
+        if (t >= 1) {
+          p = this._nieuwDeeltje({ x: p.ox, y: p.oy }, nu, cfg);
+          d.deeltjes[i] = p;
+          elapsed = 0;
+          t = 0;
+        }
+        var stijgPx = cfg.stijgSnelheid * (elapsed / 1000);
+        var dwarrelPx = cfg.dwarreling * Math.sin(p.faseDwarreling + (elapsed / 1000) * p.dwarrelSnelheid * Math.PI);
+        var px = p.ox * d.cssW + dwarrelPx;
+        var py = p.oy * d.cssH - stijgPx;
+        // Dekking-envelop: kort invagen, lang vol, dan doven voordat het
+        // deeltje (tijdgebaseerd, niet positiegebaseerd) de bovenkant
+        // bereikt.
+        var op;
+        if (t < 0.15) op = t / 0.15;
+        else if (t > 0.7) op = (1 - t) / 0.3;
+        else op = 1;
+        op = clamp(op, 0, 1) * cfg.dekking;
+        if (op <= 0.001) continue;
+        ctx.globalAlpha = op;
+        ctx.shadowBlur = (1 - clamp(cfg.scherpte, 0, 1)) * cfg.grootte * 1.5;
+        ctx.shadowColor = kleur;
+        ctx.fillStyle = kleur;
+        ctx.beginPath();
+        ctx.arc(px, py, cfg.grootte / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur = 0;
+    }
+  };
+
+  // Live bijstellen vanuit de testmodus: aan/uit meteen laten gelden, en
+  // het aantal deeltjes per roos meteen aanvullen/inkorten zonder de scène
+  // opnieuw te starten.
+  WoudScene.prototype._verversDeeltjesConfig = function () {
+    var cfg = this.config.deeltjes;
+    var self = this;
+    var nu = performance.now();
+    this._deeltjesCanvassen.forEach(function (d) {
+      var gewenst = d.posities.length * cfg.aantalPerRoos;
+      if (d.deeltjes.length < gewenst) {
+        while (d.deeltjes.length < gewenst) {
+          var pos = d.posities[d.deeltjes.length % d.posities.length];
+          d.deeltjes.push(self._nieuwDeeltje(pos, nu, cfg));
+        }
+      } else if (d.deeltjes.length > gewenst) {
+        d.deeltjes.length = gewenst;
+      }
+    });
+    if (cfg.aan) this._startDeeltjesLoopAlsNodig();
+    else this._stopDeeltjesLoop();
+  };
+
+  // Herbouwt alleen de gloed/deeltjes-kinderen van elk op dit moment
+  // getoond beeld met de gegeven rozen-sleutel, zonder de transform/filter
+  // van dat beeld zelf aan te raken. Gebruikt door de plaatsmodus in de
+  // testpagina: na het toevoegen/verwijderen van een rozen-coördinaat moet
+  // de gloed/deeltjeslaag meteen kloppen, ook als de scène niet herstart.
+  WoudScene.prototype.herbouwRozenLaag = function (sleutel) {
+    if (!this.el) return;
+    var self = this;
+    var els = this.el.querySelectorAll('.ws-beeld[data-ws-sleutel="' + sleutel + '"]');
+    els.forEach(function (beeld) {
+      var oudeGloed = beeld.querySelector('.ws-gloedlaag');
+      if (oudeGloed) oudeGloed.remove();
+      var oudCanvas = beeld.querySelector('.ws-deeltjes-canvas');
+      if (oudCanvas) {
+        self._deeltjesCanvassen = self._deeltjesCanvassen.filter(function (d) { return d.canvas !== oudCanvas; });
+        oudCanvas.remove();
+      }
+      if (self.config.rozen[sleutel] && self.config.rozen[sleutel].length) {
+        self._bouwRozenLaag(beeld, sleutel);
+        if (self.config.deeltjes.aan) self._bouwDeeltjesLaag(beeld, sleutel);
+      }
+    });
   };
 
   // ── Geluid ──────────────────────────────────────────────────────
@@ -425,6 +777,12 @@
     if (delen[0] === 'kleur' && delen[1] === ('deel' + this._huidigDeel)) {
       this._pasKleurToe(delen[1]);
     }
+    if (delen[0] === 'gloed') {
+      this._verversGloeden();
+    }
+    if (delen[0] === 'deeltjes') {
+      this._verversDeeltjesConfig();
+    }
     return this;
   };
 
@@ -518,6 +876,15 @@
       }
     }, this);
 
+    // De deeltjes-loop draait op requestAnimationFrame, niet op een van
+    // de pauzeerbare timers hierboven: gewoon stoppen met tekenen bevriest
+    // het canvas al, maar elk deeltje rekent zijn positie uit t.o.v. zijn
+    // eigen "geboorte"-tijdstip, dus die moet bij resume() ingehaald worden
+    // (zie daar), anders springen alle deeltjes bij hervatten in één klap
+    // vooruit met de volledige pauzeduur.
+    this._stopDeeltjesLoop();
+    this._deeltjesPauzeStart = performance.now();
+
     return this;
   };
 
@@ -547,6 +914,15 @@
         if (p && p.catch) p.catch(function () {});
       }
     }, this);
+
+    if (this._deeltjesPauzeStart != null) {
+      var pauzeDuur = performance.now() - this._deeltjesPauzeStart;
+      this._deeltjesCanvassen.forEach(function (d) {
+        d.deeltjes.forEach(function (p) { p.geboorte += pauzeDuur; });
+      });
+      this._deeltjesPauzeStart = null;
+    }
+    this._startDeeltjesLoopAlsNodig();
 
     return this;
   };
@@ -591,6 +967,8 @@
     this._running = false;
     this._alleTimersWissen();
     this._stopAlleAudio();
+    this._stopDeeltjesLoop();
+    this._deeltjesCanvassen = [];
     if (this._gammaSvg && this._gammaSvg.parentNode) this._gammaSvg.parentNode.removeChild(this._gammaSvg);
     this._gammaSvg = null;
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
@@ -828,6 +1206,7 @@
           void beeld.offsetWidth;
           beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-out';
           beeld.style.filter = 'blur(0px)';
+          self._flakkerGloed();
         }, cfg.wisselBlurDuur);
         self._setTimeout(function () {
           // Rest van de hold, na de (nu al onzichtbaar gemaakte) wissel.
@@ -935,6 +1314,7 @@
       nieuwBeeld.style.filter = 'blur(0px)';
       actief = ander;
       beeld = nieuwBeeld;
+      self._flakkerGloed();
       self._setTimeout(cb, duur);
     }
 
