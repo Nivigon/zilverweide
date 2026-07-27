@@ -775,6 +775,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .interactie-panel .int-msg.ok{color:#7dbf7d;}
 .interactie-panel .int-msg.err{color:#d4826e;}
 .finale-btn{position:fixed;top:.7rem;left:1rem;z-index:300;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:50px;padding:4px 12px;display:none;align-items:center;gap:6px;backdrop-filter:blur(4px);cursor:pointer;}
+/* Tijdens de woudscene gaat de spelers-HUD (verhaalscore, rol-badge en
+   finale-knop, allemaal z-index 300) uit beeld; de testknoppen blijven
+   bereikbaar. De klasse wordt gezet in startWoudSceneInSpel en weer
+   weggehaald in beeindigWoudScene. */
+body.woudscene-actief #topright-cluster,
+body.woudscene-actief .finale-btn{display:none !important;}
 .finale-btn:hover{border-color:var(--gold);}
 .finale-btn span{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .finale-panel{position:fixed;inset:0;z-index:400;background:rgba(13,10,6,.97);overflow-y:auto;display:none;padding:2rem 1.5rem 4rem;}
@@ -16936,6 +16942,7 @@ function startWoudSceneInSpel() {
   woudSceneContainer.id = 'woudscene-container';
   woudSceneContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
   document.body.appendChild(woudSceneContainer);
+  document.body.classList.add('woudscene-actief');
 
   woudSceneInstantie = new WoudScene(woudSceneContainer);
   woudSceneInstantie.start(toonWoudSceneDialoogPlaceholder);
@@ -16967,6 +16974,7 @@ function beeindigWoudScene() {
     woudSceneContainer.remove();
     woudSceneContainer = null;
   }
+  document.body.classList.remove('woudscene-actief');
   openHeerDonatuslaanVanuitWoud();
 }
 
