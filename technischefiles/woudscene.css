@@ -1,0 +1,62 @@
+/* ══════════════════════════════════════════════════════════════════
+   WOUDSCENE (stijl voor de filmische aanloop/aankomst/draai-sequentie)
+   ------------------------------------------------------------------
+   Alle klassen met prefix ws-, om botsingen met bestaande modules te
+   voorkomen. Verwacht dat de host-pagina de --vh100 custom property
+   definieert (zie zilverweide.html / de demo-pagina hieronder); zonder
+   die variabele valt 100dvh terug op de losse @supports-regel hier.
+   ══════════════════════════════════════════════════════════════════ */
+
+.ws-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.ws-laag {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.ws-laag-a { opacity: 1; }
+
+.ws-beeld {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  will-change: transform, filter;
+}
+
+.ws-beeld-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 2rem;
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(245, 234, 214, .55);
+}
+
+.ws-spooklaag {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.ws-spook {
+  position: absolute;
+  width: min(22vw, 220px);
+  height: min(38vh, calc(var(--vh100, 100vh) * .5));
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

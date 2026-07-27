@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Woudscène: Zilverweide</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="woudscene.css">
+<style>
+  /* Page-shell, alleen voor standalone demo, zelfde geest als
+     doolhof.html / schaduw-sandbox.html. In Zilverweide draait de
+     module binnen een container die het echte spel al opzet. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{ --vh100: 100vh; }
+  @supports (height: 100dvh) { :root{ --vh100: 100dvh; } }
+  html,body{
+    background:#000;
+    color:#f5ead6;
+    font-family:'Crimson Text',Georgia,serif;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+  #ws-stage{
+    position:relative;
+    width:100%;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+
+  /* Startscherm: de scène speelt pas na een klik (zodat geluid mag). */
+  #ws-startscherm{
+    position:absolute; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1.2rem;
+    background:#0d0a06;
+    text-align:center; padding:2rem;
+  }
+  #ws-startscherm h1{
+    font-family:'Cinzel',serif; font-size:1.3rem; letter-spacing:.1em;
+    color:#c9a84c; text-transform:uppercase; font-weight:600;
+  }
+  #ws-startscherm p{ max-width:32rem; color:#c8bfaf; font-style:italic; line-height:1.6; }
+  #ws-start-btn{
+    font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; text-transform:uppercase;
+    color:#0d0a06; background:#c9a84c; border:none; border-radius:3px;
+    padding:.9rem 1.8rem; cursor:pointer;
+  }
+  #ws-start-btn:hover{ background:#e0c06a; }
+
+  /* ── Debugpaneel, zelfde geest als maakWeerDebugPaneel() in
+     zilverweide.html: rond knopje linksonder dat een paneel met
+     schuifregelaars opent. ── */
+  #ws-dbg-btn{
+    position:fixed; bottom:1.2rem; left:1.2rem; z-index:531;
+    background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35);
+    border-radius:50%; width:38px; height:38px; font-size:1.05rem;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:.75; transition:opacity .2s;
+  }
+  #ws-dbg-btn:hover{ opacity:1; }
+  #ws-dbg-panel{
+    display:none;
+    position:fixed; bottom:1.2rem; left:4.4rem; z-index:530;
+    background:rgba(13,10,6,.97); border:1px solid rgba(201,168,76,.3);
+    border-radius:6px; padding:.9rem 1rem; width:300px;
+    max-height:calc(var(--vh100) - 3rem); overflow-y:auto;
+    box-shadow:0 0 30px rgba(0,0,0,.7);
+    font-size:.82rem;
+  }
+  #ws-dbg-panel.open{ display:block; }
+  .ws-dbg-kop{
+    font-family:'Cinzel',serif; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
+    color:#c9a84c; margin:.9rem 0 .5rem;
+  }
+  .ws-dbg-kop:first-child{ margin-top:0; }
+  .ws-dbg-rij{ margin-bottom:.55rem; }
+  .ws-dbg-rij-label{
+    display:flex; justify-content:space-between;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#8a6f32; margin-bottom:.2rem;
+  }
+  .ws-dbg-rij-label span:last-child{ color:#c9a84c; }
+  .ws-dbg-rij input[type="range"]{ width:100%; accent-color:#c9a84c; }
+  .ws-dbg-knoppen{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.6rem; }
+  .ws-dbg-btn2{
+    flex:1; min-width:60px;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#c9a84c; background:transparent; border:1px solid rgba(201,168,76,.4);
+    border-radius:2px; padding:.5rem .3rem; cursor:pointer;
+  }
+  .ws-dbg-btn2:hover{ background:rgba(201,168,76,.12); }
+</style>
+</head>
+<body>
+
+<div id="ws-stage">
+  <div id="ws-startscherm">
+    <h1>Woudscène: demo</h1>
+    <p>De scène speelt pas na een klik (audio mag pas starten na een gebaar van de speler). Gebruik het tandwiel linksonder om de timing te verfijnen.</p>
+    <button id="ws-start-btn">Start de scène</button>
+  </div>
+</div>
+
+<button id="ws-dbg-btn" title="Timing instellen">⚙</button>
+<div id="ws-dbg-panel"></div>
+
+<script src="woudscene.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   Config voor de demo. De paden hieronder zijn relatief aan DEZE
+   pagina (technischefiles/), dus met "../" naar locaties/ en geluid/;
+   in Zilverweide zelf (die in de root staat) gebruikt de module haar
+   eigen DEFAULTS, die al root-relatief zijn (locaties/dorendael/...,
+   geluid/doolhof/...).
+   ════════════════════════════════════════════════════════════ */
+function metPrefix(pad) { return '../' + pad; }
+function metPrefixArr(paden) { return paden.map(metPrefix); }
+
+var DEMO_CONFIG = (function () {
+  var basis = new WoudScene(document.createElement('div')).getConfig(); // alleen om DEFAULTS te lenen
+  return {
+    images: {
+      bos: metPrefixArr(basis.images.bos),
+      spook: metPrefixArr(basis.images.spook),
+      a0: metPrefix(basis.images.a0),
+      a1: metPrefix(basis.images.a1),
+      a3: metPrefix(basis.images.a3),
+      b0: metPrefix(basis.images.b0),
+      b1: metPrefix(basis.images.b1)
+    },
+    audio: {
+      muziek: metPrefix(basis.audio.muziek),
+      geritsel: metPrefixArr(basis.audio.geritsel),
+      fluister: metPrefixArr(basis.audio.fluister),
+      adem: metPrefix(basis.audio.adem),
+      zwelling: metPrefix(basis.audio.zwelling),
+      draai: metPrefix(basis.audio.draai)
+    }
+  };
+})();
+
+var scene = new WoudScene(document.getElementById('ws-stage'), DEMO_CONFIG);
+
+var startBtn = document.getElementById('ws-start-btn');
+var startscherm = document.getElementById('ws-startscherm');
+startBtn.onclick = function () {
+  startscherm.style.display = 'none';
+  scene.start(function () {
+    console.log('Woudscène klaar, deel 4 (dialoog) volgt hierna in het echte spel.');
+  });
+};
+
+/* ── Debugpaneel ──────────────────────────────────────────────── */
+var dbgBtn = document.getElementById('ws-dbg-btn');
+var dbgPanel = document.getElementById('ws-dbg-panel');
+dbgBtn.onclick = function () { dbgPanel.classList.toggle('open'); };
+
+// Elke rij: label, dot-pad in de config, min/max/step, en of de waarde
+// een geheel getal (ms/px) of een kommagetal (0..1, factor) is.
+var SLIDER_RIJEN = [
+  { kop: 'Deel 1, aanloop' },
+  { label: 'Drift-schaal (zoom)', pad: 'deel1.driftSchaal', min: 1, max: 1.3, step: 0.01 },
+  { label: 'Drift-duur (ms)', pad: 'deel1.driftDuur', min: 2000, max: 15000, step: 250 },
+  { label: 'Spook: dekking', pad: 'deel1.spookDekking', min: 0, max: 0.3, step: 0.01 },
+  { label: 'Spook: zichtduur (ms)', pad: 'deel1.spookZichtDuur', min: 500, max: 4000, step: 100 },
+  { kop: 'Deel 2: aankomst' },
+  { label: 'Zoomfactor (schaal)', pad: 'deel2.schaal', min: 1.05, max: 1.6, step: 0.01 },
+  { label: 'Pan-afstand (%)', pad: 'deel2.panAfstand', min: 5, max: 40, step: 1 },
+  { label: 'Pan-duur heen (ms)', pad: 'deel2.panDuurHeen', min: 300, max: 2500, step: 50 },
+  { label: 'Pan-duur terug (ms)', pad: 'deel2.panDuurTerug', min: 300, max: 2500, step: 50 },
+  { label: 'Terugdraai-duur (ms)', pad: 'deel2.terugDuur', min: 300, max: 2500, step: 50 },
+  { label: 'Bewegingsonscherpte pan (px)', pad: 'deel2.blurPan', min: 0, max: 24, step: 1 },
+  { label: 'Hold: rust op veld (ms)', pad: 'deel2.holdRust', min: 0, max: 5000, step: 100 },
+  { label: 'Hold: na pan links (ms)', pad: 'deel2.holdLinks', min: 0, max: 5000, step: 100 },
+  { label: 'Hold: na pan rechts (ms)', pad: 'deel2.holdRechts', min: 0, max: 5000, step: 100 },
+  { label: 'Hold: heks 1 verschenen (ms)', pad: 'deel2.holdHeks1', min: 0, max: 8000, step: 100 },
+  { kop: 'Deel 3: de draai-sequentie' },
+  { label: 'Omdraai-duur (ms)', pad: 'deel3.draaiDuur', min: 100, max: 1200, step: 25 },
+  { label: 'Omdraai-duur, rustig (ms)', pad: 'deel3.draaiDuurRustig', min: 300, max: 2000, step: 25 },
+  { label: 'Bewegingsonscherpte draai (px)', pad: 'deel3.blurDraai', min: 0, max: 40, step: 1 },
+  { label: 'Bewegingsonscherpte draai, rustig (px)', pad: 'deel3.blurDraaiRustig', min: 0, max: 20, step: 1 },
+  { label: 'Hold: heks 2 dichtbij (ms)', pad: 'deel3.holdB1', min: 0, max: 6000, step: 100 },
+  { label: 'Hold: heks 1 weg (ms)', pad: 'deel3.holdA0Leeg', min: 0, max: 6000, step: 100 },
+  { label: 'Hold: stilte (ms)', pad: 'deel3.holdB0Stilte', min: 0, max: 8000, step: 100 },
+  { label: 'Hold: einde, alle 3 heksen (ms)', pad: 'deel3.holdA3Eind', min: 0, max: 10000, step: 100 },
+  { label: 'Vertraging tot zwelling (ms)', pad: 'deel3.zwellingVertraging', min: 0, max: 5000, step: 100 },
+  { kop: 'Volume per laag' },
+  { label: 'Muziek', pad: 'volumes.muziek', min: 0, max: 1, step: 0.05 },
+  { label: 'Geritsel', pad: 'volumes.geritsel', min: 0, max: 1, step: 0.05 },
+  { label: 'Fluistering', pad: 'volumes.fluister', min: 0, max: 1, step: 0.05 },
+  { label: 'Adem', pad: 'volumes.adem', min: 0, max: 1, step: 0.05 },
+  { label: 'Zwelling', pad: 'volumes.zwelling', min: 0, max: 1, step: 0.05 },
+  { label: 'Draai-geluid', pad: 'volumes.draai', min: 0, max: 1, step: 0.05 }
+];
+
+function padWaarde(obj, pad) {
+  var delen = pad.split('.'), v = obj;
+  for (var i = 0; i < delen.length; i++) v = v[delen[i]];
+  return v;
+}
+
+(function bouwPaneel() {
+  var html = '';
+  var huidigeConfig = scene.getConfig();
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) {
+      html += '<div class="ws-dbg-kop">' + rij.kop + '</div>';
+      return;
+    }
+    var id = 'ws-r-' + rij.pad.replace(/\./g, '-');
+    var val = padWaarde(huidigeConfig, rij.pad);
+    html +=
+      '<div class="ws-dbg-rij">' +
+        '<div class="ws-dbg-rij-label"><span>' + rij.label + '</span><span id="' + id + '-val">' + val + '</span></div>' +
+        '<input type="range" id="' + id + '" data-pad="' + rij.pad + '" min="' + rij.min + '" max="' + rij.max + '" step="' + rij.step + '" value="' + val + '">' +
+      '</div>';
+  });
+  html +=
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-replay">↻ Replay</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-d1">Deel 1</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-d2">Deel 2</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-d3">Deel 3</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-config">Config → console</button>' +
+    '</div>';
+  dbgPanel.innerHTML = html;
+
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) return;
+    var id = 'ws-r-' + rij.pad.replace(/\./g, '-');
+    var input = document.getElementById(id);
+    var label = document.getElementById(id + '-val');
+    input.oninput = function () {
+      var v = +this.value;
+      label.textContent = v;
+      scene.set(rij.pad, v);
+    };
+  });
+
+  function metGestarteScherm(fn) {
+    // Springknoppen mogen ook vanaf het startscherm gebruikt worden.
+    if (startscherm.style.display !== 'none') startscherm.style.display = 'none';
+    fn();
+  }
+
+  document.getElementById('ws-dbg-replay').onclick = function () {
+    metGestarteScherm(function () {
+      scene.replay(function () { console.log('Woudscène klaar (replay).'); });
+    });
+  };
+  document.getElementById('ws-dbg-d1').onclick = function () {
+    metGestarteScherm(function () { scene.goTo(1); });
+  };
+  document.getElementById('ws-dbg-d2').onclick = function () {
+    metGestarteScherm(function () { scene.goTo(2); });
+  };
+  document.getElementById('ws-dbg-d3').onclick = function () {
+    metGestarteScherm(function () { scene.goTo(3); });
+  };
+  document.getElementById('ws-dbg-config').onclick = function () {
+    console.log('WOUDSCENE config:\n' + JSON.stringify(scene.getConfig(), null, 2));
+  };
+})();
+</script>
+
+</body>
+</html>
