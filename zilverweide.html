@@ -2057,6 +2057,7 @@ const VISITED_FLAGS = {
   jan_toren_geklommen:        'Jan is de uitkijktoren opgeklommen',
   jan_heeft_speld:            'Jan heeft de kromme speld van de uitkijktoren',
   nummer7_filmpje_gezien:     'Het filmpje bij nummer 7 is afgespeeld',
+  terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na Fenna\'s lied voor Robbie)',
 
   // Dorendael — Nummer 2 (Felix)
   felix_dd2_gewacht:          'Felix heeft op de bewoner gewacht en het geld eerlijk gekregen',
@@ -9435,7 +9436,8 @@ function fennaZingtVoorRobbie() {
           // Niet de locatie opnieuw openen: dan kreeg je meteen "Robbie doet
           // open, ziet jou, en straalt" terwijl je nog in zijn kamer staat.
           // Dat is de tekst van een volgend bezoek. Ze neemt afscheid en gaat.
-          goBackFromLocatie
+          // Eerst (eenmalig) de terug-knop-uitleg, dan pas goBackFromLocatie.
+          function () { toonTerugknopIntro(goBackFromLocatie); }
         );
       });
     }
@@ -10345,6 +10347,53 @@ function bouwArchiefOnthulling() {
     '<p class="dgbk-archief-tekst">Vanaf nu kun je hier oude documenten en sommige filmpjes bekijken. Vertel je vrienden dat het dagboek nu voor iedereen te lezen is.</p>' +
     '<button class="dgbk-plkknop">Ik begrijp het</button>';
   paneel.querySelector('button').onclick = function(){ ov.remove(); };
+
+  ov.appendChild(kloon);
+  ov.appendChild(paneel);
+  document.body.appendChild(ov);
+}
+
+// Eenmalige uitleg over de terug-knop, zelfde stijl als bouwArchiefOnthulling
+// hierboven (kloon van de knop, opgelicht op zijn eigen plek, tekst eronder).
+// Getriggerd vlak vóór goBackFromLocatie, na het eerste grote afsluitmoment
+// van Fenna's Kraaienkwartier-verhaal (het lied voor Robbie): zo leert de
+// speler op een rustig moment dat deze knop altijd terugbrengt naar de
+// straat of de kaart van het dorp. onKlaar draait pas na het wegklikken
+// (of meteen, als de uitleg al eerder gezien is).
+function toonTerugknopIntro(onKlaar) {
+  var knop = document.getElementById('locatie-back-btn');
+  if (hasVisited('terugknop_intro_gezien') || !knop) {
+    if (typeof onKlaar === 'function') onKlaar();
+    return;
+  }
+  markVisited('terugknop_intro_gezien');
+  var r = knop.getBoundingClientRect();
+
+  var ov = document.createElement('div');
+  ov.id = 'dgbk-reveal';
+
+  var kloon = knop.cloneNode(true);
+  kloon.removeAttribute('id');
+  kloon.classList.add('dgbk-pill-live');
+  kloon.style.position = 'fixed';
+  kloon.style.left = r.left + 'px';
+  kloon.style.top = r.top + 'px';
+  kloon.style.margin = '0';
+
+  var paneel = document.createElement('div');
+  paneel.className = 'dgbk-reveal-paneel';
+  paneel.style.left = (r.left + r.width / 2) + 'px';
+  paneel.style.top  = (r.bottom + 14) + 'px';
+  paneel.innerHTML =
+    '<p class="dgbk-archief-tekst">Je kunt hier altijd op deze knop drukken. Dan kom je terug op de straat, of bij de kaart van het dorp.</p>' +
+    '<button class="dgbk-plkknop">Ik begrijp het</button>';
+
+  var weg = function () {
+    ov.remove();
+    if (typeof onKlaar === 'function') onKlaar();
+  };
+  kloon.onclick = weg;
+  paneel.querySelector('button').onclick = weg;
 
   ov.appendChild(kloon);
   ov.appendChild(paneel);
@@ -12583,7 +12632,7 @@ function checkAllTokens() {
   if ((alleFinaleCodesVerzameld() || kraaienScoreVol) && !state.finalePopupGetoond && !popupOpen) {
     state.finalePopupGetoond = true;
     toonLade(
-    '🌹  Alles verzameld',
+    'Alles verzameld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alles verzameld. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
       '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Voor die tijd: zorg dat je in ieder geval het dagboek bekeken hebt.</p>',
     'Verder →',
@@ -12651,7 +12700,7 @@ function checkHeerDonatusTokens() {
       window.ZilverweideSchaduw.kalmeer();
     }
     toonLade(
-      '🌹  Klaar in Heer Donatuslaan',
+      'Klaar in Heer Donatuslaan',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie zijn klaar in Heer Donatuslaan. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks in deze straat is.</p>' +
         '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
       'Verder →',
