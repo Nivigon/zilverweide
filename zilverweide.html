@@ -2057,7 +2057,7 @@ const VISITED_FLAGS = {
   jan_toren_geklommen:        'Jan is de uitkijktoren opgeklommen',
   jan_heeft_speld:            'Jan heeft de kromme speld van de uitkijktoren',
   nummer7_filmpje_gezien:     'Het filmpje bij nummer 7 is afgespeeld',
-  terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na Fenna\'s lied voor Robbie)',
+  terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na de podium-openingsdialoog)',
 
   // Dorendael — Nummer 2 (Felix)
   felix_dd2_gewacht:          'Felix heeft op de bewoner gewacht en het geld eerlijk gekregen',
@@ -9436,8 +9436,7 @@ function fennaZingtVoorRobbie() {
           // Niet de locatie opnieuw openen: dan kreeg je meteen "Robbie doet
           // open, ziet jou, en straalt" terwijl je nog in zijn kamer staat.
           // Dat is de tekst van een volgend bezoek. Ze neemt afscheid en gaat.
-          // Eerst (eenmalig) de terug-knop-uitleg, dan pas goBackFromLocatie.
-          function () { toonTerugknopIntro(goBackFromLocatie); }
+          goBackFromLocatie
         );
       });
     }
@@ -10355,9 +10354,9 @@ function bouwArchiefOnthulling() {
 
 // Eenmalige uitleg over de terug-knop, zelfde stijl als bouwArchiefOnthulling
 // hierboven (kloon van de knop, opgelicht op zijn eigen plek, tekst eronder).
-// Getriggerd vlak vóór goBackFromLocatie, na het eerste grote afsluitmoment
-// van Fenna's Kraaienkwartier-verhaal (het lied voor Robbie): zo leert de
-// speler op een rustig moment dat deze knop altijd terugbrengt naar de
+// Getriggerd na Fenna's laatste tekstregel in de podium-openingsdialoog
+// (naIntroFilmpje), vlak nadat de terug-knop weer zichtbaar wordt: zo leert
+// de speler bij de allereerste kans dat deze knop altijd terugbrengt naar de
 // straat of de kaart van het dorp. onKlaar draait pas na het wegklikken
 // (of meteen, als de uitleg al eerder gezien is).
 function toonTerugknopIntro(onKlaar) {
@@ -11504,13 +11503,18 @@ function naIntroFilmpje() {
     if (backBtn) backBtn.style.display = '';
     const charPop = document.getElementById('char-pop');
     if (charPop) charPop.style.display = '';
-    unlockZone('kraaienkwartier');
-    toonLade(
-      '🔓 Het onderzoek begint',
-      '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Het Dorpsplein en het Kraaienkwartier liggen open. Begin je zoektocht.</p>',
-      'Laten we gaan →',
-      () => openToneel()
-    );
+    // Eenmalige terug-knop-uitleg: de knop is net weer zichtbaar geworden
+    // (verborgen tijdens filmpje/dialoog), dus dit is het eerste natuurlijke
+    // moment om te laten zien dat hij altijd terug naar straat/kaart brengt.
+    toonTerugknopIntro(function () {
+      unlockZone('kraaienkwartier');
+      toonLade(
+        '🔓 Het onderzoek begint',
+        '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Het Dorpsplein en het Kraaienkwartier liggen open. Begin je zoektocht.</p>',
+        'Laten we gaan →',
+        () => openToneel()
+      );
+    });
   });
 }
 
