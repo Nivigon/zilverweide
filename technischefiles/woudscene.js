@@ -124,12 +124,28 @@
     // Rozen-posities per plaat: {x, y} als fractie (0..1) van de eigen
     // breedte/hoogte van het beeld, dus onafhankelijk van zoomfactor of
     // schermformaat. Alleen a0/a1/a3 hebben rozen (dezelfde plek in a0/a1/
-    // a3, zie het bouwvoorstel); b0/b1 niet. Leeg totdat de plaatsmodus op
-    // de testpagina ze vastlegt.
+    // a3, zie het bouwvoorstel); b0/b1 niet. Vastgelegd met de plaatsmodus
+    // op de testpagina, op de echte platen; bij nieuwe beelden waarop de
+    // rozen anders staan opnieuw plaatsen.
     rozen: {
-      a0: [],
-      a1: [],
-      a3: []
+      a0: [
+        { x: 0.4372, y: 0.7667 },
+        { x: 0.1492, y: 0.8432 },
+        { x: 0.5955, y: 0.929 },
+        { x: 0.966,  y: 0.9795 }
+      ],
+      a1: [
+        { x: 0.4366, y: 0.7667 },
+        { x: 0.1445, y: 0.8519 },
+        { x: 0.5936, y: 0.9331 },
+        { x: 0.9535, y: 0.9754 }
+      ],
+      a3: [
+        { x: 0.6021, y: 0.9344 },
+        { x: 0.9483, y: 0.9863 },
+        { x: 0.4372, y: 0.7705 },
+        { x: 0.1453, y: 0.8429 }
+      ]
     },
     // Gloed rond elke roos. Puls via dekking (opacity), niet grootte.
     gloed: {
