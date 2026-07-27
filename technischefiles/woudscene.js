@@ -109,6 +109,17 @@
       holdB0Stilte: 3000,                 // na omdraaien naar leeg (volledige stilte)
       holdA3Eind: 4000,                   // na de rustige terugdraai, alle drie de heksen
       zwellingVertraging: 1500            // na de onthulling van b1, voor de lage zwelling
+    },
+    // Kleurregeling per deel. Standaard overal neutraal (geen wijziging
+    // t.o.v. het originele beeld): helderheid/contrast 1 = ongewijzigd,
+    // schaduwlicht 1 = ongewijzigd. schaduwlicht tilt alleen de donkerste
+    // delen op (gamma-kromme: zwart blijft zwart, wit blijft wit, alleen
+    // de tussentonen schuiven omhoog), in tegenstelling tot helderheid,
+    // die alles gelijk optelt en het beeld grauw/gewassen maakt.
+    kleur: {
+      deel1: { helderheid: 1, contrast: 1, schaduwlicht: 1 },
+      deel2: { helderheid: 1, contrast: 1, schaduwlicht: 1 },
+      deel3: { helderheid: 1, contrast: 1, schaduwlicht: 1 }
     }
   };
 
@@ -135,8 +146,13 @@
   // Diepe merge: opts overschrijft alleen de velden die het zelf heeft,
   // de rest komt uit DEFAULTS. Voorkomt dat een gedeeltelijke override
   // (bv. alleen deel2.panAfstand) de rest van dat blok wist.
+  // Belangrijk: de basis wordt hier ECHT diep gekopieerd (niet Object.
+  // assign, dat alleen de bovenste laag kopieert). Zonder dit deelden alle
+  // WoudScene-instanties (en de module-brede DEFAULTS zelf) dezelfde
+  // geneste objecten: scene.set('kleur.deel1...', ...) op de ene instantie
+  // muteerde dan ongemerkt ook DEFAULTS en dus elke andere instantie.
   function diepeMerge(basis, over) {
-    var uit = Array.isArray(basis) ? basis.slice() : Object.assign({}, basis);
+    var uit = diepeKopie(basis);
     if (!over) return uit;
     Object.keys(over).forEach(function (k) {
       var bv = basis ? basis[k] : undefined;
@@ -171,11 +187,17 @@
     this._spookLaag = null;       // laag voor de vage heksvormen in deel 1
     this._running = false;
     this._gestopt = true;         // true na destroy() of vóór start()
-    this._timers = [];
+    this._gepauzeerd = false;
+    this._actieveTimers = [];      // pauzeerbare setTimeout-descriptors (zie _setTimeout)
+    this._actieveFades = [];       // pauzeerbare audio-fade-descriptors (zie _faadIn/_faadUit)
     this._audio = {};              // key → Audio-instantie (persistent, geen vroege GC)
     this._beeldStatus = {};        // src → true (geladen) / false (placeholder)
     this._audioStatus = {};        // src → true (bestaat) / false (ontbreekt)
     this._huidigDeel = 0;
+    this._huidigeBeat = null;      // { naam, voorToestand, actie }, zie _merkBeat/herhaalHuidigeBeat
+    this._gammaFilterId = 'ws-gamma-filter';
+    this._gammaSvg = null;
+    this._gammaFuncs = null;
     this._onKlaar = null;
   }
 
@@ -292,37 +314,59 @@
     } catch (e) { return null; }
   };
 
+  // Fade-intervallen zijn pauzeerbaar: pause() zet het interval stil met
+  // clearInterval, resume() herstart hetzelfde tick-sluiting (die zijn
+  // eigen teller i nog onthoudt), zodat de fade precies verdergaat waar
+  // hij was. Geen aparte tijdregistratie nodig, i/stappen is zelf al de
+  // voortgang.
   WoudScene.prototype._faadUit = function (audioEl, duurMs) {
     if (!audioEl) return;
+    var self = this;
     var stapTijd = 60;
     var stappen = Math.max(1, Math.round(duurMs / stapTijd));
     var startVol = audioEl.volume;
     var i = 0;
-    var timer = setInterval(function () {
+    var desc = { rawId: null, stapTijd: stapTijd };
+    function tick() {
       i++;
       audioEl.volume = Math.max(0, startVol * (1 - i / stappen));
       if (i >= stappen) {
-        clearInterval(timer);
+        clearInterval(desc.rawId);
+        self._actieveFades = self._actieveFades.filter(function (f) { return f !== desc; });
         try { audioEl.pause(); } catch (e) {}
       }
-    }, stapTijd);
-    this._timers.push(timer);
+    }
+    desc.tick = tick;
+    desc.rawId = setInterval(tick, stapTijd);
+    this._actieveFades.push(desc);
   };
 
+  // Timers zijn pauzeerbaar: pause() onthoudt hoeveel er nog resteerde op
+  // het moment van pauzeren (i.p.v. de oorspronkelijke volledige duur) en
+  // clear't de setTimeout; resume() plant 'm opnieuw met precies dat
+  // restant, zodat de sequentie exact verdergaat waar hij was.
   WoudScene.prototype._setTimeout = function (fn, ms) {
     var self = this;
-    var id = setTimeout(function () {
-      self._timers = self._timers.filter(function (t) { return t !== id; });
-      if (self._gestopt) return;
-      fn();
-    }, ms);
-    this._timers.push(id);
-    return id;
+    var desc = { fn: fn, resterend: ms, rawId: null, gestart: 0 };
+    function plan(duur) {
+      desc.gestart = Date.now();
+      desc.rawId = setTimeout(function () {
+        self._actieveTimers = self._actieveTimers.filter(function (t) { return t !== desc; });
+        if (self._gestopt) return;
+        fn();
+      }, duur);
+    }
+    desc.plan = plan;
+    plan(ms);
+    this._actieveTimers.push(desc);
+    return desc;
   };
 
   WoudScene.prototype._alleTimersWissen = function () {
-    this._timers.forEach(function (t) { clearTimeout(t); clearInterval(t); });
-    this._timers = [];
+    this._actieveTimers.forEach(function (t) { if (t.rawId != null) clearTimeout(t.rawId); });
+    this._actieveTimers = [];
+    this._actieveFades.forEach(function (f) { if (f.rawId != null) clearInterval(f.rawId); });
+    this._actieveFades = [];
   };
 
   // ── Publieke API ────────────────────────────────────────────────
@@ -330,6 +374,7 @@
     var self = this;
     this._onKlaar = onKlaar;
     this._gestopt = false;
+    this._gepauzeerd = false;
     this._running = true;
     this._build();
     this._voorladen(function () {
@@ -343,6 +388,7 @@
     this._alleTimersWissen();
     this._stopAlleAudio();
     this._gestopt = false;
+    this._gepauzeerd = false;
     return this.start(onKlaar || this._onKlaar);
   };
 
@@ -354,6 +400,7 @@
     this._stopAlleAudio();
     this._onKlaar = onKlaar || this._onKlaar;
     this._gestopt = false;
+    this._gepauzeerd = false;
     this._running = true;
     this._build();
     this._voorladen(function () {
@@ -373,11 +420,160 @@
       obj = obj[delen[i]];
     }
     obj[delen[delen.length - 1]] = waarde;
+    // Kleurregeling van het deel dat NU in beeld is meteen live bijwerken;
+    // van een ander deel hoeft dat pas te gebeuren als dat deel start.
+    if (delen[0] === 'kleur' && delen[1] === ('deel' + this._huidigDeel)) {
+      this._pasKleurToe(delen[1]);
+    }
     return this;
   };
 
   WoudScene.prototype.getConfig = function () {
     return diepeKopie(this.config);
+  };
+
+  // ── Kleurregeling (helderheid/contrast/schaduwlicht per deel) ──────
+  // brightness()/contrast() zijn standaard CSS filter-functies. Voor
+  // "schaduwlicht" (de donkerste delen optillen zonder de lichte delen
+  // grauw te maken) bestaat geen standaard CSS-filter: dat vraagt een
+  // gamma-kromme (output = input^exponent), die per definitie zwart op
+  // zwart en wit op wit houdt en alleen de tussentonen verschuift. Dat
+  // kan alleen via een SVG feComponentTransfer-filter, dus wordt er hier
+  // eenmalig een verborgen SVG-filter aangemaakt en met url(#...)
+  // gecombineerd met de CSS-filters op hetzelfde element.
+  WoudScene.prototype._maakGammaFilter = function () {
+    if (this._gammaSvg) return;
+    var ns = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('width', '0');
+    svg.setAttribute('height', '0');
+    svg.style.position = 'absolute';
+    var defs = document.createElementNS(ns, 'defs');
+    var filter = document.createElementNS(ns, 'filter');
+    filter.setAttribute('id', this._gammaFilterId);
+    var transfer = document.createElementNS(ns, 'feComponentTransfer');
+    var funcs = ['feFuncR', 'feFuncG', 'feFuncB'].map(function (naam) {
+      var f = document.createElementNS(ns, naam);
+      f.setAttribute('type', 'gamma');
+      f.setAttribute('amplitude', '1');
+      f.setAttribute('exponent', '1');
+      f.setAttribute('offset', '0');
+      transfer.appendChild(f);
+      return f;
+    });
+    filter.appendChild(transfer);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+    document.body.appendChild(svg);
+    this._gammaSvg = svg;
+    this._gammaFuncs = funcs;
+  };
+
+  // schaduwlicht > 1 tilt de schaduwen op (exponent < 1); schaduwlicht = 1
+  // is exponent = 1, dus een rechte lijn (geen wijziging).
+  WoudScene.prototype._pasKleurToe = function (deelNaam) {
+    this._maakGammaFilter();
+    var k = this.config.kleur[deelNaam];
+    if (!k || !this.el) return;
+    var exponent = 1 / Math.max(0.01, k.schaduwlicht);
+    this._gammaFuncs.forEach(function (f) { f.setAttribute('exponent', exponent); });
+    this.el.style.filter =
+      'url(#' + this._gammaFilterId + ') brightness(' + k.helderheid + ') contrast(' + k.contrast + ')';
+  };
+
+  // ── Pauze/hervat ────────────────────────────────────────────────
+  // Bevriest de scène exact waar hij staat: CSS-transities/animaties via
+  // de standaard Web Animations API (Element.getAnimations, native
+  // pauzeren op het huidige frame, geen eigen tijd-/waarde-berekening
+  // nodig), de setTimeout-keten van de sequencer (self._setTimeout, zie
+  // hierboven) en alle geluid. resume() zet alles weer aan vanaf precies
+  // dat punt.
+  WoudScene.prototype.pause = function () {
+    if (this._gepauzeerd || this._gestopt) return this;
+    this._gepauzeerd = true;
+
+    if (this.el && this.el.getAnimations) {
+      this.el.getAnimations({ subtree: true }).forEach(function (a) {
+        try { a.pause(); } catch (e) {}
+      });
+    }
+
+    this._actieveTimers.forEach(function (t) {
+      if (t.rawId != null) {
+        clearTimeout(t.rawId);
+        t.resterend = Math.max(0, t.resterend - (Date.now() - t.gestart));
+        t.rawId = null;
+      }
+    });
+
+    this._actieveFades.forEach(function (f) {
+      if (f.rawId != null) { clearInterval(f.rawId); f.rawId = null; }
+    });
+
+    Object.keys(this._audio).forEach(function (k) {
+      var a = this._audio[k];
+      if (a && !a.paused) {
+        a._wasSpelend = true;
+        try { a.pause(); } catch (e) {}
+      }
+    }, this);
+
+    return this;
+  };
+
+  WoudScene.prototype.resume = function () {
+    if (!this._gepauzeerd) return this;
+    this._gepauzeerd = false;
+
+    if (this.el && this.el.getAnimations) {
+      this.el.getAnimations({ subtree: true }).forEach(function (a) {
+        try { a.play(); } catch (e) {}
+      });
+    }
+
+    this._actieveTimers.forEach(function (t) {
+      if (t.rawId == null) t.plan(t.resterend);
+    });
+
+    this._actieveFades.forEach(function (f) {
+      if (f.rawId == null) f.rawId = setInterval(f.tick, f.stapTijd);
+    });
+
+    Object.keys(this._audio).forEach(function (k) {
+      var a = this._audio[k];
+      if (a && a._wasSpelend) {
+        a._wasSpelend = false;
+        var p = a.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+    }, this);
+
+    return this;
+  };
+
+  WoudScene.prototype.togglePause = function () {
+    if (this._gepauzeerd) this.resume(); else this.pause();
+    return this._gepauzeerd;
+  };
+
+  // ── Herhaal huidige beat ────────────────────────────────────────
+  // Elke beat in deel 2/3 registreert zichzelf via _merkBeat (zie
+  // verderop) met een voorToestand-functie (zet het beeld terug naar hoe
+  // het er VOOR deze beat uitzag) en de beat-actie zelf. Zo kan een beat
+  // die al (deels) geweest is opnieuw vanaf zijn eigen begin afgespeeld
+  // worden, zonder de rest van de scène te herstarten.
+  WoudScene.prototype._merkBeat = function (naam, voorToestandFn, actieFn) {
+    this._huidigeBeat = { naam: naam, voorToestand: voorToestandFn, actie: actieFn };
+    actieFn();
+  };
+
+  WoudScene.prototype.herhaalHuidigeBeat = function () {
+    var b = this._huidigeBeat;
+    if (!b) return this;
+    if (this._gepauzeerd) this.resume();
+    if (typeof b.voorToestand === 'function') b.voorToestand();
+    b.actie();
+    return this;
   };
 
   WoudScene.prototype._stopAlleAudio = function () {
@@ -391,9 +587,12 @@
 
   WoudScene.prototype.destroy = function () {
     this._gestopt = true;
+    this._gepauzeerd = false;
     this._running = false;
     this._alleTimersWissen();
     this._stopAlleAudio();
+    if (this._gammaSvg && this._gammaSvg.parentNode) this._gammaSvg.parentNode.removeChild(this._gammaSvg);
+    this._gammaSvg = null;
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
     this.el = this._laagA = this._laagB = this._spookLaag = null;
   };
@@ -401,6 +600,7 @@
   // ── Deel 1, aanloop door het donkere bos ──────────────────────
   WoudScene.prototype._deel1 = function () {
     this._huidigDeel = 1;
+    this._pasKleurToe('deel1');
     var self = this;
     var cfg = this.config.deel1;
     var im = this.config.images.bos;
@@ -460,15 +660,22 @@
 
   WoudScene.prototype._faadIn = function (audioEl, doelVol, duurMs) {
     if (!audioEl) return;
+    var self = this;
     var stapTijd = 60;
     var stappen = Math.max(1, Math.round(duurMs / stapTijd));
     var i = 0;
-    var timer = setInterval(function () {
+    var desc = { rawId: null, stapTijd: stapTijd };
+    function tick() {
       i++;
       audioEl.volume = clamp(doelVol * (i / stappen), 0, 1);
-      if (i >= stappen) clearInterval(timer);
-    }, stapTijd);
-    this._timers.push(timer);
+      if (i >= stappen) {
+        clearInterval(desc.rawId);
+        self._actieveFades = self._actieveFades.filter(function (f) { return f !== desc; });
+      }
+    }
+    desc.tick = tick;
+    desc.rawId = setInterval(tick, stapTijd);
+    this._actieveFades.push(desc);
   };
 
   // Eén vage heksvorm: korte fade-in, hold, fade-out. Nooit in het midden,
@@ -509,6 +716,7 @@
   // ── Deel 2, aankomst op het veld ──────────────────────────────
   WoudScene.prototype._deel2 = function () {
     this._huidigDeel = 2;
+    this._pasKleurToe('deel2');
     var self = this;
     var cfg = this.config.deel2;
     var im = this.config.images;
@@ -530,9 +738,23 @@
     this._laagA.style.opacity = '1';
     this._laagB.style.transition = 'none';
     this._laagB.style.opacity = '0';
-    beeld.style.transition = 'none';
-    beeld.style.transform = 'scale(' + cfg.schaal + ') translateX(0%)';
-    beeld.style.filter = 'blur(0px)';
+
+    // Zet het beeld direct (zonder transitie) op een bekende stand. Ook
+    // gebruikt als "voorToestand" van elke beat hieronder, zodat
+    // herhaalHuidigeBeat() een beat altijd weer vanaf zijn eigen begin
+    // opnieuw kan afspelen, ongeacht hoe ver de beat al gevorderd was.
+    function naarStand(img, pct, blurPx) {
+      beeld = self._vulLaag(self._laagA, img);
+      beeld.style.transition = 'none';
+      beeld.style.transform = 'scale(' + cfg.schaal + ') translateX(' + pct + '%)';
+      beeld.style.filter = 'blur(' + blurPx + 'px)';
+      // Forceer een reflow: zonder dit kan de browser deze "instant"-zet
+      // samenvoegen met de eerstvolgende stijlwijziging (de transitie die
+      // de beat-actie meteen erna instelt), waardoor de reset genegeerd
+      // wordt en herhaalHuidigeBeat() alsnog vanaf de oude positie verdergaat.
+      void beeld.offsetWidth;
+    }
+    naarStand(im.a0, 0, 0);
 
     function pan(pctX, duur, metBlur, cb) {
       beeld.style.transition = 'transform ' + duur + 'ms cubic-bezier(.19,1,.22,1), filter ' + Math.min(duur, 260) + 'ms ease';
@@ -548,63 +770,93 @@
     // Pan-afstand nooit groter dan wat bij de huidige zoomfactor nog veilig
     // is (anders schuift de rand van de afbeelding in beeld); opnieuw
     // berekend per pan, zodat live bijstellen van de zoomfactor (debug-
-    // paneel) meteen klopt.
+    // paneel) meteen klopt, ook bij het herhalen van een beat.
     function effectiefPan() {
       return Math.min(cfg.panAfstand, maxPanVoorSchaal(cfg.schaal));
     }
 
-    this._setTimeout(function () {
-      // 2. geritsel links, 3. pan naar links
-      self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
-      pan(-effectiefPan(), cfg.panDuurHeen, true, function () {
+    // panRechts wordt elke keer dat beatPanRechts() echt draait opnieuw
+    // berekend (niet één keer vooraf gecached), zodat een latere
+    // beat-herhaling van "pan-rechts" een intussen bijgestelde zoom/pan-
+    // afstand ook meteen laat gelden voor de wissel en de terugpan erna.
+    var panRechts = 0;
+
+    function beatHoldRust() {
+      self._merkBeat('hold-rust', function () { naarStand(im.a0, 0, 0); }, function () {
+        // 1. rust op het lege veld
+        self._setTimeout(beatPanLinks, cfg.holdRust);
+      });
+    }
+    function beatPanLinks() {
+      self._merkBeat('pan-links', function () { naarStand(im.a0, 0, 0); }, function () {
+        // 2. geritsel links, 3. pan naar links
+        self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
+        pan(-effectiefPan(), cfg.panDuurHeen, true, beatHoldLinks);
+      });
+    }
+    function beatHoldLinks() {
+      self._merkBeat('hold-links', function () { naarStand(im.a0, -effectiefPan(), 0); }, function () {
         // 4. hold
+        self._setTimeout(beatTerug1, cfg.holdLinks);
+      });
+    }
+    function beatTerug1() {
+      self._merkBeat('terug-naar-midden-1', function () { naarStand(im.a0, -effectiefPan(), 0); }, function () {
+        // 5. terug naar midden
+        pan(0, cfg.terugDuur, true, beatPanRechts);
+      });
+    }
+    function beatPanRechts() {
+      self._merkBeat('pan-rechts', function () { naarStand(im.a0, 0, 0); }, function () {
+        // 6. geritsel rechts, 7. pan naar rechts
+        self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
+        panRechts = effectiefPan();
+        pan(panRechts, cfg.panDuurHeen, true, beatHoldWissel);
+      });
+    }
+    function beatHoldWissel() {
+      self._merkBeat('hold-rechts-wissel', function () { naarStand(im.a0, panRechts, 0); }, function () {
+        // 8. hold rechts. De wissel naar a1 (heks 1) gebeurt HIER, terwijl
+        // de camera stilstaat aan de rechterkant: haar plek (iets links
+        // van het midden) is dan het verst uit beeld. Een korte
+        // bewegingsonscherpte over het wisselmoment zelf verbergt de
+        // omruil; de camera staat op dat moment stil.
+        beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-in';
+        beeld.style.filter = 'blur(' + cfg.blurPan + 'px)';
         self._setTimeout(function () {
-          // 5. terug naar midden
-          pan(0, cfg.terugDuur, true, function () {
-            // 6. geritsel rechts, 7. pan naar rechts
-            self._speel('geritsel', self._kiesGeluid(self.config.audio.geritsel));
-            var panRechts = effectiefPan();
-            pan(panRechts, cfg.panDuurHeen, true, function () {
-              // 8. hold rechts. De wissel naar a1 (heks 1) gebeurt HIER,
-              // terwijl de camera stilstaat aan de rechterkant: haar plek
-              // (iets links van het midden) is dan het verst uit beeld. Een
-              // korte bewegingsonscherpte over het wisselmoment zelf
-              // verbergt de omruil; de camera staat op dat moment stil.
-              beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-in';
-              beeld.style.filter = 'blur(' + cfg.blurPan + 'px)';
-              self._setTimeout(function () {
-                var nieuw = self._vulLaag(self._laagA, im.a1);
-                nieuw.style.transition = 'none';
-                nieuw.style.transform = 'scale(' + cfg.schaal + ') translateX(' + panRechts + '%)';
-                nieuw.style.filter = 'blur(' + cfg.blurPan + 'px)';
-                beeld = nieuw;
-                void beeld.offsetWidth;
-                beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-out';
-                beeld.style.filter = 'blur(0px)';
-              }, cfg.wisselBlurDuur);
-              self._setTimeout(function () {
-                // Rest van de hold, na de (nu al onzichtbaar gemaakte) wissel.
-                self._setTimeout(function () {
-                  // 9. terug naar midden. Heks 1 zit al in het beeld, dus dit
-                  // is een gewone, ononderbroken pan: ze "verschijnt" niet,
-                  // ze komt gewoon in beeld zoals de rest van het beeld.
-                  pan(0, cfg.terugDuur, true, function () {
-                    // 10. bij aankomst in het midden: geen geluid, meteen
-                    // vasthouden.
-                    self._setTimeout(function () { self._deel3(); }, cfg.holdHeks1);
-                  });
-                }, Math.max(0, cfg.holdRechts - cfg.wisselBlurDuur * 2));
-              }, cfg.wisselBlurDuur * 2);
-            });
-          });
-        }, cfg.panDuurTerug);
-      }, cfg.holdLinks);
-    }, cfg.holdRust);
+          naarStand(im.a1, panRechts, cfg.blurPan);
+          void beeld.offsetWidth;
+          beeld.style.transition = 'filter ' + cfg.wisselBlurDuur + 'ms ease-out';
+          beeld.style.filter = 'blur(0px)';
+        }, cfg.wisselBlurDuur);
+        self._setTimeout(function () {
+          // Rest van de hold, na de (nu al onzichtbaar gemaakte) wissel.
+          self._setTimeout(beatTerug2, Math.max(0, cfg.holdRechts - cfg.wisselBlurDuur * 2));
+        }, cfg.wisselBlurDuur * 2);
+      });
+    }
+    function beatTerug2() {
+      self._merkBeat('terug-naar-midden-2', function () { naarStand(im.a1, panRechts, 0); }, function () {
+        // 9. terug naar midden. Heks 1 zit al in het beeld, dus dit is een
+        // gewone, ononderbroken pan: ze "verschijnt" niet, ze komt gewoon
+        // in beeld zoals de rest van het beeld.
+        pan(0, cfg.terugDuur, true, beatHoldHeks1);
+      });
+    }
+    function beatHoldHeks1() {
+      self._merkBeat('hold-heks1', function () { naarStand(im.a1, 0, 0); }, function () {
+        // 10. bij aankomst in het midden: geen geluid, meteen vasthouden.
+        self._setTimeout(function () { self._deel3(); }, cfg.holdHeks1);
+      });
+    }
+
+    beatHoldRust();
   };
 
   // ── Deel 3, de draai-sequentie ────────────────────────────────
   WoudScene.prototype._deel3 = function () {
     this._huidigDeel = 3;
+    this._pasKleurToe('deel3');
     var self = this;
     var cfg = this.config.deel3;
     var im = this.config.images;
@@ -616,6 +868,30 @@
     beeld.style.transition = 'none';
     beeld.style.transform = 'scale(1)';
     beeld.style.filter = 'blur(0px)';
+
+    // Zet een gegeven laag direct (zonder transitie) op een bekende
+    // afbeelding en maakt hem actief; de andere laag wordt verborgen. Ook
+    // gebruikt als "voorToestand" van elke beat hieronder (zie deel 2 voor
+    // dezelfde aanpak), zodat herhaalHuidigeBeat() een beat, inclusief een
+    // eventuele laag-wissel door kalmTerugdraaien, altijd deterministisch
+    // vanaf zijn eigen begin herdoet.
+    function naarStand(laag, img, blurPx) {
+      actief = laag;
+      beeld = self._vulLaag(laag, img);
+      beeld.style.transition = 'none';
+      beeld.style.transform = 'scale(1)';
+      beeld.style.filter = 'blur(' + blurPx + 'px)';
+      laag.style.transition = 'none';
+      laag.style.opacity = '1';
+      var ander = (laag === self._laagA) ? self._laagB : self._laagA;
+      ander.style.transition = 'none';
+      ander.style.opacity = '0';
+      // Reflow forceren, zelfde reden als bij deel 2's naarStand: anders
+      // kan de browser deze reset samenvoegen met de transitie die de
+      // beat-actie er meteen na op start.
+      void beeld.offsetWidth;
+    }
+    var eigenLaag = actief; // deel3 blijft op deze laag tot kalmTerugdraaien wisselt
 
     // Eén schrik-omdraaiing: kort blur-moment, wissel het beeld op het
     // midden van de beweging, laat de blur weer wegtrekken. Geen
@@ -662,45 +938,78 @@
       self._setTimeout(cb, duur);
     }
 
-    // 1. fluistering vlak achter de speler
-    this._speel('fluister', this._kiesGeluid(this.config.audio.fluister));
-
-    this._setTimeout(function () {
-      // 2. omdraaien naar heks 2, dichtbij
-      draaiNaar(im.b1, cfg.draaiDuur, cfg.blurDraai, function () {
+    function beatFluister1() {
+      self._merkBeat('fluister-1-wacht', function () { naarStand(eigenLaag, im.a1, 0); }, function () {
+        // 1. fluistering vlak achter de speler
+        self._speel('fluister', self._kiesGeluid(self.config.audio.fluister));
+        self._setTimeout(beatDraaiB1, 900);
+      });
+    }
+    function beatDraaiB1() {
+      self._merkBeat('draai-naar-b1', function () { naarStand(eigenLaag, im.a1, 0); }, function () {
+        // 2. omdraaien naar heks 2, dichtbij
+        draaiNaar(im.b1, cfg.draaiDuur, cfg.blurDraai, beatHoldB1);
+      });
+    }
+    function beatHoldB1() {
+      self._merkBeat('hold-b1-zwelling', function () { naarStand(eigenLaag, im.b1, 0); }, function () {
         // 3. hold, geen geluid bij onthulling; na ~1,5s een lage zwelling
         self._setTimeout(function () {
           self._speel('zwelling', self.config.audio.zwelling);
         }, cfg.zwellingVertraging);
-        self._setTimeout(function () {
-          // 4. omdraaien terug, heks 1 is weg
-          draaiNaar(im.a0, cfg.draaiDuur, cfg.blurDraai, function () {
-            // 5. hold
-            self._setTimeout(function () {
-              // 6. tweede, andere fluistering
-              self._speel('fluister', self._kiesGeluid(self.config.audio.fluister));
-              self._setTimeout(function () {
-                // 7. omdraaien, er is niets
-                draaiNaar(im.b0, cfg.draaiDuur, cfg.blurDraai, function () {
-                  // 8. drie seconden volledige stilte
-                  self._setTimeout(function () {
-                    // 9. rustig terugdraaien: langzamer, minder onscherpte,
-                    // en een echte overvloeiing i.p.v. een harde wissel.
-                    kalmTerugdraaien(im.a3, cfg.draaiDuurRustig, cfg.blurDraaiRustig, function () {
-                      // 11. vier seconden vasthouden, dan klaar
-                      self._setTimeout(function () {
-                        self._running = false;
-                        if (typeof self._onKlaar === 'function') self._onKlaar();
-                      }, cfg.holdA3Eind);
-                    });
-                  }, cfg.holdB0Stilte);
-                });
-              }, 400);
-            }, cfg.holdA0Leeg);
-          });
-        }, cfg.holdB1);
+        self._setTimeout(beatDraaiA0, cfg.holdB1);
       });
-    }, 900);
+    }
+    function beatDraaiA0() {
+      self._merkBeat('draai-naar-a0', function () { naarStand(eigenLaag, im.b1, 0); }, function () {
+        // 4. omdraaien terug, heks 1 is weg
+        draaiNaar(im.a0, cfg.draaiDuur, cfg.blurDraai, beatHoldA0);
+      });
+    }
+    function beatHoldA0() {
+      self._merkBeat('hold-a0-leeg', function () { naarStand(eigenLaag, im.a0, 0); }, function () {
+        // 5. hold
+        self._setTimeout(beatFluister2, cfg.holdA0Leeg);
+      });
+    }
+    function beatFluister2() {
+      self._merkBeat('fluister-2-wacht', function () { naarStand(eigenLaag, im.a0, 0); }, function () {
+        // 6. tweede, andere fluistering
+        self._speel('fluister', self._kiesGeluid(self.config.audio.fluister));
+        self._setTimeout(beatDraaiB0, 400);
+      });
+    }
+    function beatDraaiB0() {
+      self._merkBeat('draai-naar-b0', function () { naarStand(eigenLaag, im.a0, 0); }, function () {
+        // 7. omdraaien, er is niets
+        draaiNaar(im.b0, cfg.draaiDuur, cfg.blurDraai, beatHoldStilte);
+      });
+    }
+    function beatHoldStilte() {
+      self._merkBeat('hold-b0-stilte', function () { naarStand(eigenLaag, im.b0, 0); }, function () {
+        // 8. drie seconden volledige stilte
+        self._setTimeout(beatKalmTerugdraaien, cfg.holdB0Stilte);
+      });
+    }
+    function beatKalmTerugdraaien() {
+      self._merkBeat('kalm-terugdraaien', function () { naarStand(eigenLaag, im.b0, 0); }, function () {
+        // 9. rustig terugdraaien: langzamer, minder onscherpte, en een
+        // echte overvloeiing i.p.v. een harde wissel.
+        kalmTerugdraaien(im.a3, cfg.draaiDuurRustig, cfg.blurDraaiRustig, beatHoldA3Eind);
+      });
+    }
+    function beatHoldA3Eind() {
+      var andereLaag = (eigenLaag === self._laagA) ? self._laagB : self._laagA;
+      self._merkBeat('hold-a3-eind', function () { naarStand(andereLaag, im.a3, 0); }, function () {
+        // 11. vier seconden vasthouden, dan klaar
+        self._setTimeout(function () {
+          self._running = false;
+          if (typeof self._onKlaar === 'function') self._onKlaar();
+        }, cfg.holdA3Eind);
+      });
+    }
+
+    beatFluister1();
   };
 
   global.WoudScene = WoudScene;
