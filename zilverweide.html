@@ -421,6 +421,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-detail-naam{font-family:'Cinzel',serif;color:var(--gold);font-size:1.35rem;letter-spacing:.06em;margin:.4rem 0 .1rem;text-shadow:0 0 24px rgba(201,168,76,.35)}
 .inv-ov-detail-note{max-width:460px;margin:.8rem auto 0;padding:0 1rem}
 .inv-ov-detail-note p{font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1rem;line-height:1.7;color:var(--mist);margin:0}
+.inv-ov-detail-actie{margin-top:1.1rem;max-width:280px}
 .inv-ov-detail-terug{margin-top:1.3rem}
 .back-btn{background:none;border:none;color:var(--gold-dim);font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.12em;cursor:pointer;padding:.5rem 0;display:flex;align-items:center;gap:6px;text-transform:uppercase;margin-bottom:1rem}
 .back-btn:hover{color:var(--gold)}
@@ -2752,6 +2753,7 @@ const ITEMS = {
   donderbloesem:      { emoji: '🌸', naam: 'Donderbloesem' },
   kraalBeengiht:      { emoji: '📿', naam: 'Kraal van Beengiht' },
   rouwstof:           { emoji: '🖤', naam: 'Rouwstof' },
+  flesje:             { emoji: '🧪', naam: 'Flesje' },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -4220,7 +4222,12 @@ var ITEM_AFBEELDINGEN = {
   'Latin Jurk':           'items/lolaitem.png',          // Felix' Lola-vermomming
   'Muziekdoosje (roetbedekt)': 'items/muziekdoosjebeschadigditem.png',
   'Muziekdoosje':         'items/muziekdoosjemooiitem.png', // na reparatie door de klokkenmaker
-  'Sleutel Woudpoort':    'items/woudsleutelitem.png'
+  'Sleutel Woudpoort':    'items/woudsleutelitem.png',
+  'Chinees Kegelhoedje':  'items/liuyenitem.png',        // Felix' Liu-Yen-vermomming
+  'Donderbloesem':        'items/donderbloesemx.jpg',    // H7 Apotheker-quest
+  'Rouwstof':             'items/rouwstofx.jpg',         // H7 Apotheker-quest
+  'Vleespen':             'items/vleespenx.jpg',         // Jan's lockpick-speld (slagerij)
+  'Flesje':               'items/flesjex.jpg'            // anti-Schaduw middel (H7 Apotheker)
 };
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
@@ -4264,10 +4271,15 @@ function toonInventarisItem(idx) {
   var d = document.getElementById('inv-ov-detail');
   var g = document.getElementById('inv-ov-grid');
   if (!i || !d) return;
+  // Het Flesje is het enige voorwerp dat je vanuit de rugzak zelf gebruikt.
+  var actieKnop = (i.naam === 'Flesje')
+    ? '<button class="spel-lade-knop inv-ov-detail-actie" onclick="drinkFlesje()">Drink het flesje</button>'
+    : '';
   d.innerHTML =
     '<div class="inv-ov-detail-visual">' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
     '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
     '<div class="inv-ov-detail-note"><p>[Placeholder: hier komt de uitleg over ' + i.naam + '.]</p></div>' +
+    actieKnop +
     '<button class="back-btn inv-ov-detail-terug" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
   if (g) g.style.display = 'none';
   d.style.display = 'flex';
@@ -5173,7 +5185,7 @@ function felixVermomLiuYen() {
   updateIndicator(state.zone, '', '');
 
   toonLade(
-    '' + ITEMS.coneHoedje.emoji + ' Je bent nu Liu-Yen',
+    'Je bent nu Liu-Yen',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: niemand zal je hier herkennen. De wereld ligt weer open.]</p>',
     'Verder →',
     () => {
@@ -6765,7 +6777,7 @@ function renderH7Apotheker(loc) {
   });
   if (ingeleverd.length > 0) {
     updateInventoryBar();
-    const namen = ingeleverd.map(function(i) { return i.emoji + ' ' + i.naam; }).join(', ');
+    const namen = ingeleverd.map(function(i) { return (ITEM_AFBEELDINGEN[i.naam] ? '' : i.emoji + ' ') + i.naam; }).join(', ');
     toonLade(
       '\u2697\ufe0f  Ingeleverd',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je geeft ' + namen + ' aan de apotheker. Hij knikt en legt het bij de rest.</p>',
@@ -6787,11 +6799,18 @@ function renderH7Apotheker(loc) {
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog });
   }
 
-  // ── Middel is klaar: drink-knop voor iedereen die nog niet dronk ──
+  // ── Middel is klaar, deze speler heeft z'n flesje al (maar nog niet gedronken) ──
+  if (middelKlaar && heeftItem('Flesje')) {
+    dialog.push('Het pruttelen is allang gestopt. Het flesje zit al bij je.');
+    dialog.push({ spreker: 'De apotheker', tekst: '"Drink het maar zodra je eraan toe bent."' });
+    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog });
+  }
+
+  // ── Middel is klaar: flesje meenemen voor iedereen die er nog geen heeft ──
   if (middelKlaar) {
     dialog.push('Het pruttelen is gestopt. Op de werkbank staat een klein flesje, de inhoud donker en traag als stroop.');
     dialog.push({ spreker: 'De apotheker', tekst: '"Het middel is af."' });
-    acties = [{ label: '\ud83c\udf77 Drink het middel', onclick: function() { h7DrinkMiddel(loc); } }];
+    acties = [{ label: '\ud83c\udf77 Neem het flesje mee', onclick: function() { h7NeemFlesje(loc); } }];
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog, acties: acties });
   }
 
@@ -6891,19 +6910,33 @@ function h7ZegJa(loc) {
   renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog });
 }
 
-// Speler drinkt het middel: vloek wordt onderdrukt (kalmeer), item weg.
-function h7DrinkMiddel(loc) {
-  markVisited('h7_gedronken');
-  // De Schaduw item uit inventaris, vloek kalmeren
-  state.inventory = state.inventory.filter(function(i) { return i.naam !== 'De Schaduw'; });
-  updateInventoryBar();
-  try { if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.kalmeer) window.ZilverweideSchaduw.kalmeer(); } catch (e) {}
+// Speler neemt het flesje mee: nog geen effect, alleen het voorwerp. Het
+// echte drinken (vloek onderdrukken) gebeurt via drinkFlesje() vanuit de
+// inventaris, wanneer de speler daar zelf voor kiest.
+function h7NeemFlesje(loc) {
+  geefItem(ITEMS.flesje.emoji, ITEMS.flesje.naam, false);
   toonLade(
-    '\ud83c\udf77  Het middel',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je drinkt het flesje leeg. Het smaakt naar as en honing tegelijk. En dan, langzaam, wordt het stil in je hoofd. Echt stil.</p>' +
-    '<div class="npc-line" style="margin-top:.75rem"><div class="npc-avatar">\u2697\ufe0f</div><div><div class="npc-name">De apotheker</div><div class="npc-text"><em>"Denk eraan, hij is niet weg. Maar je zal er geen last meer van hebben. Voorlopig. Je vrienden, als ze er ook last van hebben, kunnen het hier komen drinken."</em></div></div></div>',
+    '\ud83e\uddea  Het flesje',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De apotheker geeft je een klein flesje, de inhoud donker en traag als stroop.</p>' +
+    '<div class="npc-line" style="margin-top:.75rem"><div class="npc-avatar">\u2697\ufe0f</div><div><div class="npc-name">De apotheker</div><div class="npc-text"><em>"Denk eraan, hij is niet weg. Maar je zal er geen last meer van hebben. Voorlopig. Drink het wanneer je eraan toe bent. Je vrienden, als ze er ook last van hebben, kunnen hier zelf een flesje komen halen."</em></div></div></div>',
     'Verder',
     function() { renderH7Apotheker(loc); }
+  );
+}
+
+// Speler drinkt het flesje vanuit de inventaris: vloek wordt onderdrukt
+// (kalmeer), het flesje verdwijnt uit de rugzak (eenmalig te gebruiken).
+function drinkFlesje() {
+  markVisited('h7_gedronken');
+  state.inventory = state.inventory.filter(function(i) { return i.naam !== 'Flesje' && i.naam !== 'De Schaduw'; });
+  updateInventoryBar();
+  bouwInventarisGrid();
+  try { if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.kalmeer) window.ZilverweideSchaduw.kalmeer(); } catch (e) {}
+  toonLade(
+    '\ud83e\uddea  Het flesje',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je voelt je beter, maar wat zei hij nou. Het is niet weg?</p>',
+    'Verder',
+    toonInventarisGridView
   );
 }
 
@@ -13625,7 +13658,8 @@ function buildDebugPanel() {
       ['📿 + Kraal verzameld', function(){ setSharedState('ing_kraal', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['🖤 + Rouwstof verzameld', function(){ setSharedState('ing_rouwstof', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['✅ Alle 3 ingeleverd', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem','ingeleverd'); setSharedState('ing_kraal','ingeleverd'); setSharedState('ing_rouwstof','ingeleverd'); close(); }, true, 'H7 Apotheker'],
-      ['🔄 Reset quest', function(){ setSharedState('apotheker_quest_actief', false); setSharedState('apotheker_bezocht', false); setSharedState('kraal_hint_gekregen', false); setSharedState('ing_donderbloesem', null); setSharedState('ing_kraal', null); setSharedState('ing_rouwstof', null); state.visited.delete('h7_intro_gezien'); state.visited.delete('h7_gedronken'); state.visited.delete('h8_vrouwtje_gezien'); state.visited.delete('omkleden_steegje_ontdekt'); close(); }, true, 'H7 Apotheker'],
+      ['🔄 Reset quest', function(){ setSharedState('apotheker_quest_actief', false); setSharedState('apotheker_bezocht', false); setSharedState('kraal_hint_gekregen', false); setSharedState('ing_donderbloesem', null); setSharedState('ing_kraal', null); setSharedState('ing_rouwstof', null); state.visited.delete('h7_intro_gezien'); state.visited.delete('h7_gedronken'); state.visited.delete('h8_vrouwtje_gezien'); state.visited.delete('omkleden_steegje_ontdekt'); state.inventory = state.inventory.filter(function(i){ return i.naam !== 'Flesje'; }); updateInventoryBar(); close(); }, true, 'H7 Apotheker'],
+      ['🧪 + Flesje',        function(){ debugItem(ITEMS.flesje.emoji, ITEMS.flesje.naam); }, true, 'H7 Apotheker'],
       // ── HD Finale
       ['🌹 Trigger HD-finale popup', function(){ markVisited('felix_hd2_vrij'); setSharedState('felix_hd2_vrij',true); markVisited('jan_slagerij_gevlucht'); setSharedState('jan_slagerij_gevlucht',true); markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan',true); markVisited('kerk_non_weg'); setSharedState('kerk_non_weg',true); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien',true); markVisited('muziekdoosje_afgeleverd'); setSharedState('muziekdoosje_afgeleverd',true); markVisited('muziekdoosje_bij_aaltje'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } state.hdFinalePopupGetoond = false; close(); checkHeerDonatusTokens(); }, !state.tobbeGokOpgelost, 'HD Finale'],
       ['🎯 Forceer Tobbe-gok juist', function(){ state.tobbeGokOpgelost = true; setSharedState('tobbe_gok_opgelost', true); if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer(); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } close(); }, !state.tobbeGokOpgelost, 'HD Finale'],
