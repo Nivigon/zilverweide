@@ -9094,7 +9094,7 @@ function renderK1Nummer7(loc) {
         extra: n7AlleVier ? '' : gateStatusExtra('Wacht op de anderen \u2022 ' + n7Aanwezig.length + ' / 4 aanwezig'),
       });
       plaatsGateMarker('gate-nummer7');
-      startGatePoll('gate-nummer7', function(){ renderK1Nummer7(loc); }, function(){ return getSharedState('nummer7_aanwezig'); });
+      startGatePoll('gate-nummer7', function(){ renderK1Nummer7(loc); }, function(){ return sharedLijst('nummer7_aanwezig'); });
       state.lastZone = 'kraaienkwartier';
       return;
     }
@@ -12871,7 +12871,7 @@ function openKerkKelderAanloop() {
     extra: alleVier ? '' : gateStatusExtra('Wacht op de anderen \u2022 ' + aanwezig.length + ' / 4 aanwezig'),
   });
   plaatsGateMarker('gate-kerkkelder');
-  startGatePoll('gate-kerkkelder', openKerkKelderAanloop, function(){ return getSharedState('kerk_kelder_aanwezig'); });
+  startGatePoll('gate-kerkkelder', openKerkKelderAanloop, function(){ return sharedLijst('kerk_kelder_aanwezig'); });
   showScreen('screen-locatie');
 }
 
@@ -12932,7 +12932,7 @@ function kerkVerhaalWacht() {
   });
   showScreen('screen-locatie');
   plaatsGateMarker('gate-kerkverhaal');
-  startGatePoll('gate-kerkverhaal', kerkVerhaalWacht, function(){ return getSharedState('kerk_verhaal_klaar'); });
+  startGatePoll('gate-kerkverhaal', kerkVerhaalWacht, function(){ return sharedLijst('kerk_verhaal_klaar'); });
 }
 
 function naKerkkelder() {
@@ -13014,7 +13014,7 @@ function openFinalePodium() {
     extra: alleVier ? '' : gateStatusExtra('Wacht op de anderen \u2022 ' + aanwezig.length + ' / 4 aanwezig'),
   });
   plaatsGateMarker('gate-podiumfinale');
-  startGatePoll('gate-podiumfinale', openFinalePodium, function(){ return getSharedState('podium_finale_aanwezig'); });
+  startGatePoll('gate-podiumfinale', openFinalePodium, function(){ return sharedLijst('podium_finale_aanwezig'); });
   state.lastOpenedLocatie = null;
   showScreen('screen-locatie');
   updateIndicator('dorpsplein', '\ud83d\udc65', 'Dorpsplein');
@@ -13073,7 +13073,7 @@ function podiumVerhaalWacht() {
   });
   showScreen('screen-locatie');
   plaatsGateMarker('gate-podiumverhaal');
-  startGatePoll('gate-podiumverhaal', podiumVerhaalWacht, function(){ return getSharedState('podium_verhaal_klaar'); });
+  startGatePoll('gate-podiumverhaal', podiumVerhaalWacht, function(){ return sharedLijst('podium_verhaal_klaar'); });
 }
 
 function debugAlleVierVerhaal() {
