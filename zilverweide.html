@@ -1376,7 +1376,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <div id="topright-cluster" style="position:fixed;top:.7rem;right:1rem;z-index:300;display:flex;align-items:center;gap:.55rem">
   <div id="missie-teller" onclick="toggleMissiePaneel(event)" title="Bekijk wat jullie ontdekten" style="display:none;position:relative;flex:0 0 auto;align-items:center;gap:.4rem;padding:.35rem .7rem;border:1px solid rgba(201,168,76,.3);border-radius:50px;background:rgba(13,10,6,.82);font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;transition:all .35s ease;backdrop-filter:blur(4px);white-space:nowrap;cursor:pointer">
     <span style="font-size:.85rem;line-height:1">✦</span>
-    <span id="missie-teller-tekst">Verhaal: 0 / 3</span>
+    <span id="missie-teller-tekst">Verhaal: 0 / 4</span>
     <div id="missie-paneel" onclick="event.stopPropagation()"></div>
   </div>
   <div id="avatar-badge" onclick="openRolOverzicht()" title="Bekijk je rol" style="display:none;align-items:center;gap:8px;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:50px;padding:4px 10px 4px 4px;backdrop-filter:blur(4px)">
@@ -2218,19 +2218,21 @@ function hasVisited(flag) {
 // je nu in de story zit, niet de afgeronde fase ervoor.
 // ─────────────────────────────────────────────────────────────────
 
-// Kraaienkwartier-keys: het zijn de drie sleutel-items (inventory).
-// De drie finale-sleutels zitten elk in de inventaris van ÉÉN speler,
+// Kraaienkwartier-keys: het zijn de vier sleutel-items (inventory).
+// De finale-sleutels zitten elk in de inventaris van ÉÉN speler,
 // maar de teller is een teamscore: daarom telt de check ook de gedeelde
 // spiegel-flag mee die addInventory zet zodra iemand de sleutel krijgt.
 const KRAAIEN_MISSIE_KEYS = [
   { id: 'dagboek',  label: 'Het dagboek leesbaar',       check: function(){ return !!state.inventory.find(function(i){return i.naam==='Leesbaar Dagboek 🔑';}) || !!getSharedState('kk_sleutel_dagboek'); } },
   { id: 'wallingen',label: 'Sleutel Wallingen verkregen',check: function(){ return !!state.inventory.find(function(i){return i.naam==='Sleutel Wallingen 🔑';}) || !!getSharedState('kk_sleutel_wallingen'); } },
   { id: 'robbie',   label: 'Robbie staat klaar',         check: function(){ return !!state.inventory.find(function(i){return i.naam==='Robbie staat klaar 🔑';}) || !!getSharedState('kk_sleutel_robbie'); } },
+  { id: 'speld',    label: 'Jan kan sommige deuren kraken', check: function(){ return !!state.inventory.find(function(i){return i.naam==='Kromme Speld';}) || !!getSharedState('kk_sleutel_speld'); } },
 ];
 const KK_SLEUTEL_ITEMS = {
   'Leesbaar Dagboek 🔑':   'dagboek',
   'Sleutel Wallingen 🔑':  'wallingen',
-  'Robbie staat klaar 🔑': 'robbie'
+  'Robbie staat klaar 🔑': 'robbie',
+  'Kromme Speld':          'speld'
 };
 
 // Dorendael-keys: de 5 cruciale pad-flags voor de heks-gok.
@@ -3934,7 +3936,8 @@ function addInventory(emoji, naam, toonPopup=true) {
       const matched = KRAAIEN_MISSIE_KEYS.find(function(k){
         return (k.id === 'dagboek'   && naam === 'Leesbaar Dagboek 🔑') ||
                (k.id === 'wallingen' && naam === 'Sleutel Wallingen 🔑') ||
-               (k.id === 'robbie'    && naam === 'Robbie staat klaar 🔑');
+               (k.id === 'robbie'    && naam === 'Robbie staat klaar 🔑') ||
+               (k.id === 'speld'     && naam === 'Kromme Speld');
       });
       if (matched) onMissieKeyVoltooid(matched.label);
     }
@@ -12539,12 +12542,15 @@ function debugVermomFelix(naam) {
 }
 
 function alleFinaleCodesVerzameld() {
-  // De drie eindsleutels zijn geen inventaris-items meer: het dagboek blijft in
-  // het archief, en Wallingen en Robbie zijn verhaalstappen. We kijken naar de
-  // gedeelde teamvlaggen i.p.v. de items.
+  // Het dagboek blijft in het archief, en Wallingen en Robbie zijn
+  // verhaalstappen zonder fysiek item: we kijken naar de gedeelde
+  // teamvlaggen i.p.v. de items. De speld (Kromme Speld, K3) is wel een
+  // fysiek item, maar telt via dezelfde gedeelde vlag ook mee als vierde
+  // vereiste voor de finale.
   return !!getSharedState('kk_sleutel_dagboek') &&
          !!getSharedState('kk_sleutel_wallingen') &&
-         !!getSharedState('kk_sleutel_robbie');
+         !!getSharedState('kk_sleutel_robbie') &&
+         !!getSharedState('kk_sleutel_speld');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -13249,6 +13255,7 @@ function buildDebugPanel() {
     const robbieKlaar  = !!getSharedState('kk_sleutel_robbie');
     const dagboekKlaar = !!getSharedState('dagboek_gerestaureerd');
     const sleutelKlaar = !!getSharedState('kk_sleutel_wallingen');
+    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld') || !!getSharedState('kk_sleutel_speld');
     btns = [
       // ── Kelly & de put
       ['🕳️ Kelly valt in de put',    function(){ markVisited('kelly_in_put'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Kelly & de put'],
@@ -13297,10 +13304,12 @@ function buildDebugPanel() {
       ['💃 + Lola-outfit',            function(){ addInventory('💃','Latin Jurk',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
       // ── Sleutel
       ['✦ Sleutel Wallingen',      function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Sleutel'],
+      // ── Toren (K3)
+      ['📌 + Kromme Speld (toren)', function(){ debugItem('📌','Kromme Speld'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
-      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
