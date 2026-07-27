@@ -874,7 +874,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   pointer-events:none;
 }
 #wt-box.wt-zichtbaar{opacity:1;transform:translateY(0)}
-#wt-box.wt-belofte-modus{text-align:center}
 #wt-label{
   font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;
   color:var(--gold-dim);margin-bottom:.55rem;padding-bottom:.5rem;position:relative;
@@ -884,7 +883,6 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   background:linear-gradient(to right,var(--gold-dim),transparent);
 }
 #wt-tekst{font-family:'Crimson Text',Georgia,serif;font-size:1.05rem;line-height:1.45}
-#wt-tekst.wt-belofte{font-family:'Cinzel',serif;font-size:1.05rem;letter-spacing:.05em;color:var(--gold);text-transform:uppercase}
 #wt-tekst.wt-tip{color:var(--parchment);font-style:normal}
 #wt-tekst.wt-sfeer{color:var(--gold);font-style:italic}
 /* ══ TOAST ══ */
@@ -3746,67 +3744,32 @@ function updateRolTest() {
 // klare, geordende lijst (roltips/rolsfeer/algemene tips al in de
 // definitieve volgorde neergezet, dus geen interweave-logica nodig in de
 // code). Elk item heeft een type (tip of sfeer) voor de opmaak.
+// Algemene tip: staat voor elke rol als eerste in de cyclus.
+var WT_ALGEMENE_TIP = 'Hou elkaar op de hoogte van wat je ziet, hoort en leest. Alleen dan kom je verder.';
+
+// Per rol drie regels (algemene tip, roltip, rolsfeer); na de derde
+// begint de cyclus weer vanaf de eerste.
 var WACHTSCHERM_TEKSTEN = {
-  jan: {
-    rolbelofte: '[Placeholder: rolbelofte Jan]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 2]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Jan 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Jan 5]' }
-    ]
-  },
-  kelly: {
-    rolbelofte: '[Placeholder: rolbelofte Kelly]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 4]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Kelly 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Kelly 5]' }
-    ]
-  },
-  fenna: {
-    rolbelofte: '[Placeholder: rolbelofte Fenna-Vivienne]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 5]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 6]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Fenna 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Fenna 5]' }
-    ]
-  },
-  felix: {
-    rolbelofte: '[Placeholder: rolbelofte Felix]',
-    lijst: [
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 1]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 2]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 1]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 7]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 3]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 2]' },
-      { type: 'tip',   tekst: '[Placeholder: algemene tip 8]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 4]' },
-      { type: 'sfeer', tekst: '[Placeholder: rolsfeer Felix 3]' },
-      { type: 'tip',   tekst: '[Placeholder: roltip Felix 5]' }
-    ]
-  }
+  jan: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Hoogte geeft overzicht. Vertel je team wat jij ziet.' },
+    { type: 'sfeer', tekst: 'Jan zegt dat hij niets heeft met boekenwijsheid. Kelly zegt dat hij haar boek nog moet teruggeven.' }
+  ],
+  kelly: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Jij ziet de patronen. Wat twee keer opduikt, is nooit toeval.' },
+    { type: 'sfeer', tekst: 'Kelly klaagt bij iedereen dat Jan haar irriteert. Ze vergeet erbij te zeggen dat hij de enige is naar wie ze luistert.' }
+  ],
+  fenna: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Jij krijgt de mooie momenten. Geniet ervan, maar blijf opletten.' },
+    { type: 'sfeer', tekst: 'Waar de Rode Parel zingt, vergeten mensen hun zorgen. En soms meer dan dat.' }
+  ],
+  felix: [
+    { type: 'tip',   tekst: WT_ALGEMENE_TIP },
+    { type: 'tip',   tekst: 'Gaat een deur voor jou dicht? Bedenk wie hem wél open zou krijgen.' },
+    { type: 'sfeer', tekst: 'In donkere stegen fluistert een naam: De Vos.' }
+  ]
 };
 
 // Startwaarden, Tom test dit op de tablet en stelt bij.
@@ -3824,9 +3787,9 @@ function stopWachtschermTeksten() {
 }
 
 // Vult de personage-pop (dezelfde plaatjes als char-pop, uit
-// karakters/spelers/) en start de rolbelofte + cyclus. De pop moet
-// eerst zichtbaar zijn voor de cyclus begint, dus een korte vertraging
-// gelijk aan de pop-fade voordat de rolbelofte start.
+// karakters/spelers/) en start de cyclus. De pop moet eerst zichtbaar
+// zijn voor de cyclus begint, dus een korte vertraging gelijk aan de
+// pop-fade voordat de eerste regel start.
 function startWachtschermTeksten() {
   stopWachtschermTeksten();
   var rol = state.personage;
@@ -3841,25 +3804,24 @@ function startWachtschermTeksten() {
       popImg.classList.add('wt-zichtbaar');
     }
   }
-  var data = WACHTSCHERM_TEKSTEN[rol];
+  var lijst = WACHTSCHERM_TEKSTEN[rol];
   var boxEl = document.getElementById('wt-box');
   var labelEl = document.getElementById('wt-label');
   var tekstEl = document.getElementById('wt-tekst');
-  if (!data || !boxEl || !labelEl || !tekstEl) return;
-  var index = -1; // -1 = rolbelofte, nog niet getoond
+  if (!lijst || !lijst.length || !boxEl || !labelEl || !tekstEl) return;
+  var index = -1;
 
   // De box verschijnt/verdwijnt als één geheel (niet los per regel/label):
   // eerst de box laten wegfaden, de inhoud pas verwisselen terwijl hij
   // onzichtbaar is, dan de box weer laten infaden.
-  function toonRegel(type, tekst) {
+  function toonRegel(item) {
     boxEl.classList.remove('wt-zichtbaar');
     _wtSetTimeout(function() {
-      var isTip = (type === 'tip');
-      tekstEl.className = 'wt-' + type;
-      tekstEl.textContent = tekst;
+      var isTip = (item.type === 'tip');
+      tekstEl.className = 'wt-' + item.type;
+      tekstEl.textContent = item.tekst;
       labelEl.style.display = isTip ? '' : 'none';
       labelEl.textContent = isTip ? 'Tip' : '';
-      boxEl.classList.toggle('wt-belofte-modus', type === 'belofte');
       // Reflow forceren zodat de fade-in altijd echt vanaf 0 start.
       void boxEl.offsetWidth;
       boxEl.classList.add('wt-zichtbaar');
@@ -3871,13 +3833,12 @@ function startWachtschermTeksten() {
   }
 
   function volgende() {
-    index = (index + 1) % data.lijst.length;
-    var item = data.lijst[index];
-    toonRegel(item.type, item.tekst);
+    index = (index + 1) % lijst.length;
+    toonRegel(lijst[index]);
   }
 
   // Start pas na de pop-fade (zie CSS: opacity .8s), niet er dwars doorheen.
-  _wtSetTimeout(function() { toonRegel('belofte', data.rolbelofte); }, 850);
+  _wtSetTimeout(volgende, 850);
 }
 
 function toonWachtscherm() {
