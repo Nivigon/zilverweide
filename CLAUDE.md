@@ -34,6 +34,22 @@ en Felix' spiek-mechanic die met twee personen soepeler loopt dan solo.
 
 - **Werk altijd via een branch en een pull request, nooit direct op main.**
   Tom keurt elke merge zelf goed.
+- **Start elke nieuwe taak of feature automatisch met een verse branch vanaf
+  main.** Doe dit uit jezelf, zonder dat Tom erom vraagt, voordat je de eerste
+  regel wijzigt:
+
+  ```
+  git checkout main
+  git pull
+  git checkout -b beschrijvende-naam
+  ```
+
+  Zo begint nieuw werk altijd op de laatst gemergde main en bouwt het nooit
+  door op een oude branch. De branchnaam beschrijft de taak (bijvoorbeeld
+  `schaduw-timer-fix` of `dorpsarchief-scene`). Vervolgwerk aan dezelfde,
+  nog niet gemergde taak blijft op die branch staan; pas bij een nieuwe taak
+  begin je opnieuw vanaf main. Zijn er nog niet-gecommitte wijzigingen, meld
+  dat dan eerst aan Tom in plaats van ze weg te gooien of blind mee te nemen.
 - **De repo is de bron van waarheid.** Werk altijd vanaf de actuele checkout;
   bouw nooit op oude kopieen uit chats of documenten. zilverweide.html gaat
   boven elk ander document.
