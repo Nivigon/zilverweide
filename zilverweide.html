@@ -2525,6 +2525,11 @@ const SHARED_VISITED_FLAGS = [
   'kerk_non_weg','h6_klokkenmaker_gezien','muziekdoosje_bij_aaltje',
   // Vastzit-situaties (iedereen moet de situatie en de afloop zien)
   'kelly_in_put','kelly_gered','fenna_vijver_vast','fenna_vijver_vrij',
+  // Felix' opsluiting in H2 hoort in dezelfde categorie: zonder delen weet
+  // alleen Felix zelf dat hij vastzit, en dan ziet Jan bij H2 "hier valt
+  // niets te doen" in plaats van het gat in de muur. De vrij-vlag stond al
+  // in de lijst hierboven, de vast-vlag ontbrak.
+  'felix_hd2_vast',
   // District-unlock
   'sintdonatuslaan_unlocked'
 ];
@@ -14587,7 +14592,7 @@ function buildDebugPanel() {
   } else if (inHeerDonatuslaan) {
     label = 'Heer Donatuslaan';
     btns = [
-      ['🛏️ Felix wakker (vast in H2)', function(){ markVisited('felix_hd2_vast'); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, true, 'Felix H2'],
       ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
       ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); setSharedState('felix_munten_aan_jan', true); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); setSharedState('jan_bezocht_felix', true); close(); h2refresh(); }, true, 'Felix H2'],
@@ -14858,9 +14863,87 @@ function debugSlagerijWeerOpen() {
   if (typeof updateMissieTeller === 'function') updateMissieTeller();
 }
 
+// Zet Felix terug op "net wakker in H2", exact zoals de woudfinale hem
+// achterlaat (openHeerDonatuslaanVanuitWoud, tak naVloek).
+//
+// Alleen felix_hd2_vast erbij zetten is niet genoeg: renderH2FelixKamer
+// rekent vast = vastFlag && !vrijFlag, en felix_hd2_vrij is een gedeelde
+// vlag die bij elke page-load terugkomt uit de sessie. Zonder actief wissen
+// wint de vrij-stand en sla je de hele kamer-keten over.
+//
+// De vloek zetten we hier bewust NIET: die hoort bij de wakker-sequentie in
+// H2 zelf, die vloekOnboarding start zolang de speler nog niet vervloekt is.
+function debugFelixWeerVastInH2() {
+  // Vrij-stand in alle drie de vormen weg: lokaal, de gedeelde vflag-spiegel
+  // die markVisited schrijft, en de losse key die felixNaarBuiten zet.
+  state.visited.delete('felix_hd2_vrij');
+  setSharedState('vflag_felix_hd2_vrij', null);
+  setSharedState('felix_hd2_vrij', null);
+
+  // Voortgang binnen de kamer terug naar nul, inclusief de stappen aan Jans
+  // kant. Anders begint de keten halverwege of blijft Jan in een tussenstand
+  // hangen waarin hij de kamer niet meer uit mag.
+  ['felix_hd2_wakker', 'felix_sleutelgat', 'felix_munten_gevonden',
+   'felix_kratje_bekeken', 'felix_hd2_gespiekt', 'felix_munten_aan_jan',
+   'felix_code_ingevoerd', 'felix_vermommingen_herovert', 'schaduw_felix',
+   'jan_bezocht_felix', 'jan_heeft_munten', 'jan_outfit_gekocht',
+   'jan_outfit_geleverd'].forEach(function (f) {
+    state.visited.delete(f);
+  });
+  ['felix_munten_aan_jan', 'felix_code_ingevoerd',
+   'jan_bezocht_felix'].forEach(function (f) {
+    setSharedState(f, null);
+  });
+
+  // Items die bij die stappen horen ook weg: het muntenzakje (bij Felix of
+  // bij Jan) en de vermomming die Jan bij Naald en Masker koopt.
+  state.inventory = state.inventory.filter(function (i) {
+    return i.naam !== ITEMS.zakjeMunten.naam && i.naam !== ITEMS.felixOutfit.naam;
+  });
+
+  if (state.personage === 'felix') {
+    // Zijn kleding is afgepakt, net als in naVloek: vermomming eraf en de
+    // outfits uit de tas, maar wel onthouden welke, zodat
+    // felixPakVermommingen straks precies die teruggeeft.
+    state.vermomming = null;
+    if (typeof updateVermommingBadge === 'function') updateVermommingBadge();
+    var afpakNamen = ['Breiwerkje', 'Latin Jurk', ITEMS.coneHoedje.naam];
+    var afgepakt = state.inventory
+      .filter(function (i) { return afpakNamen.indexOf(i.naam) !== -1; })
+      .map(function (i) { return { emoji: i.emoji, naam: i.naam }; });
+    // Alleen overschrijven als er nu echt iets af te pakken valt. Zit Felix
+    // al midden in de keten (outfits al ingenomen), dan zou een lege lijst
+    // zijn vermommingen definitief kwijtmaken.
+    if (afgepakt.length) state.felixAfgepakt = afgepakt;
+    state.inventory = state.inventory.filter(function (i) {
+      return afpakNamen.indexOf(i.naam) === -1;
+    });
+    // Hij weet niet waar hij is: geen titel, geen buitenaanzicht.
+    state.locatieOnbekend = true;
+    markVisited('felix_hd2_vast');
+    // markVisited deelt alleen bij een nieuwe vlag. Bij een tweede druk op de
+    // testknop (of na een Firebase-reset met de vlag nog lokaal aanwezig) zou
+    // de gedeelde spiegel dan leeg blijven en zou Jan niets zien.
+    setSharedState('vflag_felix_hd2_vast', true);
+  } else {
+    // Andere rollen: alleen lokaal zetten, niet delen. Anders sluit een
+    // teamgenoot die dit testpaneel gebruikt de echte Felix op een ander
+    // tablet op. Felix' eigen tablet deelt de vlag wel (regel hierboven).
+    state.visited.add('felix_hd2_vast');
+  }
+  updateInventoryBar();
+  if (typeof updateMissieTeller === 'function') updateMissieTeller();
+}
+
 // Skip helemaal door naar Heer Donatuslaan: alles van Dorendael
 // afgerond + woud-doolhof voltooid + HD ontgrendeld.
-function debugSkipNaarHeerDonatuslaan() {
+//
+// opties.felixWakker: variant voor de knop "Felix wordt wakker". Dan slaan we
+// de vrij-stand en de stille vervloeking over, zodat H2 de wakker-sequentie
+// met vloek-onboarding zelf mag draaien, en eindigen we in de kamer in plaats
+// van op de kaart.
+function debugSkipNaarHeerDonatuslaan(opties) {
+  var felixWakker = !!(opties && opties.felixWakker) && state.personage === 'felix';
   state.debugSkipBezig = true;
   // Eerst alles tot en met Dorendael klaarzetten.
   debugSkipNaarDorendael();
@@ -14904,8 +14987,11 @@ function debugSkipNaarHeerDonatuslaan() {
   // de normale skip vrije doorgang naar H1 en verder; alleen de knop "Felix
   // wordt wakker" zet hem in H2 vast.
   if (state.personage !== 'felix') {
-    markVisited('felix_hd2_vast');
-  } else {
+    // Lokaal zetten, niet delen: anders sluit deze skip de echte Felix op een
+    // ander tablet op. Voor de hint bij H2 is de lokale vlag genoeg, en zodra
+    // Felix zelf wakker wordt deelt zijn tablet de vlag alsnog.
+    state.visited.add('felix_hd2_vast');
+  } else if (!felixWakker) {
     // Voor Felix zelf stelt deze skip voor dat H2 (opsluiting + vlucht) al
     // heeft plaatsgevonden: dus meteen vrij, en met het Kegelhoedje dat hij
     // anders pas bij het echte vluchtmoment (felixVermomEscape) zou krijgen.
@@ -14915,8 +15001,10 @@ function debugSkipNaarHeerDonatuslaan() {
       addInventory(ITEMS.coneHoedje.emoji, ITEMS.coneHoedje.naam, false);
     }
   }
-  // Na de eindscène van Dorendael draagt iedereen De Schaduw.
-  if (window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
+  // Na de eindscène van Dorendael draagt iedereen De Schaduw. Bij de
+  // wakker-variant slaan we dit over: de vloek valt daar pas in H2, via de
+  // volledige onboarding, precies zoals na de echte woudfinale.
+  if (!felixWakker && window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
     if (!state.inventory.find(function(i){ return i.naam === 'De Schaduw'; })) addInventory('🌑', 'De Schaduw', false);
     window.ZilverweideSchaduw.vervloek({ startMeter: schaduwStartOffset() });
   }
@@ -14930,6 +15018,28 @@ function debugSkipNaarHeerDonatuslaan() {
   // HD daadwerkelijk ontgrendelen op de kaart.
   unlockZone('sintdonatuslaan');
 
+  // Wakker-variant: niet via de kaart, maar zoals naVloek het doet. Felix
+  // terugzetten op "net wakker", zone alvast op Heer Donatuslaan, en dan met
+  // een kort zwart scherm de kamer in.
+  if (felixWakker) {
+    debugFelixWeerVastInH2();
+    state.activeKwartier = 'sintdonatuslaan';
+    state.lastZone = 'sintdonatuslaan';
+    state.zone = 'sintdonatuslaan';
+    state.debugSkipBezig = false;
+    updateMissieTeller();
+    toonZwartScherm(1000, function () {
+      // Vangnet: het wissen van vflag_felix_hd2_vrij gaat via een async
+      // Firebase-remove, terwijl de listener binnenkomende vlaggen alleen
+      // toevoegt. Een echo die nog tijdens dit zwarte scherm aankomt zou de
+      // vrij-stand dus terugzetten, en dan slaat de wakker-sequentie weer
+      // over. Vlak voor het renderen nog eens lokaal wissen.
+      state.visited.delete('felix_hd2_vrij');
+      openHeerDonatuslaanLocatie('H2');
+    });
+    return;
+  }
+
   state.activeKwartier = null;
   state.debugSkipBezig = false;
   // Eén keer teller updaten voor de juiste eindstand.
@@ -14937,13 +15047,14 @@ function debugSkipNaarHeerDonatuslaan() {
   showScreen('screen-overworld');
 }
 
-// Felix-only: skip naar Heer Donatuslaan en start meteen in het huis,
-// alsof hij daar net wakker wordt (gekidnapt, weet niet waar hij is).
+// Felix-only: skip naar Heer Donatuslaan en start meteen in het huis, alsof
+// hij daar net wakker wordt na de woudfinale (gekidnapt, spullen afgepakt,
+// weet niet waar hij is, vloek valt in de kamer). Alles zit in de
+// felixWakker-variant van de skip hierboven, zodat er geen tweede pad is dat
+// uit de pas kan lopen.
 function debugSkipFelixWakkerHuis() {
-  debugSkipNaarHeerDonatuslaan();
-  markVisited('felix_hd2_vast');
-  state.locatieOnbekend = true;
-  openHeerDonatuslaanLocatie('H2');
+  if (state.personage !== 'felix') { alert('Deze skip is alleen voor Felix.'); return; }
+  debugSkipNaarHeerDonatuslaan({ felixWakker: true });
 }
 
 // Zet het complete cruciale pad van Dorendael in één klik klaar.
