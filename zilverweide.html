@@ -2009,7 +2009,10 @@ const state = {
     // Herberg op DD4: welke spelers zijn binnen, en is de timer gestart?
     // Straks vervangbaar door server-state met realtime updates.
     herberg_binnen: [],         // array van personage-ids: ['jan','kelly',...]
-    herberg_timer_start: null,  // tijdstip (ms) waarop Fenna naar boven ging
+    herberg_timer_start: null,  // tijdstip (server-relatief) waarop de klok begon
+    herberg_resterend: null,    // resterende seconden, alleen door de leider geschreven
+    herberg_klok_eigenaar: null,// rol die de klok houdt als Fenna niet meespeelt
+    herberg_fenna_gesimuleerd: null, // testknop bootst Fenna na, geen echt tablet
     herberg_resultaat: null,    // 'succes', 'gefaald', of null
     // Tobbe is weg bij de dorpsput (door Felix meegenomen naar Stoop).
     tobbe_gevonden: false,
@@ -2169,6 +2172,14 @@ function verwerkBinnengekomenShared(data) {
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
+  // Zolderscène: op binnenkomende stand reageren in plaats van alleen op de
+  // eigen timer-lus. Zo rondt elk tablet af zodra de uitkomst er is, telt 3/3
+  // meteen als succes, en blijft de scène niet hangen als de lus stilviel.
+  // Niet tijdens de eerste snapshot: dan is een al afgeronde scène uit een
+  // eerdere sessie geen aanleiding om hier iets af te spelen.
+  if (!eersteSnapshot && typeof herbergReageerOpGedeeld === 'function') {
+    try { herbergReageerOpGedeeld(); } catch (e) { console.warn('herbergReageerOpGedeeld:', e); }
+  }
   // Put-status veranderde via een ander apparaat (of een rolwissel): sta je nu
   // bij de put, dan het scherm meteen herzien zodat je de reddings-scene ziet
   // zonder opnieuw te openen. Voor Jan speelt bovendien dezelfde reünie mee
@@ -2251,6 +2262,27 @@ function herbergAantalBinnen() {
 function herbergAlleBinnen() {
   // Fenna plus twee teamgenoten volstaan om het gevaar te doen wijken.
   return herbergAantalBinnen() >= 3;
+}
+
+// Wie houdt de klok van de zolderscène? Eén tablet is leidend: dat toestel
+// rekent de resterende tijd uit met zijn eigen klok en deelt die als getal, de
+// andere drie tonen alleen wat er binnenkomt. Zo hangt de aftelling nergens
+// meer af van klokverschillen tussen tablets.
+//
+// Fenna is leidend: zij start de scène altijd. Met een vaste rol in plaats van
+// "wie de starttijd schreef" kan een late check-in van iemand anders het
+// eigenaarschap niet meer wegkapen, wat over een trage verbinding wel gebeurt.
+// Zit Fenna niet in de sessie (solotest), dan houdt de speler die de klok
+// startte hem vast. Ook bij een nagebootste Fenna (testknop "Zet Fenna op
+// zolder"): dan zit er geen echt tablet achter die rol, dus die mag de klok
+// niet krijgen.
+function herbergKlokEigenaar() {
+  if (!getSharedState('herberg_fenna_gesimuleerd')
+      && sharedLijst('herberg_binnen').indexOf('fenna') !== -1) return 'fenna';
+  return getSharedState('herberg_klok_eigenaar') || null;
+}
+function isHerbergKlokEigenaar() {
+  return !!state.personage && herbergKlokEigenaar() === state.personage;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -4341,6 +4373,9 @@ function resetSpel() {
     filmpje_gezien: false,
     herberg_binnen: [],
     herberg_timer_start: null,
+    herberg_resterend: null,
+    herberg_klok_eigenaar: null,
+    herberg_fenna_gesimuleerd: null,
     herberg_resultaat: null,
     tobbe_gevonden: false,
     woud_voltooid: [],
@@ -4373,6 +4408,10 @@ function resetSpel() {
     huidigDoolhof = null;
   }
   if (typeof stopWoudStorm === 'function') stopWoudStorm();
+  // Zolderscène terug op nul: klok stoppen en de "afsluiter al gespeeld"-vlag
+  // wissen, anders slaat de scène na een reset zijn eigen afronding over.
+  if (typeof stopHerbergTimer === 'function') stopHerbergTimer();
+  if (typeof _herbergAfsluitingGespeeld !== 'undefined') _herbergAfsluitingGespeeld = false;
   if (typeof zetSpelMuziek === 'function') zetSpelMuziek(true);
   // Molen-ambient stoppen mocht die nog spelen.
   if (typeof stopMolenSfeer === 'function') stopMolenSfeer();
@@ -8440,7 +8479,7 @@ function fennaMaarPlots() {
   ZolderFx.open();
   ZolderFx.playFennaArc(function onSchreeuw() {
     markVisited('herberg_timer_gestart');
-    setSharedState('herberg_timer_start', Date.now());
+    herbergStartKlok();
     herbergZetBinnen('fenna');
     ZolderFx.showWaiting('fenna');
     ZolderFx.setTeller(herbergAantalBinnen(), 3);
@@ -8461,7 +8500,7 @@ function spelerGaatNaarBoven() {
     // Offline test: Fenna zit op een ander device, dus haar timer_start staat
     // niet in deze state. Zonder start stopt startHerbergTimer meteen. Kom je
     // hier als eerste binnen, dan begint de klok hier.
-    if (!getSharedState('herberg_timer_start')) setSharedState('herberg_timer_start', Date.now());
+    if (!getSharedState('herberg_timer_start')) herbergStartKlok();
     ZolderFx.showWaiting(state.personage);
     ZolderFx.setTeller(herbergAantalBinnen(), 3);
     startHerbergTimer();
@@ -8474,52 +8513,68 @@ function renderHerbergZolder(p) {
   state.opZolder = true;
   ZolderFx.open();
   herbergZetBinnen(p);
-  if (!getSharedState('herberg_timer_start')) setSharedState('herberg_timer_start', Date.now());
+  if (!getSharedState('herberg_timer_start')) herbergStartKlok();
   ZolderFx.showWaiting(p);
   ZolderFx.setTeller(herbergAantalBinnen(), 3);
   startHerbergTimer();
 }
 
-// Start een timer die elke seconde de UI ververst en na 60 sec
-// de uitkomst bepaalt. In lokale modus draait de timer alleen op het
-// device van degene die hem start; bij server-koppeling wordt de
-// resterende tijd berekend uit herberg_timer_start en kent elk device
-// dezelfde aftelling.
-let herbergTimerInterval = null;
-function startHerbergTimer() {
-  if (herbergTimerInterval) return;          // niet dubbel starten
-  herbergTimerInterval = setInterval(() => {
-    const start = getSharedState('herberg_timer_start');
-    if (!start) { clearInterval(herbergTimerInterval); herbergTimerInterval = null; return; }
-    const verstreken = Math.floor((Date.now() - start) / 1000);
-    const resterend = Math.max(0, HERBERG_TIMER_SEC - verstreken);
-
-    // Teller + timer in de overlay live bijwerken
-    const timerEl = document.getElementById('herberg-timer');
-    if (timerEl) timerEl.textContent = 'Resterend: ' + resterend + ' sec';
-    if (window.ZolderFx) ZolderFx.setTeller(herbergAantalBinnen(), 3);
-
-    // Voortijdig klaar als iedereen binnen is
-    if (herbergAlleBinnen()) {
-      clearInterval(herbergTimerInterval); herbergTimerInterval = null;
-      herbergVoltooidSucces();
-      return;
-    }
-
-    // Tijd op zonder iedereen binnen → faal
-    if (resterend <= 0) {
-      clearInterval(herbergTimerInterval); herbergTimerInterval = null;
-      herbergVoltooidFaal();
-      return;
-    }
-  }, 1000);
+// Zet de klok van de zolderscène op scherp. Alleen hier wordt de starttijd
+// geschreven, met gedeeldeTijdNu zodat het tijdstip server-relatief is en niet
+// afhangt van de klok van dit toestel. De resterende tijd zetten we meteen op
+// de volle duur, zodat de andere tablets geen streepje zien terwijl de leider
+// zijn eerste seconde nog moet schrijven. Het eigenaarschap leggen we vast voor
+// het geval Fenna niet in de sessie zit (solotest).
+function herbergStartKlok() {
+  setSharedState('herberg_timer_start', gedeeldeTijdNu());
+  setSharedState('herberg_resterend', HERBERG_TIMER_SEC);
+  if (!getSharedState('herberg_klok_eigenaar') && state.personage) {
+    setSharedState('herberg_klok_eigenaar', state.personage);
+  }
 }
 
-function herbergVoltooidSucces() {
-  // Voorkom dubbele uitvoering (bv. via twee parallelle timer-loops)
-  if (getSharedState('herberg_resultaat') === 'succes') return;
-  setSharedState('herberg_resultaat', 'succes');
+// Hoelang de leider stil mag vallen voordat een ander tablet de scène afrondt.
+const HERBERG_STIL_MS = 10000;
+
+// Teller + resterende tijd in de overlay bijwerken. De resterende tijd komt
+// altijd uit de gedeelde staat (de leider schrijft hem), dus geen enkel tablet
+// rekent hier nog met een eigen klok. Staat er nog geen getal, dan laten we
+// staan wat er stond in plaats van iets verkeerds te tonen.
+function herbergWerkTellerBij() {
+  var resterend = getSharedState('herberg_resterend');
+  var timerEl = document.getElementById('herberg-timer');
+  if (timerEl && typeof resterend === 'number') {
+    timerEl.textContent = 'Resterend: ' + resterend + ' sec';
+  }
+  if (window.ZolderFx && ZolderFx.setTeller) ZolderFx.setTeller(herbergAantalBinnen(), 3);
+}
+
+// Rond de scène af. Beslissen en afspelen zijn hier bewust gescheiden: de
+// uitkomst wordt één keer vastgelegd, en een al vastgelegde uitkomst is
+// leidend. Zo speelt elk tablet DIE uitkomst, ook als twee toestellen vlak na
+// elkaar tot een andere conclusie kwamen, en zien alle vier hetzelfde einde.
+function herbergRondAf(gewenst) {
+  var uitkomst = getSharedState('herberg_resultaat');
+  if (!uitkomst) {
+    uitkomst = gewenst;
+    setSharedState('herberg_resultaat', uitkomst);
+  }
+  herbergSpeelUitkomst(uitkomst);
+}
+
+// Afspelen van de afsluiter, precies één keer per tablet. Dit hangt niet aan
+// wie de uitkomst schreef: eerder stopte de bewaking in herbergVoltooidSucces
+// de afsluiter voor iedereen die later tot dezelfde conclusie kwam, waardoor
+// drie van de vier de scène niet afgespeeld zagen.
+var _herbergAfsluitingGespeeld = false;
+function herbergSpeelUitkomst(uitkomst) {
+  // Klok altijd eerst stil, ook als we hier al eerder langs kwamen. Anders kan
+  // een lus die na de afronding nog draait eindeloos blijven doorlopen.
+  stopHerbergTimer();
+  if (_herbergAfsluitingGespeeld) return;
+  _herbergAfsluitingGespeeld = true;
   markVisited('herberg_scene_voltooid');
+  if (uitkomst === 'gefaald' && state.personage === 'fenna') markVisited('schaduw_fenna');
   // De oogleden-scène speelt alleen voor wie op de zolder staat. Wie beneden
   // is (of via het testpaneel forceert) merkt er niets van; die ziet de
   // nasleep pas als hij zelf naar boven gaat.
@@ -8530,9 +8585,93 @@ function herbergVoltooidSucces() {
   // Gedeelde afsluiter: de heks vertrekt. Het ooglid onthult de echte scène.
   ZolderFx.playResolution(
     function onReveal() { renderZolderOntwaken(); },
-    function onDone() { ZolderFx.close(); renderZolderNaslag('succes'); }
+    function onDone() { ZolderFx.close(); renderZolderNaslag(uitkomst); }
   );
 }
+
+// Reageer op binnenkomende gedeelde staat (aangeroepen door de Firebase-
+// listener). Hierdoor hangt de scène niet meer aan de eigen timer-lus: is de
+// uitkomst er, dan rondt dit tablet af, en 3/3 telt meteen als succes. Viel de
+// lus om welke reden ook stil, dan komt de scène hier alsnog tot een einde.
+function herbergReageerOpGedeeld() {
+  if (!getSharedState('herberg_timer_start')) return;   // scène loopt niet
+  var uitkomst = getSharedState('herberg_resultaat');
+  if (uitkomst) { herbergSpeelUitkomst(uitkomst); return; }
+  // Iedereen binnen is per definitie succes en hoeft niet op een klok te
+  // wachten. Elk tablet mag dat vastleggen, dus het normale pad werkt ook als
+  // het leidende tablet is uitgevallen.
+  if (herbergAlleBinnen()) { herbergRondAf('succes'); return; }
+  herbergWerkTellerBij();
+}
+
+// De klok van de zolderscène. Het leidende tablet rekent de resterende tijd uit
+// met zijn eigen klok en deelt die; de andere tablets tonen dat getal en houden
+// alleen in de gaten of de leider nog leeft.
+let herbergTimerInterval = null;
+var _herbergEigenStart = 0;          // wanneer deze lus hier begon (lokale klok)
+var _herbergResterendGezien = null;  // laatst geziene gedeelde waarde
+var _herbergStilSinds = 0;           // sinds wanneer die waarde niet veranderde
+
+function stopHerbergTimer() {
+  if (herbergTimerInterval) { clearInterval(herbergTimerInterval); herbergTimerInterval = null; }
+}
+
+function startHerbergTimer() {
+  if (herbergTimerInterval) return;          // niet dubbel starten
+  _herbergEigenStart = Date.now();
+  _herbergResterendGezien = getSharedState('herberg_resterend');
+  _herbergStilSinds = Date.now();
+  herbergTimerInterval = setInterval(function () {
+    // Uitkomst al bekend (door dit tablet of een ander): afsluiter spelen.
+    var uitkomst = getSharedState('herberg_resultaat');
+    if (uitkomst) { herbergSpeelUitkomst(uitkomst); return; }
+
+    // Iedereen binnen: succes, zonder tijdrekenen en ongeacht wie de klok houdt.
+    if (herbergAlleBinnen()) { herbergRondAf('succes'); return; }
+
+    if (isHerbergKlokEigenaar()) {
+      // Leidend tablet: eigen klok bepaalt de resterende tijd en deelt die.
+      // gedeeldeTijdNu aan beide kanten, zodat het getal ook klopt als het
+      // eigenaarschap tijdens de scène naar een ander toestel verschuift.
+      var start = getSharedState('herberg_timer_start');
+      if (!start) {
+        // Starttijd kwijt (bv. een reset elders). Opnieuw zetten in plaats van
+        // de lus stil laten vallen: anders hangt de scène zonder uitkomst.
+        start = gedeeldeTijdNu();
+        setSharedState('herberg_timer_start', start);
+      }
+      var verstreken = Math.floor((gedeeldeTijdNu() - start) / 1000);
+      var resterend = Math.max(0, HERBERG_TIMER_SEC - verstreken);
+      if (getSharedState('herberg_resterend') !== resterend) {
+        setSharedState('herberg_resterend', resterend);
+      }
+      herbergWerkTellerBij();
+      if (resterend <= 0) { herbergRondAf('gefaald'); }
+      return;
+    }
+
+    // Meelezend tablet: toon wat de leider deelt en houd bij of hij nog leeft.
+    var nu = getSharedState('herberg_resterend');
+    if (nu !== _herbergResterendGezien) {
+      _herbergResterendGezien = nu;
+      _herbergStilSinds = Date.now();
+    }
+    herbergWerkTellerBij();
+    // Vangnet: de leider is stil EN de scène duurt hier al langer dan hij ooit
+    // kan duren. Alleen verschillen op de eigen klok gebruiken, nooit een
+    // tijdstempel van een ander toestel, zodat klokverschil hier niets doet.
+    var stil = Date.now() - _herbergStilSinds;
+    var eigenDuur = Date.now() - _herbergEigenStart;
+    if (stil > HERBERG_STIL_MS && eigenDuur > HERBERG_TIMER_SEC * 1000 + HERBERG_STIL_MS) {
+      console.warn('Zolder: leidend tablet is stil, dit toestel rondt de scène af.');
+      herbergRondAf('gefaald');
+    }
+  }, 1000);
+}
+
+// Bestaande namen blijven werken (testpaneel en zolderSkip gebruiken ze).
+function herbergVoltooidSucces() { herbergRondAf('succes'); }
+function herbergVoltooidFaal()   { herbergRondAf('gefaald'); }
 
 // De scène zoals die tijdens het opengaan van de oogleden onthuld wordt:
 // alleen de locatie + een enkele reactie in de tekstbox, nog geen verhaaltekst.
@@ -8615,33 +8754,30 @@ function renderZolderNaVloek() {
   });
 }
 
-function herbergVoltooidFaal() {  if (getSharedState('herberg_resultaat')) return;
-  setSharedState('herberg_resultaat', 'gefaald');
-  markVisited('herberg_scene_voltooid');
-  if (state.personage === 'fenna') markVisited('schaduw_fenna');
-  // Alleen afspelen voor wie op de zolder staat; zie herbergVoltooidSucces.
-  if (!state.opZolder) return;
-  markVisited('zolder_scene_beleefd');
-  // Zelfde afsluiter als bij succes: de heks vertrekt, het ooglid onthult de
-  // echte scène. De scène rondt eerst af; de schaduw komt pas daarna, apart.
-  ZolderFx.playResolution(
-    function onReveal() { renderZolderOntwaken(); },
-    function onDone() { ZolderFx.close(); renderZolderNaslag('gefaald'); }
-  );
-}
+// De afronding van beide uitkomsten zit nu bij herbergRondAf en
+// herbergSpeelUitkomst, hierboven bij de klok van de zolderscène.
 
 // ── Dev: in-scène skip-knoppen in de zolder-overlay ────────────────
 // Zet ZOLDER_DEBUG op false voor productie om ze te verbergen.
 window.ZOLDER_DEBUG = true;
 window.zolderSkip = function (mode) {
-  if (herbergTimerInterval) { clearInterval(herbergTimerInterval); herbergTimerInterval = null; }
-  if (!getSharedState('herberg_timer_start')) setSharedState('herberg_timer_start', Date.now());
+  stopHerbergTimer();
+  if (!getSharedState('herberg_timer_start')) herbergStartKlok();
   if (mode === 'succes') {
     setSharedState('herberg_binnen', ['jan', 'kelly', 'fenna', 'felix']);
     herbergVoltooidSucces();
   } else {
     herbergVoltooidFaal();
   }
+};
+
+// Test het vangnet: doet alsof dit tablet is uitgevallen. De klok stopt en er
+// wordt niets meer gedeeld. Ben je het leidende tablet (Fenna), dan moet een
+// ander tablet de scène na HERBERG_STIL_MS alsnog afronden in plaats van
+// eindeloos te blijven wachten.
+window.zolderStopLeider = function () {
+  stopHerbergTimer();
+  console.warn('Zolder: klok van dit tablet gestopt (test). Een ander tablet hoort nu het vangnet te gebruiken.');
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -14583,6 +14719,7 @@ function buildDebugPanel() {
       ['🎭 Zet Fenna op zolder',     function(){ debugFennaOpZolder(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🚪 Kom binnen (Fenna zit boven)', function(){ debugFennaOpZolder(); close(); spelerGaatNaarBoven(); }, p !== 'fenna' && !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['👥 Vrienden arriveren',      function(){ debugHerbergVriendenArriveren(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
+      ['🛑 Klok stilzetten (test vangnet)', function(){ zolderStopLeider(); close(); }, !!herbergTimerInterval, 'Herberg (DD4)'],
       // ── Vijver / Meisje
       ['💧 Fenna zit bij vijver',    function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && p === 'fenna' && !inWoudWinScreen, 'Vijver & Meisje'],
       ['💧 Fenna wacht op code (meisje er)', function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && !inWoudWinScreen, 'Vijver & Meisje'],
@@ -15124,14 +15261,16 @@ function debugDorendaelKlaar() {
 function debugHerbergSucces() {
   // Iedereen "binnen" zetten zodat de check klopt
   setSharedState('herberg_binnen', ['jan', 'kelly', 'fenna', 'felix']);
-  setSharedState('herberg_timer_start', Date.now());
+  herbergStartKlok();
   markVisited('herberg_betreden');
   markVisited('herberg_timer_gestart');
   herbergVoltooidSucces();
 }
 function debugHerbergFaal() {
   setSharedState('herberg_binnen', [state.personage].filter(Boolean));
-  setSharedState('herberg_timer_start', Date.now() - (HERBERG_TIMER_SEC + 1) * 1000); // alsof timer net voorbij is
+  herbergStartKlok();
+  setSharedState('herberg_timer_start', gedeeldeTijdNu() - (HERBERG_TIMER_SEC + 1) * 1000); // alsof timer net voorbij is
+  setSharedState('herberg_resterend', 0);
   markVisited('herberg_betreden');
   markVisited('herberg_timer_gestart');
   herbergVoltooidFaal();
@@ -15141,8 +15280,11 @@ function debugHerbergFaal() {
 // "maar plots..." heeft geklikt. Resultaat: trap-knop bij anderen
 // wordt zichtbaar, de timer-state loopt.
 function debugFennaOpZolder() {
+  // Markeren dat deze Fenna nagebootst is: er zit geen tablet achter die rol,
+  // dus de klok moet bij dit toestel blijven in plaats van bij "Fenna".
+  setSharedState('herberg_fenna_gesimuleerd', true);
   herbergZetBinnen('fenna');
-  setSharedState('herberg_timer_start', Date.now());
+  herbergStartKlok();
   // Geen markVisited('herberg_betreden') — dat is per-speler en hier juist niet
   // van toepassing (we zijn niet Fenna in deze sessie).
 }
@@ -15151,7 +15293,7 @@ function debugFennaOpZolder() {
 // Handig om in het verhaal verder te kunnen zonder de hele co-op flow.
 function debugHerbergSkipSucces() {
   setSharedState('herberg_binnen', ['jan', 'kelly', 'fenna', 'felix']);
-  setSharedState('herberg_timer_start', Date.now());
+  herbergStartKlok();
   setSharedState('herberg_resultaat', 'succes');
   markVisited('herberg_scene_voltooid');
 }
@@ -15160,7 +15302,7 @@ function debugHerbergSkipSucces() {
 // Handig om door te testen met de Schaduw-vloek actief.
 function debugHerbergSkipFaal() {
   setSharedState('herberg_binnen', [state.personage].filter(Boolean));
-  setSharedState('herberg_timer_start', Date.now());
+  herbergStartKlok();
   setSharedState('herberg_resultaat', 'gefaald');
   markVisited('herberg_scene_voltooid');
   // Fenna draagt de Schaduw — alleen geven als deze speler Fenna is.
