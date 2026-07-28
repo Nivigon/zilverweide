@@ -1802,6 +1802,18 @@ var _sharedSessieId = null;
 var _sharedDbRef = null;
 var _sharedListenerActief = false;
 
+// Verschil tussen de klok van deze tablet en die van de Firebase-server.
+// Vier tablets lopen zelden precies gelijk, en de stille hulpklok van de
+// Verborgen Hand vergelijkt tijdstempels die door een andere tablet zijn
+// weggeschreven. Zonder correctie zou een tablet met een klok die een paar
+// minuten voorloopt de hint te vroeg (of te laat) zien. Firebase geeft dit
+// verschil zelf door via .info/serverTimeOffset. Zonder Firebase blijft de
+// offset 0 en gebruiken we gewoon de lokale klok.
+var _serverTijdOffset = 0;
+function gedeeldeTijdNu() {
+  return Date.now() + _serverTijdOffset;
+}
+
 function firebaseSharedBeschikbaar() {
   return typeof firebase !== 'undefined' && firebase.database && _sharedSessieId;
 }
@@ -1810,6 +1822,14 @@ function initSharedFirebase(sessieId) {
   _sharedSessieId = sessieId;
   if (!firebaseSharedBeschikbaar()) return;
   _sharedDbRef = firebase.database().ref('sessies/' + sessieId + '/shared');
+
+  // Klokverschil met de server bijhouden (zie _serverTijdOffset hierboven).
+  try {
+    firebase.database().ref('.info/serverTimeOffset').on('value', function (s) {
+      var v = s.val();
+      if (typeof v === 'number' && isFinite(v)) _serverTijdOffset = v;
+    });
+  } catch (e) { console.warn('serverTimeOffset niet beschikbaar:', e); }
 
   // Listener: als een andere tablet iets schrijft, update lokale state
   _sharedDbRef.on('value', function (snap) {
@@ -3288,6 +3308,9 @@ var huidigDoolhof = null;
 
 function showScreen(id) {
   if (!document.getElementById(id)) { console.warn('showScreen: element not found:', id); return; }
+  // Een magische onthulling hoort bij het scherm eronder: bij een
+  // schermwissel gaat hij weg, zodat hij nergens blijft hangen.
+  if (typeof sluitMagischOverlay === 'function') sluitMagischOverlay(true);
   // Reset toren-bezoek zodat Jan elke keer opnieuw moet klimmen
   if (id !== 'screen-locatie') state.janTorenDitBezoek = false;
   // Gate: als de speler ergens vastzit, mag hij/zij geen zone-scherm verlaten.
@@ -3379,6 +3402,9 @@ function showScreen(id) {
   }
   if (id === 'screen-locatie' && state.lastZone === 'kraaienkwartier') setTimeout(checkAllTokens, 600);
   if (id === 'screen-kwartier1' || id === 'screen-dorpsplein') setTimeout(checkAllTokens, 500);
+  // Binnenkomst in een district start daar de stille hulpklok van de
+  // Verborgen Hand (gedeeld, eenmalig, zie vhStartKlok).
+  if (typeof VH_SCHERM_DISTRICT !== 'undefined' && VH_SCHERM_DISTRICT[id]) vhStartKlok(VH_SCHERM_DISTRICT[id]);
   if (id === 'screen-dorendael' || id === 'screen-dorpsplein') setTimeout(checkDorendaelTokens, 500);
   if (id === 'screen-locatie' && state.lastZone === 'dorendael') setTimeout(checkDorendaelTokens, 600);
   if (id === 'screen-heerdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
@@ -8606,6 +8632,9 @@ function renderK1Uitkijktoren(loc) {
   const dialog = [];
   let acties = null;
   let mediaSlotHtml = null;
+  // Toont deze klim de telling? Alleen voor Jan, en alleen nadat Stazia haar
+  // diepere hint gegeven heeft en het antwoord nog niet gegeven is.
+  let torenTelling = false;
 
   // De personage-specifieke openingstekst
   if (p === 'jan') {
@@ -8654,6 +8683,12 @@ function renderK1Uitkijktoren(loc) {
       });
       html += '</div>';
       mediaSlotHtml = html;
+
+      // Heeft Stazia haar diepere hint over de hoogte gegeven, en is de
+      // kraaien-vraag nog niet beantwoord? Dan levert deze klim de telling op.
+      torenTelling = !!getSharedState('vh_hint_gegeven_kraaienkwartier') &&
+                     !getSharedState('vh_opgelost_kraaienkwartier') &&
+                     !state.vhTorenTellingGetoond;
     } else {
       // Jan staat onderaan — beschrijving van de toren + het slot.
       if (alGeklommen && !dorendaelOpen) {
@@ -8690,6 +8725,21 @@ function renderK1Uitkijktoren(loc) {
     mediaSlot: mediaSlotHtml,
     acties: acties
   });
+
+  // De telling verschijnt magisch over de scene, kort nadat Jan boven staat.
+  if (torenTelling) {
+    state.vhTorenTellingGetoond = true;
+    setTimeout(function () {
+      toonMagischOverlay(
+        'Vanaf de toren',
+        '<p class="magisch-tekst">Je laat je blik over de daken gaan. Op de nok, op een schoorsteen, op de rand van de put, op het uithangbord, op de goot van het huis daar beneden.</p>' +
+        '<div class="magisch-getal">5</div>' +
+        '<p class="magisch-tekst">Vijf kraaien. Je telt ze nog een keer, en het blijven er vijf.</p>',
+        'Verder →',
+        null
+      );
+    }, 800);
+  }
 }
 
 // Zet een kraai (of ander sfeer-icoon) op de scène-afbeelding. Standaard
@@ -10195,6 +10245,9 @@ function startTorenLockpick() {
 function janKlimt() {
   markVisited('jan_toren_geklommen'); // blijft voor andere checks elders
   state.janTorenDitBezoek = true;
+  // Elke nieuwe klim mag de telling opnieuw laten zien (een hertekening van
+  // dezelfde scene niet, anders springt de laag steeds terug in beeld).
+  state.vhTorenTellingGetoond = false;
   openLocatie('k1_uitkijktoren');
 }
 
@@ -12090,6 +12143,68 @@ function kiesDistrictWaarzegster(district, unlocked) {
 }
 
 
+// ══════════════════════════════════════════════════════════════════
+// VERBORGEN HAND, de stille hulpklok
+// ══════════════════════════════════════════════════════════════════
+// Zodra de eerste tablet een district binnenkomt, start daar een klok van
+// vijftien minuten. Die klok loopt volledig op de achtergrond: hij wordt
+// nergens aangekondigd, nergens getoond en Stazia belooft niets. Spelers
+// puzzelen gewoon door.
+//
+// Is de vraag van dat district na vijftien minuten nog niet goed
+// beantwoord, dan geeft Stazia er bij het volgende bezoek een tweede,
+// diepere hint bij. Was de vraag al goed beantwoord, dan gebeurt er niets
+// en merkt een snelle groep hier nooit iets van.
+//
+// De klok is gedeeld (Firebase): wie later binnenkomt erft dezelfde
+// starttijd, zodat de vier tablets niet uit de pas lopen. We bewaren een
+// tijdstempel en geen aftelling, want een lopende setTimeout overleeft
+// geen refresh en geen tabletwissel.
+var VH_TIMER_MS = 15 * 60 * 1000;
+
+// Welk scherm hoort bij welk district. Bij het tonen van zo'n scherm start
+// de klok. Alle drie de districten starten hun klok al; alleen districten
+// die hieronder ook een hint-tekst hebben, laten Stazia straks iets extra's
+// zeggen.
+var VH_SCHERM_DISTRICT = {
+  'screen-kwartier1':       'kraaienkwartier',
+  'screen-dorendael':       'dorendael',
+  'screen-sintdonatuslaan': 'sintdonatuslaan'
+};
+
+// De diepere hint per district. `aanloopEerste` is de aanloop voor een groep
+// die nog nooit bij de Verborgen Hand was (de klok liep al, maar Stazia
+// stelde haar vraag nog niet), `aanloopLater` voor een groep die de vraag al
+// eens kreeg en er niet uit kwam. Dorendael en Heer Donatuslaan volgen later.
+var VH_DIEPERE_HINT = {
+  kraaienkwartier: {
+    aanloopEerste: '"En ik geef jullie alvast een extra hint."',
+    aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
+    hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."'
+  }
+};
+
+function vhStartKlok(district) {
+  if (!district) return;
+  // De eerste binnenkomst wint. Later binnenkomen verzet de klok niet.
+  if (getSharedState('vh_start_' + district)) return;
+  setSharedState('vh_start_' + district, gedeeldeTijdNu());
+}
+
+function vhKlokVerlopen(district) {
+  var start = getSharedState('vh_start_' + district);
+  if (!start) return false;
+  return (gedeeldeTijdNu() - start) >= VH_TIMER_MS;
+}
+
+// Mag Stazia haar diepere hint geven? Alleen als er een tekst voor dit
+// district bestaat, de klok om is en de vraag nog niet goed beantwoord is.
+function vhDiepereHintKlaar(district) {
+  if (!VH_DIEPERE_HINT[district]) return false;
+  if (getSharedState('vh_opgelost_' + district)) return false;
+  return vhKlokVerlopen(district);
+}
+
 // ── Verborgen Hand-vragen (gedeeld) ──
 // Elk district-tip met een vraag staat hier. juist = goed antwoord (niet
 // hoofdlettergevoelig). Fout antwoord = 20 seconden wachten. Goed antwoord =
@@ -12125,18 +12240,12 @@ function checkVerborgenHandVraag(vraagId) {
   toonVHUitslag(msg, goed);
 
   if (goed) {
-    // Blijft weg. De hint verschijnt; opnieuw proberen kan door bij de
-    // Verborgen Hand nogmaals op de wijk/schaduw te drukken.
-    setTimeout(function() {
-      toonLade(
-        'Hint',
-        '<div style="font-size:2rem;margin-bottom:.75rem">💡</div>' +
-        '<div style="font-family:Cinzel,serif;font-size:.85rem;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:.5rem">Tijdelijk</div>' +
-        '<p style="font-size:1rem;color:var(--parchment);font-style:italic">Vraag Tom om een hint.</p>',
-        'Verder →',
-        null
-      );
-    }, 1700);
+    // Gedeeld vastleggen dat dit district opgelost is: daarmee stopt de
+    // stille hulpklok en geeft Stazia hier geen diepere hint meer.
+    setSharedState('vh_opgelost_' + vraagId, true);
+    // Invoer blijft weg. De voorspelling verschijnt; opnieuw kijken kan door
+    // bij de Verborgen Hand nogmaals op de wijk te drukken.
+    setTimeout(function() { toonMagischeVoorspelling(vraagId); }, 1700);
   } else {
     VH_COOLDOWN[vraagId] = Date.now() + 20000;
     vhStartLock(vraagId);
@@ -12227,12 +12336,28 @@ function vhStartLock(vraagId) {
 function toonVerborgenHandVraag(vraagId, staziaTekst, numeriek) {
   var cfg = VH_VRAGEN[vraagId];
   var numAttr = numeriek ? ' inputmode="numeric" pattern="[0-9]*"' : '';
+
+  // De vraag zelf, plus (als de stille klok om is en het antwoord nog niet
+  // gegeven) Stazia's diepere hint erachteraan.
+  var dialog = [ { spreker: 'Stazia', tekst: staziaTekst } ];
+  var diep = VH_DIEPERE_HINT[vraagId];
+  if (diep && vhDiepereHintKlaar(vraagId)) {
+    // Kreeg het team deze vraag al eerder, dan merkt ze op dat ze er niet
+    // uit komen. Is dit het allereerste bezoek (de klok liep al terwijl
+    // niemand langskwam), dan biedt ze de hint meteen aan.
+    var alGevraagd = !!getSharedState('vh_vraag_gezien_' + vraagId);
+    dialog.push({ spreker: 'Stazia', tekst: alGevraagd ? diep.aanloopLater : diep.aanloopEerste });
+    dialog.push({ spreker: 'Stazia', tekst: diep.hint });
+    setSharedState('vh_hint_gegeven_' + vraagId, true);
+  }
+  setSharedState('vh_vraag_gezien_' + vraagId, true);
+
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel:    'De Verborgen Hand',
     sub:      'Dorpsplein — een woonwagen met een mystiek symbool',
     image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
-    dialog: [ { spreker: 'Stazia', tekst: staziaTekst } ],
+    dialog: dialog,
     extra:
       '<div class="code-section">' +
         '<input class="code-input" id="' + cfg.inputId + '" type="text"' + numAttr +
@@ -12916,6 +13041,59 @@ function flitsSchaduw(opts) {
   }
 }
 
+// ══ MAGISCHE ONTHULLING ══
+// Een halfdoorzichtige laag over het scherm dat er al staat, zodat de scene
+// eronder zichtbaar blijft. Gebruikt door Stazia's voorspelling bij een goed
+// antwoord en door de telling die Jan boven op de uitkijktoren krijgt.
+function toonMagischOverlay(titel, inhoudHtml, knopTekst, onSluit) {
+  sluitMagischOverlay(true);
+  var ov = document.createElement('div');
+  ov.id = 'magisch-overlay';
+  ov.innerHTML =
+    '<div class="magisch-box">' +
+      '<div class="magisch-titel">' + titel + '</div>' +
+      (inhoudHtml || '') +
+      '<button class="magisch-knop" onclick="sluitMagischOverlay()">' + (knopTekst || 'Verder →') + '</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov._magischCallback = onSluit || null;
+}
+
+function sluitMagischOverlay(direct) {
+  var ov = document.getElementById('magisch-overlay');
+  if (!ov) return;
+  var cb = ov._magischCallback;
+  ov._magischCallback = null;
+  if (direct) { if (ov.parentNode) ov.parentNode.removeChild(ov); return; }
+  ov.classList.add('magisch-weg');
+  setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 420);
+  if (cb) cb();
+}
+
+// De beloning voor een goed antwoord bij de Verborgen Hand: Stazia laat de
+// hele verhaallijn van dat district zien, ook de stappen die het team nog
+// niet gehaald heeft. Dat is de hint. Anders dan het missie-paneel (dat
+// alleen toont wat al ontdekt is) staan hier alle regels, allemaal leesbaar.
+function toonMagischeVoorspelling(district) {
+  var regels = (typeof missieRegelsVoorZone === 'function') ? missieRegelsVoorZone(district) : [];
+  var html;
+  if (!regels.length) {
+    html = '<p class="magisch-tekst">[Placeholder: verhaalregels voor dit district]</p>';
+  } else {
+    html = '<div class="magisch-regels">';
+    regels.forEach(function (r, i) {
+      html +=
+        '<div class="magisch-regel' + (r.voltooid ? '' : ' magisch-regel-open') + '" ' +
+             'style="animation-delay:' + (0.25 + i * 0.22).toFixed(2) + 's">' +
+          '<span class="magisch-regel-teken">' + (r.voltooid ? '✦' : '✧') + '</span>' +
+          '<span class="magisch-regel-tekst">' + r.tekst + '</span>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  toonMagischOverlay('Een magische voorspelling', html, 'Verder →', null);
+}
+
 // ══ ONDERLADE ══
 function toonLade(titel, inhoudHtml, knopTekst, callback) {
   document.getElementById('spel-lade-titel').textContent = titel;
@@ -12957,6 +13135,25 @@ function debugVermomFelix(naam) {
   if (state.lastOpenedLocatie && locScreen && locScreen.classList.contains('active')) {
     openLocatie(state.lastOpenedLocatie);
   }
+}
+
+// Testpaneel: de stille hulpklok van een district meteen op afgelopen zetten,
+// zodat je Stazia's diepere hint niet vijftien minuten hoeft af te wachten.
+// De klok is gedeeld, dus dit werkt meteen op alle vier de tablets.
+function debugVhKlokAflopen(district) {
+  setSharedState('vh_start_' + district, gedeeldeTijdNu() - VH_TIMER_MS - 1000);
+  toonToast('⏳', 'Klok ' + district + ' afgelopen');
+}
+
+// Testpaneel: klok, hint en antwoord van een district terug naar nul, zodat
+// je de hele volgorde opnieuw kunt doorlopen.
+function debugVhKlokReset(district) {
+  setSharedState('vh_start_' + district, null);
+  setSharedState('vh_hint_gegeven_' + district, null);
+  setSharedState('vh_vraag_gezien_' + district, null);
+  setSharedState('vh_opgelost_' + district, null);
+  state.vhTorenTellingGetoond = false;
+  toonToast('🔄', 'Klok ' + district + ' gereset');
 }
 
 function alleFinaleCodesVerzameld() {
@@ -13725,6 +13922,10 @@ function buildDebugPanel() {
       ['✦ Mevr. v Wallingen klaar', function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Wallingen'],
       // ── Toren (K3)
       ['📌 + Kromme Speld (toren)', function(){ debugItem('📌','Kromme Speld'); }, !heeftSpeld, 'Toren (K3)'],
+      // ── Verborgen Hand: de stille hulpklok van dit district
+      ['⏳ Klok nu laten aflopen',   function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
+      ['🔄 Klok en hint resetten',   function(){ debugVhKlokReset('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
+      ['🔮 Toon magische voorspelling', function(){ close(); toonMagischeVoorspelling('kraaienkwartier'); }, true, 'Verborgen Hand'],
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
@@ -13741,6 +13942,7 @@ function buildDebugPanel() {
         setSharedState('dagboek_gerestaureerd', false);
         setSharedState('heks_opgelost', false);
         setSharedState('nummer7_aanwezig', []);
+        debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
         state.finalePopupGetoond = false;
         state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Speld','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
@@ -13873,6 +14075,8 @@ function buildDebugPanel() {
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
       ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }],
       ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
+      ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }],
+      ['🔄 VH-klok Kraaienkwartier resetten',      function(){ debugVhKlokReset('kraaienkwartier'); close(); }],
       ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }],
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
@@ -18134,6 +18338,78 @@ function toonStemmenStil(stil) {
    altijd binnen het scherm passen, op elk formaat, zonder scrollen.
    Pas 410px aan als titel/uitslag meer of minder ruimte innemen. */
 .sc-image-vh{ max-height:min(40vh, calc(var(--vh100) - 410px)) !important; }
+
+/* ── Magische onthulling ──────────────────────────────────────────
+   Gebruikt door Stazia's voorspelling (goed antwoord) en door Jan's
+   telling boven op de uitkijktoren. De laag ligt over het locatiescherm,
+   is halfdoorzichtig zodat de scene eronder zichtbaar blijft, en past
+   altijd binnen het scherm (var(--vh100), geen scrollen). */
+#magisch-overlay{
+  position:fixed; inset:0; z-index:8800;
+  display:flex; align-items:center; justify-content:center;
+  box-sizing:border-box;
+  padding:clamp(.5rem,2vh,1.4rem);
+  background:radial-gradient(ellipse at center,rgba(13,10,6,.5),rgba(4,2,6,.78));
+  animation:magischIn .9s ease;
+}
+#magisch-overlay.magisch-weg{ animation:magischUit .4s ease forwards; }
+.magisch-box{
+  position:relative; box-sizing:border-box;
+  width:min(640px,calc(100vw - 2rem));
+  max-height:calc(var(--vh100) - 1.4rem);
+  overflow:hidden;
+  padding:clamp(.8rem,2.4vh,1.5rem) clamp(1rem,3vw,2rem);
+  text-align:center;
+  background:linear-gradient(180deg,rgba(28,22,13,.82),rgba(13,10,6,.88));
+  border:1px solid rgba(201,168,76,.45);
+  border-radius:8px;
+  box-shadow:0 10px 50px rgba(0,0,0,.6),inset 0 0 40px rgba(201,168,76,.07);
+  animation:magischBoxIn 1s cubic-bezier(.2,.9,.3,1.1);
+}
+.magisch-titel{
+  font-family:'Cinzel',serif; font-weight:600;
+  font-size:clamp(.95rem,2.6vh,1.45rem);
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--gold); text-shadow:0 0 20px rgba(201,168,76,.45);
+  margin-bottom:clamp(.45rem,1.6vh,.95rem);
+}
+.magisch-tekst{
+  font-family:'Crimson Text',Georgia,serif; font-style:italic;
+  font-size:clamp(.9rem,2.2vh,1.15rem); line-height:1.5;
+  color:var(--parchment); margin:0 0 clamp(.4rem,1.2vh,.8rem);
+}
+.magisch-getal{
+  font-family:'Cinzel',serif; font-weight:600;
+  font-size:clamp(2rem,8vh,3.4rem); line-height:1;
+  color:var(--gold); text-shadow:0 0 28px rgba(201,168,76,.5);
+  margin:clamp(.2rem,1vh,.5rem) 0;
+  animation:magischRegelIn .9s ease .45s backwards;
+}
+.magisch-regels{ display:flex; flex-direction:column; gap:clamp(.2rem,.9vh,.5rem); }
+.magisch-regel{
+  display:flex; align-items:flex-start; gap:.7rem; text-align:left;
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:clamp(.82rem,2vh,1.05rem); line-height:1.4;
+  color:var(--parchment);
+  animation:magischRegelIn .8s ease backwards;
+}
+.magisch-regel-teken{ flex-shrink:0; font-family:'Cinzel',serif; color:var(--gold); }
+/* Nog niet gehaald: ingetogener van kleur, maar bewust goed leesbaar. */
+.magisch-regel-open .magisch-regel-teken{ color:var(--gold-dim); }
+.magisch-regel-open .magisch-regel-tekst{ color:var(--mist); font-style:italic; }
+.magisch-knop{
+  display:block; margin:clamp(.6rem,1.8vh,1.1rem) auto 0;
+  width:min(280px,100%);
+  font-family:'Cinzel',serif; font-size:.78rem; letter-spacing:.14em; text-transform:uppercase;
+  padding:.7rem; border:1px solid rgba(201,168,76,.45);
+  background:rgba(201,168,76,.08); color:var(--gold);
+  cursor:pointer; border-radius:2px; transition:all .2s;
+}
+.magisch-knop:hover{ background:rgba(201,168,76,.18); }
+@keyframes magischIn{ from{ opacity:0; } to{ opacity:1; } }
+@keyframes magischUit{ from{ opacity:1; } to{ opacity:0; } }
+@keyframes magischBoxIn{ from{ opacity:0; transform:scale(.9); filter:blur(6px); } to{ opacity:1; transform:scale(1); filter:blur(0); } }
+@keyframes magischRegelIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
 
 /* ── Archivaris-onthulling: donkere laag over de echte Dorpsarchief-scène ── */
 #dgbk-reveal{
