@@ -120,7 +120,10 @@ body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgi
 
 <div class="fx-app">
   <div class="fx-topbar">
-    <div class="fx-loc">Heer Donatuslaan <span class="dot">·</span> <span class="sub">Het Kamertje</span></div>
+    <!-- Felix spiekt hier terwijl hij niet weet waar hij vastzit. Deze balk
+         mag dus geen wijk- of locatienaam tonen, net als de ???-titel van de
+         kamer zelf. Niet "verbeteren" met de echte naam. -->
+    <div class="fx-loc">??? <span class="dot">·</span> <span class="sub">Onbekende plek</span></div>
     <div class="fx-curse"><span class="lbl">Vervloekt</span><span class="fx-meter"><i></i></span><span class="fx-glyph">🌑</span></div>
   </div>
 
@@ -220,7 +223,9 @@ body{background:#0d0a06;color:var(--parchment);font-family:'Crimson Text',Georgi
   var shape=document.getElementById('fxShape'), stage=document.querySelector('.fx-stage'), kratBar=document.getElementById('fxKratBar'), kratTxt=document.getElementById('fxKratTxt');
   var restModal=document.getElementById('fxRest'), restCount=document.getElementById('fxRestCount'), btnRetry=document.getElementById('fxRetry'), rustModal=document.getElementById('fxRust');
 
-  img.addEventListener('error',function(){ ph.textContent=img.getAttribute('src')||'beeld'; ph.style.display='flex'; });
+  // Placeholder bij een ontbrekend beeld: geen bestandspad, want daar staat de
+  // wijknaam in en Felix hoort hier niet te weten waar hij is.
+  img.addEventListener('error',function(){ ph.textContent='beeld'; ph.style.display='flex'; });
   img.addEventListener('load',function(){ ph.style.display='none'; });
 
   function play(src){ try{var a=new Audio(src);a.volume=0.9;a.play().catch(function(){});}catch(_){}}
