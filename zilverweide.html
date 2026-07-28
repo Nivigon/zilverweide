@@ -12869,7 +12869,8 @@ function alleFinaleCodesVerzameld() {
 function dorendaelFinaleStatus() {
   const h = (naam) => !!state.inventory.find(i => i.naam === naam);
   return {
-    sleutel:       h(ITEMS.sleutelWoudpoort.naam),
+    // Teamresultaat: ook goed als een ander de sleutel maakte (gedeelde vlag).
+    sleutel:       h(ITEMS.sleutelWoudpoort.naam) || hasVisited('sleutel_woudpoort_gemaakt'),
     meisje:        hasVisited('meisje_afgeleverd'),
     muziekdoosje:  hasVisited('muziekdoosje_afgeleverd'),
     sybille:       hasVisited('sybille_mythe_gelezen'),
@@ -15747,12 +15748,10 @@ function dd7LeverMuziekdoosAf() {
 
 // Eén plek waar we de voorwaarde definiëren — makkelijk aanpassen later.
 function dorendaelKlaarVoorWoud() {
-  // Sleutel Woudpoort moet in inventaris zitten — anders kun je de poort
-  // sowieso niet openen, ongeacht andere voortgang.
-  const heeftSleutel = !!state.inventory.find(i => i.naam === ITEMS.sleutelWoudpoort.naam);
-  if (!heeftSleutel) return false;
-
-  // En alle 5 cruciale pad-flags afgevinkt.
+  // De sleutel is een teamresultaat: wie 'm zelf niet in de tas heeft, mag
+  // toch door zodra een teamgenoot 'm gemaakt heeft (gedeelde vlag), net als
+  // klokkenmakerPopJan()/renderDd7Klokkenmaker dat al deden. Alle 5 cruciale
+  // pad-flags moeten afgevinkt zijn.
   return hasVisited('sleutel_woudpoort_gemaakt')
       && hasVisited('meisje_afgeleverd')
       && hasVisited('muziekdoosje_afgeleverd')
