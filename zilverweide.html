@@ -13817,6 +13817,10 @@ function buildDebugPanel() {
         close();
       }, true, 'H4 Kerk'],
       ['🏛️ Fenna bij gemeentehuis geweest', function(){ markVisited('fenna_gemeentehuis'); setSharedState('fenna_gemeentehuis', true); close(); }, true, 'H5 Gemeentehuis'],
+      // Het kerkarchief is normaal alleen te bereiken door het kerkdoolhof uit
+      // te spelen. Deze knop zet je op de scène erna, zodat je die los kunt
+      // testen (onder andere de schaduw-pauze en de terugknop daar).
+      ['📕 Kerkarchief (na doolhof)', function(){ close(); debugOpenKerkArchief(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
@@ -17596,6 +17600,18 @@ function updateFirebaseBolletje() {
     btn.textContent = snap.exists() ? '🔴' : '🟢';
     btn.title = snap.exists() ? 'Firebase bevat data (klik om te resetten)' : 'Firebase is leeg (schone sessie)';
   }).catch(function () { btn.textContent = '⚪'; });
+}
+// Testknop: rechtstreeks naar het kerkarchief, de scène die normaal pas komt
+// als je het kerkdoolhof uitspeelt. Zet eerst de locatie goed, zodat de
+// terugknop je daarna in Heer Donatuslaan afzet en niet op de kaart.
+// Let op: dit zet ook kerk_non_weg, net als de echte route, dus de andere
+// tablets zien de non daarna niet meer binnen.
+function debugOpenKerkArchief() {
+  state.lastZone = 'sintdonatuslaan';
+  state.lastOpenedLocatie = 'h4_kerk';
+  state.locAfbeelding = 'locaties/heerdonatuslaan/kerk.jpeg';
+  showScreen('screen-locatie');
+  kellyKerkBoekVondst();
 }
 function schaduwRedderTest() {
   if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
