@@ -182,6 +182,7 @@ window.ZilverweideSchaduw = (function () {
                autocapitalize="characters" spellcheck="false" placeholder="····">
         <div class="zv-err" id="zv-redder-err"></div>
         <button class="zv-btn" id="zv-redder-btn">Spreek het teken uit</button>
+        <button class="zv-btn-sec" id="zv-redder-terug">Stap terug</button>
       </div>
 
       <div id="zv-vloekintro"><div id="zv-vloekintro-tekst"></div></div>
@@ -212,6 +213,7 @@ window.ZilverweideSchaduw = (function () {
     el.redderInput = root.querySelector('#zv-redder-input');
     el.redderErr = root.querySelector('#zv-redder-err');
     el.redderBtn = root.querySelector('#zv-redder-btn');
+    el.redderTerug = root.querySelector('#zv-redder-terug');
     el.lockTest = root.querySelector('#zv-lock-test');
 
     // fog-textuur op de banken zetten (configureerbaar pad)
@@ -220,6 +222,7 @@ window.ZilverweideSchaduw = (function () {
     });
 
     el.redderBtn.addEventListener('click', redderVerstuur);
+    if (el.redderTerug) el.redderTerug.addEventListener('click', sluitRedderInvoer);
     el.redderInput.addEventListener('keydown', e => { if (e.key === 'Enter') redderVerstuur(); });
     el.memStart.addEventListener('click', startMemReeks);   // intro → reeks
     // Solo-ontgrendelknop: alleen in debug-modus, om zonder medespeler los te komen.
@@ -539,6 +542,15 @@ window.ZilverweideSchaduw = (function () {
     el.redder.classList.add('zv-open');
     setTimeout(() => el.redderInput.focus(), 100);
   }
+  // De redder loopt weg zonder te helpen, of het invoerscherm heeft geen doel
+  // meer omdat een ander eerder was met de code. Alleen dit scherm gaat dicht:
+  // de vergrendeling van de ander blijft staan. De host merkt het sluiten op
+  // en brengt de redder terug naar de straat.
+  function sluitRedderInvoer() {
+    el.redderErr.textContent = '';
+    el.redderInput.value = '';
+    el.redder.classList.remove('zv-open');
+  }
   async function redderVerstuur() {
     const code = el.redderInput.value.trim().toUpperCase();
     if (code.length < 4) { return schud('Vul het volledige teken in.'); }
@@ -690,6 +702,7 @@ window.ZilverweideSchaduw = (function () {
     isHandRitueelBezig: () => handActief,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten
     toonRedderInvoer,                           // in productie: op het tablet van de redder
+    sluitRedderInvoer,                          // redder loopt weg, of de lock is al door een ander opgelost
     wisVergrendeling: () => { wisLock(); },     // opgeslagen lock wissen (bijv. bij reset)
     // ── debug / test (mag in productie blijven, hindert niet) ──
     _ontgrendel: () => bevrijd(),               // solo eruit zonder code
