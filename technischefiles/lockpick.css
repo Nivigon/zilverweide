@@ -8,7 +8,13 @@
   --goed: #6fae6f; --laag: #6c84a8; --hoog: #b5322b; --staal: #c9c2b4;
 }
 
-.lp-root { font-family: 'Crimson Text', Georgia, serif; color: var(--parchment); }
+/* touch-action: manipulation zet dubbeltik-zoomen uit binnen de minigame. Zonder
+   dat wacht iOS na het opheffen van je vinger ongeveer 300ms met het click-event,
+   om te kijken of er een tweede tik komt. Bij een accept-venster van rond de
+   170ms is dat het verschil tussen wel en niet kunnen timen. Niet globaal op de
+   pagina zetten: dan verdwijnt ook het knijpzoomen dat je elders wilt houden. */
+.lp-root { font-family: 'Crimson Text', Georgia, serif; color: var(--parchment); touch-action: manipulation; }
+.lp-root button, .lp-zet-btn, .lp-kies-btn, .lp-back-btn { touch-action: manipulation; }
 .lp-screen { display: none; animation: lp-fadeIn .6s ease; }
 .lp-screen.lp-active { display: block; }
 @keyframes lp-fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -61,11 +67,17 @@
 .lp-track:not(.lp-actief) .lp-band, .lp-track:not(.lp-actief) .lp-tick { opacity: 0; }
 .lp-zonder-zone .lp-band, .lp-zonder-zone .lp-tick { display: none; }
 
-.lp-pin { position: absolute; left: 50%; transform: translateX(-50%); bottom: 0; width: 14px; height: 26px;
+/* De pin beweegt met transform en zonder overgang. Er stond een
+   `transition: bottom .04s linear` op, waardoor de browser elke frame een nieuwe
+   overgang startte en de getekende pin dus altijd achterliep op de stand waar
+   het spel je tik aan afmeet. Samen met de procentuele `bottom`, die elke frame
+   een nieuwe layout afdwong, maakte dat de sweep hakkelig en oneerlijk.
+   De gezette pin houdt wel een korte overgang: dat is een eenmalige animatie. */
+.lp-pin { position: absolute; left: 50%; bottom: 0; transform: translate(-50%, 0); width: 14px; height: 26px;
   border-radius: 4px 4px 2px 2px; background: linear-gradient(180deg, var(--staal), #6d675b);
-  box-shadow: 0 1px 3px rgba(0,0,0,.6); transition: bottom .04s linear; }
+  box-shadow: 0 1px 3px rgba(0,0,0,.6); transition: none; will-change: transform; }
 .lp-track.lp-actief .lp-pin { background: linear-gradient(180deg, #e9e2d2, #9c9484); }
-.lp-pin.lp-gezet { background: linear-gradient(180deg, var(--gold), var(--gold-dim)); box-shadow: 0 0 10px rgba(201,168,76,.6); transition: bottom .12s cubic-bezier(.2,.9,.3,1.4); }
+.lp-pin.lp-gezet { background: linear-gradient(180deg, var(--gold), var(--gold-dim)); box-shadow: 0 0 10px rgba(201,168,76,.6); transition: transform .12s cubic-bezier(.2,.9,.3,1.4); }
 
 /* Schaarlijn-decor (het niveau waarop pinnen 'klikken') */
 .lp-schaar { position: absolute; left: 8px; right: 8px; top: 50%; height: 1px; background: repeating-linear-gradient(90deg, rgba(201,168,76,.25) 0 6px, transparent 6px 12px); z-index: 1; }
