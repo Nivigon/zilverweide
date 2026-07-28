@@ -1669,6 +1669,16 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 
 <div id="locatie-indicator"><span class="ind-symbol" id="ind-symbol">👥</span><span class="ind-name" id="ind-name">Dorpsplein</span></div>
 <button id="firebase-reset-btn" onclick="firebaseVolleReset()" title="Firebase volledige reset" style="position:fixed;bottom:6.5rem;left:.5rem;z-index:530;background:none;border:none;font-size:1.2rem;cursor:pointer;opacity:.7">⚪</button>
+<button id="geluid-btn" onclick="toggleGeluidsMonitor()" title="Welke geluiden spelen er nu?" style="position:fixed;bottom:8.6rem;left:.5rem;z-index:540;background:none;border:none;font-size:1.2rem;cursor:pointer;opacity:.7">🔊</button>
+<div id="geluid-monitor" style="display:none;position:fixed;bottom:8.6rem;left:3.2rem;z-index:541;width:min(300px,calc(100vw - 4rem));max-height:60vh;overflow-y:auto;background:rgba(13,10,6,.98);border:1px solid rgba(201,168,76,.3);border-radius:6px;padding:.8rem;box-shadow:0 0 24px rgba(0,0,0,.7);font-family:'Crimson Text',Georgia,serif;color:var(--parchment);font-size:.85rem">
+  <div style="font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:.6rem">🔊 Geluid nu</div>
+  <div id="geluid-monitor-lijst"></div>
+  <div id="geluid-monitor-log" style="margin-top:.7rem;border-top:1px solid rgba(201,168,76,.18);padding-top:.5rem"></div>
+  <div style="display:flex;gap:.4rem;margin-top:.6rem">
+    <button onclick="geluidStopAlleBehalveAchtergrond()" style="flex:1;font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:transparent;border:1px solid rgba(201,168,76,.4);border-radius:2px;padding:.45rem;cursor:pointer">Stop de rest</button>
+    <button onclick="geluidNaarConsole()" style="flex:1;font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:transparent;border:1px solid rgba(201,168,76,.4);border-radius:2px;padding:.45rem;cursor:pointer">Naar console</button>
+  </div>
+</div>
 <button id="debug-btn" onclick="toggleDebug()" title="Testmodus" style="display:none">🛠️</button>
 <button id="reset-btn" onclick="resetSpel()" title="Reset alles en ga naar rolkeuze">↻</button>
 <button id="schaduw-btn" onclick="toggleSchaduwMenu()" title="Schaduw">🌑</button>
@@ -1718,6 +1728,208 @@ window.onerror = function(msg, src, line, col, err) {
   if (err && err.stack) console.error(err.stack);
   return false;
 };
+
+// ══════════════════════════════════════════════════════════════════
+// GELUIDSMONITOR (testhulp)
+// Houdt bij welk audio- of videobestand op dit moment daadwerkelijk
+// geluid maakt. Het knopje linksonder (🔊) toont de lijst live, plus de
+// laatste start/stop-gebeurtenissen. Bedoeld om te zien welk tweede
+// geluid er onder de achtergrondmuziek door blijft lopen.
+// Deze hook staat bewust helemaal bovenaan: hij moet er zijn voordat het
+// eerste geluid start.
+// ══════════════════════════════════════════════════════════════════
+var _geluidElems = [];   // alles wat ooit play() heeft gekregen
+var _geluidLog = [];     // laatste gebeurtenissen, nieuwste bovenaan
+
+// Herkenbare namen per bestand. Staat een bestand er niet bij, dan toont
+// de monitor gewoon de bestandsnaam.
+var GELUID_NAMEN = {
+  'intromusiczv.mpeg':    'achtergrondmuziek',
+  'introsound.mp3':       'podium-intro, aftellen',
+  'introsound2.mp3':      'podium-intro, loop na de lach',
+  'lach.mp3':             'podium-intro, lach',
+  'shock.mp3':            'podium-intro, schrik',
+  'keuze.mp3':            'heks-keuzemuziek',
+  'goed.mp3':             'verhaalstap gehaald',
+  'fout.mp3':             'fout antwoord',
+  'doolhofarchief.mp3':   'doolhofmuziek archief',
+  'doolhofkerk.mp3':      'doolhofmuziek kerk',
+  'ws-muziek.mp3':        'woud-doolhof muziek',
+  'schaduwstart.mp3':     'vloek-onboarding, loop',
+  'schaduwstartdrop.mp3': 'vloek-onboarding, drop',
+  'schaduwfluister.mp3':  'schaduw-gefluister',
+  'hartslag.mp3':         'hartslag',
+  'kellyhartslag.mp3':    'hartslag Kelly',
+  'kellyschrikt.mp3':     'Kelly schrikt',
+  'dagboekachtergrond.mp3': 'dagboekmuziek',
+  'zolderbg.mp3':         'zoldersfeer',
+  'zolderlach.mp3':       'zolderlach',
+  'regen.mp3':            'regen',
+  'donder.mp3':           'donder',
+  'eeriesound.mp3':       'molensfeer',
+  'houtkraakt.mp3':       'molen, hout kraakt',
+  'molenfluister.mp3':    'molengefluister',
+  'molenfluister2.mp3':   'molengefluister',
+  'molenscream.mp3':      'molenschreeuw',
+  'voetenmolen.mp3':      'voetstappen molen',
+  'whistle.mp3':          'slagerij achterkamer',
+  'drops.mp3':            'slagerij achterkamer',
+  'mes.mp3':              'slagerij achterkamer',
+  'grom.mp3':             'slagerij achterkamer',
+  'ddmuziekmss.mp3':      'Dorendael-muziek',
+  'dramaticdrop.mp3':     'dreun',
+  'scaresound.mp3':       'schrikgeluid',
+  'scratch.mp3':          'krassen',
+  'raamopen.mp3':         'raam open'
+};
+
+function _geluidBestand(el) {
+  var src = el.currentSrc || el.src || '';
+  if (!src && el.querySelector) {
+    var bron = el.querySelector('source');
+    if (bron) src = bron.src || '';
+  }
+  try { src = decodeURIComponent(src); } catch (e) {}
+  src = src.split('?')[0];
+  var delen = src.split('/');
+  return delen.slice(-2).join('/') || '(onbekend)';
+}
+
+function _geluidOmschrijving(bestand) {
+  return GELUID_NAMEN[bestand.split('/').pop()] || '';
+}
+
+function _geluidNoteer(el, wat) {
+  var d = new Date();
+  var tijd = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+  _geluidLog.unshift({ tijd: tijd, wat: wat, bestand: _geluidBestand(el) });
+  if (_geluidLog.length > 30) _geluidLog.pop();
+}
+
+// play() en pause() onderscheppen. We loggen op de echte events (playing,
+// pause, ended): een play() die door de browser geweigerd wordt, mag geen
+// valse "start" in de lijst zetten.
+(function () {
+  if (typeof HTMLMediaElement === 'undefined') return;
+  if (HTMLMediaElement.prototype._zvGeluidHook) return;
+  HTMLMediaElement.prototype._zvGeluidHook = true;
+  var origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    _geluidRegistreer(this);
+    return origPlay.apply(this, arguments);
+  };
+})();
+
+function _geluidRegistreer(el) {
+  if (!el || el._zvGeluidGezien) return;
+  el._zvGeluidGezien = true;
+  el.addEventListener('playing', function () { _geluidNoteer(el, 'start'); });
+  el.addEventListener('pause',   function () { _geluidNoteer(el, 'stop'); });
+  el.addEventListener('ended',   function () { _geluidNoteer(el, 'klaar'); });
+  // Lijst kort houden: alles wat allang stil is mag eruit.
+  if (_geluidElems.length > 80) {
+    _geluidElems = _geluidElems.filter(function (a) { return !a.paused; });
+  }
+  if (_geluidElems.indexOf(el) === -1) _geluidElems.push(el);
+}
+
+// Alles wat op dit moment geluid maakt. Neemt ook elementen mee die zonder
+// play() zijn gestart (autoplay in de HTML).
+function geluidenNu() {
+  var alles = _geluidElems.slice();
+  var inDom = document.querySelectorAll('audio, video');
+  for (var i = 0; i < inDom.length; i++) {
+    if (alles.indexOf(inDom[i]) === -1) alles.push(inDom[i]);
+  }
+  return alles.filter(function (a) {
+    return !a.paused && !a.ended;
+  }).map(function (a) {
+    var bestand = _geluidBestand(a);
+    return {
+      el: a,
+      bestand: bestand,
+      naam: _geluidOmschrijving(bestand),
+      soort: a.tagName.toLowerCase(),
+      loop: !!a.loop,
+      volume: Math.round(a.volume * 100),
+      stil: !!a.muted || a.volume === 0,
+      id: a.id || ''
+    };
+  });
+}
+
+// ── Paneel linksonder: live lijstje van wat er nu klinkt ────────────
+var _geluidTimer = null;
+
+function toggleGeluidsMonitor() {
+  var paneel = document.getElementById('geluid-monitor');
+  if (!paneel) return;
+  var open = (paneel.style.display !== 'block');
+  paneel.style.display = open ? 'block' : 'none';
+  clearInterval(_geluidTimer);
+  if (open) {
+    vulGeluidsMonitor();
+    _geluidTimer = setInterval(vulGeluidsMonitor, 500);
+  }
+}
+
+function vulGeluidsMonitor() {
+  var lijst = document.getElementById('geluid-monitor-lijst');
+  var logEl = document.getElementById('geluid-monitor-log');
+  if (!lijst || !logEl) return;
+
+  var nu = geluidenNu();
+  lijst.innerHTML = '';
+  if (!nu.length) {
+    lijst.innerHTML = '<div style="color:var(--mist);font-style:italic">Het is stil.</div>';
+  }
+  nu.forEach(function (g) {
+    var rij = document.createElement('div');
+    rij.style.cssText = 'display:flex;align-items:flex-start;gap:.4rem;margin-bottom:.5rem';
+    var tekst = document.createElement('div');
+    tekst.style.cssText = 'flex:1;line-height:1.3';
+    tekst.innerHTML =
+      '<div style="color:var(--gold)">' + (g.naam || g.bestand.split('/').pop()) +
+        (g.loop ? ' <span style="color:#d4826e">[loop]</span>' : '') +
+        (g.stil ? ' <span style="color:var(--mist)">(gedempt)</span>' : '') + '</div>' +
+      '<div style="font-size:.7rem;color:var(--mist)">' + g.bestand + ' · ' + g.soort + ' · ' + g.volume + '%' +
+        (g.id ? ' · #' + g.id : '') + '</div>';
+    var stopKnop = document.createElement('button');
+    stopKnop.textContent = '⏹';
+    stopKnop.title = 'Zet alleen dit geluid stil';
+    stopKnop.style.cssText = 'background:none;border:1px solid rgba(201,168,76,.35);border-radius:3px;color:var(--gold);cursor:pointer;font-size:.7rem;padding:.2rem .35rem';
+    stopKnop.onclick = function () { try { g.el.pause(); } catch (e) {} vulGeluidsMonitor(); };
+    rij.appendChild(tekst);
+    rij.appendChild(stopKnop);
+    lijst.appendChild(rij);
+  });
+
+  var regels = _geluidLog.slice(0, 8).map(function (r) {
+    return '<div style="font-size:.7rem;color:var(--mist)">' + r.tijd + ' &middot; ' + r.wat + ' &middot; ' + r.bestand.split('/').pop() + '</div>';
+  }).join('');
+  logEl.innerHTML =
+    '<div style="font-family:\'Cinzel\',serif;font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;color:var(--gold-dim);margin-bottom:.3rem">Laatste gebeurtenissen</div>' +
+    (regels || '<div style="font-size:.7rem;color:var(--mist)">nog niets</div>');
+}
+
+// Alles stil behalve de achtergrondmuziek: zo hoor je meteen of het tweede
+// muziekje echt uit een van deze elementen komt.
+function geluidStopAlleBehalveAchtergrond() {
+  geluidenNu().forEach(function (g) {
+    if (g.id === 'bg-music') return;
+    try { g.el.pause(); } catch (e) {}
+  });
+  vulGeluidsMonitor();
+}
+
+// De hele stand in de console zetten, zodat je hem kunt kopieren.
+function geluidNaarConsole() {
+  console.log('GELUID NU:', geluidenNu().map(function (g) {
+    return { bestand: g.bestand, naam: g.naam, loop: g.loop, volume: g.volume, gedempt: g.stil, id: g.id, soort: g.soort };
+  }));
+  console.log('LAATSTE GEBEURTENISSEN:', _geluidLog.slice(0, 30));
+  if (typeof toonToast === 'function') toonToast('🔊', 'Geluidsstand staat in de console');
+}
 
 const state = {
   personage: null,
@@ -14070,6 +14282,7 @@ function buildDebugPanel() {
     label = 'Algemeen';
     btns = [
       ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
+      ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }],
       ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
       ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
