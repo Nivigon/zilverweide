@@ -7531,27 +7531,45 @@ function kiesVermommingSteegje(naam) {
 // Iedereen ziet het lege huis met de beer met naalden.
 // Felix krijgt daarbovenop een morele keuze rond een zak munten.
 // ─────────────────────────────────────────────────────────────────
-// Hoeveel naalden je in één keer meeneemt. Later kunnen er van elders meer
-// bijkomen; de teller in de rugzak telt gewoon door.
-var DD2_NAALDEN_AANTAL = 3;
+// ── De naalden van Dorendael ──────────────────────────────────────
+// In Dorendael zitten twee poppen met naalden: een op de voorkamer-
+// afbeelding van Nummer 2, een op de molenruïne. Beide zijn een verborgen
+// klikgebied op de afbeelding zelf, zonder dat iets dat verraadt. De eerste
+// speler die er een vindt neemt die naalden mee; daarna is er voor de rest
+// niets meer te halen, ook niet als je later terugkomt (gedeelde stand).
+// Meer dan deze zes naalden bestaan er niet.
+var NAALDEN_PER_POP = 3;
+var NAALDEN_TOTAAL  = 6;
 
-// Het poppetje met de naalden op de voorkamer-afbeelding is aanklikbaar,
-// zonder dat iets dat verraadt. De eerste speler die het vindt neemt de
-// naalden mee; daarna is er voor de rest niets meer te halen (gedeeld).
-// De coördinaten zijn pixels in nummer2voorkamer.jpeg (1280 x 720).
+function pakNaaldenUitPop(sharedSleutel, el) {
+  if (el && el.parentNode) el.parentNode.removeChild(el);
+  // Verse stand: een ander kan er net voor geweest zijn.
+  if (getSharedState(sharedSleutel)) return;
+  setSharedState(sharedSleutel, true);
+  geefMeervoudigItem('', 'Naald', NAALDEN_PER_POP);
+}
+
+// Coördinaten zijn pixels in nummer2voorkamer.jpeg (1280 x 720).
 function dd2NaaldHotspot() {
   if (getSharedState('dd2_naalden_gepakt')) return;
   zetSceneHotspot({
     bevat: 'nummer2voorkamer',
     natBreedte: 1280, natHoogte: 720,
     x1: 450, y1: 529, x2: 570, y2: 625,
-    onKlik: function (el) {
-      if (el && el.parentNode) el.parentNode.removeChild(el);
-      // Verse stand: een ander kan er net voor geweest zijn.
-      if (getSharedState('dd2_naalden_gepakt')) return;
-      setSharedState('dd2_naalden_gepakt', true);
-      geefMeervoudigItem('', 'Naald', DD2_NAALDEN_AANTAL);
-    }
+    onKlik: function (el) { pakNaaldenUitPop('dd2_naalden_gepakt', el); }
+  });
+}
+
+// Coördinaten zijn pixels in molenruine.jpeg (1280 x 720). Deze zit in de
+// getimede molen-scène: je hebt dus maar de dertig seconden van die scène om
+// hem te vinden, en na de wachttijd een nieuwe kans.
+function molenNaaldHotspot() {
+  if (getSharedState('molen_naalden_gepakt')) return;
+  zetSceneHotspot({
+    bevat: 'molenruine',
+    natBreedte: 1280, natHoogte: 720,
+    x1: 746, y1: 475, x2: 893, y2: 626,
+    onKlik: function (el) { pakNaaldenUitPop('molen_naalden_gepakt', el); }
   });
 }
 
@@ -10039,26 +10057,12 @@ function renderK1Dorpsput(loc) {
   }
 
   else if (p === 'jan') {
-    // ── Jan: 3 staten ───────────────────────────────────────────
-    if (hasVisited('kelly_gered')) {
-      dialog.push({ tekst: 'De put staat er stil bij.', onShow: function () { verbergNpcPop(); } });
-      if (!tobbeIsWeg()) {
-        dialog.push({ spreker: 'Verteller', tekst: 'Dat gegniffel klinkt er nog steeds. Waar komt dat vandaan?' });
-      }
-      // Jan heeft de woudpoort gezien en heeft nog geen klei → pak klei.
-      // De put-rand is vochtig, daar zit klei.
-      if (hasVisited('jan_woudpoort_gezien')
-          && !hasVisited('jan_klei_gepakt')
-          && !heeftItem(ITEMS.kleiAfdruk.naam)
-          && !hasVisited('sleutel_woudpoort_gemaakt')) {
-        dialog.push({ spreker: 'Jan', tekst: 'Die afdruk, dat slot op de woudpoort. Daar heb ik iets voor nodig. Iets zacht, iets wat de vorm vasthoudt.' });
-        dialog.push({ tekst: 'De put-rand is bemost en nat. Tussen de stenen zit zachte, vochtige klei, perfect om een afdruk mee te maken.' });
-        acties = [
-          { label: '🟫 Pak klei mee', onclick: janPakKlei },
-          { label: '🚪 Snel terug naar de woudpoort', onclick: function() { openLocatie('dd1_woudpoort'); } }
-        ];
-      }
-    } else if (hasVisited('kelly_in_put')) {
+    // ── Jan: zit Kelly nu vast, dan gaat redden voor. In alle andere
+    // gevallen is dit een stille put, en daar haalt hij zijn klei.
+    // De klei hing eerder aan 'kelly_gered'. Was Kelly hier nooit in
+    // gevallen (of speel je zonder haar), dan kon Jan dus nooit aan klei
+    // komen en liep de sleutelketen dood.
+    if (hasVisited('kelly_in_put') && !hasVisited('kelly_gered')) {
       // Kelly zit vast. Jan hoort het eerst, en ziet haar dan pas: de pop
       // verschijnt op de regel waarin hij over de rand kijkt.
       dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
@@ -10080,9 +10084,32 @@ function renderK1Dorpsput(loc) {
       }
     } else {
       // Niemand in de put: een gewone, stille put. Geen hulpgeroep.
-      dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
-      if (!tobbeIsWeg()) {
-        dialog.push({ spreker: 'Verteller', tekst: 'Ergens in de bosjes klinkt gegniffel.' });
+      if (hasVisited('kelly_gered')) {
+        dialog.push({ tekst: 'De put staat er stil bij.', onShow: function () { verbergNpcPop(); } });
+        if (!tobbeIsWeg()) {
+          dialog.push({ spreker: 'Verteller', tekst: 'Dat gegniffel klinkt er nog steeds. Waar komt dat vandaan?' });
+        }
+      } else {
+        dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
+        if (!tobbeIsWeg()) {
+          dialog.push({ spreker: 'Verteller', tekst: 'Ergens in de bosjes klinkt gegniffel.' });
+        }
+      }
+      // Jan heeft de woudpoort gezien en heeft nog geen klei → pak klei.
+      // De put-rand is vochtig, daar zit klei.
+      if (hasVisited('jan_woudpoort_gezien')
+          && !hasVisited('jan_klei_gepakt')
+          && !heeftItem(ITEMS.kleiAfdruk.naam)
+          && !hasVisited('sleutel_woudpoort_gemaakt')) {
+        dialog.push({ spreker: 'Jan', tekst: 'Die afdruk, dat slot op de woudpoort. Daar heb ik iets voor nodig. Iets zacht, iets wat de vorm vasthoudt.' });
+        dialog.push({ tekst: 'De put-rand is bemost en nat. Tussen de stenen zit zachte, vochtige klei, perfect om een afdruk mee te maken.' });
+        acties = [
+          { label: '🟫 Pak klei mee', onclick: janPakKlei },
+          // De woudpoort is een Dorendael-locatie (DD5). Deze knop wees naar
+          // openLocatie, en die kent alleen Kraaienkwartier-locaties: hij deed
+          // dus niets.
+          { label: '🚪 Snel terug naar de woudpoort', onclick: function() { openDorendaelLocatie('DD5'); } }
+        ];
       }
     }
   }
@@ -12509,9 +12536,7 @@ function kiesDistrictWaarzegster(district, unlocked) {
   }
 
   if (district === 'dorendael') {
-    toonVerborgenHandVraag('dorendael',
-      '"Dorendael, ja..." *(ze buigt zich naar je toe)* "Vertel me. In Dorendael zijn twee kleine poppen te vinden. Hoeveel naalden dragen zij samen?"',
-      true);
+    toonVerborgenHandNaalden();
     return;
   }
 
@@ -12595,9 +12620,10 @@ function vhDiepereHintKlaar(district) {
 // Elk district-tip met een vraag staat hier. juist = goed antwoord (niet
 // hoofdlettergevoelig). Fout antwoord = 20 seconden wachten. Goed antwoord =
 // tijdelijke hint "Vraag Tom om een hint".
+// Dorendael staat hier niet bij: daar vraagt Stazia geen getal meer, maar de
+// naalden zelf (zie toonVerborgenHandNaalden).
 var VH_VRAGEN = {
   kraaienkwartier: { juist: '5',   inputId: 'kraai-tel-input', msgId: 'kraai-tel-msg', timerId: 'kraai-tel-timer' },
-  dorendael:       { juist: '6',   inputId: 'vh-dd-input',     msgId: 'vh-dd-msg',     timerId: 'vh-dd-timer' },
   sintdonatuslaan: { juist: 'TOM', inputId: 'vh-hd-input',     msgId: 'vh-hd-msg',     timerId: 'vh-hd-timer' }
 };
 var VH_COOLDOWN = {};
@@ -12721,6 +12747,89 @@ function vhStartLock(vraagId) {
     setTimeout(tick, 400);
   })();
   vhFitAfbeelding();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DORENDAEL BIJ DE VERBORGEN HAND: de naalden inleveren
+// ══════════════════════════════════════════════════════════════════
+// Stazia vraagt hier geen getal, maar de naalden zelf. Wie er bij zich
+// draagt kan ze inleveren; liggen alle zes bij haar, dan geeft ze de
+// voorspelling en blijft die vanaf dat moment voor alle spelers open.
+//
+// De teller staat gedeeld, maar per rol apart (naalden_ingeleverd__jan en
+// zo). Als één gedeeld getal zouden twee spelers die tegelijk inleveren
+// elkaars update overschrijven; dat is precies de fout die eerder het
+// intro-wachtscherm liet hangen.
+function vhNaaldenIngeleverd() {
+  var totaal = 0;
+  SHARED_ROLLEN.forEach(function (rol) {
+    var n = getSharedState('naalden_ingeleverd__' + rol);
+    if (typeof n === 'number' && isFinite(n)) totaal += n;
+  });
+  return Math.min(totaal, NAALDEN_TOTAAL);
+}
+
+function vhNaaldenInRugzak() {
+  var item = state.inventory.find(function (i) { return i.naam === 'Naald'; });
+  return item ? (item.aantal || 1) : 0;
+}
+
+function vhLeverNaaldenIn() {
+  var aantal = vhNaaldenInRugzak();
+  if (!aantal) return;
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== 'Naald'; });
+  updateInventoryBar();
+  var sleutel = 'naalden_ingeleverd__' + state.personage;
+  var eigen = getSharedState(sleutel);
+  setSharedState(sleutel, (typeof eigen === 'number' ? eigen : 0) + aantal);
+  toonToast('🪡', aantal === 1 ? 'Naald ingeleverd' : aantal + ' naalden ingeleverd');
+  toonVerborgenHandNaalden();
+}
+
+function toonVerborgenHandNaalden() {
+  var ingeleverd = vhNaaldenIngeleverd();
+  var inRugzak   = vhNaaldenInRugzak();
+  var compleet   = ingeleverd >= NAALDEN_TOTAAL;
+  var dialog, acties = null;
+
+  if (compleet) {
+    // Ook gedeeld vastleggen dat Dorendael bij de Verborgen Hand rond is.
+    if (!getSharedState('vh_opgelost_dorendael')) setSharedState('vh_opgelost_dorendael', true);
+    // De voorspelling verschijnt magisch over de scene, op het moment dat ze
+    // erom vraagt. Niet meteen bij het openen: dan zou hij over haar eigen
+    // zin heen komen.
+    dialog = [
+      { spreker: 'Stazia', tekst: '"Alle zes liggen ze hier, kind."' },
+      { spreker: 'Stazia', tekst: '*(ze legt haar handen eromheen)* "Kijk dan. Kijk goed."', onShow: function () {
+        setTimeout(function () {
+          if (!document.querySelector('#locatie-content .sc-image')) return;
+          toonMagischeVoorspelling('dorendael');
+        }, 500);
+      } }
+    ];
+  } else {
+    dialog = [
+      { spreker: 'Stazia', tekst: '"Dorendael, ja..." *(ze buigt zich naar je toe)* "Verzamel de naalden van Dorendael voor me, kind. Ze zitten in twee poppen."' }
+    ];
+    if (ingeleverd > 0) {
+      var tekort = NAALDEN_TOTAAL - ingeleverd;
+      dialog.push({ spreker: 'Stazia', tekst: '*(ze telt ze na met een vingertop)* "' + ingeleverd + ' liggen er nu bij mij. Er ' + (tekort === 1 ? 'ontbreekt er nog een' : 'ontbreken er nog ' + tekort) + '."' });
+    }
+    if (inRugzak > 0) {
+      acties = [{ label: '🪡 Lever ' + (inRugzak === 1 ? 'je naald' : 'je ' + inRugzak + ' naalden') + ' in', onclick: vhLeverNaaldenIn }];
+    }
+  }
+
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'De Verborgen Hand',
+    sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
+    image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
+    dialog: dialog,
+    acties: acties,
+    onBack: openVerborgenHand
+  });
+  setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
 }
 
 // Rendert een Verborgen Hand-vraagscène met vast beeld en Stazia-pop.
@@ -13528,10 +13637,26 @@ function debugVermomFelix(naam) {
   }
 }
 
-// Testpaneel: de naalden terug naar nul, zodat het klikgebied bij het
-// poppetje op de voorkamer-afbeelding weer voor iedereen open staat.
+// Testpaneel: alle zes naalden ineens bij Stazia, zodat je de voorspelling
+// van Dorendael kunt bekijken zonder eerst beide poppen te zoeken.
+function debugNaaldenIngeleverd() {
+  setSharedState('naalden_ingeleverd__' + state.personage, NAALDEN_TOTAAL);
+  setSharedState('dd2_naalden_gepakt', true);
+  setSharedState('molen_naalden_gepakt', true);
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== 'Naald'; });
+  updateInventoryBar();
+  toonToast('🪡', 'Alle naalden ingeleverd');
+}
+
+// Testpaneel: de naalden terug naar nul. Beide poppen staan daarna weer open
+// voor iedereen en Stazia begint opnieuw met haar opdracht.
 function debugResetNaalden() {
   setSharedState('dd2_naalden_gepakt', null);
+  setSharedState('molen_naalden_gepakt', null);
+  setSharedState('vh_opgelost_dorendael', null);
+  SHARED_ROLLEN.forEach(function (rol) {
+    setSharedState('naalden_ingeleverd__' + rol, null);
+  });
   state.inventory = state.inventory.filter(function (i) { return i.naam !== 'Naald'; });
   updateInventoryBar();
   toonToast('🪡', 'Naalden gereset');
@@ -14393,9 +14518,11 @@ function buildDebugPanel() {
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
       ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
-      // ── Naalden bij het poppetje op de voorkamer-afbeelding
-      ['🪡 + ' + DD2_NAALDEN_AANTAL + ' Naalden (DD2)', function(){ setSharedState('dd2_naalden_gepakt', true); geefMeervoudigItem('', 'Naald', DD2_NAALDEN_AANTAL); close(); }, true, 'Naalden (DD2)'],
-      ['🔄 Reset naalden (DD2)',     function(){ debugResetNaalden(); close(); }, true, 'Naalden (DD2)'],
+      // ── De twee poppen met naalden
+      ['🪡 Pak de naalden van Nummer 2', function(){ pakNaaldenUitPop('dd2_naalden_gepakt', null); close(); }, !getSharedState('dd2_naalden_gepakt'), 'Naalden'],
+      ['🪡 Pak de naalden van de molen', function(){ pakNaaldenUitPop('molen_naalden_gepakt', null); close(); }, !getSharedState('molen_naalden_gepakt'), 'Naalden'],
+      ['✅ Alle 6 ingeleverd bij Stazia', function(){ debugNaaldenIngeleverd(); close(); }, vhNaaldenIngeleverd() < NAALDEN_TOTAAL, 'Naalden'],
+      ['🔄 Reset naalden',           function(){ debugResetNaalden(); close(); }, true, 'Naalden'],
       // ── Jan-Lola-sleutel keten
       ['🟫 Jan krijgt klei',          function(){ debugJanKlei(); close(); }, !heeftKlei && !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
       ['🔲 Jan heeft afdruk',         function(){ debugJanAfdruk(); close(); }, !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
@@ -15684,6 +15811,14 @@ function renderMolenWacht(loc) {
 function renderMolenContent(loc, p) {
   const cont = document.getElementById('locatie-content');
 
+  // Elke molen-scène krijgt het verborgen klikgebied op de pop met de
+  // naalden mee (zie molenNaaldHotspot). Daarom loopt het renderen hier via
+  // molenScene in plaats van rechtstreeks via renderLocatieScene.
+  function molenScene(opts) {
+    renderLocatieScene(opts);
+    molenNaaldHotspot();
+  }
+
   // Anti-Schaduw quest: de Donderbloesem groeit hier, tussen het puin.
   // Plukken kan tijdens de scene (timer loopt door). Eerste speler wint.
   const bloesemHier = getSharedState('apotheker_quest_actief') && !getSharedState('ing_donderbloesem');
@@ -15700,7 +15835,7 @@ function renderMolenContent(loc, p) {
   }
 
   if (p === 'fenna') {
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+    return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
         { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Er beweegt iets. Achter de muur. Achter de balken. Het is groot.' },
         'Half achter een ingestort stuk muur — een silhouet. Een vrouw, lijkt het. Of dat is wat haar hoofd ervan maakt. Het beweegt niet. Het ademt alleen.',
@@ -15713,7 +15848,7 @@ function renderMolenContent(loc, p) {
   }
 
   if (p === 'jan') {
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+    return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
         { spreker: 'Jan', tekst: '*(in gedachten)* Wat loopt daar? Iets groots? Meerdere dingen? Geen mens, toch?' },
         'De wiek boven hem kraakt. Schuift een halve centimeter zonder dat er wind is.',
@@ -15727,7 +15862,7 @@ function renderMolenContent(loc, p) {
   }
 
   if (p === 'kelly') {
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+    return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
         { spreker: 'Kelly', tekst: '*(in gedachten)* Er loopt iets. Maar er is ook iets om te vinden hier. Ik voel het.' },
         'Bij haar voeten, half onder een verkoold houten kastje, glinstert iets. Heel zachtjes. Alsof het op haar wacht.',
@@ -15750,7 +15885,7 @@ function renderMolenContent(loc, p) {
     if (state.vermomming === 'Lucinde')   slot = { spreker: 'Lucinde', tekst: '*(in gedachten)* Ai lieverd, dit is geen plek voor wie dan ook.' };
     else if (state.vermomming === 'Lola') slot = { spreker: 'Lola',    tekst: '*(in gedachten)* Madre mía. Lola is dapper — maar Lola is niet dom.' };
     else                                  slot = { spreker: 'Felix',   tekst: '*(in gedachten)* Mijn instinct zegt rennen. Mijn instinct is meestal goed.' };
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+    return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
         { spreker: 'Felix', tekst: '*(in gedachten)* Ik tel ze niet. Maar er is iets. Of meerdere iets.' },
         'Felix is geen vreemde van gevaar. Maar dit voelt anders. Dit voelt alsof het hem kent.',
@@ -15761,7 +15896,7 @@ function renderMolenContent(loc, p) {
       ]), acties: molenActies(null) });
   }
 
-  return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+  return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
     dialog: molenDialog(['Tussen het puin beweegt iets groots. Voetstappen, dichterbij. Wegwezen.']), acties: molenActies(null) });
 }
 
@@ -15778,6 +15913,7 @@ function renderMolenKellyDeel2(loc) {
       'De voetstappen zijn dichterbij. Iets ademt.',
       { spreker: 'Kelly', tekst: '*(in gedachten)* Wegwezen. NU. Maar dit doosje neem ik mee. En die molen... hier moet ooit over geschreven zijn. Het archief. Daar zoek ik verder.' }
     ] });
+  molenNaaldHotspot();
 }
 
 // App-tekst bij ontwaken (per personage), getoond ná de fade-naar-licht.
