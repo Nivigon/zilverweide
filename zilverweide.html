@@ -2584,11 +2584,25 @@ function startOverworldIntro() {
     };
   }
 
+  // Zolang een overgang (oplichten) of de afsluiting nog bezig is, negeert de
+  // knop clicks. Zonder dit kon te snel doorklikken een setTimeout van een
+  // eerdere stap nog laten afgaan ná het sluiten van de intro, die dan alsnog
+  // een lift/spot/dim-klasse op een echt UI-element zette dat daarna nooit
+  // meer werd opgeruimd (het bleef zo "hangen" oplichten).
+  var overgangBezig = false;
+  function zetKnopKlikbaar(klikbaar) {
+    knop.disabled = !klikbaar;
+    knop.style.opacity = klikbaar ? '1' : '.4';
+    knop.style.pointerEvents = klikbaar ? '' : 'none';
+  }
+
   var i = -1;
   function toonStap(nieuw) {
     var eerste = i < 0;
     i = nieuw;
     var s = stappen[i];
+    overgangBezig = true;
+    zetKnopKlikbaar(false);
     tekstEl.style.opacity = '0';
     // Zachte overgang: tekst rustig uitfaden, dan de spot verplaatsen en de
     // nieuwe tekst weer infaden. Bij de eerste stap alleen infaden.
@@ -2596,12 +2610,17 @@ function startOverworldIntro() {
       tekstEl.textContent = s.tekst;
       zetSpot(s);
       tekstEl.style.opacity = '1';
+      overgangBezig = false;
+      zetKnopKlikbaar(true);
     }, eerste ? 350 : 480);
   }
 
   knop.addEventListener('click', function () {
+    if (overgangBezig) return;
     if (i < stappen.length - 1) { toonStap(i + 1); return; }
     // Klaar: opruimen en het scherm weer vrijgeven.
+    overgangBezig = true;
+    zetKnopKlikbaar(false);
     if (opruimSpot) { opruimSpot(); opruimSpot = null; }
     markVisited('overworld_intro_gezien');
     [overlay, paneel].forEach(function (el) {
