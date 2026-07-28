@@ -8898,8 +8898,10 @@ function renderK1Uitkijktoren(loc) {
 
       // Heeft Stazia haar diepere hint over de hoogte gegeven, en is de
       // kraaien-vraag nog niet beantwoord? Dan levert deze klim de telling op.
+      // vhDiepereHintKlaar bewaakt ook de fase: zodra het Kraaienkwartier
+      // klaar is, is de telling hier niets meer waard en blijft hij weg.
       torenTelling = !!getSharedState('vh_hint_gegeven_kraaienkwartier') &&
-                     !getSharedState('vh_opgelost_kraaienkwartier') &&
+                     vhDiepereHintKlaar('kraaienkwartier') &&
                      !state.vhTorenTellingGetoond;
     } else {
       // Jan staat onderaan — beschrijving van de toren + het slot.
@@ -8942,6 +8944,9 @@ function renderK1Uitkijktoren(loc) {
   if (torenTelling) {
     state.vhTorenTellingGetoond = true;
     setTimeout(function () {
+      // Is Jan intussen van de toren af (terugknop, schaduw, een andere
+      // scene)? Dan niet alsnog over dat nieuwe scherm heen verschijnen.
+      if (!state.janTorenDitBezoek) return;
       toonMagischOverlay(
         'Vanaf de toren',
         '<p class="magisch-tekst">Je laat je blik over de daken gaan. Op de nok, op een schoorsteen, op de rand van de put, op het uithangbord, op de goot van het huis daar beneden.</p>' +
@@ -12388,11 +12393,16 @@ var VH_SCHERM_DISTRICT = {
 // die nog nooit bij de Verborgen Hand was (de klok liep al, maar Stazia
 // stelde haar vraag nog niet), `aanloopLater` voor een groep die de vraag al
 // eens kreeg en er niet uit kwam. Dorendael en Heer Donatuslaan volgen later.
+// `faseVoorbij` zegt wanneer dit district verhaal-technisch klaar is. Daarna
+// zwijgt Stazia hierover, ook als de vraag nooit beantwoord is: de hint zou
+// dan naar een wijk wijzen waar het team allang klaar is. Voor het
+// Kraaienkwartier is dat de heks-gok (gedeeld via heks_opgelost).
 var VH_DIEPERE_HINT = {
   kraaienkwartier: {
     aanloopEerste: '"En ik geef jullie alvast een extra hint."',
     aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
-    hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."'
+    hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."',
+    faseVoorbij:   function () { return !!state.heksOpgelost || hasVisited('dorendael_unlocked'); }
   }
 };
 
@@ -12410,10 +12420,14 @@ function vhKlokVerlopen(district) {
 }
 
 // Mag Stazia haar diepere hint geven? Alleen als er een tekst voor dit
-// district bestaat, de klok om is en de vraag nog niet goed beantwoord is.
+// district bestaat, de klok om is, de vraag nog niet goed beantwoord is en
+// het verhaal nog in dit district speelt. Dezelfde check bepaalt of Jan de
+// telling boven op de toren krijgt, zodat die twee nooit uit elkaar lopen.
 function vhDiepereHintKlaar(district) {
-  if (!VH_DIEPERE_HINT[district]) return false;
+  var cfg = VH_DIEPERE_HINT[district];
+  if (!cfg) return false;
   if (getSharedState('vh_opgelost_' + district)) return false;
+  if (cfg.faseVoorbij && cfg.faseVoorbij()) return false;
   return vhKlokVerlopen(district);
 }
 
@@ -12456,8 +12470,13 @@ function checkVerborgenHandVraag(vraagId) {
     // stille hulpklok en geeft Stazia hier geen diepere hint meer.
     setSharedState('vh_opgelost_' + vraagId, true);
     // Invoer blijft weg. De voorspelling verschijnt; opnieuw kijken kan door
-    // bij de Verborgen Hand nogmaals op de wijk te drukken.
-    setTimeout(function() { toonMagischeVoorspelling(vraagId); }, 1700);
+    // bij de Verborgen Hand nogmaals op de wijk te drukken. Is de speler in
+    // die anderhalve seconde al teruggelopen, dan komt de voorspelling niet
+    // over het volgende scherm heen.
+    setTimeout(function() {
+      if (!document.getElementById(cfg.msgId)) return;
+      toonMagischeVoorspelling(vraagId);
+    }, 1700);
   } else {
     VH_COOLDOWN[vraagId] = Date.now() + 20000;
     vhStartLock(vraagId);
