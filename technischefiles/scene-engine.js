@@ -63,6 +63,31 @@
     return e;
   }
 
+  // ─── Klik-rem ───────────────────────────────────────────────────
+  // Iets dat NET op het scherm verschijnt neemt heel even geen clicks aan.
+  // Zonder deze rem landt de tweede tik van een dubbelklik op de Verder-knop
+  // meteen op de actieknop eronder: die verschijnt namelijk in precies de
+  // ruimte die de dialoogbox achterlaat, dus onder dezelfde vinger. Hetzelfde
+  // geldt voor een verse scene die onder een tikkende vinger wordt opgebouwd.
+  //
+  // De rem zet pointer-events tijdelijk op none en herstelt daarna exact de
+  // vorige inline-waarde (sommige knoppen staan bewust op 'auto' omdat hun
+  // overlay op 'none' staat). Overlappende aanroepen op hetzelfde element
+  // schuiven de hersteltijd op in plaats van 'none' te bevriezen.
+  //
+  // Uitzetten voor een test: window._zvKlikRemUit = true (debug-paneel).
+  var KLIK_REM_MS = 400;
+  function klikRem(node, ms) {
+    if (!node || window._zvKlikRemUit) return;
+    if (node._zvRemTimer) clearTimeout(node._zvRemTimer);
+    else node._zvRemVorige = node.style.pointerEvents;
+    node.style.pointerEvents = 'none';
+    node._zvRemTimer = setTimeout(function () {
+      node.style.pointerEvents = node._zvRemVorige;
+      node._zvRemTimer = null;
+    }, ms || KLIK_REM_MS);
+  }
+
   // ─── Main render-functie ────────────────────────────────────────
   function renderScene(opts) {
     if (!opts || !opts.container) {
@@ -71,6 +96,10 @@
     }
     var c = opts.container;
     c.innerHTML = '';
+    // Een verse scene neemt de eerste 400ms geen clicks aan: een tik die nog
+    // van het vorige scherm onderweg was, mag hier niet landen (de terug-knop
+    // en de Verder-knop staan op elk scherm op dezelfde plek).
+    klikRem(c);
 
     // Header met terug-knop
     var backBtn = el('button', {
@@ -196,6 +225,7 @@
         console.warn('[scene-engine] geen huidig .sc-image gevonden, append direct');
         c.insertBefore(nieuw, c.firstChild);
         imageEl = nieuw;
+        klikRem(nieuw);
         return;
       }
       huidig.classList.add('sc-fade-out');
@@ -203,6 +233,9 @@
         if (huidig.parentNode) {
           huidig.parentNode.replaceChild(nieuw, huidig);
           imageEl = nieuw;
+          // De nieuwe slot kan klikbaar zijn (bv. een keuze-grid): rem hem,
+          // zodat de tik die de dialoog afsloot er niet meteen op landt.
+          klikRem(nieuw);
           console.log('[scene-engine] swap voltooid');
         }
       }, 250);
@@ -221,6 +254,9 @@
         try { opts.extra(wrap); } catch (e) { console.error('extra() error:', e); }
       }
       actiesContainer.appendChild(wrap);
+      // Extra-blokken bevatten soms een knop of code-invoer, en verschijnen op
+      // exact de plek waar de dialoogbox stond. Dus dezelfde rem als de acties.
+      klikRem(wrap);
     }
 
     function toonActies() {
@@ -240,6 +276,9 @@
         }));
       });
       actiesContainer.appendChild(groep);
+      // Kern van de klik-rem: de acties komen op te staan waar de dialoogbox
+      // net stond, inclusief onder de Verder-knop die ze zojuist opriep.
+      klikRem(groep);
     }
   }
 
@@ -312,4 +351,7 @@
 
   // Expose
   global.renderScene = renderScene;
+  // Ook los bruikbaar voor schermen die buiten de scene-engine om gebouwd
+  // worden (overlays, pop-dialogen, de onderlade, de mini-games).
+  global.zvKlikRem = klikRem;
 })(window);

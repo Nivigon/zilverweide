@@ -119,6 +119,14 @@ window.ZilverweideSchaduw = (function () {
      SERVER-STUB  ▲▲▲  EINDE FIREBASE-HAAKJES  ▲▲▲
   ═══════════════════════════════════════════════════════════════ */
 
+  // Klik-rem uit de scene-engine (window.zvKlikRem). Deze overlays vallen
+  // ongevraagd over het scherm heen terwijl ze nog infaden, dus een speler die
+  // net op Verder aan het tikken was drukt anders meteen een knop in die hij
+  // nog niet gezien heeft. No-op als de scene-engine niet geladen is.
+  function remKlik(node, ms) {
+    if (typeof window.zvKlikRem === 'function') window.zvKlikRem(node, ms);
+  }
+
   function willekeurigeCode() {
     const tekens = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // geen I/O/0/1 (leesbaar)
     let s = '';
@@ -370,6 +378,9 @@ window.ZilverweideSchaduw = (function () {
     el.memTitle.style.display = 'none';
     el.memInstr.style.display = 'none';
     el.memProgress.innerHTML = '';
+    // De overlay fade-t in .6s. Wie Start per ongeluk indrukt kijkt niet naar
+    // het scherm, mist de reeks en raakt vergrendeld: dat mag niet per tik.
+    remKlik(el.memStart, 700);
   }
   function startMemReeks() {
     el.memIntro.style.display = 'none';
@@ -493,6 +504,7 @@ window.ZilverweideSchaduw = (function () {
     el.memTitle.style.display = 'none';
     el.memInstr.style.display = 'none';
     el.memProgress.innerHTML = '';
+    remKlik(el.memStart, 700);
     // Fluister: nu meteen 1x, daarna elke 10 seconden tot ze klaar is.
     handFluister();
     clearInterval(handWhisperTimer);
@@ -537,6 +549,7 @@ window.ZilverweideSchaduw = (function () {
     el.redderErr.textContent = '';
     el.redderInput.value = '';
     el.redder.classList.add('zv-open');
+    remKlik(el.redderBtn, 700);
     setTimeout(() => el.redderInput.focus(), 100);
   }
   async function redderVerstuur() {

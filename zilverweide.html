@@ -1705,7 +1705,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <script src="technischefiles/woudscene.js"></script>
 
 <!-- Scene-engine (generieke locatie-layout: scene-engine.js + scene.css) -->
-<script src="technischefiles/scene-engine.js"></script>
+<script src="technischefiles/scene-engine.js?v=2"></script>
 
 <!-- Fenna's lied-mechaniek (Mastermind: toon, liedtitel, eerste regel) -->
 <script src="technischefiles/fenna-lied.js"></script>
@@ -3398,6 +3398,8 @@ function showVerhaal() {
     vid.onended = function() {
       // Video klaar: toon "Verder", verberg "overslaan", start de muziek.
       if (skipBtn) skipBtn.style.display = '';
+      // "Verder" verschijnt precies waar "overslaan" stond: even remmen.
+      if (skipBtn && typeof zvKlikRem === 'function') zvKlikRem(skipBtn, 600);
       var overslaanBtn = document.getElementById('intro-overslaan-btn');
       if (overslaanBtn) overslaanBtn.style.display = 'none';
       var m = document.getElementById('bg-music');
@@ -3421,6 +3423,11 @@ function speelIntroVideo() {
   var vid = document.getElementById('intro-video');
   var playBtn = document.getElementById('intro-play-btn');
   if (playBtn) playBtn.style.display = 'none';
+  // Zodra de play-knop weg is, schuift "Intro overslaan" in de knoppenrij naar
+  // links, deels de plek in waar zojuist gedrukt werd. Een dubbeltik op play
+  // zou de intro dus meteen overslaan. Rem de overslaan-knop even.
+  var overslaanBtn = document.getElementById('intro-overslaan-btn');
+  if (overslaanBtn && typeof zvKlikRem === 'function') zvKlikRem(overslaanBtn, 600);
   if (vid) { try { vid.play().catch(function(){}); } catch(e) {} }
 }
 
@@ -3682,6 +3689,11 @@ function toonRolBevestiging(p) {
       '<button id="rol-bevestig-nee" class="spel-lade-knop" style="border-color:rgba(201,168,76,.2);color:var(--gold-dim);background:transparent">Ik kijk nog even</button>' +
     '</div>';
   document.body.appendChild(ov);
+  // De overlay verschijnt zonder vertraging over de knop "Kies ...", en de
+  // Ja-knop staat op ongeveer dezelfde hoogte. Een dubbeltik zou de rol dus
+  // definitief maken zonder dat de waarschuwing gelezen is. Rem de hele
+  // overlay, dus ook het klikken naast het venster (annuleren).
+  if (typeof zvKlikRem === 'function') zvKlikRem(ov);
   document.getElementById('rol-bevestig-ja').onclick = function() {
     ov.remove();
     if (rolBezet(p)) { toonRolBezet(naam); return; }   // net voor je gekozen
@@ -5651,6 +5663,9 @@ function startLockpick(loc) {
     return;
   }
   cont.innerHTML = '<div id="lockpick-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(cont);
   var mount = document.getElementById('lockpick-mount');
   var zwBackBtn = document.getElementById('locatie-back-btn');
   if (zwBackBtn) zwBackBtn.style.display = 'none';
@@ -6149,6 +6164,9 @@ function startKerkDoolhof() {
   if (!c) return;
   if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
   c.innerHTML = '<div id="kerk-doolhof-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(c);
   const mount = document.getElementById('kerk-doolhof-mount');
   if (!mount || typeof Doolhof === 'undefined') {
     c.innerHTML = '<p style="color:var(--blood);font-style:italic">Doolhof-engine niet geladen.</p>';
@@ -10108,6 +10126,9 @@ function startTorenLockpick() {
     return;
   }
   cont.innerHTML = '<div id="lockpick-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(cont);
   var mount = document.getElementById('lockpick-mount');
   var zwBackBtn = document.getElementById('locatie-back-btn');
   if (zwBackBtn) zwBackBtn.style.display = 'none';
@@ -10695,7 +10716,14 @@ function toonTerugknopIntro(onKlaar) {
     '<p class="dgbk-archief-tekst">Je kunt hier altijd op deze knop drukken. Dan kom je terug op de straat, of bij de kaart van het dorp.</p>' +
     '<button class="dgbk-plkknop">Ik begrijp het</button>';
 
+  // Eenmalig: twee elementen roepen `weg` aan, en de kloon ligt exact op de
+  // echte terugknop. Zonder deze vlag kon een dubbeltik onKlaar twee keer
+  // afvuren, en zonder de rem hieronder landde de tweede tik op de echte
+  // terugknop eronder, waardoor de speler midden in de intro de locatie verliet.
+  var wegGedaan = false;
   var weg = function () {
+    if (wegGedaan) return;
+    wegGedaan = true;
     ov.remove();
     if (typeof onKlaar === 'function') onKlaar();
   };
@@ -10705,6 +10733,7 @@ function toonTerugknopIntro(onKlaar) {
   ov.appendChild(kloon);
   ov.appendChild(paneel);
   document.body.appendChild(ov);
+  if (typeof zvKlikRem === 'function') zvKlikRem(ov);
 }
 
 // "Over de Rozen" leesactie: iedereen kan het lezen zodra Kelly het boekje
@@ -11438,6 +11467,11 @@ function toonPopDialoog(stappen, callback) {
   const actiesMount = document.querySelector('#locatie-content .sc-acties-mount');
   const knop = document.createElement('button');
   knop.style.cssText = 'width:100%;font-family:\'Cinzel\',serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;border:1px solid rgba(201,168,76,.45);background:rgba(13,10,6,.85);color:var(--gold);cursor:pointer;border-radius:2px;pointer-events:auto;opacity:0;transition:opacity .3s ease';
+  // De knop staat op exact de plek van de "Volgende"-knop die deze dialoog
+  // opriep, en hij is onzichtbaar (opacity 0) tot toonStap(0) draait. Zonder
+  // deze rem landt de tweede tik van een dubbelklik op een knop die de speler
+  // niet eens ziet, waarna stap 1 stilzwijgend wordt overgeslagen.
+  knop.style.pointerEvents = 'none';
   if (actiesMount) {
     actiesMount.style.display = '';
     actiesMount.innerHTML = '';
@@ -11476,6 +11510,10 @@ function toonPopDialoog(stappen, callback) {
     updatePop(popRechts, s.rechts || null);
     knop.textContent = (i === stappen.length - 1) ? 'Begrepen →' : 'Verder →';
     if (knop.style.opacity === '0') knop.style.opacity = '1';
+    // Elke stap opnieuw remmen: anders raast een roffel op dezelfde plek door
+    // de hele dialoog heen zonder dat er iets gelezen is.
+    knop.style.pointerEvents = 'auto';
+    if (typeof zvKlikRem === 'function') zvKlikRem(knop);
   }
 
   knop.addEventListener('click', function() {
@@ -11483,10 +11521,13 @@ function toonPopDialoog(stappen, callback) {
       stap++;
       toonStap(stap);
     } else {
+      // Knop dood tijdens de uitfade: een tweede tik zou hier een tweede
+      // timer starten die op een al verwijderde overlay struikelt.
+      knop.style.pointerEvents = 'none';
       overlay.style.transition = 'opacity .4s';
       overlay.style.opacity = '0';
       setTimeout(function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) document.body.removeChild(overlay);
         if (callback) callback();
       }, 400);
     }
@@ -11717,6 +11758,9 @@ function podiumHeksTekst(locContent) {
       knop.onclick = function () { podiumNaChaos(locContent); };
       actiesMount.appendChild(knop);
       setTimeout(function () { knop.style.opacity = '1'; }, 50);
+      // Pas klikbaar als hij ook echt te zien is (50ms wachten plus 500ms
+      // infaden), anders drukt een tikkende speler een onzichtbare knop in.
+      if (typeof zvKlikRem === 'function') zvKlikRem(knop, 600);
     }
   }, 10000);
 }
@@ -11745,6 +11789,7 @@ function podiumNaChaos(locContent) {
       knop.onclick = function () { naIntroFilmpje(); };
       actiesMount.appendChild(knop);
       setTimeout(function () { knop.style.opacity = '1'; }, 50);
+      if (typeof zvKlikRem === 'function') zvKlikRem(knop, 600);
     }, 2000);
   }
 }
@@ -12423,10 +12468,15 @@ function toonBevrijdInteractie(opts, onKlaar) {
     linksPop.style.opacity  = linksSpreekt ? '1' : '.4';
     rechtsPop.style.opacity = linksSpreekt ? '.4' : '1';
     knop.textContent = (i === stappen.length - 1) ? 'Begrepen →' : 'Verder →';
+    // Dit scherm komt onaangekondigd binnenvallen zodra de andere tablet de
+    // code invoert, en telt maar twee stappen. Zonder rem klikt een tikkende
+    // speler het hele reddingsgesprek in één dubbeltik weg.
+    if (typeof zvKlikRem === 'function') zvKlikRem(knop);
   }
   knop.addEventListener('click', function () {
     if (i < stappen.length - 1) { i++; toonStap(); }
     else {
+      knop.style.pointerEvents = 'none';
       overlay.style.opacity = '0';
       setTimeout(function () {
         if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
@@ -12539,12 +12589,17 @@ function toonTerugOpStraatPopup() {
       '<button id="zv-straat-ok" class="btn">Verder</button>' +
     '</div>';
   document.body.appendChild(ov);
-  ov.querySelector('#zv-straat-ok').onclick = function () {
+  var straatOk = ov.querySelector('#zv-straat-ok');
+  straatOk.onclick = function () {
+    straatOk.style.pointerEvents = 'none';
     ov.style.opacity = '0';
     setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 400);
     schaduwPauze(false);   // pas nu mag de meter weer lopen
   };
   requestAnimationFrame(function () { ov.style.opacity = '1'; });
+  // Deze pop-up verschijnt ongevraagd, midden in het scherm, terwijl hij nog
+  // infade-t. Rem hem tot hij volledig zichtbaar is.
+  if (typeof zvKlikRem === 'function') zvKlikRem(straatOk, 500);
 }
 
 // Optie B: gaat een speler naar een locatie waar iemand vastzit, dan opent hij
@@ -12867,6 +12922,13 @@ function toonLade(titel, inhoudHtml, knopTekst, callback) {
   knop._ladeCallback = callback || null;
   document.getElementById('spel-lade').classList.add('open');
   document.getElementById('spel-lade-backdrop').classList.add('open');
+  // De lade schuift in .45s omhoog en komt daarmee onder de vinger van wie
+  // net op Verder drukte. Rem de knop en de inhoud (die soms zelf knoppen
+  // heeft, bv. de vermommingskeuze) tot de lade stil staat.
+  if (typeof zvKlikRem === 'function') {
+    zvKlikRem(knop, 500);
+    zvKlikRem(document.getElementById('spel-lade-inhoud'), 500);
+  }
 }
 function sluitLade() {
   const knop = document.getElementById('spel-lade-knop');
@@ -13828,6 +13890,15 @@ function buildDebugPanel() {
     ['💃 Kleed om naar Lola',    function(){ debugVermomFelix('Lola'); }, isFelix],
     ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix],
     ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming],
+  ]);
+
+  // Klik-rem: de korte pauze waarin een net verschenen knop nog geen clicks
+  // aanneemt. Hiermee uit te zetten om te vergelijken hoe het spel voelt
+  // zonder rem (en om te controleren of een knop die niet reageert echt aan
+  // de rem ligt en niet aan iets anders).
+  btns = btns.concat([
+    [(window._zvKlikRemUit ? '🖱️ Klik-rem AAN zetten' : '🖱️ Klik-rem UIT zetten'),
+     function(){ window._zvKlikRemUit = !window._zvKlikRemUit; buildDebugPanel(); }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
@@ -15678,6 +15749,9 @@ function startWerkplaatsLockpick(loc) {
   // Schaduw pauze
   try { if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.setBusy) window.ZilverweideSchaduw.setBusy(true); } catch (e) {}
   cont.innerHTML = '<div id="lockpick-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(cont);
   var mount = document.getElementById('lockpick-mount');
   var zwBackBtn = document.getElementById('locatie-back-btn');
   if (zwBackBtn) zwBackBtn.style.display = 'none';
@@ -16047,6 +16121,9 @@ function openArchiefDoolhof() {
   }
 
   c.innerHTML = '<div id="archief-doolhof-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(c);
   const mount = document.getElementById('archief-doolhof-mount');
   if (!mount || typeof Doolhof === 'undefined') {
     c.innerHTML = '<p style="color:var(--blood);font-style:italic">Doolhof-engine niet geladen.</p>';
@@ -16850,6 +16927,9 @@ function renderDd5Woud(loc) {
   // intro-scherm; pas wanneer de speler écht het doolhof in gaat ("Start
   // doolhof"), verschijnt de onweer-popup en begint de storm.
   c.innerHTML = '<div id="dd5-doolhof-mount"></div>';
+  // Mini-game monteert buiten de scene-engine om: dezelfde klik-rem, zodat
+  // de tik die de mini-game opriep niet meteen in het spelveld landt.
+  if (typeof zvKlikRem === 'function') zvKlikRem(c);
 
   const mount = document.getElementById('dd5-doolhof-mount');
   if (!mount || typeof Doolhof === 'undefined') {
@@ -17605,7 +17685,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=10"></script>
+<script src="technischefiles/schaduw.js?v=11"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
