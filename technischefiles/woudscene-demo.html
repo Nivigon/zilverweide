@@ -171,7 +171,12 @@ var DEMO_CONFIG = (function () {
       a1: metPrefix(basis.images.a1),
       a3: metPrefix(basis.images.a3),
       b0: metPrefix(basis.images.b0),
-      b1: metPrefix(basis.images.b1)
+      b1: metPrefix(basis.images.b1),
+      portret: {
+        links: metPrefix(basis.images.portret.links),
+        midden: metPrefix(basis.images.portret.midden),
+        rechts: metPrefix(basis.images.portret.rechts)
+      }
     },
     audio: {
       muziek: metPrefix(basis.audio.muziek),
@@ -239,6 +244,20 @@ var SLIDER_RIJEN = [
   { label: 'Helderheid', pad: 'kleur.deel3.helderheid', min: 0.4, max: 1.8, step: 0.05 },
   { label: 'Contrast', pad: 'kleur.deel3.contrast', min: 0.4, max: 1.8, step: 0.05 },
   { label: 'Schaduwlicht', pad: 'kleur.deel3.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Deel 4: de dialoog' },
+  { label: 'Breedte dialoogbox (%)', pad: 'deel4.boxBreedte', min: 18, max: 60, step: 1 },
+  { label: 'Fade per regel (ms)', pad: 'deel4.regelFadeDuur', min: 0, max: 1500, step: 50 },
+  { label: 'Dimming zwijgers', pad: 'deel4.dimSterkte', min: 0, max: 1, step: 0.05 },
+  { label: 'Dim-ovaal breedte (%)', pad: 'deel4.dimBreedte', min: 5, max: 60, step: 1 },
+  { label: 'Dim-ovaal hoogte (%)', pad: 'deel4.dimHoogte', min: 5, max: 90, step: 1 },
+  { label: 'Dim-ovaal zachtheid (px)', pad: 'deel4.dimZachtheid', min: 0, max: 120, step: 2 },
+  { label: 'Geplukte roos (index)', pad: 'deel4.geplukteRoos', min: 0, max: 7, step: 1 },
+  { label: 'Rozen na de pluk (factor)', pad: 'deel4.restFactor', min: 0, max: 1, step: 0.05 },
+  { label: 'Geluid valt weg in (ms)', pad: 'deel4.geluidWegDuur', min: 100, max: 4000, step: 50 },
+  { label: 'Onscherp naar zwart (ms)', pad: 'deel4.zwartDuur', min: 500, max: 10000, step: 100 },
+  { label: 'Onscherpte bij zwart (px)', pad: 'deel4.blurZwart', min: 0, max: 60, step: 1 },
+  { label: 'Pauze tussen app-teksten (ms)', pad: 'deel4.appTekstPauze', min: 300, max: 5000, step: 100 },
+  { label: 'Zwart voor de callback (ms)', pad: 'deel4.stilteDuur', min: 0, max: 10000, step: 100 },
   { kop: 'Volume per laag' },
   { label: 'Muziek', pad: 'volumes.muziek', min: 0, max: 1, step: 0.05 },
   { label: 'Bosgeluiden', pad: 'volumes.bosgeluiden', min: 0, max: 1, step: 0.05 },
@@ -303,7 +322,19 @@ function padWaarde(obj, pad) {
       '<button class="ws-dbg-btn2" id="ws-dbg-d1">Deel 1</button>' +
       '<button class="ws-dbg-btn2" id="ws-dbg-d2">Deel 2</button>' +
       '<button class="ws-dbg-btn2" id="ws-dbg-d3">Deel 3</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-d4">Deel 4</button>' +
       '<button class="ws-dbg-btn2" id="ws-dbg-config">Config → console</button>' +
+    '</div>';
+  html +=
+    '<div class="ws-dbg-kop">Heks-zones plaatsen (deel 4)</div>' +
+    '<div class="ws-dbg-hint">Kies een figuur, zet de zonemodus aan en klik in de scène op het midden van die figuur. De grootte van de dim-ovaal regel je met de schuifregelaars bij deel 4. Werkt alleen op a3.</div>' +
+    '<div class="ws-dbg-rij">' +
+      '<div class="ws-dbg-rij-label"><span>Figuur</span></div>' +
+      '<select id="ws-dbg-zone-wie"><option value="links">links</option><option value="midden">midden</option><option value="rechts">rechts</option></select>' +
+    '</div>' +
+    '<div class="ws-dbg-knoppen">' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-zonemodus">🎯 Zonemodus</button>' +
+      '<button class="ws-dbg-btn2" id="ws-dbg-zones-console">Zones → console</button>' +
     '</div>';
   html +=
     '<div class="ws-dbg-kop">Rozen plaatsen</div>' +
@@ -436,8 +467,25 @@ function padWaarde(obj, pad) {
   document.getElementById('ws-dbg-d3').onclick = function () {
     metGestarteScherm(function () { pauzeBtn.textContent = '⏸ Pauze'; scene.goTo(3); });
   };
+  document.getElementById('ws-dbg-d4').onclick = function () {
+    metGestarteScherm(function () { pauzeBtn.textContent = '⏸ Pauze'; scene.goTo(4); });
+  };
   document.getElementById('ws-dbg-config').onclick = function () {
     console.log('WOUDSCENE config:\n' + JSON.stringify(scene.getConfig(), null, 2));
+  };
+
+  /* ── Zonemodus: legt het middelpunt van een van de drie figuren op a3
+     vast, als fractie t.o.v. het beeld (zelfde principe als de rozen).
+     De ovaal-grootte zelf staat in deel4.dimBreedte/dimHoogte. ── */
+  var zonemodusAan = false;
+  var zoneBtn = document.getElementById('ws-dbg-zonemodus');
+  zoneBtn.onclick = function () {
+    zonemodusAan = !zonemodusAan;
+    zoneBtn.classList.toggle('actief', zonemodusAan);
+    if (zonemodusAan && plaatsmodusAan) plaatsModusAanzetten(false); // niet allebei tegelijk
+  };
+  document.getElementById('ws-dbg-zones-console').onclick = function () {
+    console.log('WOUDSCENE heksZones:\n' + JSON.stringify(scene.getConfig().heksZones, null, 2));
   };
 
   /* ── Plaatsmodus: klik in de scène legt een rozen-coördinaat vast op
@@ -537,6 +585,24 @@ function padWaarde(obj, pad) {
     verversPlaatsInfo();
     verversPlaatsMarkers();
   });
+
+  // Zonemodus vangt de klik in de capture-fase af, zodat een klik tijdens
+  // deel 4 wel een zone vastlegt maar niet ook de dialoog doorzet.
+  stageEl.addEventListener('click', function (ev) {
+    if (!zonemodusAan) return;
+    if (ev.target.closest('#ws-startscherm')) return;
+    var beeld = actiefBeeld();
+    var sleutel = beeld && beeld.dataset.wsSleutel;
+    if (sleutel !== 'a3') { console.log('Zonemodus: de heks-zones horen bij a3, die plaat is nu niet in beeld.'); return; }
+    ev.stopPropagation();
+    ev.preventDefault();
+    var rect = beeld.getBoundingClientRect();
+    var wie = document.getElementById('ws-dbg-zone-wie').value;
+    var x = +((ev.clientX - rect.left) / rect.width).toFixed(4);
+    var y = +((ev.clientY - rect.top) / rect.height).toFixed(4);
+    scene.set('heksZones.' + wie, { x: x, y: y });
+    console.log('Zonemodus: ' + wie + ' vastgelegd op x=' + x + ' y=' + y);
+  }, true);
 
   document.getElementById('ws-dbg-kopieer').onclick = function () {
     var van = document.getElementById('ws-dbg-kopieer-van').value;

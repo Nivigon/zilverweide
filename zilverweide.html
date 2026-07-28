@@ -775,6 +775,12 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .interactie-panel .int-msg.ok{color:#7dbf7d;}
 .interactie-panel .int-msg.err{color:#d4826e;}
 .finale-btn{position:fixed;top:.7rem;left:1rem;z-index:300;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:50px;padding:4px 12px;display:none;align-items:center;gap:6px;backdrop-filter:blur(4px);cursor:pointer;}
+/* Tijdens de woudscene gaat de spelers-HUD (verhaalscore, rol-badge en
+   finale-knop, allemaal z-index 300) uit beeld; de testknoppen blijven
+   bereikbaar. De klasse wordt gezet in startWoudSceneInSpel en weer
+   weggehaald in beeindigWoudScene. */
+body.woudscene-actief #topright-cluster,
+body.woudscene-actief .finale-btn{display:none !important;}
 .finale-btn:hover{border-color:var(--gold);}
 .finale-btn span{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .finale-panel{position:fixed;inset:0;z-index:400;background:rgba(13,10,6,.97);overflow-y:auto;display:none;padding:2rem 1.5rem 4rem;}
@@ -1764,6 +1770,9 @@ const state = {
     // Woud-doolhof (DD5): welke spelers zijn er aan het einde uit?
     // Pas als alle 4 erin staan, opent Heer Donatuslaan.
     woud_voltooid: [],          // array van personage-ids: ['jan','kelly',...]
+    // Wie is klaar met de dialoog van de woudscène? Pas als alle 4 erin
+    // staan valt op elke tablet tegelijk het beeld naar zwart.
+    woudscene_klaar: [],        // array van personage-ids
     // Tweede poortje na het woud: wie heeft op "Klaar" gedrukt bij
     // "Luister nu naar Tom"? Pas bij alle 4 valt de vloek en opent HD.
     woud_klaar: [],             // array van personage-ids
@@ -1920,7 +1929,7 @@ function getSharedState(key) {
 // zodat gelijktijdige schrijfacties elkaar niet kunnen overschrijven
 // (de 3/4-hang bij de intro was een verloren update op zo'n array).
 var SHARED_LIJST_KEYS = [
-  'herberg_binnen','woud_voltooid','woud_klaar','nummer7_aanwezig',
+  'herberg_binnen','woud_voltooid','woud_klaar','woudscene_klaar','nummer7_aanwezig',
   'kerk_kelder_aanwezig','podium_finale_aanwezig','podium_verhaal_klaar',
   'kerk_verhaal_klaar','podium_intro_aanwezig'
 ];
@@ -2011,6 +2020,20 @@ function woudKlaarZet(rol) {
 }
 function woudKlaarAantal() {
   return (sharedLijst('woud_klaar')).length;
+}
+// Derde poortje: iedereen moet de dialoog van de woudscène uitgelezen
+// hebben voordat het beeld naar zwart gaat. Zonder deze poort zou een
+// snelle lezer al in het zwart zitten terwijl de rest nog leest. Zelfde
+// patroon (per-rol subkeys) als woud_klaar hierboven.
+function woudSceneKlaarZet(rol) {
+  const lijst = sharedLijst('woudscene_klaar');
+  if (!lijst.includes(rol)) {
+    lijst.push(rol);
+    setSharedState('woudscene_klaar', lijst);
+  }
+}
+function woudSceneKlaarAantal() {
+  return (sharedLijst('woudscene_klaar')).length;
 }
 function woudKlaarAlle() {
   return woudKlaarAantal() >= 4;
@@ -3955,6 +3978,7 @@ function resetSpel() {
     tobbe_gevonden: false,
     woud_voltooid: [],
     woud_klaar: [],
+    woudscene_klaar: [],
     oude_kranten_ontdekt: false,
     nummer7_aanwezig: [],
     kerk_kelder_aanwezig: [],
@@ -13631,6 +13655,8 @@ function buildDebugPanel() {
       ['🌲 Alle 4 uit doolhof',      function(){ debugWoudAlleVoltooid(); close(); }, inWoudWinScreen, 'Woud'],
       ['👍 Alle 4 Klaar gedrukt',    function(){ ['jan','kelly','fenna','felix'].forEach(function(r){ woudKlaarZet(r); }); toonWoudEindBlok(); close(); }, inWoudWinScreen, 'Woud'],
       ['🎬 Start woudscène nu',      function(){ close(); startWoudSceneInSpel(); }, inWoudWinScreen && !hasVisited('woud_filmpje_gezien'), 'Woud'],
+      ['🗣️ Spring naar de dialoog',   function(){ close(); if (woudSceneInstantie) woudSceneInstantie.goTo(4); }, !!woudSceneContainer, 'Woud'],
+      ['👍 Alle 4 dialoog klaar',     function(){ ['jan','kelly','fenna','felix'].forEach(function(r){ woudSceneKlaarZet(r); }); close(); }, !!woudSceneContainer, 'Woud'],
       ['⏭️ Woudscène overslaan',      function(){ close(); beeindigWoudScene(); }, !!woudSceneContainer, 'Woud'],
     ];
   } else if (inHeerDonatuslaan) {
@@ -16936,29 +16962,42 @@ function startWoudSceneInSpel() {
   woudSceneContainer.id = 'woudscene-container';
   woudSceneContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
   document.body.appendChild(woudSceneContainer);
+  document.body.classList.add('woudscene-actief');
 
-  woudSceneInstantie = new WoudScene(woudSceneContainer);
-  woudSceneInstantie.start(toonWoudSceneDialoogPlaceholder);
+  woudSceneInstantie = new WoudScene(woudSceneContainer, {
+    wachtVoorFinale: woudSceneWachtOpIedereen
+  });
+  woudSceneInstantie.start(beeindigWoudScene);
 }
 
-// [Placeholder: hier schuift deel 4 (de dialoog) later tussen.]
-// De scène blijft na deel 3 op het laatste beeld staan; dit paneel
-// komt eroverheen.
-function toonWoudSceneDialoogPlaceholder() {
-  if (!woudSceneContainer) return;
-  var paneel = document.createElement('div');
-  paneel.id = 'woudscene-dialoog-placeholder';
-  paneel.style.cssText = 'position:absolute;left:50%;bottom:8%;transform:translateX(-50%);z-index:600;max-width:80%;text-align:center;padding:1.25rem 2rem;background:rgba(13,10,6,.88);border:1px solid rgba(201,168,76,.3);border-radius:6px';
-  paneel.innerHTML =
-    '<p style="font-family:Cinzel,serif;font-size:1rem;color:var(--gold);letter-spacing:.05em;margin:0">[Placeholder: hier komt dialoog]</p>' +
-    '<button class="dh-btn" style="margin-top:1rem" onclick="beeindigWoudScene()">Verder</button>';
-  woudSceneContainer.appendChild(paneel);
+// De poort vlak vóór het wegvallen (einde van de dialoog). Deze speler
+// meldt zich aan in de gedeelde staat en blijft op het stilstaande beeld
+// wachten, met een korte stand in beeld, tot alle vier zover zijn. Pas
+// dan gaat op elke tablet tegelijk het geluid weg en het beeld naar zwart.
+var woudSceneWachtTimer = null;
+
+function woudSceneWachtOpIedereen(ga, meldStand) {
+  if (state.personage) woudSceneKlaarZet(state.personage);
+  (function poll() {
+    clearTimeout(woudSceneWachtTimer);
+    woudSceneWachtTimer = null;
+    const aantal = woudSceneKlaarAantal();
+    if (aantal >= 4) {
+      if (typeof meldStand === 'function') meldStand('');
+      ga();
+      return;
+    }
+    if (typeof meldStand === 'function') meldStand(aantal + ' / 4');
+    woudSceneWachtTimer = setTimeout(poll, 1500);
+  })();
 }
 
 // Ruimt de scène op en draait daarna het bestaande vervolg (vloek,
 // ontgrendeling Heer Donatuslaan). Ook de nood-overslaan in het
 // debug-paneel komt hier uit.
 function beeindigWoudScene() {
+  clearTimeout(woudSceneWachtTimer);
+  woudSceneWachtTimer = null;
   if (woudSceneInstantie) {
     try { woudSceneInstantie.destroy(); } catch (e) {}
     woudSceneInstantie = null;
@@ -16967,6 +17006,7 @@ function beeindigWoudScene() {
     woudSceneContainer.remove();
     woudSceneContainer = null;
   }
+  document.body.classList.remove('woudscene-actief');
   openHeerDonatuslaanVanuitWoud();
 }
 
