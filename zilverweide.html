@@ -395,6 +395,29 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .inv-ov-emoji.item-afbeelding[src$="munten.png"],
 .inv-ov-detail-emoji.item-afbeelding[src$="munten.png"]{transform:scale(1.6)}
 .inv-ov-naam{font-family:'Crimson Text',Georgia,serif;font-size:.95rem;color:var(--parchment);text-align:center;line-height:1.2}
+/* Voorwerp waarvan de afbeelding nog moet komen: het woord zelf in het
+   plaatjesvak, met een stippellijn zodat meteen duidelijk is dat hier nog
+   een plaatje hoort. Vervalt zodra het item in ITEM_AFBEELDINGEN staat. */
+.item-woord{
+  font-family:'Cinzel',serif;font-size:1.15rem !important;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--gold-dim);
+  border:1px dashed rgba(201,168,76,.4);border-radius:4px;
+  padding:.5rem .8rem;line-height:1;filter:none;
+}
+/* Aantal-badge, rechtsboven op het rugzakvakje en op het detailplaatje. */
+.item-aantal{
+  position:absolute;top:.35rem;right:.35rem;z-index:2;
+  min-width:1.45rem;height:1.45rem;padding:0 .3rem;box-sizing:border-box;
+  display:inline-flex;align-items:center;justify-content:center;
+  border-radius:50%;border:1px solid rgba(201,168,76,.55);
+  background:rgba(13,10,6,.92);color:var(--gold);
+  font-family:'Cinzel',serif;font-size:.8rem;line-height:1;
+  box-shadow:0 0 12px rgba(201,168,76,.25);
+}
+.inv-ov-detail-visual .item-aantal{top:0;right:0}
+/* In het melding-pilletje naast de rugzak staat de naam er al naast; daar
+   zou het placeholder-woord hem twee keer tonen. */
+#nieuw-voorwerp-melding .item-woord{display:none}
 /* Korte schermen (telefoon in landscape): kleinere vakjes en een scrollbare
    grid-zone met de Terug-knop vast onderin, zodat die altijd bereikbaar blijft
    (voorheen viel hij onder de rand weg). */
@@ -406,6 +429,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
   .inv-ov-grid{max-width:min(92vw,430px);gap:.5rem;margin:.5rem auto 0;flex:1 1 auto;min-height:0;overflow-y:auto}
   .inv-ov-emoji{font-size:2.6rem}
   .inv-ov-emoji.item-afbeelding{width:3rem;height:3rem}
+  .inv-ov-emoji.item-woord{font-size:.78rem !important;padding:.35rem .5rem;letter-spacing:.06em}
+  .item-aantal{min-width:1.15rem;height:1.15rem;font-size:.65rem}
   .inv-ov-naam{font-size:.72rem}
   .inv-ov-kaart{padding:.4rem .3rem;gap:.25rem;border-radius:7px}
   .inv-ov-detail{min-height:0;overflow-y:auto}
@@ -4436,6 +4461,28 @@ function addInventory(emoji, naam, toonPopup=true) {
   }
 }
 
+// Voorwerp dat je meer dan één keer kunt hebben. Heb je het al, dan gaat de
+// teller omhoog in plaats van dat er een tweede vakje bij komt (addInventory
+// weigert een tweede voorwerp met dezelfde naam). Bedoeld voor voorraad zoals
+// de naalden; latere vondsten kunnen er zo bij opgeteld worden.
+function geefMeervoudigItem(emoji, naam, aantal) {
+  aantal = aantal || 1;
+  var bestaand = state.inventory.find(function (i) { return i.naam === naam; });
+  if (bestaand) {
+    bestaand.aantal = (bestaand.aantal || 1) + aantal;
+    updateInventoryBar();
+    if (!state.debugSkipBezig) {
+      window._rugzakNieuw = true;
+      updateInvTeller();
+      nieuwVoorwerpMelding(emoji, naam);
+    }
+    return;
+  }
+  addInventory(emoji, naam, false);
+  var nieuw = state.inventory.find(function (i) { return i.naam === naam; });
+  if (nieuw) nieuw.aantal = aantal;
+}
+
 function updateInventoryBar() {
   // Reset finale popup flag if tokens are no longer all present
   if (!alleFinaleCodesVerzameld()) state.finalePopupGetoond = false;
@@ -4548,12 +4595,30 @@ var ITEM_AFBEELDINGEN = {
   'Vleespen':             'items/vleespenitem.png',      // Jan's lockpick-speld (slagerij)
   'Flesje':               'items/flesjeitem.png'         // anti-Schaduw middel (H7 Apotheker)
 };
+// Voorwerpen waarvan de afbeelding nog gemaakt moet worden. Tot die tijd
+// staat het woord zelf in het plaatjesvak, herkenbaar als placeholder. Zodra
+// de afbeelding er is: naam in ITEM_AFBEELDINGEN zetten en hier weghalen.
+var ITEM_PLACEHOLDER_WOORD = {
+  'Naald': 'Naald'
+};
+
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
-// afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
+// afbeelding voor is, anders het placeholder-woord of de emoji in een span.
+// 'klasse' is de maat-klasse.
 function itemVisueel(naam, emoji, klasse) {
   var src = ITEM_AFBEELDINGEN[naam];
   if (src) return '<img class="' + klasse + ' item-afbeelding" src="' + src + '" alt="">';
+  var woord = ITEM_PLACEHOLDER_WOORD[naam];
+  if (woord) return '<span class="' + klasse + ' item-woord">' + woord + '</span>';
   return '<span class="' + klasse + '">' + (emoji || '') + '</span>';
+}
+
+// Aantal-badge voor voorwerpen die je meer dan één keer kunt hebben.
+// Onder de twee komt er niets, dan is een rondje met een 1 alleen ruis.
+function itemAantalBadge(item) {
+  var n = item && item.aantal ? item.aantal : 1;
+  if (n < 2) return '';
+  return '<span class="item-aantal">' + n + '</span>';
 }
 
 // Itemtekst voor het rugzak-detailvenster (op naam). Items die hier niet in
@@ -4609,6 +4674,7 @@ function bouwInventarisGrid() {
     var vertraging = ' style="animation-delay:' + (idx * 0.04).toFixed(2) + 's"';
     if (i) {
       html += '<button class="inv-ov-kaart" onclick="toonInventarisItem(' + idx + ')"' + vertraging + '>' +
+                itemAantalBadge(i) +
                 itemVisueel(i.naam, i.emoji, 'inv-ov-emoji') +
                 '<span class="inv-ov-naam">' + i.naam + '</span>' +
               '</button>';
@@ -4637,7 +4703,7 @@ function toonInventarisItem(idx) {
     : '';
   var tekst = itemTekst(i.naam) || ('[Placeholder: hier komt de uitleg over ' + i.naam + '.]');
   d.innerHTML =
-    '<div class="inv-ov-detail-visual">' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
+    '<div class="inv-ov-detail-visual">' + itemAantalBadge(i) + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
     '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
     '<div class="inv-ov-detail-note"><p>' + tekst + '</p></div>' +
     actieKnop +
@@ -7465,6 +7531,30 @@ function kiesVermommingSteegje(naam) {
 // Iedereen ziet het lege huis met de beer met naalden.
 // Felix krijgt daarbovenop een morele keuze rond een zak munten.
 // ─────────────────────────────────────────────────────────────────
+// Hoeveel naalden je in één keer meeneemt. Later kunnen er van elders meer
+// bijkomen; de teller in de rugzak telt gewoon door.
+var DD2_NAALDEN_AANTAL = 3;
+
+// Het poppetje met de naalden op de voorkamer-afbeelding is aanklikbaar,
+// zonder dat iets dat verraadt. De eerste speler die het vindt neemt de
+// naalden mee; daarna is er voor de rest niets meer te halen (gedeeld).
+// De coördinaten zijn pixels in nummer2voorkamer.jpeg (1280 x 720).
+function dd2NaaldHotspot() {
+  if (getSharedState('dd2_naalden_gepakt')) return;
+  zetSceneHotspot({
+    bevat: 'nummer2voorkamer',
+    natBreedte: 1280, natHoogte: 720,
+    x1: 450, y1: 529, x2: 570, y2: 625,
+    onKlik: function (el) {
+      if (el && el.parentNode) el.parentNode.removeChild(el);
+      // Verse stand: een ander kan er net voor geweest zijn.
+      if (getSharedState('dd2_naalden_gepakt')) return;
+      setSharedState('dd2_naalden_gepakt', true);
+      geefMeervoudigItem('', 'Naald', DD2_NAALDEN_AANTAL);
+    }
+  });
+}
+
 function renderDd2Nummer2(loc) {
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   const p = state.personage;
@@ -7533,6 +7623,7 @@ function renderDd2Nummer2(loc) {
           { label: '\ud83d\udd73\ufe0f Naar de achterkamer', onclick: function() { renderDd2Nummer2(Object.assign({}, loc, { _binnen: true, _achterkamer: true })); } }
         ]
       });
+      dd2NaaldHotspot();
       return;
     }
     // Achterkamer: de zak munten en de keuze.
@@ -7602,6 +7693,7 @@ function renderDd2Nummer2(loc) {
         'Kelly rent weg. Ze denkt nog: dat draad leek echt bekend. Of verbeeld ik me dat?'
       ]
     });
+    dd2NaaldHotspot();
     return;
   }
 
@@ -7633,6 +7725,7 @@ function renderDd2Nummer2(loc) {
         'Dit voelt niet goed. Fenna draait zich om en vlucht.'
       ]
     });
+    dd2NaaldHotspot();
     return;
   }
 
@@ -8984,6 +9077,73 @@ function zetKraaiOpScene(container, src, opts) {
     if (opts.width) k.style.width = opts.width;
     box.appendChild(k);
   });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// VERBORGEN KLIKGEBIED OP EEN SCENE-AFBEELDING
+// ══════════════════════════════════════════════════════════════════
+// Coördinaten geef je op in pixels van de originele afbeelding (x1,y1 is
+// linksboven, x2,y2 rechtsonder). De afbeelding staat als background met
+// `cover`, dus we rekenen diezelfde schaal en uitsnede na. Zo blijft het
+// gebied op de goede plek staan, ook als het vak door max-height net van
+// 16:9 afwijkt en cover dus iets wegsnijdt. Bij draaien of formaatwissel
+// wordt het opnieuw geplaatst.
+//
+// Het gebied is volledig onzichtbaar: geen randje, geen gloed, niets dat
+// verraadt dat er iets te halen valt. Het vignet over de afbeelding heeft
+// pointer-events:none, dus de klik komt gewoon aan.
+//
+//   zetSceneHotspot({ bevat:'nummer2voorkamer', natBreedte:1280, natHoogte:720,
+//                     x1:450, y1:529, x2:570, y2:625, onKlik: function(el){} })
+function zetSceneHotspot(opts) {
+  var box = document.querySelector('#locatie-content .sc-image');
+  if (!box) return;
+  // Zekerheidscheck: hoort dit gebied wel bij de afbeelding die er nu staat?
+  // Scenes zonder eigen beeld vallen terug op de locatie-afbeelding, en daar
+  // hoort het klikgebied niet op te verschijnen.
+  if (opts.bevat) {
+    var bg = '';
+    try { bg = window.getComputedStyle(box).backgroundImage || ''; } catch (e) {}
+    if (bg.indexOf(opts.bevat) === -1) return;
+  }
+  var oud = box.querySelector('.scene-hotspot');
+  if (oud && oud.parentNode) oud.parentNode.removeChild(oud);
+
+  var hs = document.createElement('button');
+  hs.type = 'button';
+  hs.className = 'scene-hotspot';
+  hs.setAttribute('aria-hidden', 'true');
+  hs.tabIndex = -1;
+  hs.onclick = function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (typeof opts.onKlik === 'function') opts.onKlik(hs);
+  };
+  if (window.getComputedStyle(box).position === 'static') box.style.position = 'relative';
+  box.appendChild(hs);
+
+  var pogingen = 0;
+  function plaats() {
+    if (!hs.parentNode) { window.removeEventListener('resize', plaats); return; }
+    var bw = box.clientWidth, bh = box.clientHeight;
+    if (!bw || !bh) {
+      // Scherm nog niet opgemeten (bv. scene net opgebouwd): volgende frame
+      // opnieuw. Zonder deze herkansing blijft het gebied 0 bij 0 groot.
+      if (pogingen++ < 20) requestAnimationFrame(plaats);
+      return;
+    }
+    pogingen = 0;
+    var schaal = Math.max(bw / opts.natBreedte, bh / opts.natHoogte);
+    var offX = (bw - opts.natBreedte * schaal) / 2;
+    var offY = (bh - opts.natHoogte * schaal) / 2;
+    hs.style.left   = (offX + opts.x1 * schaal) + 'px';
+    hs.style.top    = (offY + opts.y1 * schaal) + 'px';
+    hs.style.width  = ((opts.x2 - opts.x1) * schaal) + 'px';
+    hs.style.height = ((opts.y2 - opts.y1) * schaal) + 'px';
+  }
+  requestAnimationFrame(plaats);
+  window.addEventListener('resize', plaats);
+  return hs;
 }
 
 function renderK1Groenteboer(loc) {
@@ -13368,6 +13528,15 @@ function debugVermomFelix(naam) {
   }
 }
 
+// Testpaneel: de naalden terug naar nul, zodat het klikgebied bij het
+// poppetje op de voorkamer-afbeelding weer voor iedereen open staat.
+function debugResetNaalden() {
+  setSharedState('dd2_naalden_gepakt', null);
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== 'Naald'; });
+  updateInventoryBar();
+  toonToast('🪡', 'Naalden gereset');
+}
+
 // Testpaneel: de stille hulpklok van een district meteen op afgelopen zetten,
 // zodat je Stazia's diepere hint niet vijftien minuten hoeft af te wachten.
 // De klok is gedeeld, dus dit werkt meteen op alle vier de tablets.
@@ -14224,6 +14393,9 @@ function buildDebugPanel() {
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
       ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
+      // ── Naalden bij het poppetje op de voorkamer-afbeelding
+      ['🪡 + ' + DD2_NAALDEN_AANTAL + ' Naalden (DD2)', function(){ setSharedState('dd2_naalden_gepakt', true); geefMeervoudigItem('', 'Naald', DD2_NAALDEN_AANTAL); close(); }, true, 'Naalden (DD2)'],
+      ['🔄 Reset naalden (DD2)',     function(){ debugResetNaalden(); close(); }, true, 'Naalden (DD2)'],
       // ── Jan-Lola-sleutel keten
       ['🟫 Jan krijgt klei',          function(){ debugJanKlei(); close(); }, !heeftKlei && !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
       ['🔲 Jan heeft afdruk',         function(){ debugJanAfdruk(); close(); }, !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
@@ -18551,6 +18723,15 @@ function toonStemmenStil(stil) {
 .dgbk-arrow-volgende:hover{ transform:translateX(3px); }
 /* verborgen maar met behoud van ruimte, zodat het dagboek gecentreerd blijft */
 .dgbk-onzicht{ visibility:hidden !important; pointer-events:none !important; }
+
+/* Verborgen klikgebied op een scène-afbeelding (positie via JS, zie
+   zetSceneHotspot). Volledig onzichtbaar, ook geen tap-highlight. */
+.scene-hotspot{
+  position:absolute; z-index:4;
+  padding:0; margin:0; border:none; background:none;
+  cursor:pointer; -webkit-tap-highlight-color:transparent;
+  appearance:none; -webkit-appearance:none;
+}
 
 /* Kraai die op een scène-afbeelding zit (positie via inline top/right). */
 .scene-kraai{
