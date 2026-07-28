@@ -3,8 +3,8 @@
    ------------------------------------------------------------------
    Publieke API:
      var scene = new WoudScene(container[, opts]);
-     scene.start(onKlaar);      // start bij deel 1, roept onKlaar aan na deel 3
-     scene.goTo(1|2|3);         // spring direct naar een deel (voor debug/demo)
+     scene.start(onKlaar);      // start bij deel 1, roept onKlaar aan na deel 4
+     scene.goTo(1|2|3|4);       // spring direct naar een deel (voor debug/demo)
      scene.replay(onKlaar);     // stop de huidige loop en begin opnieuw
      scene.set('deel2.panAfstand', 30);   // live instelling wijzigen (dot-pad)
      scene.getConfig();         // huidige config (diepe kopie), voor het debugpaneel
@@ -17,8 +17,17 @@
                deel1/deel2/deel3). Ontbrekende velden vallen terug op de
                standaardwaarden.
 
-   Deel 4 (dialoog) valt buiten deze module: na deel 3 blijft beeld a3
-   gewoon staan en wordt onKlaar aangeroepen, zonder naar zwart te gaan.
+   Deel 4 (de dialoog) speelt op het stilstaande a3: gloed en deeltjes
+   lopen door, elke klik zet één regel door, en na de laatste gesproken
+   regel volgt het wegvallen (geluid weg, beeld onscherp naar zwart, drie
+   korte app-teksten, stilte) en pas daarna onKlaar. Alle dialoogregels
+   staan als één lijst in DEFAULTS.dialoog.
+
+   opts.wachtVoorFinale (optioneel, functie): wordt aangeroepen vlak vóór
+   het wegvallen, met (ga, meldStand). De scène wacht tot ga() geroepen
+   wordt, zodat vier tablets tegelijk naar zwart gaan; meldStand(tekst)
+   toont ondertussen een korte stand ("3 / 4") op het stilstaande beeld.
+   Zonder deze functie (testpagina) loopt de scène gewoon door.
 
    Placeholders: elk beeld wordt vooraf geprobeerd te laden (Image met
    onload/onerror, nooit een reject die de sequentie blokkeert). Lukt het
@@ -52,7 +61,16 @@
       a1: 'locaties/dorendael/ws-a1.jpg',
       a3: 'locaties/dorendael/ws-a3.jpg',
       b0: 'locaties/dorendael/ws-b0.jpg',
-      b1: 'locaties/dorendael/ws-b1.jpg'
+      b1: 'locaties/dorendael/ws-b1.jpg',
+      // Close-ups per spreker in deel 4, volledig optioneel. Ontbreekt een
+      // bestand, dan blijft a3 gewoon in beeld. Let op het verschil met de
+      // andere beelden: hier komt bewust GEEN placeholder-vlak, want dat
+      // zou midden in de dialoog het beeld wegnemen.
+      portret: {
+        links:  'locaties/dorendael/ws-portret-links.png',
+        midden: 'locaties/dorendael/ws-portret-midden.png',
+        rechts: 'locaties/dorendael/ws-portret-rechts.png'
+      }
     },
     audio: {
       muziek:     'geluid/doolhof/ws-muziek.mp3',
@@ -171,7 +189,79 @@
       levensduur: 5000,      // ms tot een deeltje dooft (altijd vóór de bovenkant)
       dekking: 0.7,
       scherpte: 0.5          // 0 = heel wazig bolletje, 1 = scherp puntje
-    }
+    },
+    // Zones van de drie figuren op a3, als fractie (0..1) van het beeld,
+    // net als de rozen. Alleen het middelpunt wordt vastgelegd (met de
+    // plaatsmodus op de testpagina); de grootte van de dim-ovaal staat in
+    // deel4.dimBreedte/dimHoogte. Blijft een zone leeg, dan wordt die
+    // figuur simpelweg niet gedimd. Dat is geen bug.
+    heksZones: {
+      links: null,
+      midden: null,
+      rechts: null
+    },
+    // Deel 4: de dialoog op het stilstaande a3, gloed en deeltjes blijven
+    // gewoon doorlopen. Alle duren regelbaar vanuit het debugpaneel.
+    deel4: {
+      boxBreedte: 34,         // % van de schermbreedte, dus niet schermvullend
+      regelFadeDuur: 400,     // ms in-/uitfaden van een regel
+      dimSterkte: 0.5,        // 0..1, hoe donker de twee zwijgende figuren worden
+      dimBreedte: 26,         // % van de beeldbreedte, doorsnee van de dim-ovaal
+      dimHoogte: 38,          // % van de beeldhoogte
+      dimZachtheid: 40,       // px blur op de rand van de ovaal
+      geplukteRoos: 0,        // index in rozen.a3 die in beat 7 permanent dooft
+      restFactor: 0.55,       // waar de overige rozen naar terugzakken na de pluk
+      // Beat 9, het wegvallen. Drie losse duren, precies zoals gevraagd.
+      geluidWegDuur: 500,     // ms waarin al het geluid uitfadet
+      zwartDuur: 3000,        // ms waarin het beeld onscherp wordt en naar zwart zakt
+      blurZwart: 20,          // px onscherpte op het diepste punt
+      appTekstPauze: 1400,    // ms tussen de app-teksten tijdens het wegzakken
+      stilteDuur: 2500        // ms volledig zwart voordat de callback komt
+    },
+    // ── De dialoogregels, alles op één plek ────────────────────────
+    // wie: 'links' | 'midden' | 'rechts' (bepaalt waar de box staat en wie
+    // er niet gedimd wordt) of 'app' (gecentreerde spelerstekst zonder box).
+    // Er staan bewust geen namen in beeld: de speler leidt zelf af wie wie
+    // is. Beat 1 tot en met 8 klikken door; beat 9 loopt vanzelf af.
+    //
+    // Twee regels liggen vast en mogen niet zomaar herschreven worden:
+    //   * "avonden wegblijft" in beat 5 (hier hangt de eindfinale aan)
+    //   * "kind" in beat 6 (spelers herkennen dat woord later terug)
+    dialoog: [
+      { beat: 1, wie: 'rechts', tekst: 'Jullie zijn ver gekomen.' },
+      { beat: 1, wie: 'rechts', tekst: 'Maar dit is geen einde.' },
+
+      { beat: 2, wie: 'rechts', tekst: 'Eén van ons hebben jullie in het Kraaienkwartier gezien.' },
+      { beat: 2, wie: 'links',  tekst: 'En één hier.' },
+      { beat: 2, wie: 'rechts', tekst: 'Nu ken je ons alle drie.' },
+
+      { beat: 3, wie: 'rechts', tekst: 'Terwijl jullie liepen te zoeken, hebben wij gewerkt.' },
+      { beat: 3, wie: 'links',  tekst: 'Eén straat is vanavond al stil. De monden dicht, de draad erdoorheen.' },
+      { beat: 3, wie: 'rechts', tekst: 'Het hele dorp was aan de beurt. En daarna de rest.' },
+
+      { beat: 4, wie: 'links',  tekst: 'Maar jullie hebben ons gevonden. Dus wachten we niet meer.' },
+      { beat: 4, wie: 'links',  tekst: 'Het gebeurt vanavond. Alles.' },
+
+      { beat: 5, wie: 'midden', tekst: 'Jullie zijn nog jong.' },
+      { beat: 5, wie: 'midden', tekst: 'Let maar eens op wanneer hij avonden wegblijft. En niet zegt waar hij was.' },
+      { beat: 5, wie: 'midden', tekst: 'Mannen.' },
+      { beat: 5, wie: 'midden', tekst: 'Vreemdgangers. Vies.' },
+      { beat: 5, wie: 'midden', tekst: 'IK HAAT JULLIE.' },
+
+      { beat: 6, wie: 'links',  tekst: 'Sybille.' },
+      { beat: 6, wie: 'rechts', tekst: 'Rustig, kind.' },
+
+      { beat: 7, wie: 'app',    tekst: 'Ze bukt zich en plukt een van de rozen.', effect: 'rozenpluk' },
+      { beat: 7, wie: 'rechts', tekst: 'Jullie mogen toekijken hoe het misgaat.' },
+
+      { beat: 8, wie: 'rechts', tekst: 'En om zeker te weten dat jullie niet te veel in de weg lopen, nemen we er één mee.' },
+
+      // Beat 9 klikt niet door: deze drie regels lopen vanzelf af terwijl
+      // het geluid wegvalt en het beeld naar zwart zakt.
+      { beat: 9, wie: 'app',    tekst: 'Het licht in haar hand dooft.' },
+      { beat: 9, wie: 'app',    tekst: 'Je voelt het in je borst voordat je begrijpt wat het is.' },
+      { beat: 9, wie: 'app',    tekst: 'Je knieën geven mee.' }
+    ]
   };
 
   // ── Kleine hulpjes ──────────────────────────────────────────────
@@ -256,6 +346,13 @@
   function WoudScene(container, opts) {
     this.container = (typeof container === 'string') ? document.querySelector(container) : container;
     this.config = diepeMerge(DEFAULTS, opts || {});
+    // Wachtfunctie vóór het wegvallen (beat 9). De module weet zelf niets
+    // van gedeelde staat: de host geeft een functie mee die pas terugmeldt
+    // als iedereen zover is. Ontbreekt hij (testpagina), dan loopt de
+    // scène gewoon door. Uit de config gehaald zodat getConfig() puur data
+    // blijft en het debugpaneel er niet over struikelt.
+    this._wachtVoorFinale = (opts && typeof opts.wachtVoorFinale === 'function') ? opts.wachtVoorFinale : null;
+    delete this.config.wachtVoorFinale;
     this.el = null;               // root-element van de scène
     this._laagA = null;           // onderste beeld-laag
     this._laagB = null;           // bovenste beeld-laag (voor crossfade/wissel)
@@ -277,6 +374,10 @@
     this._deeltjesRafId = null;
     this._deeltjesPauzeStart = null;
     this._onKlaar = null;
+    this._dialoogLaag = null;     // overlay met dim-ovalen, box en app-tekst
+    this._dialoogIndex = 0;       // positie in de klikbare regels (beat 1 t/m 8)
+    this._dialoogKlikHandler = null;
+    this._zwartLaag = null;
   }
 
   // ── Voorladen ───────────────────────────────────────────────────
@@ -295,7 +396,9 @@
 
   WoudScene.prototype._alleBeeldPaden = function () {
     var im = this.config.images;
-    return [].concat(im.bos, im.spook, [im.a0, im.a1, im.a3, im.b0, im.b1]);
+    var portret = im.portret || {};
+    return [].concat(im.bos, im.spook, [im.a0, im.a1, im.a3, im.b0, im.b1],
+      [portret.links, portret.midden, portret.rechts].filter(Boolean));
   };
 
   // Probeert een geluidsbestand te laden; onthoudt alleen of het lukte
@@ -775,7 +878,16 @@
       if (self._gestopt) return;
       if (deel <= 1) self._deel1();
       else if (deel === 2) self._deel2();
-      else self._deel3();
+      else if (deel === 3) self._deel3();
+      else {
+        // Deel 4 speelt op het stilstaande a3: die stand eerst zelf
+        // neerzetten, want deel 3 heeft hem nu niet opgebouwd.
+        self._pasKleurToe('deel3');
+        self._vulLaag(self._laagA, self.config.images.a3);
+        self._laagA.style.opacity = '1';
+        self._laagB.style.opacity = '0';
+        self._deel4();
+      }
     });
     return this;
   };
@@ -795,6 +907,13 @@
     }
     if (delen[0] === 'gloed') {
       this._verversGloeden();
+    }
+    // Dim-ovalen en boxbreedte meteen live bijwerken zolang de dialoog in
+    // beeld is, zodat schuifregelaars direct effect hebben.
+    if ((delen[0] === 'deel4' || delen[0] === 'heksZones') && this._dialoogLaag) {
+      this._zetDimming(this._huidigeSpreker || null);
+      var box = this._dialoogLaag.querySelector('.ws-dialoogbox');
+      if (box) box.style.width = this.config.deel4.boxBreedte + '%';
     }
     if (delen[0] === 'deeltjes') {
       this._verversDeeltjesConfig();
@@ -987,6 +1106,12 @@
     this._deeltjesCanvassen = [];
     if (this._gammaSvg && this._gammaSvg.parentNode) this._gammaSvg.parentNode.removeChild(this._gammaSvg);
     this._gammaSvg = null;
+    if (this._dialoogLaag && this._dialoogKlikHandler) {
+      this._dialoogLaag.removeEventListener('click', this._dialoogKlikHandler);
+    }
+    this._dialoogKlikHandler = null;
+    this._dialoogLaag = null;
+    this._zwartLaag = null;
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
     this.el = this._laagA = this._laagB = this._spookLaag = null;
   };
@@ -1397,15 +1522,259 @@
     function beatHoldA3Eind() {
       var andereLaag = (eigenLaag === self._laagA) ? self._laagB : self._laagA;
       self._merkBeat('hold-a3-eind', function () { naarStand(andereLaag, im.a3, 0); }, function () {
-        // 11. vier seconden vasthouden, dan klaar
-        self._setTimeout(function () {
-          self._running = false;
-          if (typeof self._onKlaar === 'function') self._onKlaar();
-        }, cfg.holdA3Eind);
+        // 11. vier seconden vasthouden, dan door naar de dialoog
+        self._setTimeout(function () { self._deel4(); }, cfg.holdA3Eind);
       });
     }
 
     beatFluister1();
+  };
+
+  // ── Deel 4, de dialoog ─────────────────────────────────────────
+  // Speelt op het stilstaande a3. Gloed en deeltjes blijven doorlopen,
+  // dus hier wordt bewust niets aan de beeldlagen zelf veranderd behalve
+  // een eventueel portret en, aan het eind, het wegzakken naar zwart.
+  WoudScene.prototype._deel4 = function () {
+    this._huidigDeel = 4;
+    this._dialoogIndex = 0;
+    this._bouwDialoogLaag();
+    this._toonHuidigeRegel();
+  };
+
+  // De klikbare regels: alles tot en met beat 8. Beat 9 loopt vanzelf af
+  // en wordt apart afgehandeld in _wegvallen().
+  WoudScene.prototype._klikbareRegels = function () {
+    return this.config.dialoog.filter(function (r) { return r.beat < 9; });
+  };
+
+  WoudScene.prototype._bouwDialoogLaag = function () {
+    if (!this.el || this._dialoogLaag) return;
+    var self = this;
+    var laag = document.createElement('div');
+    laag.className = 'ws-dialoog-laag';
+    laag.innerHTML =
+      '<div class="ws-dimlaag"></div>' +
+      '<div class="ws-portret"></div>' +
+      '<div class="ws-tekstlaag"></div>' +
+      '<div class="ws-wachtmelding"></div>';
+    this.el.appendChild(laag);
+    this._dialoogLaag = laag;
+
+    // Eén klikvanger over het hele scherm: elke tik zet de dialoog door.
+    this._dialoogKlikHandler = function () { self._volgendeRegel(); };
+    laag.addEventListener('click', this._dialoogKlikHandler);
+  };
+
+  // Zet de dim-ovalen zo dat de spreker helder blijft en de twee anderen
+  // wegzakken. Een figuur zonder vastgelegde zone wordt overgeslagen.
+  WoudScene.prototype._zetDimming = function (spreker) {
+    if (!this._dialoogLaag) return;
+    var cfg = this.config.deel4;
+    var zones = this.config.heksZones;
+    var dim = this._dialoogLaag.querySelector('.ws-dimlaag');
+    dim.innerHTML = '';
+    ['links', 'midden', 'rechts'].forEach(function (positie) {
+      var zone = zones[positie];
+      if (!zone) return;                       // niet vastgelegd, niet dimmen
+      if (positie === spreker) return;         // de spreker blijft helder
+      var ovaal = document.createElement('div');
+      ovaal.className = 'ws-dim-ovaal';
+      ovaal.style.left = (zone.x * 100) + '%';
+      ovaal.style.top = (zone.y * 100) + '%';
+      ovaal.style.width = cfg.dimBreedte + '%';
+      ovaal.style.height = cfg.dimHoogte + '%';
+      ovaal.style.background = 'rgba(0,0,0,' + clamp(cfg.dimSterkte, 0, 1) + ')';
+      ovaal.style.filter = 'blur(' + cfg.dimZachtheid + 'px)';
+      dim.appendChild(ovaal);
+    });
+  };
+
+  // Toont het portret van de spreker als dat bestand bestaat. Ontbreekt
+  // het, dan blijft a3 staan: geen placeholder, zie de opmerking bij
+  // images.portret.
+  WoudScene.prototype._zetPortret = function (spreker) {
+    if (!this._dialoogLaag) return;
+    var el = this._dialoogLaag.querySelector('.ws-portret');
+    var paden = this.config.images.portret || {};
+    var src = spreker ? paden[spreker] : null;
+    if (src && this._beeldStatus[src]) {
+      el.style.backgroundImage = 'url("' + src + '")';
+      el.classList.add('zichtbaar');
+    } else {
+      el.classList.remove('zichtbaar');
+      el.style.backgroundImage = '';
+    }
+  };
+
+  // Tekent één regel. Een sprekersregel krijgt een smalle box met pijltje,
+  // uitgelijnd op de positie van die figuur; app-tekst komt gecentreerd en
+  // zonder box in beeld, zodat meteen duidelijk is dat het geen heks is.
+  WoudScene.prototype._toonRegel = function (regel) {
+    if (!this._dialoogLaag) return;
+    var cfg = this.config.deel4;
+    var laag = this._dialoogLaag.querySelector('.ws-tekstlaag');
+    var isApp = (regel.wie === 'app');
+    laag.innerHTML = '';
+
+    var blok = document.createElement('div');
+    blok.className = isApp ? 'ws-apptekst' : ('ws-dialoogbox ws-box-' + regel.wie);
+    if (!isApp) {
+      blok.style.width = cfg.boxBreedte + '%';
+      blok.innerHTML = '<div class="ws-dialoog-pijl"></div>' +
+                       '<p class="ws-dialoog-tekst"></p>';
+      blok.querySelector('.ws-dialoog-tekst').textContent = regel.tekst;
+    } else {
+      blok.textContent = regel.tekst;
+    }
+    blok.style.transition = 'opacity ' + cfg.regelFadeDuur + 'ms ease';
+    laag.appendChild(blok);
+    void blok.offsetWidth;                     // reflow, anders geen fade
+    blok.classList.add('zichtbaar');
+
+    this._zetDimming(isApp ? null : regel.wie);
+    this._zetPortret(isApp ? null : regel.wie);
+  };
+
+  WoudScene.prototype._toonHuidigeRegel = function () {
+    var regels = this._klikbareRegels();
+    var regel = regels[this._dialoogIndex];
+    if (!regel) return;
+    this._huidigeSpreker = (regel.wie === 'app') ? null : regel.wie;
+    this._toonRegel(regel);
+    if (regel.effect === 'rozenpluk') this._plukRoos();
+  };
+
+  // Klik: volgende regel, of, als de laatste gesproken regel geweest is,
+  // eerst wachten tot de andere spelers zover zijn en dan het wegvallen.
+  WoudScene.prototype._volgendeRegel = function () {
+    if (this._gestopt || this._gepauzeerd) return;
+    var regels = this._klikbareRegels();
+    this._dialoogIndex++;
+    if (this._dialoogIndex < regels.length) {
+      this._toonHuidigeRegel();
+      return;
+    }
+    this._wachtDanWegvallen();
+  };
+
+  // De poort vlak vóór het wegvallen: iedereen valt tegelijk weg, ook al
+  // heeft de een sneller doorgeklikt dan de ander. Zonder wachtfunctie
+  // (testpagina) gaat het meteen door.
+  WoudScene.prototype._wachtDanWegvallen = function () {
+    var self = this;
+    // Klikken doet vanaf hier niets meer: de scène loopt zelf af.
+    if (this._dialoogLaag && this._dialoogKlikHandler) {
+      this._dialoogLaag.removeEventListener('click', this._dialoogKlikHandler);
+      this._dialoogKlikHandler = null;
+    }
+    if (!this._wachtVoorFinale) { this._wegvallen(); return; }
+    this._wachtVoorFinale(function () {
+      if (self._gestopt) return;
+      self._toonWachtmelding('');
+      self._wegvallen();
+    }, function (tekst) {                      // tussentijdse standmelding
+      if (!self._gestopt) self._toonWachtmelding(tekst);
+    });
+  };
+
+  WoudScene.prototype._toonWachtmelding = function (tekst) {
+    if (!this._dialoogLaag) return;
+    var el = this._dialoogLaag.querySelector('.ws-wachtmelding');
+    el.textContent = tekst || '';
+    el.classList.toggle('zichtbaar', !!tekst);
+  };
+
+  // Beat 7: alle rozen lichten kort feller op, de geplukte roos dooft
+  // daarna permanent en de rest zakt zwakker terug.
+  WoudScene.prototype._plukRoos = function () {
+    if (!this.el) return;
+    var self = this;
+    var cfg = this.config.deel4;
+    var gloedCfg = this.config.gloed;
+    this._flakkerGloed();
+    // Bewust iets ná flakkerDuur: _flakkerGloed ruimt aan het eind zijn
+    // eigen inline opacity/animationName weer op, en die opruiming zou
+    // anders precies over deze blijvende wijziging heen lopen.
+    this._setTimeout(function () {
+      if (self._gestopt) return;
+      var els = self.el.querySelectorAll('.ws-gloed');
+      var rest = clamp(gloedCfg.dekking * cfg.restFactor, 0, 1);
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        // De animatie moet er echt af, anders wint hij van de transitie
+        // (zelfde valkuil als in _flakkerGloed).
+        el.style.animationName = 'none';
+        el.style.transition = 'opacity ' + gloedCfg.flakkerDuur + 'ms ease-in-out';
+        el.style.opacity = (i === cfg.geplukteRoos) ? '0' : String(rest);
+      }
+      // De deeltjes van de geplukte roos horen ook te stoppen. Een deeltje
+      // herstart op zijn eigen opgeslagen oorsprong (p.ox/p.oy), niet uit
+      // de posities-lijst, dus alleen die lijst opschonen is niet genoeg:
+      // de al bestaande deeltjes moeten er zelf uit.
+      var pos = (self.config.rozen.a3 || [])[cfg.geplukteRoos];
+      if (pos) {
+        self._deeltjesCanvassen.forEach(function (d) {
+          d.posities = d.posities.filter(function (p, idx) { return idx !== cfg.geplukteRoos; });
+          d.deeltjes = d.deeltjes.filter(function (p) {
+            return Math.abs(p.ox - pos.x) > 0.0001 || Math.abs(p.oy - pos.y) > 0.0001;
+          });
+        });
+      }
+    }, gloedCfg.flakkerDuur + 80);
+  };
+
+  // Beat 9: geluid weg, beeld onscherp en naar zwart, drie korte
+  // app-teksten eroverheen, dan stilte en pas daarna de callback.
+  WoudScene.prototype._wegvallen = function () {
+    var self = this;
+    var cfg = this.config.deel4;
+    var regels = this.config.dialoog.filter(function (r) { return r.beat === 9; });
+
+    this._zetDimming(null);
+    this._zetPortret(null);
+
+    // 1. Alle lopende geluidslagen faden weg.
+    Object.keys(this._audio).forEach(function (k) {
+      self._faadUit(self._audio[k], cfg.geluidWegDuur);
+    });
+
+    // 2. Zwarte laag eroverheen, plus onscherpte op het beeld zelf.
+    var zwart = document.createElement('div');
+    zwart.className = 'ws-zwartlaag';
+    zwart.style.transition = 'opacity ' + cfg.zwartDuur + 'ms ease-in';
+    this.el.appendChild(zwart);
+    this._zwartLaag = zwart;
+
+    var beelden = this.el.querySelectorAll('.ws-beeld');
+    for (var i = 0; i < beelden.length; i++) {
+      beelden[i].style.transition = 'filter ' + cfg.zwartDuur + 'ms ease-in';
+      beelden[i].style.filter = 'blur(' + cfg.blurZwart + 'px)';
+    }
+
+    // 3. De drie app-teksten, verspreid over het wegzakken.
+    if (regels[0]) this._toonRegel(regels[0]);
+    this._setTimeout(function () {
+      if (self._gestopt) return;
+      void zwart.offsetWidth;
+      zwart.style.opacity = '1';               // pas nu naar zwart
+      if (regels[1]) self._toonRegel(regels[1]);
+      self._setTimeout(function () {
+        if (self._gestopt) return;
+        if (regels[2]) self._toonRegel(regels[2]);
+        // Tekst mee laten doven met het beeld.
+        var tekstLaag = self._dialoogLaag && self._dialoogLaag.querySelector('.ws-tekstlaag');
+        if (tekstLaag) {
+          tekstLaag.style.transition = 'opacity ' + Math.round(cfg.zwartDuur / 2) + 'ms ease-in';
+          self._setTimeout(function () { tekstLaag.style.opacity = '0'; }, cfg.appTekstPauze);
+        }
+        // 4. Volledig zwart, stilte, dan pas de callback.
+        self._setTimeout(function () {
+          self._running = false;
+          self._stopAlleAudio();
+          if (typeof self._onKlaar === 'function') self._onKlaar();
+        }, cfg.zwartDuur + cfg.stilteDuur);
+      }, cfg.appTekstPauze);
+    }, cfg.appTekstPauze);
   };
 
   global.WoudScene = WoudScene;
