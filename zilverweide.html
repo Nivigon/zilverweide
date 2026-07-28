@@ -13661,17 +13661,35 @@ function buildDebugPanel() {
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
       // ── Felix & vermommingen
       ['💰 + Munten van Stoop',       function(){ debugItem('💰','Munten van Stoop'); }, p === 'felix', 'Felix & vermommingen'],
-      ['💰 + Munten van Bewoner',     function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix', 'Felix & vermommingen'],
       ['🧶 + Lucinde-outfit',         function(){ addInventory('🧶','Breiwerkje',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
       ['💃 + Lola-outfit',            function(){ addInventory('💃','Latin Jurk',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
-      // ── Sleutel
-      ['✦ Sleutel Wallingen',      function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Sleutel'],
+      ['🐉 + Kegelhoedje (Liu-Yen)',  function(){ debugItem(ITEMS.coneHoedje.emoji, ITEMS.coneHoedje.naam); }, true, 'Felix & vermommingen'],
+      // ── Wallingen
+      ['✦ Mevr. v Wallingen klaar', function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Wallingen'],
       // ── Toren (K3)
       ['📌 + Kromme Speld (toren)', function(){ debugItem('📌','Kromme Speld'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
       ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      ['🔄 Reset Kraaienkwartier',   function(){
+        ['kelly_in_put','kelly_gered','tobbe_gevonden','stoop_beloning_ontvangen','fenna_robbie_bezoek','jan_toren_geklommen','jan_heeft_speld','nummer7_filmpje_gezien','wallingen_informatie_ontvangen'].forEach(function(f){ state.visited.delete(f); });
+        setSharedState('vflag_kelly_in_put', null);
+        setSharedState('vflag_kelly_gered', null);
+        setSharedState('tobbe_gevonden', false);
+        setSharedState('kk_sleutel_dagboek', false);
+        setSharedState('kk_sleutel_wallingen', false);
+        setSharedState('kk_sleutel_robbie', false);
+        setSharedState('kk_sleutel_speld', false);
+        setSharedState('dagboek_gerestaureerd', false);
+        setSharedState('heks_opgelost', false);
+        setSharedState('nummer7_aanwezig', []);
+        state.heksOpgelost = false;
+        state.finalePopupGetoond = false;
+        state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Speld','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
+        updateInventoryBar();
+        close();
+      }, true, 'Finale'],
     ];
   } else if (inDorendael) {
     label = 'Dorendael';
@@ -13714,6 +13732,8 @@ function buildDebugPanel() {
       ['🏚️ Kelly bij molen geweest', function(){ markVisited('molen_doorgelopen'); markVisited('kelly_muziekdoosje_gevonden'); close(); }, p === 'kelly' && !hasVisited('kelly_muziekdoosje_gevonden') && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['🎵 Muziekdoos ingeleverd',   function(){ debugMuziekdoosIngeleverd(); close(); }, !muziekKlaar && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
+      // ── Felix (DD2)
+      ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
       // ── Jan-Lola-sleutel keten
       ['🟫 Jan krijgt klei',          function(){ debugJanKlei(); close(); }, !heeftKlei && !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
       ['🔲 Jan heeft afdruk',         function(){ debugJanAfdruk(); close(); }, !heeftAfdruk && !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
@@ -13777,7 +13797,6 @@ function buildDebugPanel() {
       ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['📖 Alle 4 verhaal klaar (kerk)', function(){ setSharedState('kerk_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['💪 Alle armen bezet',        function(){ debugAlleArmen(); close(); }, true, 'HD Finale'],
-      ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'Finale'],
       ['⛪ Open kerkkelder', function(){ close(); openKerkKelderAanloop(); }, state.tobbeGokOpgelost && !state.kerkkelderGezien, 'HD Finale'],
       ['🎬 Kerkkelder gezien', function(){ state.kerkkelderGezien = true; close(); }, !state.kerkkelderGezien, 'HD Finale'],
       ['🎭 Open finale podium', function(){ close(); openFinalePodium(); }, state.kerkkelderGezien && !state.podiumFinaleKlaar, 'HD Finale'],
@@ -13796,12 +13815,8 @@ function buildDebugPanel() {
       ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }],
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
-      ['📖 Dagboek gerestaureerd',  function(){ setSharedState('dagboek_gerestaureerd', true); close(); }],
+      ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }],
       ['🎬 Filmpje gezien',         function(){ setSharedState('filmpje_gezien', true); close(); }],
-      ['🎭 Alle 4 op podium (finale)', function(){ setSharedState('podium_finale_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'Finale'],
-      ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'Finale'],
-      ['💪 Alle armen bezet',        function(){ debugAlleArmen(); close(); }, true, 'Finale'],
-      ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'Finale'],
     ];
   }
 
