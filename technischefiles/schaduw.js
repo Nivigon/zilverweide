@@ -27,7 +27,7 @@ window.ZilverweideSchaduw = (function () {
   const CFG = {
     fogSrc: 'fog.png',
     spelerId: 'speler',           // wie deze tablet is (voor de server)
-    meterPerSec: 1.1,             // % per seconde dat de meter vult
+    meterPerSec: 0.4167,          // % per seconde: 100 / 240 = vol in 4 minuten
     mistVis: 1.0,                 // bovengrens fog-zichtbaarheid (banken vol opaak bij 90%)
     mistDensity: 0.6,             // hoeveel mistlagen meedoen
     geluidPaden: [
@@ -36,6 +36,13 @@ window.ZilverweideSchaduw = (function () {
       'Schaduwmechanic/schaduwfluister.mp3',
       'schaduwfluister.mp3'
     ],
+    // Mag deze speler nu vergrendeld worden? De host beslist dat, want het
+    // hangt af van gedeelde stand (zit er al iemand anders vast?) en van het
+    // verhaal (Felix opgesloten in H2 kan door niemand bereikt worden).
+    // Geeft null terug als vergrendelen mag, of een object als het NIET mag:
+    //   { reden: 'ander_vast', tekst: '...', meterNa: 70 }
+    // meterNa is de stand waarop de meter verder gaat na het loslaten.
+    blokkeerVergrendeling: null,
     onVergrendel: null,           // callback(code) als deze speler vastraakt
     onBevrijd: null,              // callback() als deze speler vrijkomt
     onDropLocatie: null,          // callback(klaar) als je vastraakt buiten een locatie:
@@ -56,6 +63,12 @@ window.ZilverweideSchaduw = (function () {
     'blijf…', 'dichterbij…', 'het wordt donker…', 'nog even…'
   ];
   const LS_KEY = 'zilverweide_schaduw_lock';
+  // Cadans van het gefluister. MAX geldt bij een lege meter, MIN bij een volle.
+  const FLUISTER_MAX_MS = 45000;
+  const FLUISTER_MIN_MS = 22000;
+  // De snelheid waarop de meter hoort te lopen (vol in 4 minuten). Dient als
+  // ijkpunt voor de testfactor van het gefluister.
+  const NORMAAL_PER_SEC = 0.4167;
 
   // ── Toestand ─────────────────────────────────────────────────────
   let el = {};                    // DOM-verwijzingen
@@ -77,6 +90,8 @@ window.ZilverweideSchaduw = (function () {
   // tot ze het zegel goed naspeelt; dan wijkt de schim. Losgekoppeld van de
   // echte vloek (cursed/meter/lock blijven ongemoeid).
   let handModus = false, handActief = false, handWhisperTimer = null, handKlaarCb = null;
+  let fluisterSnelTest = false;   // testknop: fluisteringen snel achter elkaar
+  let andereVastTest = false;     // testknop: doe alsof een teamgenoot vastzit
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
   let fluisterEl = null, mp3Ok = false, pathIdx = 0;
   let actieveCode = null;         // de code die deze speler nu toont (gever)
@@ -262,14 +277,26 @@ window.ZilverweideSchaduw = (function () {
   }
 
   // ── Gefluister (tekst + geluid), volgt de meter ──────────────────
+  // Testfactor: alleen VERSNELLEN. Zet iemand de meter sneller (testpaneel),
+  // dan komt het gefluister evenredig sneller. Zet iemand hem langzamer, dan
+  // blijft de cadans staan, zodat de bovengrens van 45s een echte bovengrens
+  // is en het niet stil wordt.
+  function fluisterFactor() {
+    if (fluisterSnelTest) return 0.15;           // testknop: snel achter elkaar
+    var f = NORMAAL_PER_SEC / Math.max(0.01, CFG.meterPerSec);
+    return Math.min(1, f);
+  }
+  // Cadans loopt op met de meter: 45s bij een lege meter, 22s bij een volle.
+  // Bewust niet de oude formule maal een snelheidsfactor: bij 4 minuten kwam
+  // die op 105s uit, en dan drukte een plafond van 45s het oplopen helemaal weg.
   function whisperIntervalMs() {
     const t = Math.min(meter, 100) / 100;        // 0..1 over de hele meter
-    const basis = 40000 - t * 20000;             // 40s (laag) → 20s (vol)
-    const variatie = 0.75 + Math.random() * 0.5; // ±25% willekeur
-    // Schaalt mee met de meter-snelheid: sneller testen = sneller gefluister,
-    // maar de verhouding op normale snelheid (1,1) blijft gelijk.
-    const snelheidFactor = 1.1 / Math.max(0.1, CFG.meterPerSec);
-    return Math.max(20000 * snelheidFactor, basis * variatie * snelheidFactor);
+    const basis = FLUISTER_MAX_MS - t * (FLUISTER_MAX_MS - FLUISTER_MIN_MS);
+    const variatie = 0.9 + Math.random() * 0.2;  // ±10% willekeur
+    const ms = basis * variatie * fluisterFactor();
+    // Nooit langer dan de bovengrens, en nooit zo kort dat twee fluisteringen
+    // over elkaar heen vallen.
+    return Math.max(2000, Math.min(FLUISTER_MAX_MS * fluisterFactor(), ms));
   }
   function whisperVolume() { return 0.45 + 0.55 * (meter / 100); } // hoorbaar boven de muziek
 
@@ -299,10 +326,10 @@ window.ZilverweideSchaduw = (function () {
     clearTimeout(fluisterTimer);
     let wait;
     if (eersteKeer) {
-      // De vloek kondigt zich direct aan: eerste fluistering al na 3-5s,
-      // meeschalend met de testsnelheid zodat je 'm ook bij snel testen hoort.
-      const snelheidFactor = 1.1 / Math.max(0.1, CFG.meterPerSec);
-      wait = (3000 + Math.random() * 2000) * snelheidFactor;
+      // De vloek kondigt zich direct aan: eerste fluistering na 3-5s, altijd
+      // binnen tien seconden. De factor kan alleen versnellen, dus die grens
+      // blijft ook bij snel testen staan.
+      wait = (3000 + Math.random() * 2000) * fluisterFactor();
     } else {
       wait = Math.max(whisperIntervalMs(), whisperReadyAt - Date.now());
     }
@@ -509,7 +536,62 @@ window.ZilverweideSchaduw = (function () {
   }
 
   // ── Vergrendeling: speler zit vast op locatie tot redder de code geeft ──
+  // De schaduw reikt naar je uit, maar laat je gaan. Gebruikt wanneer
+  // vergrendelen niet mag: er zit al iemand anders vast (dan kan niemand jou
+  // komen halen), of je bent Felix opgesloten in H2. Je krijgt hetzelfde
+  // schrikmoment, maar geen slot.
+  function laatLos(blokkade) {
+    var meterNa = (blokkade && typeof blokkade.meterNa === 'number') ? blokkade.meterNa : 70;
+    var tekst = (blokkade && blokkade.tekst)
+      || 'De schaduw reikt naar je uit... en laat je gaan.';
+    vergrendeld = false;
+    actieveCode = null;
+    meter = Math.max(0, Math.min(99, meterNa));
+    updateSmoke();
+    // Even geen gefluister, zodat het schrikmoment niet overspoeld wordt.
+    whisperReadyAt = Date.now() + 4000;
+    stopFluisterGeluid();
+    toonVloekFlits(tekst, function () {
+      // Was je hierheen getrokken naar een lege huls? Dan loop je terug naar
+      // de straat, net als na een goed nagespeeld zegel.
+      if (gedroptVoorPuzzel) {
+        gedroptVoorPuzzel = false;
+        opLocatie = false;
+        if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+      }
+      scheduleFluister(false);
+    });
+  }
+
+  // Korte flits met één regel tekst over het zwarte introscherm. Werd al door
+  // de host aangeroepen (de vloek-herinnering na het woud) maar bestond niet,
+  // dus die melding bleef achterwege.
+  async function toonVloekFlits(tekst, onDone) {
+    const o = el.vloekIntro;
+    if (!o) { if (typeof onDone === 'function') onDone(); return; }
+    o.style.display = 'flex';
+    o.style.transition = 'opacity .35s ease';
+    o.style.opacity = '1';
+    await toonTekstFade(tekst, 700, 1400, 700);
+    if (typeof onDone === 'function') onDone();
+    o.style.transition = 'opacity .7s ease';
+    o.style.opacity = '0';
+    setTimeout(() => { o.style.display = 'none'; o.style.transition = 'none'; }, 750);
+  }
+
   async function vergrendel() {
+    // Mag ik nu wel vergrendeld worden? Zit er al iemand anders vast, dan zou
+    // niemand mij kunnen bevrijden en zit het hele team klem. Dan laat de
+    // schaduw me gaan in plaats van me op te sluiten.
+    var blokkade = null;
+    if (typeof CFG.blokkeerVergrendeling === 'function') {
+      try { blokkade = CFG.blokkeerVergrendeling(); } catch (e) { console.warn('blokkeerVergrendeling:', e); }
+    }
+    if (!blokkade && andereVastTest) {
+      blokkade = { reden: 'test_ander_vast', meterNa: 70,
+                   tekst: 'De schaduw reikt naar je uit... maar houdt al iemand anders vast.' };
+    }
+    if (blokkade) { laatLos(blokkade); return; }
     vergrendeld = true;
     meter = 100; updateSmoke();                 // rook blijft vol
     stopFluisterGeluid();
@@ -619,9 +701,15 @@ window.ZilverweideSchaduw = (function () {
     else wisLock();                             // geen persistentie → ruim oude lock op
     return api;
   }
-  function vervloek() {
+  // opts.startMeter: stand waarop de meter begint (0-100). De host geeft per
+  // rol een andere waarde mee zodat de vier spelers niet gelijktijdig vollopen
+  // en dus niet tegelijk vast kunnen raken. Werd eerder genegeerd omdat deze
+  // functie geen parameter had; alle vier begonnen daardoor op 0.
+  function vervloek(opts) {
     if (vergrendeld) return;                    // niet opnieuw vervloeken tijdens lock
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
+    var start = opts && typeof opts.startMeter === 'number' ? opts.startMeter : 0;
+    meter = Math.max(0, Math.min(99, start));   // 99 als plafond: nooit meteen vol
     cursed = true;
     el.rook.classList.add('zv-actief');
     updateSmoke();
@@ -717,6 +805,7 @@ window.ZilverweideSchaduw = (function () {
     pauzeRedenen: () => Array.from(busyRedenen),// wie houdt hem tegen (testpaneel)
     isHandRitueelBezig: () => handActief,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten
+    toonVloekFlits,                             // korte flits met één regel (vloek-herinnering)
     toonRedderInvoer,                           // in productie: op het tablet van de redder
     sluitRedderInvoer,                          // redder loopt weg, of de lock is al door een ander opgelost
     wisVergrendeling: () => { wisLock(); },     // opgeslagen lock wissen (bijv. bij reset)
@@ -725,6 +814,11 @@ window.ZilverweideSchaduw = (function () {
     _setMeter: n => { meter = Math.max(0, Math.min(100, n)); updateSmoke(); },
     _setSpeed: v => { CFG.meterPerSec = +v; },
     _forceMemory: () => { if (cursed) startMemory(); },
+    _setFluisterSnel: aan => { fluisterSnelTest = !!aan; scheduleFluister(false); },
+    // Testknoppen voor de vergrendel-blokkade: doen alsof er een teamgenoot
+    // vastzit, zonder een echt tweede tablet.
+    setAndereVast: b => { andereVastTest = !!b; },
+    isAndereVast: () => andereVastTest,
     _getCode: () => actieveCode
   };
   return api;

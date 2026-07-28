@@ -1721,8 +1721,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <button class="schaduw-mi" onclick="schaduwUit()">Schaduw uitzetten</button>
   <button class="schaduw-mi" onclick="schaduwMeterVol()">Meter bijna vol (test)</button>
   <button class="schaduw-mi" id="schaduw-fluistersnel-btn" onclick="schaduwFluisterSnel()">Fluister vaak: uit</button>
-  <label class="schaduw-range">Snelheid <span id="schaduw-speed-val">0.4</span>×
-    <input type="range" min="0.1" max="8" step="0.1" value="0.4" oninput="schaduwSnelheid(this.value)">
+  <label class="schaduw-range">Meter vol in <span id="schaduw-speed-val">4:00</span>
+    <input type="range" id="schaduw-speed" min="0.05" max="8" step="0.05" value="0.4167" oninput="schaduwSnelheid(this.value)">
   </label>
   <button class="schaduw-mi" onclick="schaduwRedderTest()">Redder-invoer openen</button>
   <button class="schaduw-mi" onclick="schaduwSpooklockTest()">Nep-lock hier plaatsen</button>
@@ -3245,10 +3245,19 @@ window.ZilverweideSchaduwServer = {
       loc:  state.lastOpenedLocatie || '',
       zone: state.lastZone || '',
       code: code,
+      // t: wanneer deze vergrendeling begon. Nodig om een race te beslechten
+      // als twee tablets vlak na elkaar allebei "niemand zit vast" lazen.
+      t:  gedeeldeTijdNu(),
+      // hb: hartslag. Wordt zolang deze speler vastzit elke paar seconden
+      // ververst. Andere tablets gebruiken dat om te zien of er nog een tablet
+      // achter dit record zit; zonder hartslag zou een verweesd record de
+      // vergrendel-blokkade voor de hele sessie aan laten staan.
+      hb: gedeeldeTijdNu(),
       // Als het slachtoffer Felix is, onthoud zijn vermomming zodat de redder
       // (op een ander tablet) hem straks in de juiste gedaante ziet.
       vermomming: (rol === 'felix' ? (state.vermomming || null) : null)
     });
+    schaduwStartHartslag();
     return code;
   },
   controleerCode: function (spelerId, ingevoerd) {
@@ -3287,6 +3296,101 @@ window.ZilverweideSchaduwServer = {
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// Vergrendel-blokkade: er mag nooit meer dan één speler tegelijk vastzitten.
+// Zit er al iemand vast, dan kan die alleen door een ander bevrijd worden, en
+// als de tweede ook vastraakt zit het hele team klem zonder uitweg. De schaduw
+// laat de tweede daarom gaan (zie laatLos in schaduw.js).
+//
+// "Zit er al iemand vast" komt uit de gedeelde staat, en die kan liegen: gaat
+// een tablet uit terwijl het vastzat, dan blijft het record staan en zou de
+// blokkade voor de rest van de sessie aan blijven. Daarom klopt een vastzittend
+// tablet elke SCHADUW_HB_MS zijn eigen record aan, en negeren de anderen een
+// record dat SCHADUW_LOCK_STIL_MS niets meer van zich heeft laten horen.
+//
+// De stilte wordt op de EIGEN klok gemeten (verandert de hartslagwaarde nog?),
+// niet door tijdstempels van twee tablets te vergelijken. Zo speelt klokverschil
+// hier geen rol.
+// ─────────────────────────────────────────────────────────────────
+const SCHADUW_HB_MS = 15000;          // hoe vaak een vastzittend tablet aanklopt
+const SCHADUW_LOCK_STIL_MS = 30000;   // daarna geldt het record als verweesd
+const SCHADUW_ROLLEN_LOCK = ['jan', 'kelly', 'fenna', 'felix', 'speler'];
+var _schaduwLockGezien = {};          // rol -> { hb, sinds } op de eigen klok
+var _schaduwHbTimer = null;
+
+// Leeft er nog een tablet achter dit lock-record?
+function schaduwLockLeeft(rol, lock) {
+  if (!lock || !lock.code) { delete _schaduwLockGezien[rol]; return false; }
+  var hb = lock.hb || 0;
+  var nu = Date.now();
+  var vorig = _schaduwLockGezien[rol];
+  if (!vorig || vorig.hb !== hb) {
+    // Nieuw record, of de hartslag is net verversd: er zit iemand achter.
+    _schaduwLockGezien[rol] = { hb: hb, sinds: nu };
+    return true;
+  }
+  return (nu - vorig.sinds) < SCHADUW_LOCK_STIL_MS;
+}
+
+// Zit er een ANDERE speler vast, met een tablet dat nog leeft?
+function schaduwAnderVast() {
+  for (var i = 0; i < SCHADUW_ROLLEN_LOCK.length; i++) {
+    var rol = SCHADUW_ROLLEN_LOCK[i];
+    if (rol === state.personage) continue;
+    if (schaduwLockLeeft(rol, getSharedState('schaduw_lock_' + rol))) return true;
+  }
+  return false;
+}
+
+// Hartslag van de eigen vergrendeling.
+function schaduwStartHartslag() {
+  schaduwStopHartslag();
+  _schaduwHbTimer = setInterval(function () {
+    var rol = state.personage || 'speler';
+    var l = getSharedState('schaduw_lock_' + rol);
+    if (!l || !l.code) { schaduwStopHartslag(); return; }
+    setSharedState('schaduw_lock_' + rol, {
+      loc: l.loc, zone: l.zone, code: l.code, t: l.t,
+      hb: gedeeldeTijdNu(), vermomming: l.vermomming || null
+    });
+  }, SCHADUW_HB_MS);
+}
+function schaduwStopHartslag() {
+  if (_schaduwHbTimer) { clearInterval(_schaduwHbTimer); _schaduwHbTimer = null; }
+}
+
+// Vangnet voor de race: twee tablets kunnen vlak na elkaar allebei gelezen
+// hebben dat er niemand vastzat, en dan tóch beide vergrendelen. Dan geldt de
+// oudste vergrendeling en laat de andere zichzelf gaan. De regel is voor beide
+// tablets dezelfde, dus ze kunnen niet allebei toegeven of allebei blijven.
+function schaduwLosRaceOp() {
+  var sch = window.ZilverweideSchaduw;
+  if (!sch || !sch.isVergrendeld || !sch.isVergrendeld()) return;
+  var eigenRol = state.personage || 'speler';
+  var eigen = getSharedState('schaduw_lock_' + eigenRol);
+  if (!eigen || !eigen.code) return;
+  for (var i = 0; i < SCHADUW_ROLLEN_LOCK.length; i++) {
+    var rol = SCHADUW_ROLLEN_LOCK[i];
+    if (rol === eigenRol) continue;
+    var l = getSharedState('schaduw_lock_' + rol);
+    if (!schaduwLockLeeft(rol, l)) continue;
+    var ander = l.t || 0, mij = eigen.t || 0;
+    // Ouder wint. Precies gelijk? Dan beslist de vaste rolvolgorde.
+    var anderWint = (ander < mij) ||
+      (ander === mij && SCHADUW_ROLLEN_LOCK.indexOf(rol) < SCHADUW_ROLLEN_LOCK.indexOf(eigenRol));
+    if (anderWint) {
+      console.warn('Schaduw: twee vergrendelingen tegelijk, deze tablet laat los (' + rol + ' was eerder).');
+      schaduwStopHartslag();
+      setSharedState('schaduw_lock_' + eigenRol, null);
+      sch._ontgrendel();
+      if (sch.toonVloekFlits) {
+        sch.toonVloekFlits('De schaduw reikt naar je uit... maar houdt al iemand anders vast.');
+      }
+      return;
+    }
+  }
+}
+
 // De vergrendelde tablet merkt zelf dat zijn lock-record is gewist
 // (de redder voerde elders de juiste code in) en bevrijdt zichzelf.
 // Dezelfde poll ruimt spook-locks op: zie de toelichting hieronder.
@@ -3305,6 +3409,7 @@ setInterval(function () {
     // dicht: iedereen die er komt krijgt de redder-invoer voor een code die
     // nergens meer op een scherm staat.
     if (!vast) {
+      schaduwStopHartslag();   // niets meer om aan te kloppen
       var eigenRol = state.personage;
       if (eigenRol) {
         if (getSharedState('schaduw_lock_' + eigenRol)) {
@@ -3342,6 +3447,8 @@ setInterval(function () {
       }
     }
   } catch (e) { console.warn('schaduw zelf-ontgrendel poll:', e); }
+  // Zitten er door een race twee spelers tegelijk vast? Dan lost dit het op.
+  try { schaduwLosRaceOp(); } catch (e) { console.warn('schaduwLosRaceOp:', e); }
 }, 1000);
 
 function schaduwRedderCheckOpLocatie(locId, renderCallback) {
@@ -18407,7 +18514,11 @@ function toggleSchaduwMenu() {
   }
 }
 function schaduwAan() {
-  if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.vervloek();
+  // Met de rol-offset, zodat je bij testen dezelfde startstand krijgt als na
+  // de woudfinale in plaats van altijd een lege meter.
+  if (window.ZilverweideSchaduw) {
+    window.ZilverweideSchaduw.vervloek({ startMeter: schaduwStartOffset() });
+  }
   setSchaduwStatus();
 }
 function schaduwUit() {
@@ -18497,10 +18608,23 @@ function schaduwTijdensDoolhof(instantie) {
   };
 }
 
+// De schuif toont hoelang de meter erover doet, niet een kaal vermenigvuldigings-
+// getal. Dat las eerder als "0.4" terwijl de engine op 1,1 stond, want deze
+// functie liep alleen op oninput en nooit bij het laden. Nu zetten we hem bij
+// het opstarten één keer, zodat paneel en engine niet meer uiteen kunnen lopen.
 function schaduwSnelheid(v) {
-  if (window.ZilverweideSchaduw) window.ZilverweideSchaduw._setSpeed(v);
+  var perSec = Math.max(0.01, +v);
+  if (window.ZilverweideSchaduw) window.ZilverweideSchaduw._setSpeed(perSec);
   var lbl = document.getElementById('schaduw-speed-val');
-  if (lbl) lbl.textContent = (+v).toFixed(1);
+  if (lbl) {
+    var sec = Math.round(100 / perSec);
+    lbl.textContent = Math.floor(sec / 60) + ':' + (sec % 60 < 10 ? '0' : '') + (sec % 60);
+  }
+}
+// Eén keer bij het opstarten: engine en label op de stand van de schuif zetten.
+function schaduwSnelheidInit() {
+  var inp = document.getElementById('schaduw-speed');
+  if (inp) schaduwSnelheid(inp.value);
 }
 
 // Test: laat de fluisteringen snel achter elkaar komen, zodat je het
@@ -18835,7 +18959,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=12"></script>
+<script src="technischefiles/schaduw.js?v=13"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
@@ -18971,16 +19095,33 @@ function toonStemmenStil(stil) {
       sessieId: _zvSessieId,
       spelerId: (typeof personage !== 'undefined' && personage) ? personage : 'speler',
       onDropLocatie: schaduwDropOpLocatie,
-      // Felix opgesloten op H2: niemand kan bij hem om de code in te voeren,
-      // dus vergrendelen mag niet. Hij krijgt dan de "geluk"-uitkomst
-      // (schim reikt naar je uit, maar verdwijnt) tot Jan hem bevrijdt.
+      // Hartslag van de eigen vergrendeling aan- en uitzetten.
+      onVergrendel: function () { schaduwStartHartslag(); },
+      onBevrijd:    function () { schaduwStopHartslag(); },
+      // Mag deze speler nu vergrendeld worden? Nee betekent: de schim reikt
+      // naar je uit en laat je gaan (laatLos in schaduw.js).
       blokkeerVergrendeling: function () {
-        return state.personage === 'felix'
-          && hasVisited('felix_hd2_vast')
-          && !hasVisited('felix_hd2_vrij');
+        // Felix opgesloten op H2: niemand kan bij hem om de code in te voeren.
+        // Hij kan er zelf niets aan doen, dus de meter gaat helemaal terug in
+        // plaats van hem blijven porren.
+        if (state.personage === 'felix'
+            && hasVisited('felix_hd2_vast')
+            && !hasVisited('felix_hd2_vrij')) {
+          return { reden: 'felix_h2', meterNa: 0,
+                   tekst: 'De schaduw reikt naar je uit... en laat je gaan.' };
+        }
+        // Zit er al een teamgenoot vast, dan zou niemand jou kunnen bevrijden.
+        // De meter zakt maar deels terug: de schim blijft aan je trekken, zodat
+        // je hem gaat helpen in plaats van rustig achterover te leunen.
+        if (schaduwAnderVast()) {
+          return { reden: 'ander_vast', meterNa: 70,
+                   tekst: 'De schaduw reikt naar je uit... maar houdt al iemand anders vast.' };
+        }
+        return null;
       }
     });
     if (typeof setSchaduwStatus === 'function') setSchaduwStatus();
+    if (typeof schaduwSnelheidInit === 'function') schaduwSnelheidInit();
 
     // Koppel "de stemmen zijn even stil" aan de pauze (setBusy), zodat de
     // regel verschijnt zodra de schaduw om welke reden dan ook gepauzeerd is.
