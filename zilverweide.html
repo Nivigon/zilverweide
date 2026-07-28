@@ -7572,6 +7572,7 @@ function dd2NaaldHotspot() {
     bevat: 'nummer2voorkamer',
     natBreedte: 1280, natHoogte: 720,
     x1: 450, y1: 529, x2: 570, y2: 625,
+    ankerOnder: true,   // de pop ligt onderin, die mag nooit weggesneden worden
     onKlik: function (el) { pakNaaldenUitPop('dd2_naalden_gepakt', el); }
   });
 }
@@ -7585,6 +7586,7 @@ function molenNaaldHotspot() {
     bevat: 'molenruine',
     natBreedte: 1280, natHoogte: 720,
     x1: 746, y1: 475, x2: 893, y2: 626,
+    ankerOnder: true,   // de pop ligt onderin, die mag nooit weggesneden worden
     onKlik: function (el) { pakNaaldenUitPop('molen_naalden_gepakt', el); }
   });
 }
@@ -9127,8 +9129,15 @@ function zetKraaiOpScene(container, src, opts) {
 // verraadt dat er iets te halen valt. Het vignet over de afbeelding heeft
 // pointer-events:none, dus de klik komt gewoon aan.
 //
+// `ankerOnder: true` zet de afbeelding met de onderkant vast in plaats van
+// gecentreerd. Nodig als het klikbare ding onderin de afbeelding zit: het vak
+// is 16:9 met een maximumhoogte, en op brede of lage schermen wordt het
+// daardoor breder dan 16:9. Cover snijdt dan boven en onder evenveel weg, en
+// precies dat onderste stuk kan het hele doelwit uit beeld duwen.
+//
 //   zetSceneHotspot({ bevat:'nummer2voorkamer', natBreedte:1280, natHoogte:720,
-//                     x1:450, y1:529, x2:570, y2:625, onKlik: function(el){} })
+//                     x1:450, y1:529, x2:570, y2:625, ankerOnder:true,
+//                     onKlik: function(el){} })
 function zetSceneHotspot(opts) {
   var box = document.querySelector('#locatie-content .sc-image');
   if (!box) return;
@@ -9154,6 +9163,9 @@ function zetSceneHotspot(opts) {
     if (typeof opts.onKlik === 'function') opts.onKlik(hs);
   };
   if (window.getComputedStyle(box).position === 'static') box.style.position = 'relative';
+  // Onderkant vastzetten: dan snijdt cover alleen de bovenkant weg en blijft
+  // wat onderin de afbeelding staat altijd in beeld (en dus aanklikbaar).
+  if (opts.ankerOnder) box.style.backgroundPosition = 'center bottom';
   box.appendChild(hs);
 
   var pogingen = 0;
@@ -9169,7 +9181,8 @@ function zetSceneHotspot(opts) {
     pogingen = 0;
     var schaal = Math.max(bw / opts.natBreedte, bh / opts.natHoogte);
     var offX = (bw - opts.natBreedte * schaal) / 2;
-    var offY = (bh - opts.natHoogte * schaal) / 2;
+    var offY = (bh - opts.natHoogte * schaal);
+    if (!opts.ankerOnder) offY = offY / 2;   // standaard: gecentreerd
     hs.style.left   = (offX + opts.x1 * schaal) + 'px';
     hs.style.top    = (offY + opts.y1 * schaal) + 'px';
     hs.style.width  = ((opts.x2 - opts.x1) * schaal) + 'px';
