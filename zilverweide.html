@@ -293,6 +293,14 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #locatie-indicator{position:fixed;top:4rem;right:1rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.35);border-radius:50px;padding:.5rem 1rem;display:none;align-items:center;gap:.5rem;backdrop-filter:blur(4px);box-shadow:0 0 20px rgba(0,0,0,.5)}
 #locatie-indicator .ind-symbol{font-size:1.2rem}
 #locatie-indicator .ind-name{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
+/* Tijdens de podium-intro (vanaf het wachtscherm tot en met de uitleg over de
+   terug-knop) mag de speler nergens anders op drukken. De vaste knoppen
+   blijven staan zoals ze staan, maar reageren niet: alleen de intro zelf gaat
+   verder. Zie zetIntroVergrendeling(). */
+body.intro-vergrendeld #inv-bar,
+body.intro-vergrendeld #topright-cluster,
+body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
+
 /* Op korte schermen (telefoon in landscape) de locatie-aanduider kleiner en
    subtieler, iets dichter onder de badge. */
 @media (max-height:520px){
@@ -3548,6 +3556,11 @@ function showScreen(id) {
   // Een magische onthulling hoort bij het scherm eronder: bij een
   // schermwissel gaat hij weg, zodat hij nergens blijft hangen.
   if (typeof sluitMagischOverlay === 'function') sluitMagischOverlay(true);
+  // De podium-intro speelt volledig op het locatie-scherm. Beland je op een
+  // ander scherm, dan is de intro hoe dan ook voorbij (of overgeslagen) en
+  // mag het slot op de vaste knoppen eraf. Vangnet, zodat niemand met dode
+  // knoppen achterblijft.
+  if (id !== 'screen-locatie' && typeof zetIntroVergrendeling === 'function') zetIntroVergrendeling(false);
   // Reset toren-bezoek zodat Jan elke keer opnieuw moet klimmen
   if (id !== 'screen-locatie') state.janTorenDitBezoek = false;
   // Gate: als de speler ergens vastzit, mag hij/zij geen zone-scherm verlaten.
@@ -4249,6 +4262,9 @@ function controleerWachten() {
 // zonder het hele intro-pad te hoeven doorlopen.
 // ─────────────────────────────────────────────────────────────────
 function resetSpel() {
+  // Intro-slot altijd los: anders zou een reset midden in de intro je met
+  // dode knoppen achterlaten.
+  zetIntroVergrendeling(false);
   // Schaduw-effect uitzetten als het liep, en een eventuele opgeslagen
   // vergrendeling wissen (anders zou een refresh je weer vast zetten).
   if (window.ZilverweideSchaduw) {
@@ -11785,6 +11801,15 @@ function checkDorpspleinLocatie(val) {
   }
 }
 
+// Zet de vaste knoppen (rugzak, verhaal-teller, rol-badge, locatie-aanduider)
+// aan of uit. Gebruikt tijdens de podium-intro: vanaf het wachtscherm tot en
+// met de uitleg over de terug-knop is alleen de intro zelf klikbaar. De
+// knoppen blijven staan zoals ze staan, ze reageren alleen niet.
+function zetIntroVergrendeling(aan) {
+  if (!document.body) return;
+  document.body.classList.toggle('intro-vergrendeld', !!aan);
+}
+
 function podiumAfbeelding() {
   if (hasVisited('sintdonatuslaan_unlocked')) return 'locaties/dorpsplein/podiumheerdonatus.jpeg';
   if (hasVisited('intro_filmpje_gezien')) return 'locaties/dorpsplein/podiumnaintro.jpeg';
@@ -11799,6 +11824,8 @@ function openToneel() {
 
   // Eerste bezoek aan podium: interactieve intro-scene
   if (!hasVisited('intro_filmpje_gezien')) {
+    // Vanaf hier ligt alles vast tot de uitleg over de terug-knop weg is.
+    zetIntroVergrendeling(true);
     var locContent = document.getElementById('locatie-content');
     renderLocatieScene({
       container: locContent,
@@ -12316,6 +12343,9 @@ function naIntroFilmpje() {
     // (verborgen tijdens filmpje/dialoog), dus dit is het eerste natuurlijke
     // moment om te laten zien dat hij altijd terug naar straat/kaart brengt.
     toonTerugknopIntro(function () {
+      // De uitleg is weggeklikt (of was al eerder gezien): de vaste knoppen
+      // doen het weer.
+      zetIntroVergrendeling(false);
       unlockZone('kraaienkwartier');
       toonLade(
         '🔓 Het onderzoek begint',
@@ -14714,6 +14744,7 @@ function debugClear() { state.inventory = []; state.finalePopupGetoond = false; 
 
 function debugSkipIntroFilmpje() {
   if (!state.personage) { alert('Selecteer eerst een rol.'); return; }
+  zetIntroVergrendeling(false);   // sla je de intro over, dan ook de slotstand
   showAvatarBadge(state.personage);
   // Markeer intro-filmpje als gezien
   markVisited('intro_filmpje_gezien');
