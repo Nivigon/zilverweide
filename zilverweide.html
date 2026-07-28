@@ -2755,7 +2755,14 @@ function bouwMissiePaneel() {
   var regels = zone ? missieRegelsVoorZone(zone) : [];
   var voltooid = regels.filter(function(r){ return r.voltooid; });
   var html = '<div class="missie-paneel-titel">Wat jullie ontdekten</div>';
-  if (zone) html += '<div class="missie-paneel-sub">' + faseWeergaveNaam(zone) + '</div>';
+  // Weet de speler niet waar hij is (Felix opgesloten in H2), dan mag de naam
+  // van de wijk hier niet staan. Anders leest hij in dit paneel af waar hij
+  // vastzit, terwijl de titel van zijn kamer juist ??? toont.
+  if (zone) {
+    html += '<div class="missie-paneel-sub">' +
+            (state.locatieOnbekend ? '???' : faseWeergaveNaam(zone)) +
+            '</div>';
+  }
   if (!voltooid.length) {
     html += '<div class="missie-paneel-leeg">Het verhaal moet zich nog onthullen…</div>';
   } else {
