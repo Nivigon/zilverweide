@@ -60,7 +60,13 @@ window.ZilverweideSchaduw = (function () {
   // ── Toestand ─────────────────────────────────────────────────────
   let el = {};                    // DOM-verwijzingen
   let cursed = false, meter = 0;
-  let busy = false;               // host speelt eigen geluid → schaduw zwijgt
+  // Pauze: de host kan de schaduw stilzetten (eigen geluid, mini-game, film).
+  // Meerdere dingen kunnen dat tegelijk willen, dus houden we bij WIE er
+  // pauze vraagt in plaats van één schakelaar. Anders zet de eerste die klaar
+  // is de pauze van de ander ook uit. busy is de afgeleide: pauze zolang er
+  // nog iemand in de set staat.
+  let busyRedenen = new Set();
+  let busy = false;               // afgeleid uit busyRedenen, niet los zetten
   let vergrendeld = false;
   let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
   let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
@@ -677,16 +683,24 @@ window.ZilverweideSchaduw = (function () {
     }
     el.memory.classList.remove('zv-open');
     if (handModus) { handModus = false; handStopFluister(); }  // hand-ritueel netjes afbreken
+    wisPauzes();                                // geen enkele pauze mag de volgende vloek bevriezen
     wisLock();                                  // opgeslagen vergrendeling weg
     el.rook.classList.remove('zv-actief');
     if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
     clearTimeout(fluisterTimer);
     updateSmoke();
   }
-  function setBusy(b) {
-    busy = !!b;
+  // Pauze aan- of uitzetten namens één reden. Twee keer dezelfde reden
+  // aanzetten telt als één (idempotent), zodat een defensieve dubbele aanroep
+  // geen pauze achterlaat die nooit meer opgeheven wordt. Zonder reden loopt
+  // alles via 'algemeen', precies zoals de oude schakelaar deed.
+  function setBusy(b, reden) {
+    const sleutel = reden || 'algemeen';
+    if (b) busyRedenen.add(sleutel); else busyRedenen.delete(sleutel);
+    busy = busyRedenen.size > 0;
     if (busy) { stopFluisterGeluid(); }         // host-geluid → schaduw zwijgt + meter bevriest
   }
+  function wisPauzes() { busyRedenen.clear(); busy = false; }
   // De host meldt of we op een locatie-scherm staan (locId) of niet (null).
   // Bepaalt of je bij vergrendeling eerst naar een locatie gebracht wordt.
   function setOpLocatie(locId) {
@@ -699,6 +713,8 @@ window.ZilverweideSchaduw = (function () {
     startHandRitueel,                           // losstaand hand-ritueel (Kelly, K8)
     isVergrendeld: () => vergrendeld,
     isVervloekt: () => cursed,
+    isBezig: () => busy,                        // staat de schaduw nu op pauze?
+    pauzeRedenen: () => Array.from(busyRedenen),// wie houdt hem tegen (testpaneel)
     isHandRitueelBezig: () => handActief,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten
     toonRedderInvoer,                           // in productie: op het tablet van de redder
