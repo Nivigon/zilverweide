@@ -1498,8 +1498,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <source src="intromusiczv.mpeg" type="audio/mpeg">
   </audio>
   <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(var(--vh100) - 6rem);gap:1.5rem;padding:1rem 0">
-    <div style="width:min(92vw, 960px, calc((var(--vh100) - 14rem) * 16 / 9));aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(201,168,76,.35);border-radius:8px;background:#000;box-shadow:0 0 40px rgba(0,0,0,.6)">
-      <video id="intro-video" style="width:100%;height:100%;object-fit:cover;display:block" playsinline preload="metadata">
+    <div id="intro-video-box" style="width:min(92vw, 960px, calc((var(--vh100) - 14rem) * 16 / 9));aspect-ratio:16/9;overflow:hidden;border:1px solid rgba(201,168,76,.35);border-radius:8px;background:#000;box-shadow:0 0 40px rgba(0,0,0,.6)">
+      <video id="intro-video" style="width:100%;height:100%;object-fit:contain;display:block" playsinline preload="metadata" onloadedmetadata="pasIntroVideoFormaatAan()">
         <source src="videos/intro.mp4" type="video/mp4">
       </video>
     </div>
@@ -3423,6 +3423,18 @@ function speelIntroVideo() {
   if (playBtn) playBtn.style.display = 'none';
   if (vid) { try { vid.play().catch(function(){}); } catch(e) {} }
 }
+
+// Zet de omkaderde box op de echte verhouding van de video zodra die bekend
+// is, i.p.v. de vaste 16/9-gok. Zo speelt de video altijd volledig af,
+// zonder bijsnijden (cover) of ongelijke zwarte randen.
+function pasIntroVideoFormaatAan() {
+  var vid = document.getElementById('intro-video');
+  var box = document.getElementById('intro-video-box');
+  if (!vid || !box || !vid.videoWidth || !vid.videoHeight) return;
+  var w = vid.videoWidth, h = vid.videoHeight;
+  box.style.aspectRatio = w + ' / ' + h;
+  box.style.width = 'min(92vw, 960px, calc((var(--vh100) - 14rem) * ' + w + ' / ' + h + '))';
+}
 // De overslaan-knop blijft tijdens het afspelen staan (wie halverwege
 // genoeg heeft gezien kan alsnog door), en verdwijnt zodra de video klaar
 // is en "Verder" verschijnt.
@@ -4268,11 +4280,11 @@ var ITEM_AFBEELDINGEN = {
   'Muziekdoosje':         'items/muziekdoosjemooiitem.png', // na reparatie door de klokkenmaker
   'Sleutel Woudpoort':    'items/woudsleutelitem.png',
   'Chinees Kegelhoedje':  'items/liuyenitem.png',        // Felix' Liu-Yen-vermomming
-  'Donderbloesem':        'items/donderbloesemx.jpg',    // H7 Apotheker-quest
+  'Donderbloesem':        'items/donderbloesemitem.png', // H7 Apotheker-quest
   'Kraal van Beengiht':   'items/kraalitem.png',         // H7 Apotheker-quest
-  'Rouwstof':             'items/rouwstofx.jpg',         // H7 Apotheker-quest
-  'Vleespen':             'items/vleespenx.jpg',         // Jan's lockpick-speld (slagerij)
-  'Flesje':               'items/flesjex.jpg'            // anti-Schaduw middel (H7 Apotheker)
+  'Rouwstof':             'items/rouwstofitem.png',      // H7 Apotheker-quest
+  'Vleespen':             'items/vleespenitem.png',      // Jan's lockpick-speld (slagerij)
+  'Flesje':               'items/flesjeitem.png'         // anti-Schaduw middel (H7 Apotheker)
 };
 // Geeft de visuele voorstelling van een item terug: een <img> als er een
 // afbeelding voor is, anders de emoji in een span. 'klasse' is de maat-klasse.
