@@ -2008,9 +2008,9 @@ function woudAlleVoltooid() {
   // Vier rollen: jan, kelly, fenna, felix
   return woudAantalVoltooid() >= 4;
 }
-// Tweede poortje: iedereen moet op "Klaar" drukken na "Luister nu naar Tom"
-// voordat de vloek valt en Heer Donatuslaan opent. Zelfde patroon als
-// woud_voltooid, gesynchroniseerd via Firebase shared state.
+// Tweede poortje: iedereen moet op "Klaar" drukken voordat de vloek valt en
+// Heer Donatuslaan opent. Zelfde patroon als woud_voltooid, gesynchroniseerd
+// via Firebase shared state.
 function woudKlaarZet(rol) {
   const lijst = sharedLijst('woud_klaar');
   if (!lijst.includes(rol)) {
@@ -16906,9 +16906,9 @@ function toonWoudEindBlok() {
     return;
   }
 
-  // Alle 4 uit het woud. Tweede poortje: "Luister nu naar Tom" met een
-  // Klaar-knop. Pas als alle 4 op Klaar hebben gedrukt valt de vloek en
-  // opent Heer Donatuslaan (automatisch, op elk tablet).
+  // Alle 4 uit het woud. Tweede poortje: een Klaar-knop. Pas als alle 4 op
+  // Klaar hebben gedrukt valt de vloek en opent Heer Donatuslaan (automatisch,
+  // op elk tablet).
   const engineWinBlock = winScreen.querySelector('.dh-win-block');
   if (engineWinBlock) engineWinBlock.style.display = 'none';
 
@@ -16927,9 +16927,6 @@ function toonWoudEindBlok() {
   blok.innerHTML =
     '<div style="text-align:center;margin-top:.5rem">' +
       '<div style="font-family:Cinzel,serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem">Iedereen is uit het woud</div>' +
-      '<div style="padding:1.5rem;border:1px solid rgba(201,168,76,.25);border-radius:4px;background:rgba(0,0,0,.35)">' +
-        '<p style="font-family:Cinzel,serif;font-size:1.2rem;color:var(--gold);letter-spacing:.05em;margin:0">Luister nu naar Tom.</p>' +
-      '</div>' +
       (rolKlaar
         ? '<div style="margin-top:1rem;font-family:Cinzel,serif;font-size:.8rem;letter-spacing:.1em;color:var(--gold-dim)">' + klaarAantal + ' / 4 klaar — wachten op de anderen…</div>'
         : '<button class="dh-btn dh-btn-full" style="margin-top:1rem" onclick="woudKlaarGedrukt()">Klaar</button>') +
