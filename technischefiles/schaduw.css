@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   SCHADUW-MODULE — stylesheet
+   SCHADUW-MODULE, stylesheet
    Hoort bij schaduw.js. Alle selectors met zv-prefix zodat niets in
    zilverweide.html botst. Kleuren vallen terug op de projectpalet-vars
    als die bestaan, anders op een eigen waarde.
@@ -37,7 +37,7 @@
 @keyframes zvBank5{0%,100%{transform:translate(0,0) scale(1)}    50%{transform:translate(-7vw,-4vh) scale(1.09)}}
 @keyframes zvBank6{0%,100%{transform:translate(0,0) scale(1.06)} 50%{transform:translate(5vw,5vh) scale(.97)}}
 
-/* ─── Gefluister: gecentreerd net onder de meterbalk — fade via opacity ── */
+/* ─── Gefluister: gecentreerd net onder de meterbalk, fade via opacity ── */
 #zv-fluister{position:fixed;left:1.4rem;top:6.2rem;width:min(240px,62vw);z-index:541;pointer-events:none;
   font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1.05rem;letter-spacing:.03em;
   text-align:center;opacity:0;color:rgba(228,216,196,.92);
@@ -118,6 +118,13 @@
 .zv-btn{font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.7rem 1.8rem;
   border:1px solid rgba(255,200,200,.4);background:rgba(255,200,200,.05);color:#ffd9d9;cursor:pointer;border-radius:4px;margin-top:1rem}
 .zv-btn:hover{background:rgba(255,200,200,.12)}
+/* Tweede, rustiger knop onder de hoofdknop: weglopen bij het redder-invoer-
+   scherm. Zelfde vorm als .zv-btn, duidelijk minder nadruk, zodat helpen de
+   voor de hand liggende keuze blijft. */
+.zv-btn-sec{font-family:'Cinzel',serif;font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;padding:.55rem 1.4rem;
+  border:1px solid rgba(255,200,200,.22);background:transparent;color:rgba(255,200,200,.55);cursor:pointer;
+  border-radius:4px;margin-top:.9rem;transition:color .2s,border-color .2s}
+.zv-btn-sec:hover{color:rgba(255,200,200,.9);border-color:rgba(255,200,200,.5)}
 .zv-wacht{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.2em;color:rgba(255,200,200,.45);text-transform:uppercase;margin-top:1.4rem}
 /* ─── Orbitmist: mistbanken die rond de schim draaien in overlays ───
    Vier wolken in een container die centraal over de schim hangt. Elk

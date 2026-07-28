@@ -1682,6 +1682,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <input type="range" min="0.1" max="8" step="0.1" value="0.4" oninput="schaduwSnelheid(this.value)">
   </label>
   <button class="schaduw-mi" onclick="schaduwRedderTest()">Redder-invoer openen</button>
+  <button class="schaduw-mi" onclick="schaduwSpooklockTest()">Nep-lock hier plaatsen</button>
   <button class="schaduw-mi" onclick="schaduwBevrijdTest()">Bevrijd-gesprek (test)</button>
   <button class="schaduw-mi" id="schaduw-anderevast-btn" onclick="schaduwAndereVastTest()">Teamgenoot vast: uit</button>
   <button class="schaduw-mi" onclick="schaduwFirebaseReset()">Firebase reset</button>
@@ -2957,33 +2958,56 @@ window.ZilverweideSchaduwServer = {
 
 // De vergrendelde tablet merkt zelf dat zijn lock-record is gewist
 // (de redder voerde elders de juiste code in) en bevrijdt zichzelf.
+// Dezelfde poll ruimt spook-locks op: zie de toelichting hieronder.
 setInterval(function () {
   try {
-    if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVergrendeld &&
-        window.ZilverweideSchaduw.isVergrendeld()) {
-      var rol = state.personage || 'speler';
-      if (!getSharedState('schaduw_lock_' + rol)) {
-        // Wie heeft me geholpen? (briefje van de redder, kan er net zijn.)
-        var bevrijd = getSharedState('schaduw_bevrijd_' + rol);
-        window.ZilverweideSchaduw._ontgrendel();
-        if (bevrijd && bevrijd.door) {
-          setSharedState('schaduw_bevrijd_' + rol, null);   // briefje opruimen
-          schaduwPauze(true);   // meter bevriezen tot het gesprek en de pop-up klaar zijn
-          (function (b, wasGedropt) {
-            setTimeout(function () {
-              toonBevrijdInteractie({
-                helperIsZelf: false,
-                zelfRol: rol, zelfVermomming: state.vermomming || null,
-                anderRol: b.door, anderVermomming: b.vermomming || null
-              }, function () {
-                // Hierheen getrokken? Terug naar de straat met pop-up. Was je al
-                // écht op een locatie, dan blijf je daar en gaat het verhaal door.
-                if (wasGedropt) schaduwTerugNaarStraat(true);
-                else schaduwPauze(false);   // echte locatie, geen pop-up: meter mag weer lopen
-              });
-            }, 500);
-          })(bevrijd, !!state.schaduwGedropt);
+    var vast = !!(window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVergrendeld &&
+                  window.ZilverweideSchaduw.isVergrendeld());
+    // ── Spook-lock opruimen ──────────────────────────────────────────
+    // Alleen de tablet van het slachtoffer weet of hij echt vastzit, dus
+    // alleen die tablet mag zijn eigen lock-record weghalen. Staat er een
+    // vergrendeling op onze naam terwijl we niet (meer) vastzitten, dan is
+    // het record verweesd. Dat gebeurt na een pagina-verversing (persist is
+    // false, dus de vloek verdwijnt lokaal maar het record blijft in
+    // Firebase staan), na de solo-ontgrendel in het testpaneel en na
+    // kalmeer(). Zonder deze opruiming blijft de locatie voor het hele team
+    // dicht: iedereen die er komt krijgt de redder-invoer voor een code die
+    // nergens meer op een scherm staat.
+    if (!vast) {
+      var eigenRol = state.personage;
+      if (eigenRol) {
+        if (getSharedState('schaduw_lock_' + eigenRol)) {
+          setSharedState('schaduw_lock_' + eigenRol, null);
         }
+        if (getSharedState('schaduw_bevrijd_' + eigenRol)) {
+          setSharedState('schaduw_bevrijd_' + eigenRol, null);
+        }
+      }
+      return;
+    }
+    // ── Zelf-ontgrendelen ────────────────────────────────────────────
+    var rol = state.personage || 'speler';
+    if (!getSharedState('schaduw_lock_' + rol)) {
+      // Wie heeft me geholpen? (briefje van de redder, kan er net zijn.)
+      var bevrijd = getSharedState('schaduw_bevrijd_' + rol);
+      window.ZilverweideSchaduw._ontgrendel();
+      if (bevrijd && bevrijd.door) {
+        setSharedState('schaduw_bevrijd_' + rol, null);   // briefje opruimen
+        schaduwPauze(true);   // meter bevriezen tot het gesprek en de pop-up klaar zijn
+        (function (b, wasGedropt) {
+          setTimeout(function () {
+            toonBevrijdInteractie({
+              helperIsZelf: false,
+              zelfRol: rol, zelfVermomming: state.vermomming || null,
+              anderRol: b.door, anderVermomming: b.vermomming || null
+            }, function () {
+              // Hierheen getrokken? Terug naar de straat met pop-up. Was je al
+              // écht op een locatie, dan blijf je daar en gaat het verhaal door.
+              if (wasGedropt) schaduwTerugNaarStraat(true);
+              else schaduwPauze(false);   // echte locatie, geen pop-up: meter mag weer lopen
+            });
+          }, 500);
+        })(bevrijd, !!state.schaduwGedropt);
       }
     }
   } catch (e) { console.warn('schaduw zelf-ontgrendel poll:', e); }
@@ -12567,12 +12591,23 @@ function schaduwRedderIntercept(locId, zone) {
   if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
     window.ZilverweideSchaduw.toonRedderInvoer();
     var wacht = setInterval(function () {
-      var el = document.getElementById('zv-redder');
-      if (!el || !el.classList.contains('zv-open')) {
+      var invoerEl = document.getElementById('zv-redder');
+      var open = !!(invoerEl && invoerEl.classList.contains('zv-open'));
+      var nogVast = !!getSharedState('schaduw_lock_' + gevondenRol);
+      // Was een ander eerder met de code, of verdween de lock omdat die tablet
+      // ververste? Dan heeft dit invoerscherm geen doel meer: zelf sluiten,
+      // anders blijft de redder naar een code zoeken die nergens meer bestaat.
+      if (open && !nogVast) {
         clearInterval(wacht);
-        // Opgelost? Dan regelt controleerCode het gesprek plus terugkeer.
-        // Geannuleerd (lock staat er nog)? Zelf terug naar de straat.
-        if (getSharedState('schaduw_lock_' + gevondenRol)) schaduwTerugNaarStraat(false);
+        if (window.ZilverweideSchaduw.sluitRedderInvoer) window.ZilverweideSchaduw.sluitRedderInvoer();
+        schaduwTerugNaarStraat(false);
+        return;
+      }
+      if (!open) {
+        clearInterval(wacht);
+        // Opgelost door deze speler? Dan regelt controleerCode het gesprek plus
+        // terugkeer. Weggelopen (lock staat er nog)? Zelf terug naar de straat.
+        if (nogVast) schaduwTerugNaarStraat(false);
       }
     }, 200);
   } else {
@@ -17479,16 +17514,31 @@ function vloekMeterHighlight(onKlaar) {
     }, 500);
   });
 }
+// De vergrendel-records staan onder sessies/<id>/shared, als losse
+// schaduw_lock_* en schaduw_bevrijd_*-sleutels. De oude sessies/<id>/schaduw-tak
+// ruimen we voor de zekerheid mee op; daar schrijft niets meer naartoe.
+var SCHADUW_LOCK_ROLLEN = ['jan', 'kelly', 'fenna', 'felix', 'speler'];
 function schaduwFirebaseReset() {
   if (typeof firebase === 'undefined' || !firebase.database) {
     alert('Firebase is niet geladen.');
     return;
   }
-  var sessieId = window.ZilverweideSchaduw && window.ZilverweideSchaduw.getSessieId ? window.ZilverweideSchaduw.getSessieId() : 'test';
-  if (!sessieId) { alert('Geen sessie-ID.'); return; }
-  firebase.database().ref('sessies/' + sessieId + '/schaduw').remove()
+  var sessieId = _sharedSessieId || 'test';
+  var weg = { schaduw: null };
+  SCHADUW_LOCK_ROLLEN.forEach(function (r) {
+    weg['shared/schaduw_lock_' + r] = null;
+    weg['shared/schaduw_bevrijd_' + r] = null;
+  });
+  firebase.database().ref('sessies/' + sessieId).update(weg)
     .then(function () { alert('Schaduw-data gereset voor sessie: ' + sessieId); })
     .catch(function (e) { alert('Fout: ' + e.message); });
+  // Ook de lokale kopie leegmaken: de listener stuurt pas een nieuwe snapshot
+  // als er iets verandert, en tot die tijd zou deze tablet de gewiste locks
+  // nog steeds zien.
+  SCHADUW_LOCK_ROLLEN.forEach(function (r) {
+    delete state.shared['schaduw_lock_' + r];
+    delete state.shared['schaduw_bevrijd_' + r];
+  });
   if (window.ZilverweideSchaduw) {
     window.ZilverweideSchaduw.kalmeer();
   }
@@ -17526,6 +17576,33 @@ function schaduwRedderTest() {
   if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
     window.ZilverweideSchaduw.toonRedderInvoer();
   }
+}
+// Testknop: zet een vergrendeling van een teamgenoot op de locatie waar je nu
+// staat, zonder dat daar een tablet achter zit. Zo zie je in je eentje wat een
+// medespeler ziet die iemand aantreft: de lege huls plus de redder-invoer met
+// "Stap terug". Draait er wel een tablet met die rol, dan ruimt die zijn eigen
+// nep-lock binnen een seconde op; dat is precies de opruiming die we testen.
+function schaduwSpooklockTest() {
+  var loc = state.lastOpenedLocatie;
+  if (!loc) { alert('Open eerst een locatie: de nep-lock komt daar te staan.'); return; }
+  var ander = null;
+  for (var i = 0; i < SCHADUW_LOCK_ROLLEN.length; i++) {
+    if (SCHADUW_LOCK_ROLLEN[i] !== state.personage && SCHADUW_LOCK_ROLLEN[i] !== 'speler') {
+      ander = SCHADUW_LOCK_ROLLEN[i];
+      break;
+    }
+  }
+  if (!ander) { alert('Geen andere rol beschikbaar.'); return; }
+  var tekens = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789', code = '';
+  for (var k = 0; k < 4; k++) code += tekens[Math.floor(Math.random() * tekens.length)];
+  setSharedState('schaduw_lock_' + ander, {
+    loc: loc,
+    zone: state.lastZone || '',
+    code: code,
+    vermomming: null
+  });
+  alert('Nep-lock geplaatst.\n\nRol: ' + ander + '\nLocatie: ' + loc + '\nCode: ' + code +
+        '\n\nGa terug naar de straat en open deze locatie opnieuw.');
 }
 function setSchaduwStatus() {
   var el = document.getElementById('schaduw-status');
@@ -17605,7 +17682,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=10"></script>
+<script src="technischefiles/schaduw.js?v=11"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
