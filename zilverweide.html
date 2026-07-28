@@ -2934,6 +2934,28 @@ function hervatAchtergrondNaStap() {
   if (bg) bg.play().catch(function(){});
 }
 
+// Twee meldingen zetten de achtergrondmuziek even stil en laten een timer
+// achter die hem een paar seconden later zelf weer aanzet: de nieuw-voorwerp-
+// badge (goed.mp3, 3 sec) en het verhaalstap-geluid (1 sec na afloop). Start er
+// meteen daarna een scene die juist stil hoort te zijn, zoals de vloek-intro,
+// dan valt de muziek daar middenin binnen. Deze functie zet die timers en hun
+// vlaggen uit, ruimt de badge op en stopt het meldingsgeluid, zodat alleen de
+// scene zelf nog over de muziek gaat.
+function stopMuziekHervatTimers() {
+  clearTimeout(window._nvTimer);
+  window._nvMuziekPauze = false;
+  var box = document.getElementById('nieuw-voorwerp-melding');
+  if (box) box.classList.remove('zichtbaar');
+  if (window._nvGeluid) {
+    try { window._nvGeluid.pause(); window._nvGeluid.currentTime = 0; } catch (e) {}
+  }
+  clearTimeout(window._bgDuckTimer);
+  window._bgGeduckt = false;
+  if (window._missieGeluid) {
+    try { window._missieGeluid.pause(); window._missieGeluid.currentTime = 0; } catch (e) {}
+  }
+}
+
 function onMissieKeyVoltooid(label) {
   updateMissieTeller();
   // Bij een debug-skip willen we geen flash of toast — die zou overbodig
@@ -18375,6 +18397,11 @@ function schaduwStartOffset() {
 }
 function vloekOnboarding(onKlaar) {
   if (!window.ZilverweideSchaduw) { if (typeof onKlaar === 'function') onKlaar(); return; }
+  // De vloek valt altijd direct nadat De Schaduw als voorwerp is toegevoegd,
+  // en die melding heeft een timer van 3 seconden staan die de muziek zelf
+  // weer aanzet. De intro duurt langer, dus zonder dit begint de muziek
+  // middenin. Eerst die hervat-timers uit, dan zelf stilzetten.
+  stopMuziekHervatTimers();
   // Pauzeer achtergrondmuziek en eventuele doolhofmuziek
   var bgMusic = document.getElementById('bg-music');
   var bgWasPlaying = bgMusic && !bgMusic.paused;
