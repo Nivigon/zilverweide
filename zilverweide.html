@@ -2786,7 +2786,6 @@ const ITEMS = {
   lolaOutfit:         { emoji: '💃', naam: 'Latin Jurk' },             // bestaat al
   muziekdoosje:       { emoji: '🎵', naam: 'Muziekdoosje (roetbedekt)' },
   muziekdoosjeKlaar:  { emoji: '🎵', naam: 'Muziekdoosje' }, // dezelfde doos, na reparatie door de klokkenmaker
-  briefjeRobbie:      { emoji: '📜', naam: 'Briefje van Robbie' },
   meisje:             { emoji: '👧', naam: 'Het Meisje' },
   // Heer Donatuslaan — Felix' Liu-Yen-vermomming
   coneHoedje:         { emoji: '🐉', naam: 'Chinees Kegelhoedje' },
@@ -4283,6 +4282,47 @@ function itemVisueel(naam, emoji, klasse) {
   return '<span class="' + klasse + '">' + (emoji || '') + '</span>';
 }
 
+// Itemtekst voor het rugzak-detailvenster (op naam). Items die hier niet in
+// staan tonen de placeholder-tekst in toonInventarisItem().
+var ITEM_TEKSTEN = {
+  // Kraaienkwartier
+  'Kromme Speld':              'Een slotenmaker kan sloten ook breken.',
+  'Tobbe':                      'Breng Tobbe terug naar Stoop.',
+  'Munten van Stoop':           'Het geld brandt in je zakken. Wie verkoopt hier iets?',
+  'Breiwerkje':                 'Een oude dame zonder breiwerk valt op. Met breiwerk niet.',
+  'Microfoon':                  'Een artiest is niets zonder haar microfoon.',
+  'Nat Dagboek':                'Doorweekt en vies. Iemand met gevoel voor papier kan er misschien nog wat van redden.',
+  // Dorendael
+  'Klei':                       'Alleen nog even friemelen bij het slot.',
+  'Klei-afdruk van slot':       'De beste en meest stinkende versie om na te maken, maar waar?',
+  'Sleutel Woudpoort':          'Als we er klaar voor zijn, kunnen we door die poort.',
+  'Munten van de Bewoner':      'Tijd voor weer een vermomming?',
+  'Latin Jurk':                 'Wat Lola wil, dat krijgt Lola.',
+  'Muziekdoosje (roetbedekt)':  'Zo mooi, maar zo beschadigd. Waar kun je het laten herstellen?',
+  'Het Meisje':                 'Tijd om Merel naar huis te brengen.',
+  // Heer Donatuslaan
+  'Vleespen':                   'Je moet er niet aan denken waar hij eerder in zat. Wel handig bij een slot.',
+  'Muziekdoosje':               'Hersteld, en mooier dan je had verwacht. Je durft het bijna niet vast te houden.',
+  'Chinees Kegelhoedje':        'Liu-Yen praat weinig en ziet alles.',
+  'Kraal van Beengiht':         'Geen steen, geen glas. Iets anders.',
+  'Rouwstof':                   'Iemand droeg dit tot het verdriet erin trok.',
+  'Donderbloesem':              'De geur brandt in je neus. Toch wil de apotheker precies dit.',
+  'Flesje':                     'Wat de schaduw nam, kan hier weer los. Als je durft.'
+  // 'Zakje Munten' staat niet hier: die tekst hangt af van wie het draagt,
+  // zie itemTekst() hieronder (Felix vindt het, Jan gebruikt het).
+};
+// Zakje Munten is één item dat van Felix naar Jan gaat (zelfde geefItem/
+// addInventory-aanroepen als altijd); alleen de tekst in het detailvenster
+// verschilt per drager, dus dat lossen we hier op i.p.v. met een tweede item.
+function itemTekst(naam) {
+  if (naam === 'Zakje Munten') {
+    return state.personage === 'felix'
+      ? 'Tijd voor weer een vermomming?'
+      : 'Zwaar in je zak. Ergens in het dorp hangt precies wat Felix nodig heeft.';
+  }
+  return ITEM_TEKSTEN[naam] || null;
+}
+
 function bouwInventarisGrid() {
   var grid = document.getElementById('inv-ov-grid');
   if (!grid) return;
@@ -4321,10 +4361,11 @@ function toonInventarisItem(idx) {
   var actieKnop = (i.naam === 'Flesje')
     ? '<button class="spel-lade-knop inv-ov-detail-actie" onclick="drinkFlesje()">Drink het flesje</button>'
     : '';
+  var tekst = itemTekst(i.naam) || ('[Placeholder: hier komt de uitleg over ' + i.naam + '.]');
   d.innerHTML =
     '<div class="inv-ov-detail-visual">' + itemVisueel(i.naam, i.emoji, 'inv-ov-detail-emoji') + '</div>' +
     '<div class="inv-ov-detail-naam">' + i.naam + '</div>' +
-    '<div class="inv-ov-detail-note"><p>[Placeholder: hier komt de uitleg over ' + i.naam + '.]</p></div>' +
+    '<div class="inv-ov-detail-note"><p>' + tekst + '</p></div>' +
     actieKnop +
     '<button class="back-btn inv-ov-detail-terug" onclick="toonInventarisGridView()">← Alle voorwerpen</button>';
   if (g) g.style.display = 'none';
@@ -6302,7 +6343,6 @@ function renderH5Gemeentehuis(loc) {
     if (!alGeweest) {
       markVisited('fenna_gemeentehuis');
       setSharedState('fenna_gemeentehuis', true);
-      if (!state.inventory.find(function (i) { return i.naam === 'Briefje van Robbie'; })) geefItem('📄', 'Briefje van Robbie');
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
@@ -8553,6 +8593,7 @@ function renderK1Uitkijktoren(loc) {
         if (!state.heksOpgelost) {
           observaties.push({ quote: '"Zit daar nu een vrouw in de tuin te huilen bij nummer 7? Hij kan het niet goed zien van hieruit..."' });
         }
+        observaties.push({ quote: '"Wat een uitzicht. Geen slecht idee om hier nog eens terug te komen."' });
       }
 
       let html = '<div class="observatie-grid">';
