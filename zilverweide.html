@@ -14062,6 +14062,23 @@ function debugSkipNaarDorendael() {
   updateIndicator('dorpsplein','👥','Dorpsplein');
 }
 
+// Zet de slagerij terug op "Jan is hier nog niet geweest", lokaal en in de
+// gedeelde sessie. Twee vlaggen: slagerij_dicht stuurt de winkeltekst aan en
+// blijft lokaal, jan_slagerij_gevlucht is een gedeelde missiestap en staat
+// daardoor ook als vflag_ in de sessie. Beide vormen weg, anders synct de
+// oude stand meteen weer terug en telt de missieteller de stap nog mee.
+// Let op: dit wist die stap ook voor de andere tablets. Dat hoort bij een
+// skip die de wereld sowieso al opnieuw zet.
+function debugSlagerijWeerOpen() {
+  ['slagerij_dicht', 'jan_slagerij_gevlucht'].forEach(function (f) {
+    state.visited.delete(f);
+    setSharedState('vflag_' + f, null);
+    setSharedState(f, null);
+  });
+  state.janVastInAchterkamer = false;
+  if (typeof updateMissieTeller === 'function') updateMissieTeller();
+}
+
 // Skip helemaal door naar Heer Donatuslaan: alles van Dorendael
 // afgerond + woud-doolhof voltooid + HD ontgrendeld.
 function debugSkipNaarHeerDonatuslaan() {
@@ -14095,12 +14112,14 @@ function debugSkipNaarHeerDonatuslaan() {
   markVisited('woud_doolhof_voltooid');
   markVisited('woud_filmpje_gezien');
   markVisited('sintdonatuslaan_unlocked');
-  // De slagerij blijft bewust OPEN. Deze skip zet je aan het begin van Heer
+  // De slagerij gaat bewust OPEN. Deze skip zet je aan het begin van Heer
   // Donatuslaan, en op dat moment is Jan nog niet in de achterkamer geweest.
-  // Zette je hier slagerij_dicht plus jan_slagerij_gevlucht, dan kreeg Jan bij
-  // H3 meteen de na-afloop-tekst ("de vleespen zit nog in je zak") en was zijn
-  // hele slagerij-lijn niet meer te spelen. Wie de dichte winkel wil zien
-  // gebruikt de aparte testknop "🔪 Slagerij dicht (na Jan)".
+  // Actief wissen, niet alleen "niet zetten": jan_slagerij_gevlucht is een
+  // gedeelde vlag, dus wat een eerdere skip of testknop daar schreef komt bij
+  // elke pagina-load terug uit de sessie. Zonder dit blijft Jans slagerij-lijn
+  // onspeelbaar tot iemand een Firebase-reset doet. Wie de dichte winkel wil
+  // zien gebruikt de aparte testknop "🔪 Slagerij dicht (na Jan)".
+  debugSlagerijWeerOpen();
   // Felix zit standaard vast in zijn kamer zodra Heer Donatuslaan begint, maar
   // alleen voor de andere rollen (voor de hint). Speel je Felix zelf, dan geeft
   // de normale skip vrije doorgang naar H1 en verder; alleen de knop "Felix
