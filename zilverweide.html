@@ -10057,26 +10057,12 @@ function renderK1Dorpsput(loc) {
   }
 
   else if (p === 'jan') {
-    // ── Jan: 3 staten ───────────────────────────────────────────
-    if (hasVisited('kelly_gered')) {
-      dialog.push({ tekst: 'De put staat er stil bij.', onShow: function () { verbergNpcPop(); } });
-      if (!tobbeIsWeg()) {
-        dialog.push({ spreker: 'Verteller', tekst: 'Dat gegniffel klinkt er nog steeds. Waar komt dat vandaan?' });
-      }
-      // Jan heeft de woudpoort gezien en heeft nog geen klei → pak klei.
-      // De put-rand is vochtig, daar zit klei.
-      if (hasVisited('jan_woudpoort_gezien')
-          && !hasVisited('jan_klei_gepakt')
-          && !heeftItem(ITEMS.kleiAfdruk.naam)
-          && !hasVisited('sleutel_woudpoort_gemaakt')) {
-        dialog.push({ spreker: 'Jan', tekst: 'Die afdruk, dat slot op de woudpoort. Daar heb ik iets voor nodig. Iets zacht, iets wat de vorm vasthoudt.' });
-        dialog.push({ tekst: 'De put-rand is bemost en nat. Tussen de stenen zit zachte, vochtige klei, perfect om een afdruk mee te maken.' });
-        acties = [
-          { label: '🟫 Pak klei mee', onclick: janPakKlei },
-          { label: '🚪 Snel terug naar de woudpoort', onclick: function() { openLocatie('dd1_woudpoort'); } }
-        ];
-      }
-    } else if (hasVisited('kelly_in_put')) {
+    // ── Jan: zit Kelly nu vast, dan gaat redden voor. In alle andere
+    // gevallen is dit een stille put, en daar haalt hij zijn klei.
+    // De klei hing eerder aan 'kelly_gered'. Was Kelly hier nooit in
+    // gevallen (of speel je zonder haar), dan kon Jan dus nooit aan klei
+    // komen en liep de sleutelketen dood.
+    if (hasVisited('kelly_in_put') && !hasVisited('kelly_gered')) {
       // Kelly zit vast. Jan hoort het eerst, en ziet haar dan pas: de pop
       // verschijnt op de regel waarin hij over de rand kijkt.
       dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
@@ -10098,9 +10084,32 @@ function renderK1Dorpsput(loc) {
       }
     } else {
       // Niemand in de put: een gewone, stille put. Geen hulpgeroep.
-      dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
-      if (!tobbeIsWeg()) {
-        dialog.push({ spreker: 'Verteller', tekst: 'Ergens in de bosjes klinkt gegniffel.' });
+      if (hasVisited('kelly_gered')) {
+        dialog.push({ tekst: 'De put staat er stil bij.', onShow: function () { verbergNpcPop(); } });
+        if (!tobbeIsWeg()) {
+          dialog.push({ spreker: 'Verteller', tekst: 'Dat gegniffel klinkt er nog steeds. Waar komt dat vandaan?' });
+        }
+      } else {
+        dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
+        if (!tobbeIsWeg()) {
+          dialog.push({ spreker: 'Verteller', tekst: 'Ergens in de bosjes klinkt gegniffel.' });
+        }
+      }
+      // Jan heeft de woudpoort gezien en heeft nog geen klei → pak klei.
+      // De put-rand is vochtig, daar zit klei.
+      if (hasVisited('jan_woudpoort_gezien')
+          && !hasVisited('jan_klei_gepakt')
+          && !heeftItem(ITEMS.kleiAfdruk.naam)
+          && !hasVisited('sleutel_woudpoort_gemaakt')) {
+        dialog.push({ spreker: 'Jan', tekst: 'Die afdruk, dat slot op de woudpoort. Daar heb ik iets voor nodig. Iets zacht, iets wat de vorm vasthoudt.' });
+        dialog.push({ tekst: 'De put-rand is bemost en nat. Tussen de stenen zit zachte, vochtige klei, perfect om een afdruk mee te maken.' });
+        acties = [
+          { label: '🟫 Pak klei mee', onclick: janPakKlei },
+          // De woudpoort is een Dorendael-locatie (DD5). Deze knop wees naar
+          // openLocatie, en die kent alleen Kraaienkwartier-locaties: hij deed
+          // dus niets.
+          { label: '🚪 Snel terug naar de woudpoort', onclick: function() { openDorendaelLocatie('DD5'); } }
+        ];
       }
     }
   }
