@@ -7379,8 +7379,7 @@ function dd2WachtOpBewoner() {
   let secs = 15;
   let html = '<h3>🏚️ Nummer 2</h3>';
   html += '<div class="sub">Je wacht in de stilte van het verlaten huis</div>';
-  html += '<p style="margin-top:1.5rem;color:var(--mist);font-style:italic">[Voeg hier spanning toe]</p>';
-  html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Felix wacht...</p>';
+  html += '<p style="margin-top:1.5rem;color:var(--mist);font-style:italic">Felix wacht...</p>';
   html += '<div id="dd2-timer" style="margin-top:1.5rem;font-family:Cinzel,serif;font-size:2.5rem;color:var(--gold);text-align:center;text-shadow:0 0 20px rgba(201,168,76,.6)">' + secs + '</div>';
   c.innerHTML = html;
 
@@ -7432,7 +7431,7 @@ function dd2BewonerVerschijnt() {
     // Bewoner ziet een oud vrouwtje en denkt aan een vergissing
     html += '<div class="npc-line" style="margin-top:1.5rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Ach mevrouw... bent u de weg kwijt? Maakt u zich geen zorgen — zo&#39;n vriendelijke dame zou nooit opzettelijk met mijn centen aan de haal gaan."</em></div></div></div>';
     html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij drukt je vriendelijk de zak in je handen en wuift je weg.</p>';
-    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">[Hier komt later: hint over het beest, waarschuwing voor de molen \'s nachts]</p>';
+    html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Maar blijf na donker bij de molen vandaan, mevrouw. Er zit iets. Een beest, zeggen sommigen. Een zwerver, zeggen anderen. En mijn buurvrouw fluistert dat het helemaal geen mens is. Ik weet het niet. Niemand weet het. Alleen dat je er \'s nachts beter niet gaat kijken."</em></div></div></div>';
   } else {
     // De Vos: blufpoker, snel weer weg
     html += '<p style="margin-top:1.5rem">De voetstappen komen dichterbij. De Vos haalt diep adem, recht zijn rug, en stapt naar voren — voor de bewoner hem kan aanspreken.</p>';
