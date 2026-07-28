@@ -16954,6 +16954,16 @@ function startWoudSceneInSpel() {
     try { huidigDoolhof.destroy(); } catch (e) {}
     huidigDoolhof = null;
   }
+  // De schaduw moet stilstaan van het doolhof tot en met het openen van
+  // Heer Donatuslaan. De opruiming van het doolhof hierboven zet zelf
+  // setBusy(false) (zie schaduwTijdensDoolhof), en die opruiming gebeurt
+  // sinds de scène er is al hier in plaats van bij de vloek. Dus meteen
+  // weer op pauze, anders loopt de meter door tijdens de scène en kan een
+  // speler er middenin door de schaduw gepakt worden. Vrijgeven gebeurt in
+  // openHeerDonatuslaanVanuitWoud, op hetzelfde moment als vroeger.
+  if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.setBusy) {
+    window.ZilverweideSchaduw.setBusy(true);
+  }
 
   // Beeldvullende laag boven het spel maar onder de testknoppen
   // (z-index 300), zodat de nood-overslaan in het debug-paneel
@@ -17023,10 +17033,17 @@ function openHeerDonatuslaanVanuitWoud() {
 
   stopWoudStorm();
 
-  // Ruim het doolhof op zodat audio/timers stoppen.
+  // Ruim het doolhof op zodat audio/timers stoppen. Draaide de scène, dan
+  // is dit al bij de start gebeurd en staat de schaduw sindsdien op pauze.
   if (huidigDoolhof) {
     try { huidigDoolhof.destroy(); } catch (e) {}
     huidigDoolhof = null;
+  }
+  // Pas hier mag de schaduw weer lopen: vanaf nu valt de vloek, en wie hem
+  // nog niet had krijgt hem hieronder alsnog. Zolang het doolhof en de
+  // scène liepen stond hij stil.
+  if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.setBusy) {
+    window.ZilverweideSchaduw.setBusy(false);
   }
   clearTimeout(woudEindBlokTimer);
   woudEindBlokTimer = null;
