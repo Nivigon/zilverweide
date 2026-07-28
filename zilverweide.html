@@ -6162,7 +6162,10 @@ function kellyKerkArchief() {
 function kellyKerkArchiefNaVideo() {
   const cont = document.getElementById('locatie-content');
   renderLocatieScene({
-    container: cont, titel: 'Het kerkarchief', sub: '', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    container: cont, titel: 'Het kerkarchief', sub: '', image: 'locaties/heerdonatuslaan/kerkdoolhof.jpeg',
+    // Geen terugknop: de tekst zegt dat de deur achter haar dicht zit, dus
+    // weglopen mag hier niet. De enige weg is opnieuw het gangenstelsel in.
+    geenTerug: true,
     dialog: ['Je wilt terug, maar de deur waardoor je kwam zit dicht. De enige uitweg loopt door de kelder, een donker gangenstelsel waarin je makkelijk verdwaalt.'],
     acties: [{ label: 'Ga het gangenstelsel in', onclick: startKerkDoolhof }]
   });
@@ -6239,7 +6242,12 @@ function kellyKerkBoekVondst() {
   const cont = document.getElementById('locatie-content');
   const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
   renderLocatieScene({
-    container: cont, titel: 'Het kerkarchief', sub: 'De boekenkast', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    // Blijf het archief tonen, niet de kerk van buiten: Kelly staat nog
+    // beneden. De kerk-afbeelding komt pas terug als ze buiten staat.
+    container: cont, titel: 'Het kerkarchief', sub: 'De boekenkast', image: 'locaties/heerdonatuslaan/kerkdoolhof.jpeg',
+    // Geen terugknop tot ze het boekje gelezen heeft. Vanaf het gangenstelsel
+    // tot en met "Over de Rozen" zit ze vast aan deze route.
+    geenTerug: true,
     dialog: [
       'Op een van de schappen liggen drie boeken, willekeurig neergelegd, alsof niemand ze ooit terug op de juiste plek heeft gezet.',
       { spreker: 'Boek', tekst: '"Duisternis en licht"' },
@@ -6267,7 +6275,9 @@ function kellyKerkArchiefFilm() {
     container: cont, titel: 'Het kerkarchief', sub: 'Je slaat het open',
     mediaSlot: function(el){ mountOverDeRozenBoekje(el, kellyUitKerkDoolhof); },
     dialog: [],
-    onBack: function(){ stopDagboekMuziek(); kellyUitKerkDoolhof(); }
+    // Geen terugknop: ze moet het boekje lezen. Pas na afloop staat ze buiten
+    // en mag ze weer weg. Het boekje sluit zichzelf af via mountOverDeRozenBoekje.
+    geenTerug: true
   });
 }
 
@@ -10785,7 +10795,7 @@ var OVER_DE_ROZEN_BLADEN = [
   { top:14, left:15, width:70, align:'left', fs:5.5,
     datum:'',
     afbeelding:'videos/dagboek/roseglow.png',
-    afbeeldingBreedte:'34cqw',
+    afbeeldingBreedte:'20cqw',
     regels:[
       'Hun kracht komt uit een veld van',
       'blauwe rozen, ergens in het woud.',
@@ -14085,10 +14095,12 @@ function debugSkipNaarHeerDonatuslaan() {
   markVisited('woud_doolhof_voltooid');
   markVisited('woud_filmpje_gezien');
   markVisited('sintdonatuslaan_unlocked');
-  // De H3 slagerij is bezocht en dicht (Jan is er al binnen geweest).
-  markVisited('slagerij_dicht');
-  setSharedState('slagerij_dicht', true);
-  markVisited('jan_slagerij_gevlucht');
+  // De slagerij blijft bewust OPEN. Deze skip zet je aan het begin van Heer
+  // Donatuslaan, en op dat moment is Jan nog niet in de achterkamer geweest.
+  // Zette je hier slagerij_dicht plus jan_slagerij_gevlucht, dan kreeg Jan bij
+  // H3 meteen de na-afloop-tekst ("de vleespen zit nog in je zak") en was zijn
+  // hele slagerij-lijn niet meer te spelen. Wie de dichte winkel wil zien
+  // gebruikt de aparte testknop "🔪 Slagerij dicht (na Jan)".
   // Felix zit standaard vast in zijn kamer zodra Heer Donatuslaan begint, maar
   // alleen voor de andere rollen (voor de hint). Speel je Felix zelf, dan geeft
   // de normale skip vrije doorgang naar H1 en verder; alleen de knop "Felix
@@ -17976,19 +17988,22 @@ function toonStemmenStil(stil) {
 /* Optionele illustratie op een blad (bv. de roos bij "Over de Rozen").
    Iets gedraaid en licht in de parchment gemengd, alsof hij erin getekend
    is. Fade-in via hetzelfde dgbk-zichtbaar-mechanisme als de regels. */
+/* Rechtsonder in de hoek. Stond gecentreerd, maar sinds de tekst groter is
+   loopt die door tot onderin en liep de illustratie eroverheen. In de hoek
+   blijft hij vrij van zowel de laatste tekstregel als de Verder-knop. */
 .dgbk-illu{
-  position:absolute; left:50%; bottom:11%;
-  width:var(--illu-w, 30cqw);
-  transform:translateX(-50%) rotate(-4deg) translateY(.5em);
+  position:absolute; right:4%; bottom:4%;
+  width:var(--illu-w, 20cqw);
+  transform:rotate(-4deg) translateY(.5em);
   mix-blend-mode:multiply;
   opacity:0; filter:blur(4px);
   transition:opacity 1.1s ease, transform 1.1s ease, filter 1.1s ease;
   pointer-events:none;
 }
-.dgbk-illu.dgbk-zichtbaar{ opacity:.96; transform:translateX(-50%) rotate(-4deg); filter:blur(0); }
+.dgbk-illu.dgbk-zichtbaar{ opacity:.96; transform:rotate(-4deg); filter:blur(0); }
 @media (prefers-reduced-motion: reduce){
   .dgbk-regel{ transition:none; transform:none; filter:none; }
-  .dgbk-illu{ transition:none; transform:translateX(-50%) rotate(-4deg); filter:none; }
+  .dgbk-illu{ transition:none; transform:rotate(-4deg); filter:none; }
 }
 
 /* Beschadigd stuk [.....] → grillige inktvlek */
