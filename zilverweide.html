@@ -2497,6 +2497,7 @@ const VISITED_FLAGS = {
   jan_klokkenmaker_geweigerd: 'Jan is met de afdruk bij de klokkenmaker geweest en weet dat hij een afleiding nodig heeft',
   jan_werkplaats_open:        'Jan heeft het werkplaats-slot geforceerd',
   jan_klokkenmaker_eerder:    'Jan is al eens bij de klokkenmaker binnen geweest (eerste verkenning)',
+  klokkenmaker_afleiding_nodig:'WERELDSTATUS: de klokkenmaker heeft Jan geweigerd, er is een dame nodig om hem af te leiden',
   lola_klokkenmaker_geflirt:  'Lola heeft de klokkenmaker afgeleid en de code gekregen',
   klokkenmaker_afgeleid:      'De klokkenmaker is afgeleid (Lola is binnen)',
 
@@ -2512,6 +2513,7 @@ const VISITED_FLAGS = {
   jan_slagerij_gevlucht:      'Jan is uit de achterkamer van de slagerij gevlucht',
   kerk_non_weg:               'H4 Kerk: de non is weg nadat Kelly het archief heeft gedaan',
   fenna_gemeentehuis:         'H5: Fenna heeft bij het gemeentehuis Robbie getroffen',
+  fenna_wallingen_ontmoet:    'Fenna heeft Mevr. van Wallingen bij het bord al eens ontmoet',
   fenna_herberg_gedaan:       'Fenna heeft de herberg-scene (boze menigte / climax) gespeeld',
   felix_kantoor:              'H5: Felix heeft de vier voorwerpen in het kantoor gevonden',
   felix_hd2_vrij:             'Felix heeft de code van Jan gehad en is vermomd als Liu-Yen',
@@ -2562,6 +2564,15 @@ const SHARED_VISITED_FLAGS = [
   // niets te doen" in plaats van het gat in de muur. De vrij-vlag stond al
   // in de lijst hierboven, de vast-vlag ontbrak.
   'felix_hd2_vast',
+  // Wereldstatus in Dorendael en Heer Donatuslaan. Dit zijn feiten over de
+  // wereld, niet iemands eigen scèneprogressie, en andere rollen hebben er
+  // eigen tekst voor. Zonder delen bleef die tekst onbereikbaar:
+  // - klokkenmaker_afleiding_nodig: zonder dit gaat Lola nooit naar binnen bij
+  //   de klokkenmaker en zien Kelly, Fenna en Felix de hint niet dat er een
+  //   dame nodig is.
+  // - slagerij_dicht: zonder dit zag alleen Jan de dichte winkel, terwijl er
+  //   voor Kelly, Fenna en Felix aparte scènes voor die toestand bestaan.
+  'klokkenmaker_afleiding_nodig','slagerij_dicht',
   // District-unlock
   'sintdonatuslaan_unlocked'
 ];
@@ -5609,7 +5620,12 @@ function janLevertOutfitAanFelix() {
   state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.felixOutfit.naam; });
   updateInventoryBar();
   markVisited('jan_outfit_geleverd');
-  setSharedState('felix_outfit_geleverd', true);
+  // Sleutelnaam gelijkgetrokken met de lezer: hier stond felix_outfit_geleverd,
+  // terwijl elke lezer jan_outfit_geleverd checkt, dus die schrijfactie deed
+  // niets. LET OP: deze gedeelde sleutel wordt nog nergens gelezen. De vlag
+  // staat niet in SHARED_VISITED_FLAGS, dus hasVisited kijkt er niet naar. Het
+  // synchroniseren van de hele H2-keten tussen Jan en Felix is apart werk.
+  setSharedState('jan_outfit_geleverd', true);
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
   if (loc) renderH2FelixKamer(loc);
 }
@@ -6840,7 +6856,11 @@ function renderH5Gemeentehuis(loc) {
     if (stap === 2) {
       // De vier voorwerpen als langwerpige panelen in het beeldvenster.
       markVisited('felix_kantoor');
-      setSharedState('felix_kantoor', true);
+      // Geen setSharedState hier: die sleutel werd nergens gelezen. hasVisited
+      // kijkt alleen naar de vflag_-spiegel van vlaggen in SHARED_VISITED_FLAGS,
+      // dus een losse sleutel schrijven ziet eruit als delen zonder dat het iets
+      // doet. Moet een andere rol dit ooit weten, zet de vlag dan in die lijst.
+
       var voorwerpen = [
         { n: 11, emoji: '\ud83d\uddfa\ufe0f', label: 'De kaart' },
         { n: 12, emoji: '\ud83e\udd40', label: 'De verbrande roos' },
@@ -15420,6 +15440,9 @@ function debugJanKlokkenmakerBezocht() {
   markVisited('jan_woudpoort_gezien');
   markVisited('jan_afdruk_gemaakt');
   markVisited('jan_klokkenmaker_geweigerd');
+  // Ook de gedeelde wereldvlag, anders simuleert deze knop wel Jans bezoek maar
+  // komt Lola nog steeds niet binnen bij de klokkenmaker.
+  markVisited('klokkenmaker_afleiding_nodig');
 }
 function debugJanSleutel() {
   state.inventory = state.inventory.filter(i => i.naam !== ITEMS.kleiAfdruk.naam);
@@ -16443,8 +16466,11 @@ function renderDd7Klokkenmaker(loc) {
   const lolaCodeKlaar        = hasVisited('lola_klokkenmaker_geflirt');
   const lola                 = (p === 'felix' && state.vermomming === 'Lola');
   const lucinde              = (p === 'felix' && state.vermomming === 'Lucinde');
-  // Jan staat te wachten op de code: afdruk gemaakt, sleutel nog niet, niet afgeleid.
-  const janLocked = hasVisited('jan_afdruk_gemaakt') && !sleutelGemaakt && !klokkenmakerAfgeleid;
+  // Jan staat te wachten op de code. Stuurt de hint-regels aan bij Kelly, Fenna
+  // en Felix ("misschien dat een halve dame meer succes heeft"). Leest de
+  // gedeelde wereldvlag; met jan_afdruk_gemaakt stond dit op elk ander tablet
+  // altijd op false en verscheen die hint dus nooit.
+  const janLocked = hasVisited('klokkenmaker_afleiding_nodig') && !sleutelGemaakt && !klokkenmakerAfgeleid;
 
   // Flavour ná Jan's sleutel — klokkenmaker werkt verdiept aan iets kleins.
   function flavourNaSleutel() {
@@ -16493,6 +16519,11 @@ function renderDd7Klokkenmaker(loc) {
       if (!hasVisited('jan_klokkenmaker_geweigerd')) {
         // Eerste afdruk-bezoek: toegangsvraag → weigering → wachtmodus.
         markVisited('jan_klokkenmaker_geweigerd');
+        // De weigering is wereldstatus: vanaf nu is er een dame nodig. Aparte
+        // gedeelde vlag, want jan_klokkenmaker_geweigerd is Jans eigen
+        // scèneprogressie en die mag niet gedeeld worden (dan slaat hij zijn
+        // eigen eerste-bezoek-dialoog over).
+        markVisited('klokkenmaker_afleiding_nodig');
         const d = [];
         if (!hasVisited('jan_klokkenmaker_eerder')) {
           d.push({ spreker: 'Jan', tekst: '*(in gedachten)* Ah, een werkplaats!' });
@@ -16536,7 +16567,10 @@ function renderDd7Klokkenmaker(loc) {
   if (lola) {
     // "Jan is met de afdruk bij de klokkenmaker geweest" — pas dán is er een
     // reden voor Lola om binnen te gaan en de klokkenmaker af te leiden.
-    const janMetAfdrukGeweest = hasVisited('jan_klokkenmaker_geweigerd');
+    // Leest de gedeelde wereldvlag, niet Jans eigen vlag: die staat alleen op
+    // zijn tablet, waardoor Lola altijd langsliep en de flirt-scène (en dus de
+    // code voor Jan) nooit startte.
+    const janMetAfdrukGeweest = hasVisited('klokkenmaker_afleiding_nodig');
 
     // Uitzondering: Jan is nog niet met de afdruk geweest én Lola is hier nog
     // nooit binnen geweest → ze gaat niet naar binnen. Ze loopt langs en de
@@ -16692,6 +16726,10 @@ function renderDd7Klokkenmaker(loc) {
 // Jan's wachtmodus: hij staat bij de werkplaats-deur en kan alleen de code
 // invoeren die hij mondeling van een medespeler (Lola) krijgt.
 function renderDd7JanLocked(loc) {
+  // Vangnet: staat Jan hier te wachten, dan is de wereldvlag per definitie waar.
+  // Nodig voor een sessie waarin hij al geweigerd was voordat die vlag bestond;
+  // het weigeringsblok draait dan niet meer. markVisited is idempotent.
+  markVisited('klokkenmaker_afleiding_nodig');
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel: loc.naam, sub: 'Bij de werkplaats-deur', image: null,
