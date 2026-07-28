@@ -5735,11 +5735,16 @@ function simuleerFelixCode() {
   if (loc) renderH2FelixKamer(loc);
 }
 
-// Jan gaat verder nadat Felix de code heeft ingevoerd. Felix is dan vrij en
-// Jan kan de kamer verlaten.
+// Jan gaat verder nadat Felix de code heeft ingevoerd. Alleen weglopen: zijn
+// terugknop is op dit punt al vrij (dat regelt felix_code_ingevoerd hierboven).
+//
+// Zet felix_hd2_vrij NIET meer. Felix is op dit moment nog niet buiten: hij moet
+// zich nog vermommen, de gestalte wegjagen en zijn vermommingen van de stoel
+// pakken. Die vlag is gedeeld en is tevens een missiestap van Heer Donatuslaan,
+// dus Jan die hem hier zette liet de stap te vroeg aftikken en zou Felix' kamer
+// bij een hertekening al op "vrij" zetten terwijl hij nog aan het ontsnappen is.
+// Felix zet hem zelf op het juiste moment, in felixNaarBuiten.
 function janVerderNaCode() {
-  markVisited('felix_hd2_vrij');
-  setSharedState('felix_hd2_vrij', true);
   if (typeof goBackFromLocatie === 'function') goBackFromLocatie();
 }
 
@@ -5795,19 +5800,14 @@ function janNeemMuntenAan() {
   );
 }
 
-function felixOntvangtJanBezoek() {
-  markVisited('jan_bezocht_felix');
-  if (window.FelixSpiek && typeof window.FelixSpiek.stop === 'function') window.FelixSpiek.stop();
-  toonLade(
-    '🗝️ Jan is er',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je hoort Jan aan de andere kant van de muur. Hij heeft je gevonden en fluistert door het gat.]</p>',
-    'Verder',
-    function () {
-      var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
-      if (loc) renderH2FelixKamer(loc);
-    }
-  );
-}
+// Hier stond felixOntvangtJanBezoek: een aparte melding "Jan is er" met een
+// placeholder-tekst, die nergens werd aangeroepen. Weggehaald omdat dat moment
+// nu al twee keer volledig uitgeschreven bestaat: staat Felix op het
+// kamerscherm, dan brengt de live verversing hem meteen naar de gat-scène
+// ("Een schaduw voor het gat in de muur..."), en staat hij in de spiek, dan
+// haalt spiek.js hem eruit met "Iemand aan het gat". Een derde variant met een
+// placeholder ertussen zou die beat dubbel doen en onaffe tekst aan spelers
+// tonen. Wil je er alsnog een eigen melding bij, dan is dit de plek.
 
 // Felix duwt het zakje munten door het gat. Het verdwijnt uit zijn
 // inventaris; Jan krijgt het via de gedeelde staat (en lokaal als je Jan speelt).
