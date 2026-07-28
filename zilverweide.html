@@ -2130,7 +2130,7 @@ function verwerkBinnengekomenShared(data) {
   var eersteSnapshot = !_verhaalSnapshotGehad;
   if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
   var ietsNieuws = false;
-  var putFlagBinnen = false, kellyGeredBinnen = false;
+  var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -2140,6 +2140,8 @@ function verwerkBinnengekomenShared(data) {
           ietsNieuws = true;
           if (f === 'kelly_in_put' || f === 'kelly_gered') putFlagBinnen = true;
           if (f === 'kelly_gered') kellyGeredBinnen = true;
+          if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
+              || f === 'felix_code_ingevoerd') h2FlagBinnen = true;
           if (typeof DORENDAEL_MISSIE_KEYS !== 'undefined' && DORENDAEL_MISSIE_KEYS.indexOf(f) !== -1) {
             onMissieKeyVoltooid(DORENDAEL_MISSIE_LABELS[f] || 'Stap voltooid');
           } else if (typeof HEER_DONATUSLAAN_MISSIE_KEYS !== 'undefined' && HEER_DONATUSLAAN_MISSIE_KEYS.indexOf(f) !== -1) {
@@ -2195,6 +2197,21 @@ function verwerkBinnengekomenShared(data) {
       var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
+  }
+  // Zelfde voor de kamer van Felix (H2). Jan en Felix staan daar tegelijk aan
+  // weerszijden van het gat en handelen om en om, dus zonder dit zie je de stap
+  // van de ander pas als je wegloopt en terugkomt. Niet bij de eerste snapshot:
+  // dan is een al gevorderde keten geen aanleiding om iets te hertekenen.
+  if (h2FlagBinnen && !eersteSnapshot &&
+      state.lastOpenedLocatie === 'h2_felixkamer' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      typeof renderH2FelixKamer === 'function') {
+    var _h2Loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
+    // Staat Felix in de spiek-mini-game, dan haalt die zichzelf eruit via zijn
+    // eigen onderbreek-check; dan niet ook nog eens hertekenen eronder.
+    var _inSpiek = !!document.getElementById('felix-spiek-overlay');
+    if (_h2Loc && !_inSpiek) renderH2FelixKamer(_h2Loc);
   }
 }
 
@@ -2573,6 +2590,17 @@ const SHARED_VISITED_FLAGS = [
   // - slagerij_dicht: zonder dit zag alleen Jan de dichte winkel, terwijl er
   //   voor Kelly, Fenna en Felix aparte scènes voor die toestand bestaan.
   'klokkenmaker_afleiding_nodig','slagerij_dicht',
+  // De drie wereldfeiten van de H2-keten tussen Jan en Felix. Alleen deze drie:
+  // elk is een feit dat de ANDER moet weten. Alle overige stappen in die keten
+  // blijven per speler, want dat is eigen scèneprogressie (Felix' zoektocht in
+  // de kamer) of eigen inventaris (Jans munten en outfit), en die gedeeld maken
+  // zou de ander zijn eigen scène laten overslaan.
+  // - jan_bezocht_felix: Felix moet weten dat er iemand aan het gat staat,
+  //   anders krijgt hij zijn doorgeef-knop nooit.
+  // - felix_munten_aan_jan: Jan moet weten dat het zakje door het gat is,
+  //   anders verschijnt zijn aanneem-knop nooit.
+  // - felix_code_ingevoerd: Jan mag pas weg als Felix de code heeft ingevoerd.
+  'jan_bezocht_felix','felix_munten_aan_jan','felix_code_ingevoerd',
   // District-unlock
   'sintdonatuslaan_unlocked'
 ];
@@ -5305,10 +5333,13 @@ function renderH2FelixKamer(loc) {
   // ── Niet-Felix: gewone placeholder ────────────────────────────
   // ── Jan hoort Felix en kan door zijn lengte net bij het gat ──
   if (p === 'jan' && felixVast && !felixVrij) {
+    // markVisited spiegelt dit nu zelf naar de sessie (de vlag staat in
+    // SHARED_VISITED_FLAGS), dus Felix ziet dat er iemand aan het gat staat.
     markVisited('jan_bezocht_felix');
-    setSharedState('jan_bezocht_felix', true);
-    const felixVondMunten = hasVisited('felix_munten_gevonden');
-    const muntenAangenomen = hasVisited('felix_munten_aan_jan');
+    // Heeft Felix het zakje door het gat geduwd? Gedeeld, dus dit komt van zijn
+    // tablet. Zijn eigen zoektocht (felix_munten_gevonden) hoeft Jan niet te
+    // weten; die vlag blijft daarom per speler.
+    const muntenDoorgegeven = hasVisited('felix_munten_aan_jan');
     const heeftMunten = !!state.inventory.find(i => i.naam === ITEMS.zakjeMunten.naam);
     const heeftOutfit = !!state.inventory.find(i => i.naam === ITEMS.felixOutfit.naam);
     const outfitGeleverd = hasVisited('jan_outfit_geleverd');
@@ -5341,11 +5372,14 @@ function renderH2FelixKamer(loc) {
         dialog = [
           { spreker: 'Felix', tekst: '"Ik heb hem binnen. Zeg me nu de code, dan kleed ik me om."' }
         ];
+        // Geen knop meer waarmee Jan zelf kan doen alsof Felix de code invoerde:
+        // dat liet hem het hele samenwerkingsmoment overslaan. In testmodus kan
+        // het nog via het testpaneel, knop "Code ingevoerd (outfit valt bij
+        // Felix)" onder Felix H2.
         extraHtml = codeBlok +
           '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Felix de code heeft ingevoerd. Je kunt hier nog niet weg.</p>' +
           '<div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">' +
             '<button class="btn" disabled style="opacity:.4;cursor:not-allowed">Verder</button>' +
-            '<button class="btn" onclick="simuleerFelixCode()">Tijdelijke knop: Felix code ingevoerd</button>' +
           '</div>';
         onBack = function () { toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd'); };
       }
@@ -5360,7 +5394,7 @@ function renderH2FelixKamer(loc) {
       dialog = [
         { spreker: 'Felix', tekst: '"Haal met die munten een outfit voor me bij Naald en Masker in het Kraaienkwartier, en breng hem hierheen."' }
       ];
-    } else if (felixVondMunten && !muntenAangenomen) {
+    } else if (muntenDoorgegeven) {
       dialog = [
         'Je hoort een geluid uit dat gat in de muur. Jij bent lang genoeg om erbij te kunnen. Je buigt je ernaartoe.',
         { spreker: 'Felix', tekst: '"Jan? Ben jij dat? Goddank. Ik heb een plan. Ik heb hier een zakje munten gevonden. Pak het aan door het gat, dan kun jij een outfit voor me halen bij Naald en Masker in Kraaienkwartier."' }
@@ -5691,18 +5725,26 @@ function felixNaarBuiten() {
 // Tijdelijke testknop: doet alsof Felix de code heeft ingevoerd, zodat de
 // "Verder"-knop bij Jan vrijkomt. In de echte versie voert Felix dit zelf in
 // (of komt het straks via de online sync binnen).
+// Testmodus: doe alsof Felix de code heeft ingevoerd. Stond eerder als knop op
+// Jans scherm in de scène zelf, waarmee hij het samenwerkingsmoment kon
+// overslaan. Nu alleen bereikbaar via het testpaneel. De vlag is gedeeld, dus
+// markVisited spiegelt hem zelf naar de sessie en het andere tablet volgt.
 function simuleerFelixCode() {
   markVisited('felix_code_ingevoerd');
-  setSharedState('felix_code_ingevoerd', true);
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
   if (loc) renderH2FelixKamer(loc);
 }
 
-// Jan gaat verder nadat Felix de code heeft ingevoerd. Felix is dan vrij en
-// Jan kan de kamer verlaten.
+// Jan gaat verder nadat Felix de code heeft ingevoerd. Alleen weglopen: zijn
+// terugknop is op dit punt al vrij (dat regelt felix_code_ingevoerd hierboven).
+//
+// Zet felix_hd2_vrij NIET meer. Felix is op dit moment nog niet buiten: hij moet
+// zich nog vermommen, de gestalte wegjagen en zijn vermommingen van de stoel
+// pakken. Die vlag is gedeeld en is tevens een missiestap van Heer Donatuslaan,
+// dus Jan die hem hier zette liet de stap te vroeg aftikken en zou Felix' kamer
+// bij een hertekening al op "vrij" zetten terwijl hij nog aan het ontsnappen is.
+// Felix zet hem zelf op het juiste moment, in felixNaarBuiten.
 function janVerderNaCode() {
-  markVisited('felix_hd2_vrij');
-  setSharedState('felix_hd2_vrij', true);
   if (typeof goBackFromLocatie === 'function') goBackFromLocatie();
 }
 
@@ -5743,8 +5785,10 @@ function janNeemMuntenAan() {
     geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam);
   }
   markVisited('jan_heeft_munten');
-  markVisited('felix_munten_aan_jan');
-  setSharedState('felix_munten_aan_jan', true);
+  // Bewust GEEN felix_munten_aan_jan hier. Die vlag betekent "Felix heeft het
+  // zakje door het gat geduwd", en dat is Felix' actie. Jan die hem ook zette
+  // was de patstelling: in de bedoelde volgorde stond de vlag dan al aan
+  // voordat Jans aanneem-knop kon verschijnen, en die knop verdween daardoor.
   toonLade(
     '🪙 Munten aangenomen',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je vist het zakje door het gat naar je toe. Nu een outfit halen bij de kledingwinkel in Kraaienkwartier.]</p>',
@@ -5756,19 +5800,14 @@ function janNeemMuntenAan() {
   );
 }
 
-function felixOntvangtJanBezoek() {
-  markVisited('jan_bezocht_felix');
-  if (window.FelixSpiek && typeof window.FelixSpiek.stop === 'function') window.FelixSpiek.stop();
-  toonLade(
-    '🗝️ Jan is er',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je hoort Jan aan de andere kant van de muur. Hij heeft je gevonden en fluistert door het gat.]</p>',
-    'Verder',
-    function () {
-      var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
-      if (loc) renderH2FelixKamer(loc);
-    }
-  );
-}
+// Hier stond felixOntvangtJanBezoek: een aparte melding "Jan is er" met een
+// placeholder-tekst, die nergens werd aangeroepen. Weggehaald omdat dat moment
+// nu al twee keer volledig uitgeschreven bestaat: staat Felix op het
+// kamerscherm, dan brengt de live verversing hem meteen naar de gat-scène
+// ("Een schaduw voor het gat in de muur..."), en staat hij in de spiek, dan
+// haalt spiek.js hem eruit met "Iemand aan het gat". Een derde variant met een
+// placeholder ertussen zou die beat dubbel doen en onaffe tekst aan spelers
+// tonen. Wil je er alsnog een eigen melding bij, dan is dit de plek.
 
 // Felix duwt het zakje munten door het gat. Het verdwijnt uit zijn
 // inventaris; Jan krijgt het via de gedeelde staat (en lokaal als je Jan speelt).
@@ -5776,7 +5815,6 @@ function felixGeefMuntenAanJan() {
   state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.zakjeMunten.naam; });
   updateInventoryBar();
   markVisited('felix_munten_aan_jan');
-  setSharedState('felix_munten_aan_jan', true);
   toonLade(
     '\ud83e\ude99 Muntenzakje overhandigd aan Jan',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je duwt het zakje door het gat. Jan kan er net bij met zijn lange arm. Nu is het wachten. Als hij terugkomt, kun je eruit.</p>',
@@ -5800,7 +5838,6 @@ function checkFelixHd2Code(val) {
     if (input) input.disabled = true;
     // De code laat de outfit door het gat vallen (F5).
     markVisited('felix_code_ingevoerd');
-    setSharedState('felix_code_ingevoerd', true);
     setTimeout(() => {
       const loc = locatiesHeerDonatuslaan.find(l => l.id === 'h2_felixkamer');
       if (loc) renderH2FelixKamer(loc);
@@ -14887,9 +14924,9 @@ function buildDebugPanel() {
     btns = [
       ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, true, 'Felix H2'],
       ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
-      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); setSharedState('felix_munten_aan_jan', true); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
-      ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); setSharedState('jan_bezocht_felix', true); close(); h2refresh(); }, true, 'Felix H2'],
-      ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ markVisited('felix_code_ingevoerd'); setSharedState('felix_code_ingevoerd', true); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
@@ -15183,8 +15220,12 @@ function debugFelixWeerVastInH2() {
    'jan_outfit_geleverd'].forEach(function (f) {
     state.visited.delete(f);
   });
+  // Deze drie zijn gedeeld: naast de lokale set ook de vflag-spiegel wissen,
+  // anders komt de stand bij de eerstvolgende snapshot gewoon terug. De losse
+  // sleutel wissen we ook nog, voor sessies die van vóór het delen komen.
   ['felix_munten_aan_jan', 'felix_code_ingevoerd',
    'jan_bezocht_felix'].forEach(function (f) {
+    setSharedState('vflag_' + f, null);
     setSharedState(f, null);
   });
 
