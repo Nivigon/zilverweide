@@ -5394,6 +5394,11 @@ function felixKamerImage() {
 // de geheime bonuskamer. Nergens aangekondigd; hoort bij Stazia's diepere
 // hint voor deze wijk (zie VH_DIEPERE_HINT.sintdonatuslaan).
 function h2GeheimeDeurHotspot() {
+  // De deur doet pas iets nadat Stazia haar diepere hint voor deze wijk
+  // echt heeft uitgesproken. Die vlag is gedeeld, dus zodra een speler de
+  // hint hoorde, is de deur op alle vier de tablets klikbaar. Wie al bij
+  // Nummer 1 staat, ziet het klikgebied bij het eerstvolgende bezoek.
+  if (!getSharedState('vh_hint_gegeven_sintdonatuslaan')) return;
   zetSceneHotspot({
     bevat: 'heerdonatuslaan/nummer1',
     natBreedte: 1280, natHoogte: 720,
@@ -15983,6 +15988,7 @@ function buildDebugPanel() {
       ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
+      ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
         markVisited('kerk_non_weg');
