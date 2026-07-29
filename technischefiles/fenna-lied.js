@@ -133,7 +133,7 @@
     },
     stiltevijver: {
       bestand: 'geluid/fenna/fennavijver.mpeg',
-      duurMs: 20000,
+      duurMs: 24000,
       regelVertragingMs: [0, 6000, 11000, 18000],
       muziekTerugBijVerder: true
     }
