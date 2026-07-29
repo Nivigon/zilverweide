@@ -8325,7 +8325,8 @@ function renderDd4Menigte(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'De herberg', image: null,
         dialog: [
-          { tekst: 'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt. Op een verhoging staat de burgemeester, die probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
+          'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt.',
+          { tekst: 'Op een verhoging staat de burgemeester. Hij probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
           'Dit vraagt om mij.'
         ],
         acties: [{ label: 'Stap het podium op', onclick: function () { mga(1); } }]
@@ -8361,8 +8362,10 @@ function renderDd4Menigte(loc, p) {
       geenTerug: true,
       dialog: [
         'De zaal hangt aan je lippen, en het gemopper heeft plaatsgemaakt voor gezwijmel. Precies waar je ze wilt hebben.',
+        { tekst: 'De burgemeester baant zich een weg naar het podium en grijpt je hand met beide handen vast.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
+        { spreker: 'Burgemeester', tekst: 'Fenna-Viviènne, dankjewel. Oprecht! Het hele dorp is van slag. Zelf ben ik ook een onderzoek gestart, maar als er iets is wat jij en je vrienden kunnen doen: help ons!' },
         { spreker: 'Fenna', tekst: '"Ik ben over een uurtje terug. Jullie wachten toch wel op deze dame?"' },
-        'Je glipt snel via de achterdeur naar buiten.',
+        { tekst: 'Je glipt snel via de achterdeur naar buiten.', onShow: function() { verbergNpcPop(); } },
         'Dit houdt de boel voorlopig wel rustig. Voorlopig...'
       ],
       acties: [{ label: 'De straat op', onclick: goBackFromLocatie }]
