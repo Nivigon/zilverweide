@@ -1810,6 +1810,10 @@ var GELUID_NAMEN = {
   'introsound.mp3':       'podium-intro, aftellen',
   'introsound2.mp3':      'podium-intro, loop na de lach',
   'lach.mp3':             'podium-intro, lach',
+  'kk-ambience.mp3':      'kerkkelder, achtergrond',
+  'kk-lach.mp3':          'kerkkelder, lach',
+  'kk-zwelling.mp3':      'kerkkelder, zwelling',
+  'kk-muziekdoosje.mp3':  'kerkkelder, muziekdoosje',
   'shock.mp3':            'podium-intro, schrik',
   'keuze.mp3':            'heks-keuzemuziek',
   'goed.mp3':             'verhaalstap gehaald',
@@ -14550,15 +14554,15 @@ var KK_PROLOOG = [
   { tekst: 'Je hoort iets vallen. Ergens voor je in het donker.' },
   // De muziek zakt vlak voor de lach: stilte is de opzet.
   { tekst: 'Je houdt je adem in.', cue: function () { kkFadeNaar('_kkAchtergrond', 0.08, 900); } },
-  { tekst: 'Een lach. Vlakbij. Het kruipt over je rug.', cue: function () { kkSfx('lach.mp3'); } },
+  { tekst: 'Een lach. Vlakbij. Het kruipt over je rug.', cue: function () { kkSfx('kk-lach.mp3'); } },
   // Stilte, dan de riser. De Sybille-pop verschijnt pas bij de volgende
   // tik, snel, zodat het voelt alsof ze er ineens staat.
-  { tekst: 'Je wilt terug. Maar je voeten staan stil.', cue: function () { kkSfx('riser.mp3'); } }
+  { tekst: 'Je wilt terug. Maar je voeten staan stil.', cue: function () { kkSfx('kk-zwelling.mp3'); } }
 ];
 
 function kerkkelderCinematic() {
   dempMuziek();
-  kkStartLoop('_kkAchtergrond', 'achtergrond.mp3', KK_BG_VOLUME);
+  kkStartLoop('_kkAchtergrond', 'kk-ambience.mp3', KK_BG_VOLUME);
   var el = kkOverlayEl();
   var tekstEl = el.querySelector('#kk-tekst');
   el.querySelector('#kk-hint').style.display = '';
@@ -14599,7 +14603,7 @@ function kkDialoogScene() {
       { spreker: 'Sybille', tekst: 'Jullie stervelingen zijn allemaal hetzelfde, weet je. Zeuren, hebben, klagen. Nietig.' },
       { spreker: 'Sybille', tekst: 'En als het jullie niet bevalt? Nou, dan ga je toch gewoon weg. Of naar een ander?!?' },
       { spreker: 'Sybille', tekst: 'Weet je, ik had een man, vroeger. Hij was zóóóó blij met me.. Maar ik betrapte hem in zijn molen. Met een ander.' },
-      { spreker: 'Sybille', tekst: 'Dus ik zette die molen met één simpel spreukje in de hens!', onShow: function () { kkSfx('lach.mp3', 0.7); } },
+      { spreker: 'Sybille', tekst: 'Dus ik zette die molen met één simpel spreukje in de hens!', onShow: function () { kkSfx('kk-lach.mp3', 0.7); } },
       { spreker: 'Sybille', tekst: 'Arme Sybille nám haar wraak...' },
       { spreker: 'Sybille', tekst: 'Wat moet dat hier. En welke simpele oude ziel ben jij dan?', onShow: function () { kkToonPop('aaltje'); } },
       { spreker: 'Aaltje', tekst: '*(kijkt naar het doosje in haar handen, dan naar Sybille)*' },
@@ -14607,7 +14611,7 @@ function kkDialoogScene() {
       { spreker: 'Aaltje', tekst: 'Meisje. Ach, meisje.' },
       { spreker: 'Aaltje', tekst: 'Grappig, wat tijd doet. Sommige dingen vergeet je. Sommige dingen...' },
       { spreker: 'Aaltje', tekst: '*(ze sluit haar ogen)* ...herinner je je als de dag van gisteren.' },
-      { spreker: 'Aaltje', tekst: 'Ik ben zo oud, kind. Ik was zelf jong toen de molen verbrandde. Ik wist er niet veel van.', onShow: function () { kkStartLoop('_kkDoosje', 'muziekdoosje.mp3', 0.4); kkFadeNaar('_kkAchtergrond', 0.06, 1500); } },
+      { spreker: 'Aaltje', tekst: 'Ik ben zo oud, kind. Ik was zelf jong toen de molen verbrandde. Ik wist er niet veel van.', onShow: function () { kkStartLoop('_kkDoosje', 'kk-muziekdoosje.mp3', 0.4); kkFadeNaar('_kkAchtergrond', 0.06, 1500); } },
       { spreker: 'Aaltje', tekst: 'Maar wat me wel bijbleef, is mijn moeder. De ochtend na de brand. Zelden heb ik haar zo geëmotioneerd gezien.' },
       { spreker: 'Aaltje', tekst: 'Ze was de avond ervoor nog bij de molenaar geweest, vertelde ze aan de keukentafel. Mijn vader troostte haar.' },
       { spreker: 'Aaltje', tekst: 'Mijn moeder maakte muziekdoosjes. Dat was haar ambacht.' },
