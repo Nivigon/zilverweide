@@ -146,6 +146,20 @@
         gebroken: { x: 0.5, y: 0.8 }     // de roos op de stenen vloer
       }
     },
+    // Donker met spotlight: legt het beeld vrijwel volledig in het donker
+    // en laat alleen een lichtbundel over op de figuur. Ligt als laag OVER
+    // het beeld, dus het werkt op elk aangeleverd beeld zonder opnieuw te
+    // genereren. Standaard alleen op beeld 4 (geknield); een ander beeld
+    // doet mee zodra er een positie voor vastgelegd is.
+    spot: {
+      aan: true,
+      sterkte: 0.9,       // 0..1, hoe donker alles buiten de bundel wordt
+      straal: 20,         // % van het beeld dat vol verlicht blijft
+      zachtheid: 22,      // % extra uitloop van licht naar donker
+      posities: {
+        gebroken: { x: 0.5, y: 0.55 }
+      }
+    },
     sprekerNamen: { sybille: 'Sybille', aaltje: 'Aaltje' },
     // App-teksten: innerlijke stem in de je-vorm, gecentreerd, geen box.
     appTeksten: {
@@ -368,6 +382,9 @@
     this._beeld = beeld;
     this._huidigBeeldKey = key;
     this._pasKleurToe(key);
+    // Eerst de spot, dan de gloed: de roos moet in het donker blijven
+    // gloeien, dus de gloed tekent boven de donker-laag.
+    this._bouwSpot(beeld, key);
     this._bouwGloed(beeld, key, !!opts.gloedUit);
 
     // Beginstand direct (zonder transitie) neerzetten, dan de doordrift en
@@ -510,6 +527,60 @@
     if (cfg.aan && this._beeld && this._huidigBeeldKey &&
         cfg.posities[this._huidigBeeldKey] && !this._beeld.querySelector('.kk-gloed')) {
       this._bouwGloed(this._beeld, this._huidigBeeldKey, false);
+    }
+  };
+
+  // ── Donker met spotlight ────────────────────────────────────────
+  // Kind van het beeld-element, net als de gloed, zodat het donker
+  // meebeweegt met de drift en mee vervaagt in een veeg. De bundel is een
+  // radiale gradient: doorzichtig hart, instelbare uitloop, donker eromheen.
+  KerkkelderScene.prototype._bouwSpot = function (beeld, key) {
+    var cfg = this.config.spot;
+    if (!cfg.aan) return;
+    var pos = cfg.posities[key];
+    if (!pos) return;
+    var el = document.createElement('div');
+    el.className = 'kk-spot';
+    el.dataset.kkKey = key;
+    this._zetSpotStijl(el, pos);
+    beeld.appendChild(el);
+  };
+
+  KerkkelderScene.prototype._zetSpotStijl = function (el, pos) {
+    var cfg = this.config.spot;
+    var sterkte = clamp(cfg.sterkte, 0, 1);
+    var straal = Math.max(0, cfg.straal);
+    var rand = straal + Math.max(1, cfg.zachtheid);
+    el.style.background =
+      'radial-gradient(circle at ' + (pos.x * 100) + '% ' + (pos.y * 100) + '%, ' +
+      'rgba(0,0,0,0) 0%, rgba(0,0,0,0) ' + straal + '%, ' +
+      'rgba(0,0,0,' + sterkte + ') ' + rand + '%)';
+  };
+
+  // Live bijstellen vanuit het debugpaneel, zonder de scene te herstarten.
+  KerkkelderScene.prototype._verversSpots = function () {
+    if (!this.el) return;
+    var self = this;
+    var cfg = this.config.spot;
+    var els = this.el.querySelectorAll('.kk-spot');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (!cfg.aan) { el.style.display = 'none'; continue; }
+      el.style.display = '';
+      var pos = cfg.posities[el.dataset.kkKey];
+      if (pos) self._zetSpotStijl(el, pos);
+    }
+    // Spot aangezet terwijl het huidige beeld er nog geen heeft: alsnog
+    // bouwen, voor de gloed in de DOM-volgorde (de roos gloeit erbovenop).
+    if (cfg.aan && this._beeld && this._huidigBeeldKey &&
+        cfg.posities[this._huidigBeeldKey] && !this._beeld.querySelector('.kk-spot')) {
+      var gloed = this._beeld.querySelector('.kk-gloed');
+      var el2 = document.createElement('div');
+      el2.className = 'kk-spot';
+      el2.dataset.kkKey = this._huidigBeeldKey;
+      this._zetSpotStijl(el2, cfg.posities[this._huidigBeeldKey]);
+      if (gloed) this._beeld.insertBefore(el2, gloed);
+      else this._beeld.appendChild(el2);
     }
   };
 
@@ -802,6 +873,9 @@
     }
     if (delen[0] === 'gloed') {
       this._verversGloeden();
+    }
+    if (delen[0] === 'spot') {
+      this._verversSpots();
     }
     if (delen[0] === 'volumes' && this._audio[delen[1]] && !this._audio[delen[1]].paused) {
       this._audio[delen[1]].volume = clamp(waarde, 0, 1);

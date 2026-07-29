@@ -57,6 +57,17 @@
   color: rgba(245, 234, 214, .32);
 }
 
+/* Donker met spotlight: legt het beeld vrijwel volledig in het donker en
+   laat alleen een lichtbundel over. Kind van .kk-beeld (beweegt mee met
+   drift en veeg); de gradient zelf staat inline, vanuit de config. De
+   gloed van de roos staat in de DOM na deze laag en gloeit er dus
+   bovenop, ook in het donker. */
+.kk-spot {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 /* De gloed rond de blauwe roos: kind van .kk-beeld, dus hij beweegt
    automatisch mee met de doordrift en vervaagt mee in een veeg. */
 .kk-gloed {

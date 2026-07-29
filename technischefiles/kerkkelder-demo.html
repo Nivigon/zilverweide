@@ -252,6 +252,12 @@ var SLIDER_RIJEN = [
   { label: 'Helderheid', pad: 'kleur.gebroken.helderheid', min: 0.4, max: 1.8, step: 0.05 },
   { label: 'Contrast', pad: 'kleur.gebroken.contrast', min: 0.4, max: 1.8, step: 0.05 },
   { label: 'Schaduwlicht', pad: 'kleur.gebroken.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Spotlight op beeld 4' },
+  { label: 'Bundel: x', pad: 'spot.posities.gebroken.x', min: 0, max: 1, step: 0.005 },
+  { label: 'Bundel: y', pad: 'spot.posities.gebroken.y', min: 0, max: 1, step: 0.005 },
+  { label: 'Donkerte eromheen', pad: 'spot.sterkte', min: 0, max: 1, step: 0.02 },
+  { label: 'Verlichte kern (%)', pad: 'spot.straal', min: 0, max: 60, step: 1 },
+  { label: 'Zachte rand (%)', pad: 'spot.zachtheid', min: 1, max: 60, step: 1 },
   { kop: 'Roos-gloed' },
   { label: 'Roos op beeld 2: x', pad: 'gloed.posities.sybille.x', min: 0, max: 1, step: 0.005 },
   { label: 'Roos op beeld 2: y', pad: 'gloed.posities.sybille.y', min: 0, max: 1, step: 0.005 },
@@ -307,6 +313,13 @@ function padWaarde(obj, pad) {
   SLIDER_RIJEN.forEach(function (rij) {
     if (rij.kop) {
       html += '<div class="kk-dbg-kop">' + rij.kop + '</div>';
+      if (rij.kop === 'Spotlight op beeld 4') {
+        html +=
+          '<div class="kk-dbg-knoppen">' +
+            '<button class="kk-dbg-btn2" id="kk-dbg-spot-aan">Spotlight: aan</button>' +
+          '</div>' +
+          '<div class="kk-dbg-hint">Legt het beeld in het donker met een lichtbundel op de figuur, over het aangeleverde beeld heen. De gloed van de roos blijft er doorheen gloeien.</div>';
+      }
       if (rij.kop === 'Roos-gloed') {
         html +=
           '<div class="kk-dbg-knoppen">' +
@@ -365,6 +378,16 @@ function padWaarde(obj, pad) {
     };
   });
 
+  var spotAanBtn = document.getElementById('kk-dbg-spot-aan');
+  function verversSpotAanLabel() {
+    spotAanBtn.textContent = 'Spotlight: ' + (scene.getConfig().spot.aan ? 'aan' : 'uit');
+  }
+  verversSpotAanLabel();
+  spotAanBtn.onclick = function () {
+    scene.set('spot.aan', !scene.getConfig().spot.aan);
+    verversSpotAanLabel();
+  };
+
   var gloedAanBtn = document.getElementById('kk-dbg-gloed-aan');
   function verversGloedAanLabel() {
     gloedAanBtn.textContent = 'Gloed: ' + (scene.getConfig().gloed.aan ? 'aan' : 'uit');
@@ -397,6 +420,8 @@ function padWaarde(obj, pad) {
     scene.set('gloed.kleur', standaard.gloed.kleur);
     gloedKleurInput.value = standaard.gloed.kleur;
     verversGloedAanLabel();
+    scene.set('spot.aan', standaard.spot.aan);
+    verversSpotAanLabel();
     console.log('Alle instellingen teruggezet naar de standaardwaarden.');
   };
 })();
