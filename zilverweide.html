@@ -883,18 +883,29 @@ body.woudscene-actief .finale-btn{display:none !important;}
 #kk-pop{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:255;pointer-events:none;opacity:0;transition:opacity .4s ease}
 #kk-pop img{display:block;height:60vh;max-height:520px;width:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8))}
 #kk-pop .kk-vlak{width:190px;height:55vh;max-height:460px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
-#kk-roos{position:fixed;top:12%;right:9%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease}
-#kk-roos .kk-gloed{position:absolute;inset:-45%;background:radial-gradient(circle,rgba(155,58,74,.5),transparent 62%);animation:kkGloed 2.6s ease-in-out infinite}
+#kk-roos{position:fixed;left:calc(50% - 240px);top:42%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease;animation:kkZweef 4.5s ease-in-out infinite}
+#kk-roos .kk-gloed{position:absolute;inset:-45%;background:radial-gradient(circle,rgba(95,150,255,.45),transparent 62%);animation:kkGloed 2.6s ease-in-out infinite}
 @keyframes kkGloed{0%,100%{opacity:.55}50%{opacity:1}}
-#kk-roos img{position:relative;display:block;height:26vh;max-height:230px;width:auto;filter:drop-shadow(0 0 18px rgba(200,80,100,.55))}
-#kk-roos .kk-vlak{position:relative;width:120px;height:22vh;max-height:190px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim)}
-#kk-roos .kk-deeltje{position:absolute;bottom:8%;width:5px;height:5px;border-radius:50%;background:rgba(235,150,160,.85);animation:kkDeeltje 3.4s linear infinite}
+@keyframes kkZweef{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+#kk-roos img{position:relative;display:block;height:18vh;max-height:150px;width:auto;filter:drop-shadow(0 0 16px rgba(120,170,255,.6))}
+#kk-roos .kk-vlak{position:relative;width:90px;height:16vh;max-height:130px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim)}
+#kk-roos .kk-deeltje{position:absolute;bottom:8%;width:5px;height:5px;border-radius:50%;background:rgba(160,200,255,.85);animation:kkDeeltje 3.4s linear infinite}
 @keyframes kkDeeltje{0%{transform:translateY(0) translateX(0);opacity:0}12%{opacity:.9}100%{transform:translateY(-130px) translateX(var(--kk-drift,0px));opacity:0}}
+/* De dialoog hangt als tekstballon boven de pop, met een staartje naar de
+   spreker. Alleen in de kerkkelder-dialoog (klasse kk-dialoog), de
+   proloog- en sfeertekst blijven gecentreerd op het zwarte overlay. */
+#locatie-content.kk-dialoog .sc-dialog{position:fixed;left:0;right:0;margin:0 auto;bottom:min(62vh,545px);width:min(600px,72vw);z-index:257;overflow:visible;background:rgba(13,10,6,.92);box-shadow:0 8px 30px rgba(0,0,0,.6)}
+#locatie-content.kk-dialoog .sc-dialog::before{content:'';position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);border:12px solid transparent;border-top-color:rgba(201,168,76,.25);border-bottom:0}
+#locatie-content.kk-dialoog .sc-dialog::after{content:'';position:absolute;left:50%;bottom:-10px;transform:translateX(-50%);border:11px solid transparent;border-top-color:#14100a;border-bottom:0}
+#locatie-content.kk-dialoog .sc-acties-mount{position:fixed;left:0;right:0;bottom:min(64vh,560px);display:flex;justify-content:center;z-index:257}
 @media (max-height:520px){
   #kk-pop img{height:52vh;max-height:260px}
   #kk-pop .kk-vlak{height:48vh;max-height:230px;width:140px}
-  #kk-roos img{height:22vh;max-height:120px}
+  #kk-roos{left:calc(50% - 150px);top:38%}
+  #kk-roos img{height:14vh;max-height:100px}
   #kk-tekst{font-size:1.05rem;line-height:1.7}
+  #locatie-content.kk-dialoog .sc-dialog{bottom:54vh;width:min(520px,80vw)}
+  #locatie-content.kk-dialoog .sc-acties-mount{bottom:56vh}
 }
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
    Prefix wt- (Wacht-Teksten), losstaand van char-pop (dat hoort bij
@@ -14544,6 +14555,8 @@ function kkCleanup() {
     var el = document.getElementById(id);
     if (el && el.parentNode) el.parentNode.removeChild(el);
   });
+  var cont = document.getElementById('locatie-content');
+  if (cont) cont.classList.remove('kk-dialoog');
 }
 
 // ── Proloog: een regel tegelijk, geluidscues gebonden aan de regels ──
@@ -14591,6 +14604,7 @@ function kerkkelderCinematic() {
 // ── De dialoog: Sybille en Aaltje, op zwart, via het scene-systeem ──
 function kkDialoogScene() {
   var cont = document.getElementById('locatie-content');
+  cont.classList.add('kk-dialoog');
   renderLocatieScene({
     container: cont,
     geenMedia: true,
@@ -14611,7 +14625,9 @@ function kkDialoogScene() {
       { spreker: 'Aaltje', tekst: 'Meisje. Ach, meisje.' },
       { spreker: 'Aaltje', tekst: 'Grappig, wat tijd doet. Sommige dingen vergeet je. Sommige dingen...' },
       { spreker: 'Aaltje', tekst: '*(ze sluit haar ogen)* ...herinner je je als de dag van gisteren.' },
-      { spreker: 'Aaltje', tekst: 'Ik ben zo oud, kind. Ik was zelf jong toen de molen verbrandde. Ik wist er niet veel van.', onShow: function () { kkStartLoop('_kkDoosje', 'kk-muziekdoosje.mp3', 0.4); kkFadeNaar('_kkAchtergrond', 0.06, 1500); } },
+      // De ambience gaat hier echt uit (zachte fade, dan pauze), zodat
+      // alleen het muziekdoosje onder Aaltjes verhaal klinkt.
+      { spreker: 'Aaltje', tekst: 'Ik ben zo oud, kind. Ik was zelf jong toen de molen verbrandde. Ik wist er niet veel van.', onShow: function () { kkStartLoop('_kkDoosje', 'kk-muziekdoosje.mp3', 0.4); kkFadeNaar('_kkAchtergrond', 0, 1200); setTimeout(function () { kkStopAudio('_kkAchtergrond'); }, 1300); } },
       { spreker: 'Aaltje', tekst: 'Maar wat me wel bijbleef, is mijn moeder. De ochtend na de brand. Zelden heb ik haar zo geëmotioneerd gezien.' },
       { spreker: 'Aaltje', tekst: 'Ze was de avond ervoor nog bij de molenaar geweest, vertelde ze aan de keukentafel. Mijn vader troostte haar.' },
       { spreker: 'Aaltje', tekst: 'Mijn moeder maakte muziekdoosjes. Dat was haar ambacht.' },
@@ -14630,7 +14646,7 @@ function kkDialoogScene() {
       } },
       { spreker: 'Sybille', tekst: 'Ga. Naar het podium. Daar gaat het gebeuren. Ik moest jullie volgen en tegenhouden als het nodig was, meer niet.' },
       { spreker: 'Aaltje', tekst: 'Ik liep jullie achterna om jullie te bedanken voor het doosje. Dat ik dit aantrof...' },
-      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.' }
+      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.', onShow: function () { kkToonPop('aaltje'); } }
     ],
     acties: [
       { label: 'Verder \u2192', onclick: kkSlot }
