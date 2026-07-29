@@ -110,7 +110,7 @@
         'Tot niets van gisteren je nog verveelt.',
         '',
         'Honing... en vuur...',
-        'Smelt met me samen, in ons laatste uur.'
+        'Smelt met me samen, in ons laatste uur. (volgt)'
       ]
     }
   };
