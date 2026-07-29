@@ -278,7 +278,8 @@
 }
 .sc-dialog-body {
   flex: 1;
-  padding: .9rem 1.1rem 1rem;
+  /* Links iets meer lucht: de tekst zat te dicht op de rand van de box. */
+  padding: .9rem 1.1rem 1rem 1.6rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
