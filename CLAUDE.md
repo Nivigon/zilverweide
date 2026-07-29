@@ -34,6 +34,15 @@ en Felix' spiek-mechanic die met twee personen soepeler loopt dan solo.
 
 - **Werk altijd via een branch en een pull request, nooit direct op main.**
   Tom keurt elke merge zelf goed.
+- **Een gemergde pull request is af, bouw er nooit op door.** Elk gesprek werkt
+  op een vaste branch; merget Tom tussendoor, dan zou vervolgwerk anders
+  bovenop al gemergde commits belanden en moet Tom steeds een extra PR van
+  dezelfde branch mergen. Daarom: controleer voor elke nieuwe commit of de PR
+  van je branch al gemerged is. Zo ja, zet de branch eerst opnieuw op de
+  actuele main (`git fetch origin main && git checkout -B <branch>
+  origin/main`) en bouw daarop verder; het vervolg krijgt gewoon een nieuwe
+  PR. Voor Tom: een nieuwe klus start het schoonst in een nieuw gesprek, dat
+  geeft vanzelf een verse branch.
 - **De repo is de bron van waarheid.** Werk altijd vanaf de actuele checkout;
   bouw nooit op oude kopieen uit chats of documenten. zilverweide.html gaat
   boven elk ander document.
