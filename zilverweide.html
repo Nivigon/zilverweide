@@ -14676,6 +14676,26 @@ function kkSlot() {
   }, 4600);
 }
 
+// Debug: de hele Heer Donatuslaan-fase als voltooid markeren. Zet de zes
+// verhaalscore-vlaggen (6/6) plus de items die daarbij horen: het
+// muziekdoosje is opgehaald en ingeleverd (uit de inventaris), Felix
+// heeft zijn vermommingsoutfit. De apotheker-quest (H7) blijft bewust
+// met rust, die is optioneel en heeft eigen testknoppen.
+function debugHdFaseCompleet() {
+  ['felix_hd2_vrij', 'jan_slagerij_gevlucht', 'fenna_herberg_gedaan',
+   'kerk_non_weg', 'h6_klokkenmaker_gezien', 'muziekdoosje_afgeleverd'
+  ].forEach(function (f) { markVisited(f); setSharedState(f, true); });
+  markVisited('muziekdoosje_hd_opgehaald');
+  markVisited('muziekdoosje_bij_aaltje');
+  setSharedState('muziekdoosje_klaar_hd', true);
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.muziekdoosjeKlaar.naam; });
+  if (state.personage === 'felix' && !state.inventory.find(function (i) { return i.naam === ITEMS.felixOutfit.naam; })) {
+    addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false);
+  }
+  updateInventoryBar();
+  if (typeof updateMissieTeller === 'function') updateMissieTeller();
+}
+
 // Debug: de scène solo doorlopen. Zet iedereen aanwezig en de eindpoort
 // alvast op drie, zodat een tester in z'n eentje het hele stuk kan zien.
 function debugKerkkelderScene() {
@@ -15280,7 +15300,7 @@ function buildDebugPanel() {
       ['🧪 + Flesje',        function(){ debugItem(ITEMS.flesje.emoji, ITEMS.flesje.naam); }, true, 'H7 Apotheker'],
       // ── HD Finale
       ['🌹 Trigger HD-finale popup', function(){ markVisited('felix_hd2_vrij'); setSharedState('felix_hd2_vrij',true); markVisited('jan_slagerij_gevlucht'); setSharedState('jan_slagerij_gevlucht',true); markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan',true); markVisited('kerk_non_weg'); setSharedState('kerk_non_weg',true); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien',true); markVisited('muziekdoosje_afgeleverd'); setSharedState('muziekdoosje_afgeleverd',true); markVisited('muziekdoosje_bij_aaltje'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } state.hdFinalePopupGetoond = false; close(); checkHeerDonatusTokens(); }, !state.tobbeGokOpgelost, 'HD Finale'],
-      ['🎯 Forceer Tobbe-gok juist', function(){ state.tobbeGokOpgelost = true; setSharedState('tobbe_gok_opgelost', true); if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer(); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } close(); }, !state.tobbeGokOpgelost, 'HD Finale'],
+      ['🎯 Forceer Tobbe-gok juist', function(){ debugHdFaseCompleet(); state.tobbeGokOpgelost = true; setSharedState('tobbe_gok_opgelost', true); if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer(); close(); if (typeof toonToast === 'function') toonToast('🎯', 'Tobbe-gok juist en de HD-fase staat compleet: verhaalscore 6/6, items bijgewerkt. Ga naar De Kerk (H4) en ga naar binnen voor het vervolg.'); }, !state.tobbeGokOpgelost, 'HD Finale'],
       ['⛪ Alle 4 bij kerkkelder',   function(){ setSharedState('kerk_kelder_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['🎭 Alle 4 op podium (finale)', function(){ setSharedState('podium_finale_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
