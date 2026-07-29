@@ -8347,14 +8347,21 @@ function renderDd4Menigte(loc, p) {
     // st === 2: na de zang. Hier landt de finale-key.
     markVisited('fenna_herberg_gedaan');
     setSharedState('fenna_herberg_gedaan', true);
+    // Geen terug-knop meer: Fenna staat na dit dialoog buiten via de
+    // achterdeur, dus "terug" zou de zaal in leiden die ze net bespeeld
+    // heeft. De actie-knop na de laatste regel is de enige uitgang en
+    // brengt haar op straat (goBackFromLocatie reset ook _herbergBinnen,
+    // dus een later bezoek begint netjes weer buiten).
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'De achterdeur', image: null,
+      geenTerug: true,
       dialog: [
         'De zaal hangt aan je lippen, en het gemopper heeft plaatsgemaakt voor gezwijmel. Precies waar je ze wilt hebben.',
         { spreker: 'Fenna', tekst: '"Ik ben over een uurtje terug. Jullie wachten toch wel op deze dame?"' },
         'Je glipt snel via de achterdeur naar buiten.',
         'Dit houdt de boel voorlopig wel rustig. Voorlopig...'
-      ]
+      ],
+      acties: [{ label: 'De straat op', onclick: goBackFromLocatie }]
     });
   }
 
