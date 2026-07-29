@@ -7073,7 +7073,7 @@ function renderH5Gemeentehuis(loc) {
     if (stap === 20) {
       // Conclusie, dan automatisch terug.
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
         dialog: felixV('conclusie'),
         acties: [{ label: 'Wegwezen', onclick: terug }]
       });
@@ -7106,7 +7106,11 @@ function renderH5Gemeentehuis(loc) {
         { n: 13, emoji: '\ud83d\udcdc', label: 'Derde voorwerp' },
         { n: 14, emoji: '\ud83d\udeaa', label: 'Vierde voorwerp' }
       ];
-      var paneel = '<div style="display:flex;gap:4px;height:100%;padding:4px;box-sizing:border-box">';
+      // Achter de panelen schemert de burgemeesterkamer door: de kamer als
+      // achtergrond met een donkere waas erover, net genoeg voor sfeer.
+      var paneel = '<div style="display:flex;gap:4px;height:100%;padding:4px;box-sizing:border-box;' +
+        'background:linear-gradient(rgba(13,10,6,.62),rgba(13,10,6,.62)),' +
+        'url(\'locaties/heerdonatuslaan/burgemeesterkamer.jpeg\') center/cover">';
       voorwerpen.forEach(function (v) {
         paneel +=
           '<button onclick="felixBekijkVoorwerp(' + v.n + ')" ' +
@@ -7121,7 +7125,7 @@ function renderH5Gemeentehuis(loc) {
       });
       paneel += '</div>';
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
         mediaSlot: paneel,
         dialog: [
           'Vier dingen, bewust bij elkaar gelegd. Tik ze aan om ze van dichtbij te bekijken.'
@@ -7131,7 +7135,7 @@ function renderH5Gemeentehuis(loc) {
     }
     // stap 1: via het raam naar binnen, registratie, dan de voorwerpen.
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+      container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: [
         'Een raam op een kier aan de zijkant. Voor jou is dat een uitnodiging. Je glijdt naar binnen.',
         'Klein, ordelijk kantoor achter de raadszaal. Papieren netjes gestapeld, een doofgebrande kaars, een half glas water. Iemand is haastig vertrokken, maar zorgvuldig.'
@@ -7192,7 +7196,7 @@ function renderH5Gemeentehuis(loc) {
   // Helper: een voorwerp tonen met een knop terug naar de voorwerpen.
   function voorwerp(sub, dialog) {
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+      container: cont, titel: loc.naam, sub: sub, image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: dialog,
       acties: [{ label: 'Terug naar het bureau', onclick: function () { ga(2); } }]
     });
@@ -8321,7 +8325,7 @@ function renderDd4Menigte(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'De herberg', image: null,
         dialog: [
-          'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt. Op een verhoging staat de burgemeester, die probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.',
+          { tekst: 'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt. Op een verhoging staat de burgemeester, die probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
           'Dit vraagt om mij.'
         ],
         acties: [{ label: 'Stap het podium op', onclick: function () { mga(1); } }]
@@ -8334,7 +8338,7 @@ function renderDd4Menigte(loc, p) {
         container: cont, titel: loc.naam, sub: 'Op het podium',
         geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
         dialog: [
-          'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.',
+          { tekst: 'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.', onShow: function() { verbergNpcPop(); } },
           { spreker: 'Fenna-Viviènne', tekst: 'Eén lied. Het juiste lied. Dan heb ik ze.' }
         ],
         extra: function (mount) {
@@ -14326,7 +14330,7 @@ function openHeerDonatusGok() {
       mediaSlotAfterDialog: bouwGokGrid([
         { code: 'priscilla',   naam: 'De Non',           sub: 'Priscilla',          portret: 'karakters/heerdonatuslaan/non-pop.png' },
         { code: 'tobbe',       naam: 'Tobbe',             sub: 'Het jongetje',       portret: 'karakters/terugkerend/tobbearrogant-pop.png' },
-        { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/heerdonatuslaan/burgemeester-pop.png' },
+        { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/terugkerend/burgemeester-pop.png' },
         { code: 'slager',      naam: 'Slager Verstilt',   sub: 'De slagerij',        portret: 'karakters/heerdonatuslaan/slager-pop.png' },
         { code: 'roet',        naam: 'Vrouwe Roet',       sub: 'Het Hol',            portret: 'karakters/heerdonatuslaan/vrouwevroet-pop.png' },
         { code: 'apotheker',   naam: 'De Apotheker',      sub: 'Kruidentuin',        portret: 'karakters/heerdonatuslaan/apotheker-pop.png' },
@@ -14343,7 +14347,7 @@ function openHeerDonatusGok() {
   var opties = [
     { code: 'priscilla',   naam: 'De Non',           sub: 'Priscilla',          portret: 'karakters/heerdonatuslaan/non-pop.png' },
     { code: 'tobbe',       naam: 'Tobbe',             sub: 'Het jongetje',       portret: 'karakters/terugkerend/tobbearrogant-pop.png' },
-    { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/heerdonatuslaan/burgemeester-pop.png' },
+    { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/terugkerend/burgemeester-pop.png' },
     { code: 'slager',      naam: 'Slager Verstilt',   sub: 'De slagerij',        portret: 'karakters/heerdonatuslaan/slager-pop.png' },
     { code: 'roet',        naam: 'Vrouwe Roet',       sub: 'Het Hol',            portret: 'karakters/heerdonatuslaan/vrouwevroet-pop.png' },
     { code: 'apotheker',   naam: 'De Apotheker',      sub: 'Kruidentuin',        portret: 'karakters/heerdonatuslaan/apotheker-pop.png' },
@@ -16604,7 +16608,8 @@ const SPREKER_POPS = {
   'Herbergier':          WAARD_POP,
   'Mevr. van Wallingen': 'karakters/terugkerend/wallingen.png',
   'Bart Intens':         'karakters/dorendael/bartintens-pop.png',
-  'Tobbe':               'karakters/terugkerend/tobbe.png'
+  'Tobbe':               'karakters/terugkerend/tobbe.png',
+  'Wijkwacht':           'karakters/dorendael/stadswacht-pop.png'
 };
 
 function renderLocatieScene(opts) {
@@ -16711,7 +16716,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Voor de deur staat Mevr. van Wallingen na te kletsen met een wijkwachter. Ze ziet Kelly en laat haar stem zakken.',
+          { tekst: 'Voor de deur staat Mevr. van Wallingen na te kletsen met een wijkwachter. Ze ziet Kelly en laat haar stem zakken.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           { spreker: 'Mevr. van Wallingen', tekst: 'Weten jullie wel hoe dat meisje het daar bij Trijn heeft? Ik hoorde dat ze in een bezemkast moet slapen...' },
           'Ze laat de woorden hangen en kijkt Kelly veelbetekenend aan.'
         ]
@@ -16732,7 +16737,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'De wijkwacht ziet Fenna aankomen met Merel aan haar hand en gebaart haar haastig naar binnen.',
+        { tekst: 'De wijkwacht ziet Fenna aankomen met Merel aan haar hand en gebaart haar haastig naar binnen.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Fenna-Viviènne', tekst: 'Ze begon onderweg te praten. Maar Strix, haar kikker, is ergens onderweg verloren gegaan. Ze is er erg van slag van.' },
         { spreker: 'De moeder', tekst: '*(te snel, te scherp)* Ze práát?', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/trijn-pop.png'); }, 200); } },
         'Een stilte van een tel. Dan verandert er iets in het gezicht van de moeder. De scherpte is weg, alsof er een gordijn dichtschuift.',
@@ -16755,7 +16760,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Voor de deur van Nummer 10 staat Mevr. van Wallingen te smoezen met een wijkwachter.',
+        { tekst: 'Voor de deur van Nummer 10 staat Mevr. van Wallingen te smoezen met een wijkwachter.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         'Ze ziet Kelly aankomen. Met een beladen toon en een dreigend opgetrokken wenkbrauw:',
         { spreker: 'Mevr. van Wallingen', tekst: 'Wel, wel. Daar is ze dan.' },
         'Kelly besluit dat ze hier niets te zoeken heeft en maakt rechtsomkeert.'
@@ -16766,7 +16771,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Voor de deur staat een wijkwacht met gekruiste armen.',
+        { tekst: 'Voor de deur staat een wijkwacht met gekruiste armen.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Wijkwacht', tekst: 'Doorlopen! Hier valt niets te zien.' },
         'Het raam staat op een kier. Van binnen komt frustratie, één stem, fel:',
         { spreker: 'Een stem binnen', tekst: 'Sinds Strix erbij is zegt dat rotkind steeds minder! Kan mij wat schelen dat ze weg is!' }
@@ -16777,7 +16782,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Fenna stapt op de wijkwacht af — ze zijn tenslotte op heksenjacht, en een wachter ziet veel.',
+        { tekst: 'Fenna stapt op de wijkwacht af — ze zijn tenslotte op heksenjacht, en een wachter ziet veel.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Fenna-Viviènne', tekst: 'Zeg eens, is u hier in de straat soms iets vreemds opgevallen?' },
         { spreker: 'Wijkwacht', tekst: 'Als u iets wilt zien — ga bij de vijver kijken. Daar verzamelt zich op dit moment een hoop bezorgd volk.' }
       ]
@@ -16788,7 +16793,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          { spreker: 'Wijkwacht', tekst: 'Bent u de oma? Kom gauw naar binnen!' },
+          { spreker: 'Wijkwacht', tekst: 'Bent u de oma? Kom gauw naar binnen!', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           'Voor Lucinde kan protesteren wordt ze al naar binnen gewuifd.',
           { spreker: 'Wijkwacht', tekst: 'Eh... mevrouw, uw moeder is er.' },
           'Een gestreste vrouw kijkt verward op. Dit is duidelijk niet háár moeder.',
@@ -16802,7 +16807,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lola ziet de wijkwacht bij de deur staan en blijft op veilige afstand.',
+          { tekst: 'Lola ziet de wijkwacht bij de deur staan en blijft op veilige afstand.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           { spreker: 'Lola', tekst: '*(mompelt)* Ay, wijkwachters... daar meng ik me maar beter niet in. Niet met alles wat er nog op mijn naam staat, querido.' },
           'Ze glipt de schaduw weer in, vóór iemand haar gezicht goed kan bekijken.'
         ]
@@ -16812,7 +16817,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Als oud-spion kent Felix de taal van mannen die de overheid dienen. Hij slentert op de wachter af alsof hij hier hoort.',
+        { tekst: 'Als oud-spion kent Felix de taal van mannen die de overheid dienen. Hij slentert op de wachter af alsof hij hier hoort.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Felix', tekst: 'Zware avond, collega?' },
         { spreker: 'Wijkwacht', tekst: '*(zucht)* Een vermissing. Een meisje. En haar kikker, geloof het of niet.' },
         { spreker: 'Felix', tekst: '*(knikt wijs)* Een kikker. Natuurlijk. Het is altijd de kikker.' }
@@ -16824,7 +16829,7 @@ function renderDd3Nummer10(loc) {
   return renderLocatieScene({
     container: cont, titel: loc.naam, sub: loc.sub, image: null,
     dialog: [
-      'Voor de deur staat een wijkwacht. Van binnen komt rumoer.',
+      { tekst: 'Voor de deur staat een wijkwacht. Van binnen komt rumoer.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
       { spreker: 'Wijkwacht', tekst: 'Doorlopen! Hier valt niets te halen.' }
     ]
   });
