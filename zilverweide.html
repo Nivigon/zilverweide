@@ -889,7 +889,8 @@ body.woudscene-actief .finale-btn{display:none !important;}
 @keyframes kkZweef{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
 #kk-roos img{position:relative;display:block;height:18vh;max-height:150px;width:auto;filter:drop-shadow(0 0 16px rgba(120,170,255,.6))}
 #kk-roos .kk-vlak{position:relative;width:90px;height:16vh;max-height:130px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim)}
-#kk-roos .kk-deeltje{position:absolute;bottom:8%;width:5px;height:5px;border-radius:50%;background:rgba(160,200,255,.85);animation:kkDeeltje 3.4s linear infinite}
+#kk-roos .kk-deeltje{position:absolute;border-radius:50%;background:radial-gradient(circle,rgba(228,242,255,.95) 0%,rgba(150,200,255,.75) 45%,rgba(120,170,255,0) 72%);box-shadow:0 0 6px 1px rgba(150,200,255,.5);opacity:0;animation:kkMagieDeeltje 3.4s ease-in-out infinite}
+@keyframes kkMagieDeeltje{0%{transform:translate(0,10px) scale(.35);opacity:0}18%{opacity:var(--kk-fel,.9);transform:translate(calc(var(--kk-drift,0px)*.2),-18px) scale(.8)}62%{opacity:var(--kk-fel,.9)}100%{transform:translate(var(--kk-drift,0px),-140px) scale(1.05);opacity:0}}
 @keyframes kkDeeltje{0%{transform:translateY(0) translateX(0);opacity:0}12%{opacity:.9}100%{transform:translateY(-130px) translateX(var(--kk-drift,0px));opacity:0}}
 /* De dialoog hangt als tekstballon boven de pop, met een staartje naar de
    spreker. Alleen in de kerkkelder-dialoog (klasse kk-dialoog), de
@@ -14511,6 +14512,13 @@ function kkPopEl() {
 }
 function kkToonPop(naam) {
   var el = kkPopEl();
+  // De roos hoort bij Sybille: zichtbaar zolang zij (ook knielend) in
+  // beeld staat, weg zodra Aaltje de hoofd-pop is. Pas actief nadat de
+  // roos een keer onthuld is, zodat de onthulling zelf een eigen beat blijft.
+  if (window._kkRoosOnthuld) {
+    kkZetRoos(naam === 'sybille' || naam === 'knielend');
+  }
+  if (el._gevraagd === naam && el.style.opacity === '1') return;
   clearTimeout(el._wissel);
   if (!naam) { el._gevraagd = null; el.style.opacity = '0'; return; }
   var pop = KK_POPS[naam];
@@ -14548,25 +14556,52 @@ function kkToonPop(naam) {
 
 // De roos: los overlaytje met gloed en zwevende deeltjes, kan naast de
 // hoofd-pop in beeld staan.
+// Deeltjes rond de roos: bewust onregelmatig in positie, grootte, tempo,
+// drift en helderheid, zodat het als magie leest en niet als een rij
+// bolletjes. De negatieve delays zetten elk deeltje halverwege zijn eigen
+// baan, dus bij het opkomen van de roos hangt de wolk meteen verspreid.
+var KK_DEELTJES = [
+  { links: 8,  onder: 4,  maat: 4, duur: 3.8, start: -0.6, drift: -14, fel: .75 },
+  { links: 22, onder: 14, maat: 6, duur: 3.1, start: -2.2, drift: 10,  fel: .9  },
+  { links: 31, onder: 2,  maat: 3, duur: 4.4, start: -3.5, drift: -6,  fel: .6  },
+  { links: 45, onder: 10, maat: 5, duur: 2.9, start: -1.4, drift: 16,  fel: .95 },
+  { links: 54, onder: 0,  maat: 4, duur: 3.6, start: -2.9, drift: -18, fel: .7  },
+  { links: 66, onder: 16, maat: 3, duur: 4.1, start: -0.9, drift: 8,   fel: .65 },
+  { links: 74, onder: 6,  maat: 6, duur: 3.3, start: -2.6, drift: -10, fel: .85 },
+  { links: 87, onder: 12, maat: 4, duur: 3.9, start: -1.8, drift: 14,  fel: .8  },
+  { links: 16, onder: 22, maat: 3, duur: 4.6, start: -4.1, drift: 12,  fel: .55 },
+  { links: 60, onder: 20, maat: 5, duur: 3.5, start: -3.2, drift: -12, fel: .9  }
+];
 function kkRoosEl() {
   var el = document.getElementById('kk-roos');
   if (!el) {
     el = document.createElement('div');
     el.id = 'kk-roos';
     el.innerHTML = '<div class="kk-gloed"></div><img src="" alt=""><div class="kk-vlak">ROOS</div>';
-    for (var i = 0; i < 7; i++) {
+    KK_DEELTJES.forEach(function (p) {
       var d = document.createElement('div');
       d.className = 'kk-deeltje';
-      d.style.left = (10 + i * 12) + '%';
-      d.style.animationDelay = (i * 0.45) + 's';
-      d.style.setProperty('--kk-drift', (((i % 3) - 1) * 18) + 'px');
+      d.style.left = p.links + '%';
+      d.style.bottom = p.onder + '%';
+      d.style.width = p.maat + 'px';
+      d.style.height = p.maat + 'px';
+      d.style.animationDuration = p.duur + 's';
+      d.style.animationDelay = p.start + 's';
+      d.style.setProperty('--kk-drift', p.drift + 'px');
+      d.style.setProperty('--kk-fel', p.fel);
       el.appendChild(d);
-    }
+    });
     document.body.appendChild(el);
   }
   return el;
 }
+// kkToonRoos is de verhaal-schakelaar (onthullen of definitief doven);
+// kkZetRoos alleen de zichtbaarheid, voor het meebewegen met de hoofd-pop.
 function kkToonRoos(aan) {
+  window._kkRoosOnthuld = !!aan;
+  kkZetRoos(aan);
+}
+function kkZetRoos(aan) {
   var el = kkRoosEl();
   if (!aan) { el.style.opacity = '0'; return; }
   var img = el.querySelector('img');
@@ -14585,6 +14620,7 @@ function kkToonRoos(aan) {
 function kkCleanup() {
   kkStopAudio('_kkAchtergrond');
   kkStopAudio('_kkDoosje');
+  window._kkRoosOnthuld = false;
   ['kk-overlay', 'kk-pop', 'kk-roos'].forEach(function (id) {
     var el = document.getElementById(id);
     if (el && el.parentNode) el.parentNode.removeChild(el);
@@ -14639,6 +14675,13 @@ function kerkkelderCinematic() {
 function kkDialoogScene() {
   var cont = document.getElementById('locatie-content');
   cont.classList.add('kk-dialoog');
+  // Eigen pop van de speler, voor de gedachte zodra Aaltje binnenkomt.
+  // Kelly kent haar; de rest herkent alleen het muziekdoosje.
+  var spelerNaam = schaduwNaamVoorRol(state.personage, state.vermomming);
+  KK_POPS.speler = { src: popImgVoorSpeler(state.personage), label: spelerNaam.toUpperCase() };
+  var spelerGedachte = (state.personage === 'kelly')
+    ? '*(in gedachten)* Aaltje.. Wat doe je hier..?'
+    : '*(in gedachten)* Is dat niet het muziekdoosje van Kelly, gevonden bij de molen? Heeft ze het aan deze oude vrouw gegeven?';
   renderLocatieScene({
     container: cont,
     geenMedia: true,
@@ -14653,8 +14696,11 @@ function kkDialoogScene() {
       { spreker: 'Sybille', tekst: 'Weet je, ik had een man, vroeger. Hij was zóóóó blij met me.. Maar ik betrapte hem in zijn molen. Met een ander.' },
       { spreker: 'Sybille', tekst: 'Dus ik zette die molen met één simpel spreukje in de hens!', onShow: function () { kkSfx('kk-lach.mp3', 0.7); } },
       { spreker: 'Sybille', tekst: 'Arme Sybille nám haar wraak...' },
-      { spreker: 'Sybille', tekst: 'Wat moet dat hier. En welke simpele oude ziel ben jij dan?', onShow: function () { kkToonPop('aaltje'); } },
-      { spreker: 'Aaltje', tekst: '*(kijkt naar het doosje in haar handen, dan naar Sybille)*' },
+      // De deur: Aaltje komt binnen, Sybille draait zich om.
+      { spreker: 'Sybille', tekst: 'Wat moet dat hier. En welke simpele oude ziel ben jij dan?', onShow: function () { kkSfx('aaltjedeur.mp3'); kkToonPop('aaltje'); } },
+      // Een gedachte bij de eigen pop voordat Aaltje begint te praten.
+      { spreker: spelerNaam, tekst: spelerGedachte, onShow: function () { kkToonPop('speler'); } },
+      { spreker: 'Aaltje', tekst: '*(kijkt naar het doosje in haar handen, dan naar Sybille)*', onShow: function () { kkToonPop('aaltje'); } },
       { spreker: 'Aaltje', tekst: 'Sybille, zei je?' },
       { spreker: 'Aaltje', tekst: 'Meisje. Ach, meisje.' },
       { spreker: 'Aaltje', tekst: 'Grappig, wat tijd doet. Sommige dingen vergeet je. Sommige dingen...' },
@@ -14669,18 +14715,17 @@ function kkDialoogScene() {
       // De muziek zakt vlak voor de onthulling.
       { spreker: 'Aaltje', tekst: 'De kwaliteit. De liefde die die man voor zijn vrouw had... het raakte mijn moeder. En het raakte mij.', onShow: function () { kkFadeNaar('_kkDoosje', 0.15, 900); } },
       { spreker: 'Aaltje', tekst: 'Dit doosje, Sybille. Dit doosje. Het was voor jou...' },
-      // De breuk: pop-wissel naar Sybille knielend, de roos dooft, het
-      // muziekdoosje stopt en de gewone spelmuziek komt zacht terug.
+      // De breuk: pop-wissel naar Sybille knielend (de roos blijft bij
+      // haar), het muziekdoosje stopt en de gewone spelmuziek komt zacht terug.
       { spreker: 'Sybille', tekst: 'Nee. Dat kan niet. Ze hebben me... mijn zusters hebben me...', onShow: function () {
         kkToonPop('knielend');
-        kkToonRoos(false);
         kkStopAudio('_kkDoosje');
         kkStopAudio('_kkAchtergrond');
         fadeMuziekIn();
       } },
       { spreker: 'Sybille', tekst: 'Ga. Naar het podium. Daar gaat het gebeuren. Ik moest jullie volgen en tegenhouden als het nodig was, meer niet.' },
-      { spreker: 'Aaltje', tekst: 'Ik liep jullie achterna om jullie te bedanken voor het doosje. Dat ik dit aantrof...' },
-      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.', onShow: function () { kkToonPop('aaltje'); } }
+      { spreker: 'Aaltje', tekst: 'Ik liep jullie achterna om jullie te bedanken voor het doosje. Dat ik dit aantrof...', onShow: function () { kkToonPop('aaltje'); } },
+      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.' }
     ],
     acties: [
       { label: 'Verder \u2192', onclick: kkSlot }
