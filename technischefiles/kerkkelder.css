@@ -1,0 +1,182 @@
+/* ══════════════════════════════════════════════════════════════════
+   KERKKELDER (stijl voor de cinematic ontknoping)
+   ------------------------------------------------------------------
+   Alle klassen met prefix kk-, om botsingen met bestaande modules te
+   voorkomen (gecontroleerd tegen zv-, dh-, sc-, dgbk-, zc-, ws-, rg-).
+   Verwacht dat de host-pagina de --vh100 custom property definieert
+   (zie zilverweide.html / de demo-pagina); alle hoogtes hier zijn
+   relatief aan de container, dus er staat bewust nergens een kale
+   100vh in dit bestand.
+   ══════════════════════════════════════════════════════════════════ */
+
+.kk-root {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+.kk-root.kk-klikbaar { cursor: pointer; }
+
+.kk-laag {
+  position: absolute;
+  inset: 0;
+}
+
+.kk-beeld {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  will-change: transform, filter;
+}
+
+/* Placeholder-vlak: effen kleur met een licht hart (anders is de drift
+   en de veeg niet te zien) en een groot label, zodat de timing volledig
+   af te stellen is voordat de echte beelden er zijn. */
+.kk-beeld-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  text-align: center;
+  padding: 2rem;
+}
+.kk-ph-label {
+  font-family: 'Cinzel', serif;
+  font-size: clamp(1.2rem, 3.4vh, 2rem);
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(245, 234, 214, .5);
+}
+.kk-ph-bestand {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: .85rem;
+  color: rgba(245, 234, 214, .32);
+}
+
+/* De gloed rond de blauwe roos: kind van .kk-beeld, dus hij beweegt
+   automatisch mee met de doordrift en vervaagt mee in een veeg. */
+.kk-gloed {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: var(--kk-gloed-max, .55);
+  animation-name: kk-gloed-puls;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+}
+@keyframes kk-gloed-puls {
+  0%, 100% { opacity: var(--kk-gloed-max, .55); }
+  50% { opacity: var(--kk-gloed-min, .3); }
+}
+
+/* Beat 7: het wegzakken naar zwart. Boven het beeld, onder de teksten,
+   zodat de slottekst leesbaar op het zwart staat. */
+.kk-zwartlaag {
+  position: absolute;
+  inset: 0;
+  z-index: 15;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.kk-tekstlaag {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* App-tekst: innerlijke stem, gecentreerd, parchment-stijl, geen box. */
+.kk-apptekst {
+  position: absolute;
+  left: 50%;
+  bottom: 14%;
+  transform: translateX(-50%);
+  width: min(74%, 46rem);
+  opacity: 0;
+  text-align: center;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-style: italic;
+  font-size: clamp(1rem, 2.4vh, 1.4rem);
+  line-height: 1.6;
+  color: #e8d5b0;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .9);
+}
+.kk-apptekst.zichtbaar { opacity: 1; }
+
+/* De slottekst van beat 7 staat midden op het zwart. */
+.kk-apptekst.kk-op-zwart {
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: clamp(1.15rem, 3vh, 1.7rem);
+  letter-spacing: .04em;
+}
+
+/* Dialoogbox: spreker, tekst en een pijltje naar de figuur erboven. */
+.kk-dialoogbox {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  transform: translateX(-50%);
+  opacity: 0;
+  box-sizing: border-box;
+  padding: .95rem 1.4rem 1.15rem;
+  background: rgba(13, 10, 6, .92);
+  border: 1px solid rgba(201, 168, 76, .38);
+  border-radius: 6px;
+  box-shadow: 0 6px 30px rgba(0, 0, 0, .6);
+}
+.kk-dialoogbox.zichtbaar { opacity: 1; }
+
+.kk-dialoog-pijl {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  margin-left: -8px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid rgba(201, 168, 76, .55);
+}
+
+.kk-dialoog-spreker {
+  font-family: 'Cinzel', serif;
+  font-size: .7rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: #c9a84c;
+  margin-bottom: .4rem;
+  opacity: .9;
+}
+
+.kk-dialoog-tekst {
+  margin: 0;
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: clamp(.95rem, 2.2vh, 1.25rem);
+  line-height: 1.55;
+  color: #efe3c8;
+  text-align: left;
+}
+
+/* Klein pulserend verder-teken: de hele scene is klikbaar, dit laat
+   alleen zien dat er meer komt. */
+.kk-dialoog-verder {
+  position: absolute;
+  right: .8rem;
+  bottom: .45rem;
+  font-size: .7rem;
+  color: rgba(201, 168, 76, .8);
+  animation: kk-verder-puls 1.6s ease-in-out infinite;
+}
+@keyframes kk-verder-puls {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}

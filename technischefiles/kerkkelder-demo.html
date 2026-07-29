@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kerkkelder: Zilverweide</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="kerkkelder.css">
+<style>
+  /* Page-shell, alleen voor de standalone demo, zelfde geest als
+     woudscene-demo.html. In Zilverweide draait de module binnen een
+     container die het echte spel al opzet. */
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{ --vh100: 100vh; }
+  @supports (height: 100dvh) { :root{ --vh100: 100dvh; } }
+  html,body{
+    background:#000;
+    color:#f5ead6;
+    font-family:'Crimson Text',Georgia,serif;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+  #kk-stage{
+    position:relative;
+    width:100%;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+
+  /* Startscherm: de scene speelt pas na een klik (zodat geluid mag). */
+  #kk-startscherm{
+    position:absolute; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1.2rem;
+    background:#0d0a06;
+    text-align:center; padding:2rem;
+  }
+  #kk-startscherm h1{
+    font-family:'Cinzel',serif; font-size:1.3rem; letter-spacing:.1em;
+    color:#c9a84c; text-transform:uppercase; font-weight:600;
+  }
+  #kk-startscherm p{ max-width:32rem; color:#c8bfaf; font-style:italic; line-height:1.6; }
+  #kk-start-btn{
+    font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; text-transform:uppercase;
+    color:#0d0a06; background:#c9a84c; border:none; border-radius:3px;
+    padding:.9rem 1.8rem; cursor:pointer;
+  }
+  #kk-start-btn:hover{ background:#e0c06a; }
+
+  /* Vaste pauze- en replay-knoppen rechtsboven: altijd bereikbaar,
+     ook met het paneel dicht. Puur testgereedschap. */
+  #kk-topknoppen{
+    position:fixed; top:1rem; right:1rem; z-index:540;
+    display:flex; gap:.5rem;
+  }
+  .kk-topknop{
+    font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
+    color:#c9a84c; background:rgba(13,10,6,.85);
+    border:1px solid rgba(201,168,76,.4); border-radius:3px;
+    padding:.55rem .9rem; cursor:pointer;
+    opacity:.85; transition:opacity .2s, background .2s;
+  }
+  .kk-topknop:hover{ opacity:1; background:rgba(201,168,76,.15); }
+
+  /* ── Debugpaneel, zelfde geest als de woudscene-demo: rond knopje
+     linksonder dat een paneel met schuifregelaars opent. ── */
+  #kk-dbg-btn{
+    position:fixed; bottom:1.2rem; left:1.2rem; z-index:531;
+    background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35);
+    border-radius:50%; width:38px; height:38px; font-size:1.05rem;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:.75; transition:opacity .2s; color:#c9a84c;
+  }
+  #kk-dbg-btn:hover{ opacity:1; }
+  #kk-dbg-panel{
+    display:none;
+    position:fixed; bottom:1.2rem; left:4.4rem; z-index:530;
+    background:rgba(13,10,6,.97); border:1px solid rgba(201,168,76,.3);
+    border-radius:6px; padding:.9rem 1rem; width:300px;
+    max-height:calc(var(--vh100) - 3rem); overflow-y:auto;
+    box-shadow:0 0 30px rgba(0,0,0,.7);
+    font-size:.82rem;
+  }
+  #kk-dbg-panel.open{ display:block; }
+  .kk-dbg-kop{
+    font-family:'Cinzel',serif; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
+    color:#c9a84c; margin:.9rem 0 .5rem;
+  }
+  .kk-dbg-kop:first-child{ margin-top:0; }
+  .kk-dbg-rij{ margin-bottom:.55rem; }
+  .kk-dbg-rij-label{
+    display:flex; justify-content:space-between;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#8a6f32; margin-bottom:.2rem;
+  }
+  .kk-dbg-rij-label span:last-child{ color:#c9a84c; }
+  .kk-dbg-rij input[type="range"]{ width:100%; accent-color:#c9a84c; }
+  .kk-dbg-knoppen{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.6rem; }
+  .kk-dbg-btn2{
+    flex:1; min-width:60px;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#c9a84c; background:transparent; border:1px solid rgba(201,168,76,.4);
+    border-radius:2px; padding:.5rem .3rem; cursor:pointer;
+  }
+  .kk-dbg-btn2:hover{ background:rgba(201,168,76,.12); }
+  .kk-dbg-btn2.actief{ background:rgba(201,168,76,.28); color:#e0c06a; }
+  .kk-dbg-hint{ color:#8a6f32; font-size:.68rem; line-height:1.4; margin:.3rem 0 .5rem; }
+  #kk-dbg-panel input[type="color"]{
+    width:100%; height:1.8rem; border:1px solid rgba(201,168,76,.4);
+    border-radius:2px; background:#0d0a06; padding:2px; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<div id="kk-stage">
+  <div id="kk-startscherm">
+    <h1>Kerkkelder: demo</h1>
+    <p>De scene speelt pas na een klik (audio mag pas starten na een gebaar van de speler). Tijdens de dialoog zet elke tik op het scherm een regel door. Gebruik het tandwiel linksonder om de timing te verfijnen; de knoppen rechtsboven pauzeren en herstarten de scene.</p>
+    <button id="kk-start-btn">Start de scene</button>
+  </div>
+</div>
+
+<div id="kk-topknoppen">
+  <button class="kk-topknop" id="kk-top-pauze">&#9208; Pauze</button>
+  <button class="kk-topknop" id="kk-top-replay">&#8635; Replay</button>
+</div>
+
+<button id="kk-dbg-btn" title="Timing instellen">&#9881;</button>
+<div id="kk-dbg-panel"></div>
+
+<script src="kerkkelder.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   Config voor de demo. De paden hieronder zijn relatief aan DEZE
+   pagina (technischefiles/), dus met "../" naar locaties/ en geluid/;
+   in Zilverweide zelf (die in de root staat) gebruikt de module haar
+   eigen DEFAULTS, die al root-relatief zijn.
+   ════════════════════════════════════════════════════════════ */
+function metPrefix(pad) { return '../' + pad; }
+
+var DEMO_CONFIG = (function () {
+  var basis = new KerkkelderScene(document.createElement('div')).getConfig(); // alleen om DEFAULTS te lenen
+  var images = {};
+  Object.keys(basis.images).forEach(function (k) { images[k] = metPrefix(basis.images[k]); });
+  var audio = {};
+  Object.keys(basis.audio).forEach(function (k) { audio[k] = metPrefix(basis.audio[k]); });
+  return { images: images, audio: audio };
+})();
+
+var scene = new KerkkelderScene(document.getElementById('kk-stage'), DEMO_CONFIG);
+
+var startBtn = document.getElementById('kk-start-btn');
+var startscherm = document.getElementById('kk-startscherm');
+
+function sceneKlaarMelding() {
+  console.log('Kerkkelder klaar. In het echte spel volgt hierna het invoerscherm (aparte koppelstap).');
+}
+
+startBtn.onclick = function () {
+  startscherm.style.display = 'none';
+  scene.start(sceneKlaarMelding);
+};
+
+/* ── Vaste pauze- en replay-knoppen ───────────────────────────── */
+var topPauzeBtn = document.getElementById('kk-top-pauze');
+
+function zetPauzeLabels(gepauzeerd) {
+  var label = gepauzeerd ? '▶ Hervat' : '⏸ Pauze';
+  topPauzeBtn.textContent = label;
+  var paneelPauzeBtn = document.getElementById('kk-dbg-pauze');
+  if (paneelPauzeBtn) paneelPauzeBtn.textContent = label;
+}
+
+function doePauze() {
+  zetPauzeLabels(scene.togglePause());
+}
+
+function verbergStartscherm() {
+  if (startscherm.style.display !== 'none') startscherm.style.display = 'none';
+}
+
+function doeReplay() {
+  verbergStartscherm();
+  zetPauzeLabels(false);
+  scene.replay(sceneKlaarMelding);
+}
+
+topPauzeBtn.onclick = doePauze;
+document.getElementById('kk-top-replay').onclick = doeReplay;
+
+/* ── Debugpaneel ──────────────────────────────────────────────── */
+var dbgBtn = document.getElementById('kk-dbg-btn');
+var dbgPanel = document.getElementById('kk-dbg-panel');
+dbgBtn.onclick = function () { dbgPanel.classList.toggle('open'); };
+
+// Elke rij: label, dot-pad in de config, min/max/step. Waarden werken
+// live door via scene.set(); duren gelden vanaf de eerstvolgende keer
+// dat die stap draait (spring naar de beat of herhaal hem om te kijken).
+var SLIDER_RIJEN = [
+  { kop: 'De hoofdtruc: veeg en doordrift' },
+  { label: 'Veeg: duur (ms)', pad: 'veeg.duur', min: 100, max: 1200, step: 25 },
+  { label: 'Veeg: onscherpte (px)', pad: 'veeg.blur', min: 0, max: 40, step: 1 },
+  { label: 'Drift: zoomfactor', pad: 'drift.schaal', min: 1, max: 1.15, step: 0.005 },
+  { label: 'Drift: pan-afstand (%)', pad: 'drift.panAfstand', min: 0, max: 5, step: 0.1 },
+  { label: 'Drift: duur (ms)', pad: 'drift.duur', min: 5000, max: 60000, step: 1000 },
+  { label: 'App-tekst fade (ms)', pad: 'tekstFadeDuur', min: 0, max: 2000, step: 50 },
+  { kop: 'Beat 1: aankomst' },
+  { label: 'Ambience fade-in (ms)', pad: 'beat1.ambienceFadeIn', min: 0, max: 5000, step: 100 },
+  { label: 'Wachten voor tekst (ms)', pad: 'beat1.tekstVertraging', min: 0, max: 8000, step: 100 },
+  { label: 'Tekst blijft staan (ms)', pad: 'beat1.tekstDuur', min: 1000, max: 12000, step: 100 },
+  { label: 'Rust na tekst (ms)', pad: 'beat1.naTekst', min: 0, max: 5000, step: 100 },
+  { kop: 'Beat 2: het gelach' },
+  { label: 'Stilte voor het lachje (ms)', pad: 'beat2.lachVertraging', min: 0, max: 5000, step: 100 },
+  { label: 'Lachje tot tekst (ms)', pad: 'beat2.tekstVertraging', min: 0, max: 6000, step: 100 },
+  { label: 'Tekst blijft staan (ms)', pad: 'beat2.tekstDuur', min: 1000, max: 12000, step: 100 },
+  { label: 'Rust na tekst (ms)', pad: 'beat2.naTekst', min: 0, max: 5000, step: 100 },
+  { label: 'Ambience valt weg in (ms)', pad: 'beat2.ambienceFadeUit', min: 200, max: 4000, step: 50 },
+  { label: 'Stilte voor de veeg (ms)', pad: 'beat2.stilteVoorVeeg', min: 0, max: 4000, step: 100 },
+  { kop: 'Beat 3: de onthulling' },
+  { label: 'Beeld tot zwelling (ms)', pad: 'beat3.zwellingVertraging', min: 0, max: 5000, step: 100 },
+  { label: 'Beeld tot tekst (ms)', pad: 'beat3.tekstVertraging', min: 0, max: 8000, step: 100 },
+  { label: 'Tekst blijft staan (ms)', pad: 'beat3.tekstDuur', min: 1000, max: 10000, step: 100 },
+  { label: 'Rust na tekst (ms)', pad: 'beat3.naTekst', min: 0, max: 4000, step: 100 },
+  { kop: 'Beat 4 en 5: de dialoog' },
+  { label: 'Breedte dialoogbox (%)', pad: 'dialoog.boxBreedte', min: 24, max: 70, step: 1 },
+  { label: 'Fade per regel (ms)', pad: 'dialoog.regelFadeDuur', min: 0, max: 1500, step: 25 },
+  { label: 'Wachten tot deurgeluid (ms)', pad: 'beat5.deurVertraging', min: 0, max: 4000, step: 100 },
+  { label: 'Deurgeluid tot veeg (ms)', pad: 'beat5.veegVertraging', min: 0, max: 5000, step: 100 },
+  { kop: 'Beat 6: de breuk' },
+  { label: 'Wachten tot terugveeg (ms)', pad: 'beat6.terugVeegVertraging', min: 0, max: 3000, step: 100 },
+  { label: 'Regel tot veeg omlaag (ms)', pad: 'beat6.veegVertraging', min: 0, max: 3000, step: 100 },
+  { label: 'De lange stilte (ms)', pad: 'beat6.stilte', min: 0, max: 12000, step: 100 },
+  { kop: 'Beat 7: naar zwart' },
+  { label: 'Geluid valt weg in (ms)', pad: 'beat7.geluidWegDuur', min: 100, max: 4000, step: 50 },
+  { label: 'Traag naar zwart (ms)', pad: 'beat7.zwartDuur', min: 500, max: 10000, step: 100 },
+  { label: 'Zwart tot slottekst (ms)', pad: 'beat7.tekstVertraging', min: 0, max: 15000, step: 250 },
+  { label: 'Slottekst tot einde (ms)', pad: 'beat7.tekstDuur', min: 1000, max: 15000, step: 250 },
+  { kop: 'Beeld 1: kelder leeg' },
+  { label: 'Helderheid', pad: 'kleur.kelder.helderheid', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Contrast', pad: 'kleur.kelder.contrast', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Schaduwlicht', pad: 'kleur.kelder.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Beeld 2: Sybille staand' },
+  { label: 'Helderheid', pad: 'kleur.sybille.helderheid', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Contrast', pad: 'kleur.sybille.contrast', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Schaduwlicht', pad: 'kleur.sybille.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Beeld 3: Aaltje in de deuropening' },
+  { label: 'Helderheid', pad: 'kleur.aaltje.helderheid', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Contrast', pad: 'kleur.aaltje.contrast', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Schaduwlicht', pad: 'kleur.aaltje.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Beeld 4: Sybille gebroken' },
+  { label: 'Helderheid', pad: 'kleur.gebroken.helderheid', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Contrast', pad: 'kleur.gebroken.contrast', min: 0.4, max: 1.8, step: 0.05 },
+  { label: 'Schaduwlicht', pad: 'kleur.gebroken.schaduwlicht', min: 1, max: 2.5, step: 0.05 },
+  { kop: 'Roos-gloed' },
+  { label: 'Roos op beeld 2: x', pad: 'gloed.posities.sybille.x', min: 0, max: 1, step: 0.005 },
+  { label: 'Roos op beeld 2: y', pad: 'gloed.posities.sybille.y', min: 0, max: 1, step: 0.005 },
+  { label: 'Roos op beeld 4: x', pad: 'gloed.posities.gebroken.x', min: 0, max: 1, step: 0.005 },
+  { label: 'Roos op beeld 4: y', pad: 'gloed.posities.gebroken.y', min: 0, max: 1, step: 0.005 },
+  { label: 'Grootte (px)', pad: 'gloed.grootte', min: 20, max: 220, step: 5 },
+  { label: 'Dekking', pad: 'gloed.dekking', min: 0, max: 1, step: 0.05 },
+  { label: 'Scherpte van de rand', pad: 'gloed.scherpte', min: 0, max: 1, step: 0.05 },
+  { label: 'Aandeel kern', pad: 'gloed.kernAandeel', min: 0, max: 0.9, step: 0.05 },
+  { label: 'Puls: tempo (ms)', pad: 'gloed.pulsTempo', min: 1000, max: 10000, step: 100 },
+  { label: 'Puls: diepte', pad: 'gloed.pulsDiepte', min: 0, max: 1, step: 0.05 },
+  { label: 'Uitdoven in beat 6 (ms)', pad: 'gloed.doofDuur', min: 500, max: 8000, step: 100 },
+  { kop: 'Volume per laag' },
+  { label: 'Kelder-ambience', pad: 'volumes.ambience', min: 0, max: 1, step: 0.05 },
+  { label: 'Gelach', pad: 'volumes.lach', min: 0, max: 1, step: 0.05 },
+  { label: 'Lage zwelling', pad: 'volumes.zwelling', min: 0, max: 1, step: 0.05 },
+  { label: 'Deurgeluid', pad: 'volumes.deur', min: 0, max: 1, step: 0.05 },
+  { label: 'Muziekdoosje', pad: 'volumes.muziekdoosje', min: 0, max: 1, step: 0.05 }
+];
+
+function padWaarde(obj, pad) {
+  var delen = pad.split('.'), v = obj;
+  for (var i = 0; i < delen.length; i++) v = v[delen[i]];
+  return v;
+}
+
+(function bouwPaneel() {
+  var html = '';
+  var huidigeConfig = scene.getConfig();
+
+  // Bovenaan: springen, pauze, herhalen. Dit is wat je tijdens het
+  // afstellen het vaakst nodig hebt.
+  html +=
+    '<div class="kk-dbg-kop">Afspelen</div>' +
+    '<div class="kk-dbg-knoppen">' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-pauze">&#9208; Pauze</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-herhaal-beat">&#8635; Herhaal beat</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-replay">&#8635; Replay</button>' +
+    '</div>' +
+    '<div class="kk-dbg-hint">Pauzeren kan midden in een beweging; schuif dan rustig en hervat. Herhaal beat speelt de huidige beat opnieuw vanaf zijn begin.</div>' +
+    '<div class="kk-dbg-kop">Spring naar beat</div>' +
+    '<div class="kk-dbg-knoppen">' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b1">1</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b2">2</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b3">3</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b4">4</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b5">5</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b6">6</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-b7">7</button>' +
+    '</div>' +
+    '<div class="kk-dbg-hint">1 aankomst, 2 gelach, 3 onthulling, 4 monoloog, 5 deuropening, 6 breuk, 7 zwart.</div>';
+
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) {
+      html += '<div class="kk-dbg-kop">' + rij.kop + '</div>';
+      if (rij.kop === 'Roos-gloed') {
+        html +=
+          '<div class="kk-dbg-knoppen">' +
+            '<button class="kk-dbg-btn2" id="kk-dbg-gloed-aan">Gloed: aan</button>' +
+          '</div>' +
+          '<div class="kk-dbg-rij">' +
+            '<div class="kk-dbg-rij-label"><span>Gloed-kleur</span></div>' +
+            '<input type="color" id="kk-dbg-gloed-kleur">' +
+          '</div>';
+      }
+      return;
+    }
+    var id = 'kk-r-' + rij.pad.replace(/\./g, '-');
+    var val = padWaarde(huidigeConfig, rij.pad);
+    html +=
+      '<div class="kk-dbg-rij">' +
+        '<div class="kk-dbg-rij-label"><span>' + rij.label + '</span><span id="' + id + '-val">' + val + '</span></div>' +
+        '<input type="range" id="' + id + '" data-pad="' + rij.pad + '" min="' + rij.min + '" max="' + rij.max + '" step="' + rij.step + '" value="' + val + '">' +
+      '</div>';
+  });
+
+  html +=
+    '<div class="kk-dbg-kop">Vastleggen</div>' +
+    '<div class="kk-dbg-knoppen">' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-config">Config &#8594; console</button>' +
+      '<button class="kk-dbg-btn2" id="kk-dbg-reset">Reset standaard</button>' +
+    '</div>' +
+    '<div class="kk-dbg-hint">Config &#8594; console schrijft alle huidige waarden naar de console (F12), zodat ze als nieuwe standaard vastgelegd kunnen worden.</div>';
+
+  dbgPanel.innerHTML = html;
+
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) return;
+    var id = 'kk-r-' + rij.pad.replace(/\./g, '-');
+    var input = document.getElementById(id);
+    var label = document.getElementById(id + '-val');
+    input.oninput = function () {
+      var v = +this.value;
+      label.textContent = v;
+      scene.set(rij.pad, v);
+    };
+  });
+
+  document.getElementById('kk-dbg-pauze').onclick = doePauze;
+  document.getElementById('kk-dbg-herhaal-beat').onclick = function () {
+    zetPauzeLabels(false); // herhalen hervat een eventuele pauze zelf al
+    scene.herhaalHuidigeBeat();
+  };
+  document.getElementById('kk-dbg-replay').onclick = doeReplay;
+
+  [1, 2, 3, 4, 5, 6, 7].forEach(function (nr) {
+    document.getElementById('kk-dbg-b' + nr).onclick = function () {
+      verbergStartscherm();
+      zetPauzeLabels(false);
+      scene.goTo(nr, sceneKlaarMelding);
+    };
+  });
+
+  var gloedAanBtn = document.getElementById('kk-dbg-gloed-aan');
+  function verversGloedAanLabel() {
+    gloedAanBtn.textContent = 'Gloed: ' + (scene.getConfig().gloed.aan ? 'aan' : 'uit');
+  }
+  verversGloedAanLabel();
+  gloedAanBtn.onclick = function () {
+    scene.set('gloed.aan', !scene.getConfig().gloed.aan);
+    verversGloedAanLabel();
+  };
+
+  var gloedKleurInput = document.getElementById('kk-dbg-gloed-kleur');
+  gloedKleurInput.value = scene.getConfig().gloed.kleur;
+  gloedKleurInput.oninput = function () { scene.set('gloed.kleur', this.value); };
+
+  document.getElementById('kk-dbg-config').onclick = function () {
+    console.log('KERKKELDER config:\n' + JSON.stringify(scene.getConfig(), null, 2));
+  };
+
+  document.getElementById('kk-dbg-reset').onclick = function () {
+    var standaard = new KerkkelderScene(document.createElement('div')).getConfig();
+    SLIDER_RIJEN.forEach(function (rij) {
+      if (rij.kop) return;
+      var v = padWaarde(standaard, rij.pad);
+      scene.set(rij.pad, v);
+      var id = 'kk-r-' + rij.pad.replace(/\./g, '-');
+      document.getElementById(id).value = v;
+      document.getElementById(id + '-val').textContent = v;
+    });
+    scene.set('gloed.aan', standaard.gloed.aan);
+    scene.set('gloed.kleur', standaard.gloed.kleur);
+    gloedKleurInput.value = standaard.gloed.kleur;
+    verversGloedAanLabel();
+    console.log('Alle instellingen teruggezet naar de standaardwaarden.');
+  };
+})();
+</script>
+
+</body>
+</html>
