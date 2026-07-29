@@ -8220,15 +8220,17 @@ function renderDd4Herberg(loc) {
     return;
   }
 
-  // Late-game: is Heer Donatuslaan open? Dan altijd de na-HD sfeer
-  // (vijandige drukte, dichtgenaaide monden, geen kikker, geen Wallingen).
-  // Of Fenna al gezongen heeft of niet maakt niet uit voor de herberg-sfeer.
+  // Late-game: is Heer Donatuslaan open? De herberg doorloopt dan drie
+  // toestanden en de zolder is dicht (de zolderflow hoort bij Dorendael):
+  // 1) gespannen drukte zolang Fenna nog niet bij het gemeentehuis was,
+  // 2) kokende zaal zodra Robbie's briefje is overhandigd (H5),
+  // 3) dromerige zaal na Fenna's zang.
   if (hasVisited('sintdonatuslaan_unlocked')) {
-    return renderDd4NaZang(loc, p);
+    return renderDd4HeerDonatusFase(loc, p);
   }
 
-  // Pre-HD: is Fenna bij het gemeentehuis geweest maar heeft ze nog niet
-  // gezongen, dan kookt de herberg van de boze menigte.
+  // Vangnet voor losse debug-vlaggen: gemeentehuis-vlag zonder open district.
+  // In normaal spel is H5 pas bereikbaar als Heer Donatuslaan open is.
   if (hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis')) {
     if (hasVisited('fenna_herberg_gedaan') || getSharedState('fenna_herberg_gedaan')) {
       return renderDd4NaZang(loc, p);
@@ -8260,38 +8262,50 @@ function renderDd4Herberg(loc) {
   return renderDd4VoorZolder(loc, p);
 }
 
-// ── Na Fenna's zang: dromerige volle hut, de zolder is weer open ─────
+// ── Routering zodra Heer Donatuslaan open is ─────────────────────────
+// Kiest tussen de drie herberg-toestanden van de late fase. Geen enkele
+// toestand heeft een trap-knop: de zolder is dicht na de Dorendael-fase.
+function renderDd4HeerDonatusFase(loc, p) {
+  const gemeentehuis = hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis');
+  const gezongen = hasVisited('fenna_herberg_gedaan') || getSharedState('fenna_herberg_gedaan');
+  if (gezongen) return renderDd4NaZang(loc, p);
+  if (gemeentehuis) return renderDd4Menigte(loc, p);
+  return renderDd4GespannenHD(loc, p);
+}
+
+// ── Heer Donatuslaan open, Fenna nog niet bij het gemeentehuis ───────
+// Gespannen drukte, de opmaat naar de kokende zaal.
+function renderDd4GespannenHD(loc, p) {
+  const cont = document.getElementById('locatie-content');
+  return renderLocatieScene({
+    container: cont, titel: loc.naam, sub: 'De herberg', image: null,
+    dialog: [
+      'De herberg zit vol. Strakke gezichten en een mix van onvrede en woede. Veel mensen hebben hun monden dichtgenaaid. Het is een beklemmend gezicht.',
+      'Je houdt je gedeisd. Dit kan elk moment omslaan.'
+    ]
+  });
+}
+
+// ── Na Fenna's zang: dromerige volle zaal, betoverd publiek ──────────
 // Buiten-stap wordt afgehandeld door renderDd4Herberg (_herbergBinnen).
 function renderDd4NaZang(loc, p) {
   const cont = document.getElementById('locatie-content');
-  const st = loc._nzStap || 0;
-  const naHD = hasVisited('sintdonatuslaan_unlocked');
 
-  if (st === 1) {
-    return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'De zolder', image: null,
-      dialog: [
-        '[Placeholder: de zolderkamer, precies zoals je hem eerder liet. Interactie nog uit te werken.]'
-      ]
-    });
-  }
-  // Binnen-scene: na HD vijandige sfeer, anders dromerig
-  if (naHD) {
+  if (p === 'fenna') {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'De herberg', image: null,
       dialog: [
-        'De herberg zit vol. Strakke gezichten en een mix van onvrede en woede. Veel mensen hebben hun monden dichtgenaaid. Het is een beklemmend gezicht.',
-        'De herbergier is er nog, boven. De zolder is begaanbaar.'
-      ],
-      acties: [{ label: '\u2191 Ga naar boven', onclick: function () { renderDd4NaZang(Object.assign({}, loc, { _nzStap: 1 }), p); } }]
+        'De zaal die eerder kookte, hangt nu rozig in de banken. Dromerige blikken, halve glimlachjes. Zodra je binnenkomt gaat er een zucht door de herberg, en tientallen ogen volgen je alsof je elk moment weer kunt gaan zingen.',
+        { spreker: 'Fenna-Vivi\u00e8nne', tekst: 'Nog steeds betoverd. Uiteraard. Kwaliteit slijt niet.' },
+        'Ergens achterin neuriet iemand zachtjes jouw lied. Vals. Je vergeeft het ze, voor deze ene avond. Maar niet te lang blijven, straks beginnen ze nog om een toegift te roepen.'
+      ]
     });
   }
   return renderLocatieScene({
     container: cont, titel: loc.naam, sub: 'De herberg', image: null,
     dialog: [
       'De herberg zit vol. Iedereen oogt wat rozig en dromerig, alsof ze nog ergens van nagenieten. Of van iemand...'
-    ],
-    acties: [{ label: '\u2191 Ga naar boven', onclick: function () { renderDd4NaZang(Object.assign({}, loc, { _nzStap: 1 }), p); } }]
+    ]
   });
 }
 
@@ -8516,9 +8530,10 @@ function dd4JanBijWallingen() {
 function renderDd4NaZolder(loc, p) {
   const cont = document.getElementById('locatie-content');
 
-  // Vangnet: na HD altijd naar NaZang (geen kikker, vijandige sfeer)
+  // Vangnet: na HD altijd naar de late-fase routering (geen kikker,
+  // geen Wallingen, geen zolder)
   if (hasVisited('sintdonatuslaan_unlocked')) {
-    return renderDd4NaZang(loc, p);
+    return renderDd4HeerDonatusFase(loc, p);
   }
 
   const trapActie = [{ label: 'Naar de zolder', onclick: klikZolder }];
