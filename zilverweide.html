@@ -907,6 +907,40 @@ body.woudscene-actief .finale-btn{display:none !important;}
   #locatie-content.kk-dialoog .sc-dialog{bottom:54vh;width:min(520px,80vw)}
   #locatie-content.kk-dialoog .sc-acties-mount{bottom:56vh}
 }
+/* ══ FINALE OP HET PLEIN (pop-versie, prefix pf-) ══
+   Zelfde familie als de kerkkelder-pops: vaste overlays met een
+   placeholder-vlak bij ontbrekende bestanden, en CSS-deeltjes voor de
+   roos (hergebruikt de kk-keyframes zodat de stijl gelijk blijft).
+   Hoofdpop rechts, zij-pop (figuur bij de roos) links, roos ernaast. */
+.pf-slot{position:fixed;bottom:0;z-index:255;pointer-events:none;opacity:0;transition:opacity .45s ease}
+#pf-pop{right:2vw}
+#pf-zij{left:2vw}
+.pf-slot img{display:block;height:52vh;max-height:460px;width:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8))}
+#pf-zij img{height:46vh;max-height:400px}
+.pf-slot .pf-vlak{width:170px;height:48vh;max-height:420px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
+.pf-slot.pf-verval{filter:grayscale(1) blur(6px) brightness(.4);transform:translateY(40px)}
+#pf-roos{position:fixed;left:16vw;top:42%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease,top 2.2s ease;animation:kkZweef 4.5s ease-in-out infinite}
+#pf-roos .pf-gloed{position:absolute;inset:-45%;background:radial-gradient(circle,rgba(95,150,255,.45),transparent 62%);animation:kkGloed 2.6s ease-in-out infinite;transition:opacity 2s ease}
+#pf-roos img{position:relative;display:block;height:18vh;max-height:150px;width:auto;filter:drop-shadow(0 0 16px rgba(120,170,255,.6));transition:filter 2.5s ease}
+#pf-roos .pf-vlak{position:relative;width:90px;height:16vh;max-height:130px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim)}
+#pf-roos .pf-deeltje{position:absolute;bottom:8%;width:5px;height:5px;border-radius:50%;background:rgba(160,200,255,.85);animation:kkDeeltje 3.4s linear infinite}
+#pf-roos.pf-fel .pf-gloed{inset:-70%;background:radial-gradient(circle,rgba(120,180,255,.8),transparent 65%);animation-duration:1.2s}
+#pf-roos.pf-fel .pf-deeltje{background:rgba(200,225,255,1);animation-duration:1.7s}
+#pf-roos.pf-fel img{filter:drop-shadow(0 0 26px rgba(140,190,255,.95))}
+#pf-roos.pf-omhoog{top:14%}
+#pf-roos.pf-as{animation:none}
+#pf-roos.pf-as .pf-gloed{opacity:0}
+#pf-roos.pf-as .pf-deeltje{opacity:0;transition:opacity 1.5s ease}
+#pf-roos.pf-as img{filter:grayscale(1) brightness(.55) drop-shadow(0 0 6px rgba(120,120,120,.4))}
+.pf-burst-deeltje{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:rgba(200,225,255,.95);animation:pfBurst .9s ease-out forwards}
+@keyframes pfBurst{from{transform:translate(-50%,-50%);opacity:1}to{transform:translate(calc(-50% + var(--pf-dx,0px)),calc(-50% + var(--pf-dy,0px)));opacity:0}}
+@media (max-height:520px){
+  .pf-slot img{height:44vh;max-height:250px}
+  #pf-zij img{height:38vh;max-height:220px}
+  .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
+  #pf-roos{left:14vw;top:38%}
+  #pf-roos img{height:14vh;max-height:100px}
+}
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
    Prefix wt- (Wacht-Teksten), losstaand van char-pop (dat hoort bij
    dialoogschermen tijdens het spel, niet bij dit wachtscherm).
@@ -14820,7 +14854,7 @@ function openFinalePodium() {
 
   var acties = [];
   if (alleVier) {
-    acties.push({ label: '\ud83c\udfad Begin de finale', onclick: podiumTomsVerhaal });
+    acties.push({ label: '\ud83c\udfad Begin de finale', onclick: pleinFinaleIntro });
   }
 
   renderLocatieScene({
@@ -14846,26 +14880,9 @@ function debugAlleVierPodium() {
   openFinalePodium();
 }
 
-// Stills: doorklikbare placeholder-reeks (taunt-fase, geen voice-over)
-// ── Finale stap 1: Toms verhaal (tijdelijk scherm) ───────────────────
-// Daarna registreert elke speler zich als "verhaal klaar"; pas als alle 4
-// dat gedaan hebben gaat het door naar de armen-selectie.
-function podiumTomsVerhaal() {
-  var cont = document.getElementById('locatie-content');
-  renderLocatieScene({
-    container: cont,
-    titel: 'Het Podium',
-    sub: 'De heksen verschijnen',
-    image: podiumAfbeelding(),
-    dialog: [
-      { spreker: 'Verteller', tekst: 'Luister nu naar Toms verhaal.' }
-    ],
-    geenTerug: true,
-    acties: [{ label: 'Verder \u2192', onclick: podiumVerhaalKlaarGedrukt }]
-  });
-  showScreen('screen-locatie');
-}
-
+// ── Gate na deel 1 van de plein-finale ───────────────────────────────
+// Elke speler registreert zich als "verhaal klaar"; pas als alle 4 dat
+// gedaan hebben gaat het door naar de armen-selectie.
 function podiumVerhaalKlaarGedrukt() {
   var lijst = sharedLijst('podium_verhaal_klaar');
   if (lijst.indexOf(state.personage) === -1) {
@@ -14885,7 +14902,7 @@ function podiumVerhaalWacht() {
     sub: 'De heksen verschijnen',
     image: podiumAfbeelding(),
     dialog: [
-      'Toms verhaal klinkt na. Nog niet iedereen is zover.'
+      'Sybilles kreet galmt over het plein. Nog niet iedereen is zover.'
     ],
     geenTerug: true,
     acties: [],
@@ -15012,7 +15029,7 @@ function podiumArmSelectie() {
 
   var acties = [];
   if (alleBezet) {
-    acties.push({ label: 'Verder \u2192', onclick: podiumLuisterNaarTom });
+    acties.push({ label: 'Verder \u2192', onclick: pleinFinaleNaArmen });
   }
 
   renderLocatieScene({
@@ -15044,23 +15061,6 @@ function kiesArm(armId) {
   setSharedState('armen_gekozen', armen);
   state.gekozenArm = armId;
   podiumArmSelectie(); // herrender
-}
-
-// ── Finale afsluiter (tijdelijk): alles gepakt, luister naar Tom ─────
-function podiumLuisterNaarTom() {
-  var cont = document.getElementById('locatie-content');
-  renderLocatieScene({
-    container: cont,
-    titel: 'Het Podium',
-    sub: '',
-    image: podiumAfbeelding(),
-    dialog: [
-      { spreker: 'Verteller', tekst: 'Luister nu naar Tom.' }
-    ],
-    geenTerug: true,
-    acties: []
-  });
-  showScreen('screen-locatie');
 }
 
 function debugAlleArmen() {
@@ -15103,6 +15103,364 @@ function podiumEinde() {
     'Sluiten',
     openFinalePodium
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FINALE OP HET PLEIN (pop-versie)
+// De verhalende ontknoping op het plein, opgebouwd met pops in de stijl
+// van de kerkkelder-scene. Vervangt de oude "Luister naar Tom"-
+// placeholders: het eerste deel komt voor de armen-selectie, het tweede
+// deel erna. Later wordt hier mogelijk een echte cinematic van gemaakt.
+// Ontbrekende media zijn geen bug: pops vallen terug op een placeholder-
+// vlak met label, ontbrekend geluid valt terug op stilte. Tom koppelt
+// later de definitieve afbeeldingen; tot die tijd worden bestaande pops
+// hergebruikt waar dat kan.
+// ═══════════════════════════════════════════════════════════════════
+
+var PF_GELUID_PAD = 'geluid/plein/';
+var PF_BG_VOLUME = 0.35;
+var PF_POPS = {
+  heksen:     { src: 'karakters/dorpsplein/heksensamen-pop.png',  label: 'DE HEKSEN' },
+  aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA' },
+  hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
+  // Tijdelijk hergebruik van de kerkkelder-pops tot er plein-varianten zijn.
+  gebogen:    { src: 'karakters/heerdonatuslaan/sybilleknielend-pop.png', label: 'GEBOGEN FIGUUR' },
+  sybille:    { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
+  jan:        { src: 'karakters/spelers/jan-pop.png',   label: 'JAN' },
+  kelly:      { src: 'karakters/spelers/kelly-pop.png', label: 'KELLY' },
+  fenna:      { src: 'karakters/spelers/fenna-pop.png', label: 'FENNA' },
+  felix:      { src: 'karakters/spelers/felix-pop.png', label: 'FELIX' }
+};
+var PF_ROOS_SRC   = 'karakters/heerdonatuslaan/roos-pop.png';
+var PF_ROOSAS_SRC = 'karakters/dorpsplein/roosas-pop.png';   // as-variant, mag ontbreken
+
+// ── Audio: een doorlopende track plus losse geluidjes. Hergebruikt de
+// generieke kerkkelder-helpers kkStopAudio/kkFadeNaar (die werken op een
+// window-key en zijn niet kerkkelder-specifiek).
+function pfStartLoop(bestand, volume) {
+  kkStopAudio('_pfTrack');
+  try {
+    var a = new Audio(PF_GELUID_PAD + bestand);
+    a.loop = true;
+    a.volume = volume;
+    a.play().catch(function () {});
+    window._pfTrack = a;
+  } catch (e) {}
+}
+// Kruisfade naar een andere track: huidige zacht uit, nieuwe zacht in.
+function pfWisselTrack(bestand, volume, fadeMs) {
+  var duur = (typeof fadeMs === 'number') ? fadeMs : 1200;
+  kkFadeNaar('_pfTrack', 0, duur);
+  setTimeout(function () {
+    pfStartLoop(bestand, 0);
+    kkFadeNaar('_pfTrack', volume, duur);
+  }, duur + 100);
+}
+function pfSfx(pad, volume) {
+  try {
+    var a = new Audio(pad);
+    a.volume = (typeof volume === 'number') ? volume : 0.9;
+    a.play().catch(function () {});
+    return a;
+  } catch (e) { return null; }
+}
+// De heksenlach: eigen plein-bestand zodra Tom dat aanlevert, tot die
+// tijd valt hij terug op de bestaande kerkkelder-lach.
+function pfLach() {
+  var a = pfSfx(PF_GELUID_PAD + 'plein-lach.mp3', 0.85);
+  if (a) a.addEventListener('error', function () { pfSfx('geluid/kerkkelder/kk-lach.mp3', 0.85); });
+}
+
+// ── Pop-slots: hoofdpop rechts (pf-pop) en zij-pop links bij de roos
+// (pf-zij). Zelfde wissel- en fallback-logica als kkToonPop.
+function pfSlotEl(id) {
+  var el = document.getElementById(id);
+  if (!el) {
+    el = document.createElement('div');
+    el.id = id;
+    el.className = 'pf-slot';
+    el.innerHTML = '<img src="" alt=""><div class="pf-vlak"></div>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function pfToon(id, naam) {
+  var el = pfSlotEl(id);
+  clearTimeout(el._wissel);
+  if (!naam) { el._gevraagd = null; el.style.opacity = '0'; return; }
+  var pop = PF_POPS[naam];
+  el._gevraagd = naam;
+  var zet = function () {
+    if (el._gevraagd !== naam) return;
+    var img = el.querySelector('img');
+    var vlak = el.querySelector('.pf-vlak');
+    img.style.display = 'none';
+    vlak.style.display = 'none';
+    img.onload = function () {
+      if (el._gevraagd !== naam) return;
+      img.style.display = '';
+      el.style.opacity = '1';
+    };
+    img.onerror = function () {
+      if (el._gevraagd !== naam) return;
+      vlak.textContent = pop.label;
+      vlak.style.display = 'flex';
+      el.style.opacity = '1';
+    };
+    img.src = pop.src;
+    // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
+    if (img.complete) {
+      if (img.naturalWidth > 0) img.onload(); else img.onerror();
+    }
+  };
+  if (el.style.opacity === '1') {
+    el.style.opacity = '0';
+    el._wissel = setTimeout(zet, 420);
+  } else {
+    zet();
+  }
+}
+function pfToonPop(naam) { pfToon('pf-pop', naam); }
+function pfToonZij(naam) { pfToon('pf-zij', naam); }
+// Een pop laat in as uiteenvallen: vergrijzen, vervagen, zakken.
+function pfVerval(id) {
+  var el = document.getElementById(id);
+  if (!el || el.style.opacity !== '1') return;
+  el.classList.add('pf-verval');
+  el.style.transition = 'opacity 2.2s ease, filter 2.2s ease, transform 2.2s ease';
+  el.style.opacity = '0';
+  el._gevraagd = null;
+  setTimeout(function () {
+    el.classList.remove('pf-verval');
+    el.style.transition = '';
+  }, 2400);
+}
+
+// ── De roos: gloed plus zwevende deeltjes, met standen voor de
+// tegenspreuk (fel, omhoog), de burst op "Finita!" en de as.
+function pfRoosEl() {
+  var el = document.getElementById('pf-roos');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'pf-roos';
+    el.innerHTML = '<div class="pf-gloed"></div><img src="" alt=""><div class="pf-vlak">ROOS</div>';
+    for (var i = 0; i < 8; i++) {
+      var d = document.createElement('div');
+      d.className = 'pf-deeltje';
+      d.style.left = (8 + i * 11) + '%';
+      d.style.animationDelay = (i * 0.4) + 's';
+      d.style.setProperty('--kk-drift', (((i % 3) - 1) * 18) + 'px');
+      el.appendChild(d);
+    }
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function pfToonRoos(aan) {
+  var el = pfRoosEl();
+  if (!aan) { el.style.opacity = '0'; return; }
+  var img = el.querySelector('img');
+  var vlak = el.querySelector('.pf-vlak');
+  img.style.display = 'none';
+  vlak.style.display = 'none';
+  img.onload = function () { img.style.display = ''; el.style.opacity = '1'; };
+  img.onerror = function () { vlak.style.display = 'flex'; el.style.opacity = '1'; };
+  img.src = PF_ROOS_SRC;
+  if (img.complete) {
+    if (img.naturalWidth > 0) img.onload(); else img.onerror();
+  }
+}
+function pfRoosFel() { pfRoosEl().classList.add('pf-fel'); }
+function pfRoosOmhoog() { pfRoosEl().classList.add('pf-omhoog'); }
+// Alle standen wissen (voor een schone start, ook via het debug-paneel).
+function pfRoosReset() {
+  var el = pfRoosEl();
+  el.classList.remove('pf-fel');
+  el.classList.remove('pf-omhoog');
+  el.classList.remove('pf-as');
+}
+// Korte, felle burst: losse deeltjes die naar buiten schieten.
+function pfRoosBurst() {
+  var el = pfRoosEl();
+  var HOEKEN = [0, 25, 50, 80, 110, 140, 165, 195, 220, 250, 280, 310, 335, 355];
+  HOEKEN.forEach(function (graden, i) {
+    var d = document.createElement('div');
+    d.className = 'pf-burst-deeltje';
+    var rad = graden * Math.PI / 180;
+    var afstand = 70 + (i % 4) * 22;
+    d.style.setProperty('--pf-dx', Math.round(Math.cos(rad) * afstand) + 'px');
+    d.style.setProperty('--pf-dy', Math.round(Math.sin(rad) * afstand) + 'px');
+    d.style.animationDelay = ((i % 3) * 0.05) + 's';
+    el.appendChild(d);
+    setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 1400);
+  });
+}
+// De roos dooft uit tot as. Bestaat de as-afbeelding, dan wisselt het
+// beeld; anders vergrijst de gewone roos via het CSS-filter.
+function pfRoosAs() {
+  var el = pfRoosEl();
+  el.classList.remove('pf-fel');
+  el.classList.add('pf-as');
+  var test = new Image();
+  test.onload = function () {
+    var img = el.querySelector('img');
+    if (img) img.src = PF_ROOSAS_SRC;
+  };
+  test.src = PF_ROOSAS_SRC;
+}
+
+// Achtergrond-wissel binnen een lopende scene (bijvoorbeeld naar het
+// plein met de aankomende dorpelingen). Alleen als het bestand echt
+// bestaat; anders blijft het huidige beeld gewoon staan.
+function pfProbeerAchtergrond(pad) {
+  var vlak = document.querySelector('#locatie-content .sc-image');
+  if (!vlak) return;
+  var test = new Image();
+  test.onload = function () {
+    vlak.style.transition = 'opacity .6s ease';
+    vlak.style.opacity = '0';
+    setTimeout(function () {
+      vlak.style.backgroundImage = "url('" + pad + "')";
+      vlak.style.opacity = '1';
+    }, 620);
+  };
+  test.src = pad;
+}
+
+// Alles van de plein-finale opruimen: track stil, overlays weg.
+function pfCleanup() {
+  kkStopAudio('_pfTrack');
+  ['pf-pop', 'pf-zij', 'pf-roos'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  });
+}
+
+// ── Deel 1: aankomst, de heksen, Sybilles onthulling (beats 1 tot 5).
+// Eindigt in de bestaande verhaal-gate en daarna de armen-selectie.
+function pleinFinaleIntro() {
+  var cont = document.getElementById('locatie-content');
+  dempMuziek();
+  pfRoosReset();
+  pfStartLoop('plein-dreiging.mp3', PF_BG_VOLUME);
+  renderLocatieScene({
+    container: cont,
+    titel: 'Het Podium',
+    sub: 'Dorpsplein, de ontknoping',
+    image: podiumAfbeelding(),
+    geenTerug: true,
+    sprekerPops: {},
+    dialog: [
+      { tekst: 'Jullie slaan de hoek om, het plein op. Op het podium staan twee heksen om een blauwe roos heen. Hun stemmen vlechten zich in elkaar.', onShow: function () { pfToonRoos(true); pfToonPop('heksen'); } },
+      { spreker: 'De heksen', tekst: 'Mana ci prucius, Mana zin deem, Mana ci prucius...' },
+      { tekst: 'Voorzichtig schuiven jullie richting het podium. Dan kraakt er iets. Een masker, achtergebleven op de klinkers, breekt onder Felix\' voet.' },
+      { tekst: 'De heksen draaien zich met een ruk om. Ze zetten een paar dreigende passen jullie kant op, weg van de roos.', onShow: function () { pfToonPop('hilketrude'); } },
+      { spreker: 'Hilketrude', tekst: '*(wijst naar Felix)* Wel, wel, wel... Het dutje, frutje, sulletje en... wat het ook is dat jij bent.' },
+      { tekst: 'Niemand durft dichterbij te komen. De heksen staan tussen jullie en de roos in.' },
+      { spreker: 'Aleida', tekst: 'Vanavond gaat het los. Of eigenlijk... whahaha, vanavond gaat alles dicht.', onShow: function () { pfToonPop('aleida'); pfLach(); } },
+      { spreker: 'Hilketrude', tekst: 'En eigenlijk moeten we jullie danken. Nu we toch in de open lucht staan, is er geen reden meer om te wachten met de volgende lading vloeken en lol.', onShow: function () { pfToonPop('hilketrude'); } },
+      { spreker: 'Aleida', tekst: 'Lol voor ons, whahaha.', onShow: function () { pfToonPop('aleida'); pfLach(); } },
+      { spreker: 'Hilketrude', tekst: 'Wat zullen we met jullie doen? Zullen we...', onShow: function () { pfToonPop('hilketrude'); } },
+      { tekst: 'Achter de heksen glijdt een schaduw het podium op. Met de rug naar jullie toe buigt een figuur zich over de roos. De heksen hebben niets door.', onShow: function () { pfToonZij('gebogen'); } },
+      { spreker: 'Aleida', tekst: '*(wijst naar Jan)* Jouw handen van papier maken, Slotenmaker?', onShow: function () { pfToonPop('aleida'); } },
+      { spreker: 'Hilketrude', tekst: '*(wijst naar Kelly)* Met blindheid is het lastig lezen, hè frutje?', onShow: function () { pfToonPop('hilketrude'); } },
+      { spreker: 'Aleida', tekst: '*(wijst naar Fenna)* En jij, zielig ding, zingen gaat straks ook voor jou over zijn.', onShow: function () { pfToonPop('aleida'); } },
+      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); } },
+      { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); pfWisselTrack('plein-omslag.mp3', PF_BG_VOLUME); } },
+      { spreker: 'Hilketrude', tekst: 'Sybille! Kind! Je bent er... Fijn, nu kun...', onShow: function () { pfToonPop('hilketrude'); } },
+      { spreker: 'Sybille', tekst: '*(roept naar jullie)* Pak ze vast!', onShow: function () { pfToonPop(null); } }
+    ],
+    acties: [
+      { label: 'Pak ze vast! →', onclick: function () {
+        // Pops en roos even weg tijdens de gate en de armen-selectie;
+        // de muziek loopt door. Deel 2 zet ze weer neer.
+        pfToonPop(null);
+        pfToonZij(null);
+        pfToonRoos(false);
+        podiumVerhaalKlaarGedrukt();
+      } }
+    ]
+  });
+  showScreen('screen-locatie');
+}
+
+// ── Deel 2: na de armen-mechaniek. Monoloog, tegenspreuk, de as, de
+// naweeën, de verteller en Kelly's slot (beats 7 tot 12).
+function pleinFinaleNaArmen() {
+  var cont = document.getElementById('locatie-content');
+  dempMuziek();
+  pfRoosReset();
+  // Normaal loopt de omslag-track hier al sinds Sybilles onthulling; bij
+  // een losse start (debug) staat er nog niets aan, dan alsnog starten.
+  if (!window._pfTrack) pfStartLoop('plein-omslag.mp3', PF_BG_VOLUME);
+  // Variant A of B: heeft deze speler het flesje van de apotheker
+  // gedronken? Per tablet, zodat de je-vorm van variant B klopt.
+  var flesjeGedronken = hasVisited('h7_gedronken');
+
+  var dialog = [
+    { tekst: 'Vier armen, vier spelers. De heksen krijsen en trekken, maar er is geen kant meer op. Voor ze staat Sybille, haar hoofd voorovergebogen, de roos voor zich.', onShow: function () { pfToonRoos(true); pfToonZij('heksen'); pfToonPop('gebogen'); } },
+    { spreker: 'Sybille', tekst: 'De dingen die ik met en voor jullie gedaan heb... Al die rampen, al die doden, en...', onShow: function () { kkFadeNaar('_pfTrack', 0.08, 1200); } },
+    { tekst: 'Het wordt stil. Zo stil dat je je eigen hartslag hoort.' },
+    { spreker: 'Sybille', tekst: '...Claes.' },
+    { tekst: 'De heksen verstijven. Voor het eerst zie je angst in hun ogen.' },
+    { spreker: 'Sybille', tekst: '*(fel, hakkend)* Dit... houdt... nu... op!', onShow: function () { kkFadeNaar('_pfTrack', PF_BG_VOLUME, 900); } },
+    { tekst: 'Sybilles hoofd komt omhoog. De roos stijgt boven haar handen uit, blauw licht golft eromheen.', onShow: function () { pfToonPop('sybille'); pfRoosOmhoog(); pfRoosFel(); } },
+    { spreker: 'Sybille', tekst: 'Mana impuira, Mana finita, Mana culta, Mana finita, Mana ultima, Mana...' },
+    { tekst: 'Eén tel stilte. Alles op het plein houdt de adem in.', onShow: function () { kkFadeNaar('_pfTrack', 0.06, 500); } },
+    { spreker: 'Sybille', tekst: 'Finita!', onShow: function () { pfRoosBurst(); kkFadeNaar('_pfTrack', PF_BG_VOLUME, 600); } },
+    { tekst: 'De roos vlamt op, blauw, dan wit, dan grijs. Voor je ogen verbrandt hij en valt uiteen in as.', onShow: function () { pfRoosAs(); } },
+    { tekst: 'Dan de heksen. Eén schreeuw, twee stemmen tegelijk. Ook zij vallen uiteen in as. Daarna is het stil.', onShow: function () { pfVerval('pf-zij'); pfSfx(PF_GELUID_PAD + 'plein-schreeuw.mp3', 0.9); kkFadeNaar('_pfTrack', 0, 2600); } },
+    { spreker: 'Fenna-Viviènne', tekst: 'Be... be... betekent dit dat...', onShow: function () { pfToonPop('fenna'); } },
+    { spreker: 'Felix', tekst: 'Ik denk het, Fen.', onShow: function () { pfToonPop('felix'); } },
+    { spreker: 'Jan', tekst: 'De rozen zijn uitgebloeid, denk ik.', onShow: function () { pfToonPop('jan'); } },
+    { spreker: 'Verteller', tekst: 'De inwoners van Zilverweide komen aan op het plein. Sommigen hebben het tafereel zien gebeuren. De monden van de ongelukkigen zijn niet langer dicht. Vanavond zou de stilte breken. Dit is het moment dat de stilte brak...', onShow: function () {
+      pfToonPop(null);
+      pfToonZij(null);
+      kkStopAudio('_pfTrack');
+      pfStartLoop('plein-uitklinker.mp3', PF_BG_VOLUME);
+      pfProbeerAchtergrond('locaties/dorpsplein/pleindorpelingen.jpeg');
+    } },
+    { tekst: 'Kelly komt als laatste aanlopen, langzamer dan de rest.', onShow: function () { setTimeout(function () { pfToonPop('kelly'); }, 900); } }
+  ];
+  if (flesjeGedronken) {
+    // Variant A: het flesje is genomen en gedronken, de werking is uitgewerkt.
+    dialog.push({ spreker: 'Kelly', tekst: 'En toch... die vloek. Die stemmen, ze komen terug... Het flesje van de apotheker is uitgewerkt. Wat... waarom...' });
+  } else {
+    // Variant B: geen flesje, de vloek is nooit weg geweest.
+    dialog.push({ tekst: 'Een felle schreeuw deinst omhoog in je hoofd. Zwaar, maar fel.' });
+    dialog.push({ spreker: 'Kelly', tekst: 'Die stemmen, ze zijn er nog... Hoe kan dit? Wat is er... Ik word gek...' });
+  }
+
+  renderLocatieScene({
+    container: cont,
+    titel: 'Het Podium',
+    sub: 'De ontknoping',
+    image: podiumAfbeelding(),
+    geenTerug: true,
+    sprekerPops: {},
+    dialog: dialog,
+    acties: [
+      { label: 'Einde →', onclick: pleinFinaleEinde }
+    ]
+  });
+  showScreen('screen-locatie');
+}
+
+function pleinFinaleEinde() {
+  pfCleanup();
+  fadeMuziekIn();
+  podiumEinde();
+}
+
+// Debug: variant A/B wisselen door de flesje-vlag om te zetten.
+function debugToggleFlesjeVlag() {
+  if (state.visited.has('h7_gedronken')) {
+    state.visited.delete('h7_gedronken');
+    if (typeof toonToast === 'function') toonToast('🧪', 'Flesje-vlag uit: de plein-finale eindigt met variant B (niet gedronken).');
+  } else {
+    markVisited('h7_gedronken');
+    if (typeof toonToast === 'function') toonToast('🧪', 'Flesje-vlag aan: de plein-finale eindigt met variant A (gedronken).');
+  }
 }
 
 function buildDebugPanel() {
@@ -15322,6 +15680,9 @@ function buildDebugPanel() {
       ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['📖 Alle 4 verhaal klaar (kerk)', function(){ setSharedState('kerk_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['💪 Alle armen bezet',        function(){ debugAlleArmen(); close(); }, true, 'HD Finale'],
+      ['🎭 Plein-finale: heksen-scene', function(){ close(); pleinFinaleIntro(); }, true, 'Plein-finale'],
+      ['🌹 Plein-finale: na de armen',  function(){ close(); pleinFinaleNaArmen(); }, true, 'Plein-finale'],
+      ['🧪 Wissel variant A/B (flesje)', function(){ debugToggleFlesjeVlag(); close(); }, true, 'Plein-finale'],
       ['⛪ Open kerkkelder', function(){ close(); openKerkKelderAanloop(); }, state.tobbeGokOpgelost && !state.kerkkelderGezien, 'HD Finale'],
       ['🕯️ Kerkkelder-scène (solo)', function(){ close(); debugKerkkelderScene(); }, true, 'HD Finale'],
       ['🎬 Kerkkelder gezien', function(){ state.kerkkelderGezien = true; close(); }, !state.kerkkelderGezien, 'HD Finale'],
@@ -15337,6 +15698,9 @@ function buildDebugPanel() {
       ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
       ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
+      ['🎭 Plein-finale: heksen-scene', function(){ close(); pleinFinaleIntro(); }],
+      ['🌹 Plein-finale: na de armen',  function(){ close(); pleinFinaleNaArmen(); }],
+      ['🧪 Wissel variant A/B (flesje)', function(){ debugToggleFlesjeVlag(); close(); }],
       ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }],
       ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
       ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }],
