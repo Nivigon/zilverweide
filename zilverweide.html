@@ -867,6 +867,35 @@ body.woudscene-actief .finale-btn{display:none !important;}
 #char-bubble{position:absolute;left:75%;bottom:65%;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
 #char-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-left:0;transform:skewX(-15deg)}
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+/* ══ KERKKELDER (playtestversie): zwart scherm, proloogtekst en pops ══
+   Bewust lichte uitvoering, de echte cinematic komt later. De elementen
+   worden door de scene zelf aangemaakt en in kkCleanup weer verwijderd.
+   Een ontbrekend PNG valt terug op een placeholder-vlak met label. */
+#kk-overlay{position:fixed;inset:0;z-index:260;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;opacity:0;pointer-events:none;transition:opacity .6s ease}
+#kk-overlay.kk-aan{opacity:1;pointer-events:auto}
+#kk-overlay.kk-snel{transition:opacity .35s ease}
+#kk-overlay.kk-traag{transition:opacity 2.2s ease}
+#kk-tekst{max-width:36rem;text-align:center;font-style:italic;font-size:1.35rem;line-height:1.9;color:var(--parchment)}
+#kk-tekst.kk-fade{animation:kkTekstIn .5s ease}
+@keyframes kkTekstIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#kk-knop{margin-top:2rem;min-height:3rem}
+#kk-hint{position:absolute;bottom:1.4rem;left:0;right:0;text-align:center;font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.18em;color:var(--gold-dim);opacity:.75}
+#kk-pop{position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:255;pointer-events:none;opacity:0;transition:opacity .4s ease}
+#kk-pop img{display:block;height:60vh;max-height:520px;width:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8))}
+#kk-pop .kk-vlak{width:190px;height:55vh;max-height:460px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
+#kk-roos{position:fixed;top:12%;right:9%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease}
+#kk-roos .kk-gloed{position:absolute;inset:-45%;background:radial-gradient(circle,rgba(155,58,74,.5),transparent 62%);animation:kkGloed 2.6s ease-in-out infinite}
+@keyframes kkGloed{0%,100%{opacity:.55}50%{opacity:1}}
+#kk-roos img{position:relative;display:block;height:26vh;max-height:230px;width:auto;filter:drop-shadow(0 0 18px rgba(200,80,100,.55))}
+#kk-roos .kk-vlak{position:relative;width:120px;height:22vh;max-height:190px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim)}
+#kk-roos .kk-deeltje{position:absolute;bottom:8%;width:5px;height:5px;border-radius:50%;background:rgba(235,150,160,.85);animation:kkDeeltje 3.4s linear infinite}
+@keyframes kkDeeltje{0%{transform:translateY(0) translateX(0);opacity:0}12%{opacity:.9}100%{transform:translateY(-130px) translateX(var(--kk-drift,0px));opacity:0}}
+@media (max-height:520px){
+  #kk-pop img{height:52vh;max-height:260px}
+  #kk-pop .kk-vlak{height:48vh;max-height:230px;width:140px}
+  #kk-roos img{height:22vh;max-height:120px}
+  #kk-tekst{font-size:1.05rem;line-height:1.7}
+}
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
    Prefix wt- (Wacht-Teksten), losstaand van char-pop (dat hoort bij
    dialoogschermen tijdens het spel, niet bij dit wachtscherm).
@@ -14346,30 +14375,315 @@ function debugAlleVierKerk() {
   openKerkKelderAanloop();
 }
 
-function kerkkelderCinematic() {
-  var cont = document.getElementById('locatie-content');
+// ── Kerkkelder-scène (playtestversie) ────────────────────────────────
+// Zwart scherm met proloogtekst, daarna de Sybille/Aaltje-dialoog via het
+// bestaande scene-systeem, met PNG-pops die in- en uitfaden. Bewust licht:
+// de echte cinematic (aparte branch, kerkkelder.mp4) komt later terug.
+// Ontbrekende media zijn geen bug: pops vallen terug op een placeholder-
+// vlak met label, ontbrekend geluid valt terug op stilte.
 
-  // Tijdelijk: Toms verhaal in plaats van het filmpje (kerkkelder.mp4
-  // komt later terug als de cinematic af is). Daarna door naar de
-  // Sybille-scène.
+var KK_GELUID_PAD = 'geluid/kerkkelder/';
+var KK_BG_VOLUME = 0.35;
+var KK_POPS = {
+  sybille:  { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
+  aaltje:   { src: 'karakters/heerdonatuslaan/aaltjedoosje-pop.png',    label: 'AALTJE' },
+  knielend: { src: 'karakters/heerdonatuslaan/sybilleknielend-pop.png', label: 'SYBILLE KNIELEND' },
+  roos:     { src: 'karakters/heerdonatuslaan/roos-pop.png',            label: 'ROOS' }
+};
+
+// Los geluidseffect. Ontbreekt het bestand, dan blijft het gewoon stil.
+function kkSfx(bestand, volume) {
+  try {
+    var a = new Audio(KK_GELUID_PAD + bestand);
+    a.volume = (typeof volume === 'number') ? volume : 0.9;
+    a.play().catch(function () {});
+    return a;
+  } catch (e) { return null; }
+}
+
+// Doorlopende lagen (achtergrond, muziekdoosje) als vaste vensters op
+// window, zodat de browser ze niet opruimt voordat ze klaar zijn.
+function kkStartLoop(key, bestand, volume) {
+  kkStopAudio(key);
+  try {
+    var a = new Audio(KK_GELUID_PAD + bestand);
+    a.loop = true;
+    a.volume = volume;
+    a.play().catch(function () {});
+    window[key] = a;
+  } catch (e) {}
+}
+function kkStopAudio(key) {
+  var a = window[key];
+  if (a) {
+    clearInterval(a._kkFade);
+    try { a.pause(); } catch (e) {}
+    window[key] = null;
+  }
+}
+// Volume in stapjes naar een doelwaarde (de muziek laten zakken vlak voor
+// een stil moment, of weer laten opkomen).
+function kkFadeNaar(key, doel, duurMs) {
+  var a = window[key];
+  if (!a) return;
+  clearInterval(a._kkFade);
+  var start = a.volume, stapMs = 50;
+  var stappen = Math.max(1, Math.round(duurMs / stapMs)), n = 0;
+  a._kkFade = setInterval(function () {
+    n++;
+    a.volume = Math.max(0, Math.min(1, start + (doel - start) * (n / stappen)));
+    if (n >= stappen) clearInterval(a._kkFade);
+  }, stapMs);
+}
+
+// Zwart overlay-scherm voor de proloog en het slot.
+function kkOverlayEl() {
+  var el = document.getElementById('kk-overlay');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kk-overlay';
+    el.innerHTML = '<div id="kk-tekst"></div><div id="kk-knop"></div><div id="kk-hint">Tik om verder te gaan</div>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+// Hoofd-pop (Sybille, Aaltje, Sybille knielend): een tegelijk in beeld.
+// Bij een wissel eerst uitfaden, dan de nieuwe infaden.
+function kkPopEl() {
+  var el = document.getElementById('kk-pop');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kk-pop';
+    el.innerHTML = '<img src="" alt=""><div class="kk-vlak"></div>';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function kkToonPop(naam) {
+  var el = kkPopEl();
+  clearTimeout(el._wissel);
+  if (!naam) { el._gevraagd = null; el.style.opacity = '0'; return; }
+  var pop = KK_POPS[naam];
+  el._gevraagd = naam;
+  var zet = function () {
+    if (el._gevraagd !== naam) return;
+    var img = el.querySelector('img');
+    var vlak = el.querySelector('.kk-vlak');
+    img.style.display = 'none';
+    vlak.style.display = 'none';
+    img.onload = function () {
+      if (el._gevraagd !== naam) return;
+      img.style.display = '';
+      el.style.opacity = '1';
+    };
+    img.onerror = function () {
+      if (el._gevraagd !== naam) return;
+      vlak.textContent = pop.label;
+      vlak.style.display = 'flex';
+      el.style.opacity = '1';
+    };
+    img.src = pop.src;
+    // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
+    if (img.complete) {
+      if (img.naturalWidth > 0) img.onload(); else img.onerror();
+    }
+  };
+  if (el.style.opacity === '1') {
+    el.style.opacity = '0';
+    el._wissel = setTimeout(zet, 420);
+  } else {
+    zet();
+  }
+}
+
+// De roos: los overlaytje met gloed en zwevende deeltjes, kan naast de
+// hoofd-pop in beeld staan.
+function kkRoosEl() {
+  var el = document.getElementById('kk-roos');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'kk-roos';
+    el.innerHTML = '<div class="kk-gloed"></div><img src="" alt=""><div class="kk-vlak">ROOS</div>';
+    for (var i = 0; i < 7; i++) {
+      var d = document.createElement('div');
+      d.className = 'kk-deeltje';
+      d.style.left = (10 + i * 12) + '%';
+      d.style.animationDelay = (i * 0.45) + 's';
+      d.style.setProperty('--kk-drift', (((i % 3) - 1) * 18) + 'px');
+      el.appendChild(d);
+    }
+    document.body.appendChild(el);
+  }
+  return el;
+}
+function kkToonRoos(aan) {
+  var el = kkRoosEl();
+  if (!aan) { el.style.opacity = '0'; return; }
+  var img = el.querySelector('img');
+  var vlak = el.querySelector('.kk-vlak');
+  img.style.display = 'none';
+  vlak.style.display = 'none';
+  img.onload = function () { img.style.display = ''; el.style.opacity = '1'; };
+  img.onerror = function () { vlak.style.display = 'flex'; el.style.opacity = '1'; };
+  img.src = KK_POPS.roos.src;
+  if (img.complete) {
+    if (img.naturalWidth > 0) img.onload(); else img.onerror();
+  }
+}
+
+// Alles van de kerkkelder-scène opruimen: audio stil, overlay en pops weg.
+function kkCleanup() {
+  kkStopAudio('_kkAchtergrond');
+  kkStopAudio('_kkDoosje');
+  ['kk-overlay', 'kk-pop', 'kk-roos'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && el.parentNode) el.parentNode.removeChild(el);
+  });
+}
+
+// ── Proloog: een regel tegelijk, geluidscues gebonden aan de regels ──
+var KK_PROLOOG = [
+  { tekst: 'De trap naar de kelder is smal. Elke tree kraakt onder je voeten.' },
+  { tekst: 'Hoe dieper je komt, hoe kouder het wordt. De lucht ruikt naar steen en oude rook.' },
+  { tekst: 'Onderin is het stil. De kelder lijkt verlaten. Toch loop je door.' },
+  { tekst: 'Je hoort iets vallen. Ergens voor je in het donker.' },
+  // De muziek zakt vlak voor de lach: stilte is de opzet.
+  { tekst: 'Je houdt je adem in.', cue: function () { kkFadeNaar('_kkAchtergrond', 0.08, 900); } },
+  { tekst: 'Een lach. Vlakbij. Het kruipt over je rug.', cue: function () { kkSfx('lach.mp3'); } },
+  // Stilte, dan de riser. De Sybille-pop verschijnt pas bij de volgende
+  // tik, snel, zodat het voelt alsof ze er ineens staat.
+  { tekst: 'Je wilt terug. Maar je voeten staan stil.', cue: function () { kkSfx('riser.mp3'); } }
+];
+
+function kerkkelderCinematic() {
+  dempMuziek();
+  kkStartLoop('_kkAchtergrond', 'achtergrond.mp3', KK_BG_VOLUME);
+  var el = kkOverlayEl();
+  var tekstEl = el.querySelector('#kk-tekst');
+  el.querySelector('#kk-hint').style.display = '';
+  el.classList.remove('kk-traag');
+  el.classList.remove('kk-snel');
+  var idx = -1;
+  var volgende = function () {
+    idx++;
+    if (idx >= KK_PROLOOG.length) {
+      el.onclick = null;
+      kkDialoogScene();
+      return;
+    }
+    var regel = KK_PROLOOG[idx];
+    tekstEl.textContent = regel.tekst;
+    tekstEl.classList.remove('kk-fade');
+    void tekstEl.offsetWidth;
+    tekstEl.classList.add('kk-fade');
+    if (regel.cue) { try { regel.cue(); } catch (e) {} }
+  };
+  el.onclick = volgende;
+  requestAnimationFrame(function () { el.classList.add('kk-aan'); });
+  volgende();
+}
+
+// ── De dialoog: Sybille en Aaltje, op zwart, via het scene-systeem ──
+function kkDialoogScene() {
+  var cont = document.getElementById('locatie-content');
   renderLocatieScene({
     container: cont,
-    titel: 'De Kerkkelder',
-    sub: 'Heer Donatuslaan',
-    image: 'locaties/heerdonatuslaan/kerk.jpeg',
-    dialog: [
-      { spreker: 'Verteller', tekst: 'Luister nu naar Toms verhaal.' }
-    ],
+    geenMedia: true,
     geenTerug: true,
+    sprekerPops: {},
+    dialog: [
+      { spreker: 'Sybille', tekst: 'Aan mij om jullie te volgen en kijk hier dan.. staan we wéér tegenover elkaar.' },
+      { spreker: 'Sybille', tekst: 'En voordat jullie denken helden te kunnen spelen, weten jullie wel wat deze kan..', onShow: function () { kkToonRoos(true); } },
+      { spreker: 'Sybille', tekst: 'Blijf maar staan, kakkerlakken.' },
+      { spreker: 'Sybille', tekst: 'Jullie stervelingen zijn allemaal hetzelfde, weet je. Zeuren, hebben, klagen. Nietig.' },
+      { spreker: 'Sybille', tekst: 'En als het jullie niet bevalt? Nou, dan ga je toch gewoon weg. Of naar een ander?!?' },
+      { spreker: 'Sybille', tekst: 'Weet je, ik had een man, vroeger. Hij was zóóóó blij met me.. Maar ik betrapte hem in zijn molen. Met een ander.' },
+      { spreker: 'Sybille', tekst: 'Dus ik zette die molen met één simpel spreukje in de hens!', onShow: function () { kkSfx('lach.mp3', 0.7); } },
+      { spreker: 'Sybille', tekst: 'Arme Sybille nám haar wraak...' },
+      { spreker: 'Sybille', tekst: 'Wat moet dat hier. En welke simpele oude ziel ben jij dan?', onShow: function () { kkToonPop('aaltje'); } },
+      { spreker: 'Aaltje', tekst: '*(kijkt naar het doosje in haar handen, dan naar Sybille)*' },
+      { spreker: 'Aaltje', tekst: 'Sybille, zei je?' },
+      { spreker: 'Aaltje', tekst: 'Meisje. Ach, meisje.' },
+      { spreker: 'Aaltje', tekst: 'Grappig, wat tijd doet. Sommige dingen vergeet je. Sommige dingen...' },
+      { spreker: 'Aaltje', tekst: '*(ze sluit haar ogen)* ...herinner je je als de dag van gisteren.' },
+      { spreker: 'Aaltje', tekst: 'Ik ben zo oud, kind. Ik was zelf jong toen de molen verbrandde. Ik wist er niet veel van.', onShow: function () { kkStartLoop('_kkDoosje', 'muziekdoosje.mp3', 0.4); kkFadeNaar('_kkAchtergrond', 0.06, 1500); } },
+      { spreker: 'Aaltje', tekst: 'Maar wat me wel bijbleef, is mijn moeder. De ochtend na de brand. Zelden heb ik haar zo geëmotioneerd gezien.' },
+      { spreker: 'Aaltje', tekst: 'Ze was de avond ervoor nog bij de molenaar geweest, vertelde ze aan de keukentafel. Mijn vader troostte haar.' },
+      { spreker: 'Aaltje', tekst: 'Mijn moeder maakte muziekdoosjes. Dat was haar ambacht.' },
+      { spreker: 'Aaltje', tekst: 'De molenaar was al menig avond bezig er zelf één te maken. Voor zijn vrouw. Die avond had hij mijn moeder om raad gevraagd.' },
+      // De muziek zakt vlak voor de onthulling.
+      { spreker: 'Aaltje', tekst: 'De kwaliteit. De liefde die die man voor zijn vrouw had... het raakte mijn moeder. En het raakte mij.', onShow: function () { kkFadeNaar('_kkDoosje', 0.15, 900); } },
+      { spreker: 'Aaltje', tekst: 'Dit doosje, Sybille. Dit doosje. Het was voor jou...' },
+      // De breuk: pop-wissel naar Sybille knielend, de roos dooft, het
+      // muziekdoosje stopt en de gewone spelmuziek komt zacht terug.
+      { spreker: 'Sybille', tekst: 'Nee. Dat kan niet. Ze hebben me... mijn zusters hebben me...', onShow: function () {
+        kkToonPop('knielend');
+        kkToonRoos(false);
+        kkStopAudio('_kkDoosje');
+        kkStopAudio('_kkAchtergrond');
+        fadeMuziekIn();
+      } },
+      { spreker: 'Sybille', tekst: 'Ga. Naar het podium. Daar gaat het gebeuren. Ik moest jullie volgen en tegenhouden als het nodig was, meer niet.' },
+      { spreker: 'Aaltje', tekst: 'Ik liep jullie achterna om jullie te bedanken voor het doosje. Dat ik dit aantrof...' },
+      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.' }
+    ],
     acties: [
-      { label: 'Verder \u2192', onclick: kerkVerhaalKlaarGedrukt }
+      { label: 'Verder \u2192', onclick: kkSlot }
     ]
   });
   showScreen('screen-locatie');
+  // Sybille knalt in beeld terwijl het zwart snel optrekt, op het
+  // hoogtepunt van de riser.
+  kkToonPop('sybille');
+  kkFadeNaar('_kkAchtergrond', KK_BG_VOLUME, 1200);
+  var el = kkOverlayEl();
+  el.classList.add('kk-snel');
+  el.classList.remove('kk-aan');
 }
 
-// Poortje na Toms verhaal in de kerk: iedereen moet op Verder hebben
-// gedrukt voordat de Sybille-sc\u00e8ne begint, zodat niemand per ongeluk
+// ── Slot: traag naar zwart, ruim zwart aanhouden, dan de slotregel ──
+function kkSlot() {
+  kkToonPop(null);
+  kkToonRoos(false);
+  var el = kkOverlayEl();
+  var tekstEl = el.querySelector('#kk-tekst');
+  tekstEl.textContent = '';
+  el.querySelector('#kk-hint').style.display = 'none';
+  el.onclick = null;
+  el.classList.remove('kk-snel');
+  el.classList.add('kk-traag');
+  el.classList.add('kk-aan');
+  setTimeout(function () {
+    tekstEl.textContent = 'Ga naar het podium.';
+    tekstEl.classList.remove('kk-fade');
+    void tekstEl.offsetWidth;
+    tekstEl.classList.add('kk-fade');
+    var knop = el.querySelector('#kk-knop');
+    knop.innerHTML = '';
+    var b = document.createElement('button');
+    b.className = 'btn';
+    b.textContent = 'Verder \u2192';
+    b.onclick = function () {
+      kkCleanup();
+      kerkVerhaalKlaarGedrukt();
+    };
+    knop.appendChild(b);
+  }, 4600);
+}
+
+// Debug: de scène solo doorlopen. Zet iedereen aanwezig en de eindpoort
+// alvast op drie, zodat een tester in z'n eentje het hele stuk kan zien.
+function debugKerkkelderScene() {
+  setSharedState('kerk_kelder_aanwezig', ['jan', 'kelly', 'fenna', 'felix']);
+  var rest = SHARED_ROLLEN.filter(function (r) { return r !== state.personage; });
+  setSharedState('kerk_verhaal_klaar', rest);
+  showScreen('screen-locatie');
+  kerkkelderCinematic();
+}
+
+// Poortje na de kerkkelder-scene: iedereen moet op Verder hebben gedrukt
+// voordat de groep doorgaat naar het podium, zodat niemand per ongeluk
 // vooruit klikt.
 function kerkVerhaalKlaarGedrukt() {
   var lijst = sharedLijst('kerk_verhaal_klaar');
@@ -14388,9 +14702,9 @@ function kerkVerhaalWacht() {
     container: cont,
     titel: 'De Kerkkelder',
     sub: 'Heer Donatuslaan',
-    image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    geenMedia: true,
     dialog: [
-      'Toms verhaal klinkt na in de kelder. Nog niet iedereen is zover.'
+      'De kelder is stil. Nog niet iedereen is zover.'
     ],
     geenTerug: true,
     acties: [],
@@ -14404,15 +14718,15 @@ function kerkVerhaalWacht() {
 function naKerkkelder() {
   var cont = document.getElementById('locatie-content');
   state.kerkkelderGezien = true;
+  kkCleanup();
 
   renderLocatieScene({
     container: cont,
     titel: 'De Kerkkelder',
     sub: 'Heer Donatuslaan',
-    image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    geenMedia: true,
     dialog: [
-      'Sybille zit gebroken op de vloer, huilend, warrig. Aaltje staat naast haar. Sybille mompelt iets. Ze zijn onderweg naar het podium. Daar gaat het plaatsvinden.',
-      { spreker: 'Aaltje', tekst: '"Ga maar, vrienden. Ik blijf hier."' }
+      'Aaltje blijft achter bij Sybille. Jij weet waar je heen moet.'
     ],
     geenTerug: true,
     acties: [
@@ -14969,6 +15283,7 @@ function buildDebugPanel() {
       ['📖 Alle 4 verhaal klaar (kerk)', function(){ setSharedState('kerk_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['💪 Alle armen bezet',        function(){ debugAlleArmen(); close(); }, true, 'HD Finale'],
       ['⛪ Open kerkkelder', function(){ close(); openKerkKelderAanloop(); }, state.tobbeGokOpgelost && !state.kerkkelderGezien, 'HD Finale'],
+      ['🕯️ Kerkkelder-scène (solo)', function(){ close(); debugKerkkelderScene(); }, true, 'HD Finale'],
       ['🎬 Kerkkelder gezien', function(){ state.kerkkelderGezien = true; close(); }, !state.kerkkelderGezien, 'HD Finale'],
       ['🎭 Open finale podium', function(){ close(); openFinalePodium(); }, state.kerkkelderGezien && !state.podiumFinaleKlaar, 'HD Finale'],
       ['🏆 Podium finale klaar', function(){ state.podiumFinaleKlaar = true; close(); }, !state.podiumFinaleKlaar, 'HD Finale'],
