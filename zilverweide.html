@@ -945,8 +945,11 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
 #locatie-content.pf-cinema .sc-header,
 #locatie-content.pf-cinema .sc-titel,
 #locatie-content.pf-cinema .sc-sub{display:none}
-#locatie-content.pf-cinema .sc-image{position:fixed;top:0;left:0;right:0;width:auto;height:calc(var(--vh100)*.8);max-height:none !important;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:250;background-size:cover;background-position:center}
-#locatie-content.pf-cinema .sc-image::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(to bottom,rgba(13,10,6,0),rgba(13,10,6,.95))}
+#locatie-content.pf-cinema .sc-image{position:fixed;top:0;left:0;right:0;width:auto;height:calc(var(--vh100)*.8);max-height:none !important;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:250;background-size:contain;background-position:center}
+/* top:auto is nodig: de basisregel op .sc-image::after zet inset:0, en met
+   top 0 plus height 30% zou deze fade bovenaan het scherm hangen in plaats
+   van onderaan (dat gaf de "twee podia"-band in de finale). */
+#locatie-content.pf-cinema .sc-image::after{content:'';position:absolute;top:auto;left:0;right:0;bottom:0;height:30%;background:linear-gradient(to bottom,rgba(13,10,6,0),rgba(13,10,6,.95))}
 #locatie-content.pf-cinema .sc-dialog{position:fixed;left:0;right:0;margin:0 auto;bottom:2.5vh;width:min(680px,86vw);z-index:257;background:rgba(13,10,6,.92);box-shadow:0 8px 30px rgba(0,0,0,.6)}
 #locatie-content.pf-cinema .sc-acties-mount{position:fixed;left:0;right:0;bottom:4vh;display:flex;justify-content:center;z-index:257}
 .pf-burst-deeltje{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:rgba(200,225,255,.95);animation:pfBurst .9s ease-out forwards}
