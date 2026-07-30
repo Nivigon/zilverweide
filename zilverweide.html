@@ -917,6 +917,13 @@ body.woudscene-actief .finale-btn{display:none !important;}
 #pf-zij{left:2vw}
 .pf-slot img{display:block;height:52vh;max-height:460px;width:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8))}
 #pf-zij img{height:46vh;max-height:400px}
+/* Duo-pop: twee figuren net naast elkaar in een slot (de heksen samen).
+   Iets kleiner dan een solo-pop, met een lichte overlap zodat ze als
+   groepje lezen in plaats van als twee losse posters. */
+.pf-slot.pf-duo{display:flex;align-items:flex-end}
+.pf-slot.pf-duo img{height:46vh;max-height:400px}
+.pf-slot.pf-duo img+img{margin-left:-2vw}
+#pf-zij.pf-duo img{height:42vh;max-height:360px}
 .pf-slot .pf-vlak{width:170px;height:48vh;max-height:420px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
 .pf-slot.pf-verval{filter:grayscale(1) blur(6px) brightness(.4);transform:translateY(40px)}
 #pf-roos{position:fixed;left:0;right:0;margin:0 auto;width:max-content;top:32%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease,top 2.2s ease;animation:pfZweef 5s ease-in-out infinite}
@@ -957,6 +964,8 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
 @media (max-height:520px){
   .pf-slot img{height:44vh;max-height:250px}
   #pf-zij img{height:38vh;max-height:220px}
+  .pf-slot.pf-duo img{height:38vh;max-height:220px}
+  #pf-zij.pf-duo img{height:34vh;max-height:200px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
   #pf-roos img{height:14vh;max-height:100px}
@@ -15536,7 +15545,9 @@ function podiumEinde() {
 var PF_GELUID_PAD = 'geluid/plein/';
 var PF_BG_VOLUME = 0.35;
 var PF_POPS = {
-  heksen:     { src: 'karakters/dorpsplein/heksensamen-pop.png',  label: 'DE HEKSEN' },
+  // De heksen samen: geen los samen-bestand, maar de twee individuele pops
+  // net naast elkaar in een slot (Hilketrude links, Aleida rechts).
+  heksen:     { srcs: ['karakters/dorpsplein/hilketrude-pop.png', 'karakters/dorpsplein/aleida-pop.png'], label: 'DE HEKSEN' },
   aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA' },
   hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
   // Tijdelijk hergebruik van de kerkkelder-pops tot er plein-varianten zijn.
@@ -15595,7 +15606,7 @@ function pfSlotEl(id) {
     el = document.createElement('div');
     el.id = id;
     el.className = 'pf-slot';
-    el.innerHTML = '<img src="" alt=""><div class="pf-vlak"></div>';
+    el.innerHTML = '<div class="pf-vlak"></div>';
     document.body.appendChild(el);
   }
   return el;
@@ -15608,26 +15619,51 @@ function pfToon(id, naam) {
   el._gevraagd = naam;
   var zet = function () {
     if (el._gevraagd !== naam) return;
-    var img = el.querySelector('img');
+    // Een pop kan uit meerdere afbeeldingen bestaan (srcs), zoals de twee
+    // heksen naast elkaar. Eén src wordt als lijst van één behandeld.
+    var bronnen = pop.srcs || [pop.src];
     var vlak = el.querySelector('.pf-vlak');
-    img.style.display = 'none';
     vlak.style.display = 'none';
-    img.onload = function () {
-      if (el._gevraagd !== naam) return;
-      img.style.display = '';
-      el.style.opacity = '1';
+    Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (oud) {
+      el.removeChild(oud);
+    });
+    el.classList.toggle('pf-duo', bronnen.length > 1);
+    var imgs = bronnen.map(function () {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.style.display = 'none';
+      el.insertBefore(img, vlak);
+      return img;
+    });
+    // Placeholder-vlak alleen tonen als geen enkele afbeelding laadt;
+    // laadt er één van de twee wel, dan staat die er gewoon alleen.
+    var toonVlakBijNiks = function () {
+      var eenZichtbaar = imgs.some(function (i) { return i._klaar; });
+      var allesAfgerond = imgs.every(function (i) { return i._klaar || i._fout; });
+      if (allesAfgerond && !eenZichtbaar) {
+        vlak.textContent = pop.label;
+        vlak.style.display = 'flex';
+      }
     };
-    img.onerror = function () {
-      if (el._gevraagd !== naam) return;
-      vlak.textContent = pop.label;
-      vlak.style.display = 'flex';
-      el.style.opacity = '1';
-    };
-    img.src = pop.src;
-    // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
-    if (img.complete) {
-      if (img.naturalWidth > 0) img.onload(); else img.onerror();
-    }
+    imgs.forEach(function (img, i) {
+      img.onload = function () {
+        if (el._gevraagd !== naam) return;
+        img._klaar = true;
+        img.style.display = '';
+        el.style.opacity = '1';
+      };
+      img.onerror = function () {
+        if (el._gevraagd !== naam) return;
+        img._fout = true;
+        toonVlakBijNiks();
+        el.style.opacity = '1';
+      };
+      img.src = bronnen[i];
+      // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
+      if (img.complete) {
+        if (img.naturalWidth > 0) img.onload(); else img.onerror();
+      }
+    });
   };
   if (el.style.opacity === '1') {
     el.style.opacity = '0';
