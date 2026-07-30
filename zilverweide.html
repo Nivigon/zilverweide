@@ -5388,6 +5388,49 @@ function felixKamerImage() {
   return state.locatieOnbekend ? null : 'locaties/heerdonatuslaan/nummer1.jpeg';
 }
 
+// ── De geheime deur van Nummer 1 ─────────────────────────────────
+// Verborgen klikgebied op nummer1.jpeg (1280 x 720): de voordeur, met de
+// twee rode lantaarns ("twee rode hoorns") erboven. Wie erop drukt, opent
+// de geheime bonuskamer. Nergens aangekondigd; hoort bij Stazia's diepere
+// hint voor deze wijk (zie VH_DIEPERE_HINT.sintdonatuslaan).
+function h2GeheimeDeurHotspot() {
+  // De deur doet pas iets nadat Stazia haar diepere hint voor deze wijk
+  // echt heeft uitgesproken. Die vlag is gedeeld, dus zodra een speler de
+  // hint hoorde, is de deur op alle vier de tablets klikbaar. Wie al bij
+  // Nummer 1 staat, ziet het klikgebied bij het eerstvolgende bezoek.
+  if (!getSharedState('vh_hint_gegeven_sintdonatuslaan')) return;
+  zetSceneHotspot({
+    bevat: 'heerdonatuslaan/nummer1',
+    natBreedte: 1280, natHoogte: 720,
+    x1: 877, y1: 415, x2: 935, y2: 561,
+    ankerOnder: true,   // de deur zit onderin het beeld, die moet in beeld blijven
+    onKlik: function () { openKamer1Bonus(); }
+  });
+}
+
+// De geheime bonuskamer achter de voordeur. Bewust kaal: alleen het beeld
+// en een regel tekst. De normale terugknop brengt je, zoals overal, terug
+// op straat (en de vastzit-gate in showScreen houdt een opgesloten speler
+// gewoon binnen, mocht die hier ooit komen).
+function openKamer1Bonus() {
+  verbergNpcPop();
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: '', sub: '',
+    image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
+    dialog: ['Vraag een hint aan Tom.']
+  });
+}
+
+// Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
+// bevat-check in zetSceneHotspot vangt de fases zonder buitenbeeld af
+// (Felix opgesloten: felixKamerImage() is dan null). Zelfde patroon als
+// molenScene bij de oude molen.
+function h2Scene(opts) {
+  renderLocatieScene(opts);
+  h2GeheimeDeurHotspot();
+}
+
 function renderH2FelixKamer(loc) {
   const p = state.personage;
   const scenario = VASTZIT_SCENARIOS.felix_hd2;
@@ -5412,7 +5455,7 @@ function renderH2FelixKamer(loc) {
       // Nog geen vloek: onboarding eerst, met de placeholder als achtergrond
       // onder het zwarte intro-scherm.
       vloekOnboarding(naWakker);
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: '???', sub: '', image: felixKamerImage(),
         dialog: ['Ergens, ver weg, begint iets te fluisteren.']
@@ -5500,7 +5543,7 @@ function renderH2FelixKamer(loc) {
       ];
     }
 
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
       dialog: dialog,
@@ -5512,7 +5555,7 @@ function renderH2FelixKamer(loc) {
 
   // ── Andere rollen (of Jan als Felix niet vastzit): sfeer en een hint ──
   if (p !== 'felix') {
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
       dialog: [
@@ -5536,7 +5579,7 @@ function renderH2FelixKamer(loc) {
 
   // ── Felix is vrij: hij kan vrij in en uit ─────────────────────
   if (felixVrij) {
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
       dialog: [
@@ -5558,7 +5601,7 @@ function renderH2FelixKamer(loc) {
     // Felix zich vermommen. De code invoeren (Felix hieronder, of Jan via zijn
     // tijdelijke knop) is dus wat de kleding laat vallen.
     if (hasVisited('felix_code_ingevoerd')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5571,7 +5614,7 @@ function renderH2FelixKamer(loc) {
 
     // F4: Jan staat aan het gat en Felix heeft de munten. Doorgeven.
     if (hasVisited('jan_bezocht_felix') && hasVisited('felix_munten_gevonden') && !hasVisited('felix_munten_aan_jan')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5587,7 +5630,7 @@ function renderH2FelixKamer(loc) {
     // Munten gegeven, wachten op de outfit. Felix voert de code in die Jan
     // hem doorgeeft; die code laat de kleding vallen (F5).
     if (hasVisited('felix_munten_aan_jan')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5605,7 +5648,7 @@ function renderH2FelixKamer(loc) {
 
     // F1b: net wakker, de kamer.
     if (!hasVisited('felix_sleutelgat')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5619,7 +5662,7 @@ function renderH2FelixKamer(loc) {
 
     // F2: door het sleutelgat, dan de kamer doorzoeken (munten vinden).
     if (!hasVisited('felix_munten_gevonden')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5632,7 +5675,7 @@ function renderH2FelixKamer(loc) {
 
     // Na de munten: het kratje en het gat.
     if (!hasVisited('felix_kratje_bekeken')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5645,7 +5688,7 @@ function renderH2FelixKamer(loc) {
 
     // F3: het kratje, start de spiek-mechanic.
     if (!hasVisited('felix_hd2_gespiekt')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5656,7 +5699,7 @@ function renderH2FelixKamer(loc) {
     }
 
     // Na het spieken: wachtstand tot een teamgenoot langskomt.
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
       dialog: [
@@ -5668,7 +5711,7 @@ function renderH2FelixKamer(loc) {
   }
 
   // Fallback (zou niet bereikt moeten worden).
-  return renderLocatieScene({
+  return h2Scene({
     container: document.getElementById('locatie-content'),
     titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
     dialog: ['Stil.']
@@ -13246,17 +13289,26 @@ var VH_SCHERM_DISTRICT = {
 // De diepere hint per district. `aanloopEerste` is de aanloop voor een groep
 // die nog nooit bij de Verborgen Hand was (de klok liep al, maar Stazia
 // stelde haar vraag nog niet), `aanloopLater` voor een groep die de vraag al
-// eens kreeg en er niet uit kwam. Dorendael en Heer Donatuslaan volgen later.
+// eens kreeg en er niet uit kwam. Dorendael volgt later.
 // `faseVoorbij` zegt wanneer dit district verhaal-technisch klaar is. Daarna
 // zwijgt Stazia hierover, ook als de vraag nooit beantwoord is: de hint zou
 // dan naar een wijk wijzen waar het team allang klaar is. Voor het
-// Kraaienkwartier is dat de heks-gok (gedeeld via heks_opgelost).
+// Kraaienkwartier is dat de heks-gok (gedeeld via heks_opgelost), voor
+// Heer Donatuslaan de Tobbe-gok.
 var VH_DIEPERE_HINT = {
   kraaienkwartier: {
     aanloopEerste: '"En ik geef jullie alvast een extra hint."',
     aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
     hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."',
     faseVoorbij:   function () { return !!state.heksOpgelost || hasVisited('dorendael_unlocked'); }
+  },
+  // Heer Donatuslaan: de hint wijst naar de geheime deur van Nummer 1
+  // (zie h2GeheimeDeurHotspot); daarachter staat "Vraag een hint aan Tom."
+  sintdonatuslaan: {
+    aanloopEerste: '"En ik geef jullie alvast een extra hint."',
+    aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
+    hint:          '"Haal voor mij een magisch item. De sfeer in het dorp wordt grimmig en ook ik moet mezelf indekken. Mijn hint: het ligt op een locatie die geen locatie is. Twee rode hoorns aan zijn hoofd, subtiel, maar hij verbergt iets zwaars."',
+    faseVoorbij:   function () { return !!state.tobbeGokOpgelost; }
   }
 };
 
@@ -15935,6 +15987,8 @@ function buildDebugPanel() {
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
+      ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
         markVisited('kerk_non_weg');
@@ -15986,6 +16040,8 @@ function buildDebugPanel() {
       ['🎭 Open finale podium', function(){ close(); openFinalePodium(); }, state.kerkkelderGezien && !state.podiumFinaleKlaar, 'HD Finale'],
       ['🏆 Podium finale klaar', function(){ state.podiumFinaleKlaar = true; close(); }, !state.podiumFinaleKlaar, 'HD Finale'],
       ['🔄 Reset HD finale', function(){ state.tobbeGokOpgelost = false; state.kerkkelderGezien = false; state.podiumFinaleKlaar = false; state.hdFinalePopupGetoond = false; state.gekozenArm = null; setSharedState('tobbe_gok_opgelost', false); setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); setSharedState('kerk_kelder_aanwezig',[]); setSharedState('podium_finale_aanwezig',[]); setSharedState('podium_verhaal_klaar',[]); setSharedState('kerk_verhaal_klaar',[]); setSharedState('armen_gekozen',{}); close(); }, true, 'HD Finale'],
+      ['⏳ VH-klok HD laten aflopen (diepere hint)', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
+      ['🔄 VH-klok HD resetten', function(){ debugVhKlokReset('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
     ];
   } else {
     label = 'Algemeen';
@@ -16003,6 +16059,8 @@ function buildDebugPanel() {
       ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
       ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }],
       ['🔄 VH-klok Kraaienkwartier resetten',      function(){ debugVhKlokReset('kraaienkwartier'); close(); }],
+      ['⏳ VH-klok Heer Donatuslaan laten aflopen', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }],
+      ['🔄 VH-klok Heer Donatuslaan resetten',      function(){ debugVhKlokReset('sintdonatuslaan'); close(); }],
       ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }],
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
