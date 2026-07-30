@@ -919,11 +919,26 @@ body.woudscene-actief .finale-btn{display:none !important;}
 #pf-zij img{height:46vh;max-height:400px}
 /* Duo-pop: twee figuren net naast elkaar in een slot (de heksen samen).
    Iets kleiner dan een solo-pop, met een lichte overlap zodat ze als
-   groepje lezen in plaats van als twee losse posters. */
+   groepje lezen in plaats van als twee losse posters. De tweede figuur
+   (Aleida) staat anderhalf keer zo hoog als de eerste: zij is de lange. */
 .pf-slot.pf-duo{display:flex;align-items:flex-end}
 .pf-slot.pf-duo img{height:46vh;max-height:400px}
-.pf-slot.pf-duo img+img{margin-left:-2vw}
+.pf-slot.pf-duo img+img{margin-left:-2vw;height:69vh;max-height:600px}
 #pf-zij.pf-duo img{height:42vh;max-height:360px}
+#pf-zij.pf-duo img+img{height:63vh;max-height:540px}
+/* Solo-variant van een lange pop (Aleida sprekend): ook anderhalf keer. */
+.pf-slot.pf-groot img{height:78vh;max-height:690px}
+#pf-zij.pf-groot img{height:69vh;max-height:600px}
+/* Schim-pop: een jpeg zonder transparantie; de radiale mask laat de
+   randen in het niets oplossen zodat hij als rookflard over de scene
+   hangt in plaats van als rechthoekige poster. */
+.pf-slot.pf-schim img{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
+   en meer naar het midden, weg van de speler-pop linksonder. */
+#pf-zij.pf-schim{left:26vw;bottom:22vh}
+/* De speler-pop linksonder hoort voor het cinema-beeld te staan, niet
+   erachter (het beeld heeft z-index 250, de pop normaal 150). */
+body.pf-cinema-actief #char-pop{z-index:252}
 .pf-slot .pf-vlak{width:170px;height:48vh;max-height:420px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
 .pf-slot.pf-verval{filter:grayscale(1) blur(6px) brightness(.4);transform:translateY(40px)}
 #pf-roos{position:fixed;left:0;right:0;margin:0 auto;width:max-content;top:32%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease,top 2.2s ease;animation:pfZweef 5s ease-in-out infinite}
@@ -965,7 +980,11 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   .pf-slot img{height:44vh;max-height:250px}
   #pf-zij img{height:38vh;max-height:220px}
   .pf-slot.pf-duo img{height:38vh;max-height:220px}
+  .pf-slot.pf-duo img+img{height:57vh;max-height:330px}
   #pf-zij.pf-duo img{height:34vh;max-height:200px}
+  #pf-zij.pf-duo img+img{height:51vh;max-height:300px}
+  .pf-slot.pf-groot img{height:66vh;max-height:375px}
+  #pf-zij.pf-groot img{height:57vh;max-height:330px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
   #pf-roos img{height:14vh;max-height:100px}
@@ -15547,11 +15566,15 @@ var PF_BG_VOLUME = 0.35;
 var PF_POPS = {
   // De heksen samen: geen los samen-bestand, maar de twee individuele pops
   // net naast elkaar in een slot (Hilketrude links, Aleida rechts).
+  // Aleida is de langere van de twee; via pf-groot en de duo-regels in de
+  // CSS staat zij anderhalf keer zo hoog als Hilketrude.
   heksen:     { srcs: ['karakters/dorpsplein/hilketrude-pop.png', 'karakters/dorpsplein/aleida-pop.png'], label: 'DE HEKSEN' },
-  aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA' },
+  aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA', klasse: 'pf-groot' },
   hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
-  // Tijdelijk hergebruik van de kerkkelder-pops tot er plein-varianten zijn.
-  gebogen:    { src: 'karakters/heerdonatuslaan/sybilleknielend-pop.png', label: 'GEBOGEN FIGUUR' },
+  // De gebogen figuur is bewust de anonieme molen-schim, zodat niet te
+  // zien is wie er op het podium sluipt tot de onthulling. Het is een
+  // jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
+  gebogen:    { src: 'karakters/dorendael/schim.jpeg', label: 'GEBOGEN FIGUUR', klasse: 'pf-schim' },
   sybille:    { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
   jan:        { src: 'karakters/spelers/jan-pop.png',   label: 'JAN' },
   kelly:      { src: 'karakters/spelers/kelly-pop.png', label: 'KELLY' },
@@ -15628,6 +15651,11 @@ function pfToon(id, naam) {
       el.removeChild(oud);
     });
     el.classList.toggle('pf-duo', bronnen.length > 1);
+    // Eigen klasse van deze pop op het slot (pf-groot, pf-schim, ...),
+    // en die van de vorige pop weer weghalen.
+    if (el._popKlasse) el.classList.remove(el._popKlasse);
+    el._popKlasse = pop.klasse || null;
+    if (el._popKlasse) el.classList.add(el._popKlasse);
     var imgs = bronnen.map(function () {
       var img = document.createElement('img');
       img.alt = '';
