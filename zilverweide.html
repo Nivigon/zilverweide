@@ -917,6 +917,28 @@ body.woudscene-actief .finale-btn{display:none !important;}
 #pf-zij{left:2vw}
 .pf-slot img{display:block;height:52vh;max-height:460px;width:auto;filter:drop-shadow(0 6px 20px rgba(0,0,0,.8))}
 #pf-zij img{height:46vh;max-height:400px}
+/* Duo-pop: twee figuren net naast elkaar in een slot (de heksen samen).
+   Iets kleiner dan een solo-pop, met een lichte overlap zodat ze als
+   groepje lezen in plaats van als twee losse posters. De tweede figuur
+   (Aleida) staat anderhalf keer zo hoog als de eerste: zij is de lange. */
+.pf-slot.pf-duo{display:flex;align-items:flex-end}
+.pf-slot.pf-duo img{height:46vh;max-height:400px}
+.pf-slot.pf-duo img+img{margin-left:-2vw;height:69vh;max-height:600px}
+#pf-zij.pf-duo img{height:42vh;max-height:360px}
+#pf-zij.pf-duo img+img{height:63vh;max-height:540px}
+/* Solo-variant van een lange pop (Aleida sprekend): ook anderhalf keer. */
+.pf-slot.pf-groot img{height:78vh;max-height:690px}
+#pf-zij.pf-groot img{height:69vh;max-height:600px}
+/* Schim-pop: een jpeg zonder transparantie; de radiale mask laat de
+   randen in het niets oplossen zodat hij als rookflard over de scene
+   hangt in plaats van als rechthoekige poster. */
+.pf-slot.pf-schim img{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
+   en meer naar het midden, weg van de speler-pop linksonder. */
+#pf-zij.pf-schim{left:26vw;bottom:22vh}
+/* De speler-pop linksonder hoort voor het cinema-beeld te staan, niet
+   erachter (het beeld heeft z-index 250, de pop normaal 150). */
+body.pf-cinema-actief #char-pop{z-index:252}
 .pf-slot .pf-vlak{width:170px;height:48vh;max-height:420px;display:none;align-items:center;justify-content:center;background:#17120c;border:1px dashed rgba(201,168,76,.45);border-radius:6px;font-family:'Cinzel',serif;font-size:.8rem;letter-spacing:.15em;color:var(--gold-dim);text-align:center;padding:.6rem}
 .pf-slot.pf-verval{filter:grayscale(1) blur(6px) brightness(.4);transform:translateY(40px)}
 #pf-roos{position:fixed;left:0;right:0;margin:0 auto;width:max-content;top:32%;z-index:256;pointer-events:none;opacity:0;transition:opacity .5s ease,top 2.2s ease;animation:pfZweef 5s ease-in-out infinite}
@@ -945,8 +967,11 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
 #locatie-content.pf-cinema .sc-header,
 #locatie-content.pf-cinema .sc-titel,
 #locatie-content.pf-cinema .sc-sub{display:none}
-#locatie-content.pf-cinema .sc-image{position:fixed;top:0;left:0;right:0;width:auto;height:calc(var(--vh100)*.8);max-height:none !important;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:250;background-size:cover;background-position:center}
-#locatie-content.pf-cinema .sc-image::after{content:'';position:absolute;left:0;right:0;bottom:0;height:30%;background:linear-gradient(to bottom,rgba(13,10,6,0),rgba(13,10,6,.95))}
+#locatie-content.pf-cinema .sc-image{position:fixed;top:0;left:0;right:0;width:auto;height:calc(var(--vh100)*.8);max-height:none !important;aspect-ratio:auto;margin:0;border:0;border-radius:0;z-index:250;background-size:contain;background-position:center}
+/* top:auto is nodig: de basisregel op .sc-image::after zet inset:0, en met
+   top 0 plus height 30% zou deze fade bovenaan het scherm hangen in plaats
+   van onderaan (dat gaf de "twee podia"-band in de finale). */
+#locatie-content.pf-cinema .sc-image::after{content:'';position:absolute;top:auto;left:0;right:0;bottom:0;height:30%;background:linear-gradient(to bottom,rgba(13,10,6,0),rgba(13,10,6,.95))}
 #locatie-content.pf-cinema .sc-dialog{position:fixed;left:0;right:0;margin:0 auto;bottom:2.5vh;width:min(680px,86vw);z-index:257;background:rgba(13,10,6,.92);box-shadow:0 8px 30px rgba(0,0,0,.6)}
 #locatie-content.pf-cinema .sc-acties-mount{position:fixed;left:0;right:0;bottom:4vh;display:flex;justify-content:center;z-index:257}
 .pf-burst-deeltje{position:absolute;left:50%;top:50%;width:6px;height:6px;border-radius:50%;background:rgba(200,225,255,.95);animation:pfBurst .9s ease-out forwards}
@@ -954,6 +979,12 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
 @media (max-height:520px){
   .pf-slot img{height:44vh;max-height:250px}
   #pf-zij img{height:38vh;max-height:220px}
+  .pf-slot.pf-duo img{height:38vh;max-height:220px}
+  .pf-slot.pf-duo img+img{height:57vh;max-height:330px}
+  #pf-zij.pf-duo img{height:34vh;max-height:200px}
+  #pf-zij.pf-duo img+img{height:51vh;max-height:300px}
+  .pf-slot.pf-groot img{height:66vh;max-height:375px}
+  #pf-zij.pf-groot img{height:57vh;max-height:330px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
   #pf-roos img{height:14vh;max-height:100px}
@@ -2070,16 +2101,14 @@ const state = {
   dorendaelFinalePopupGetoond: false,
   dorendaelGokOpgelost: false,    // gokvraag op D2 correct beantwoord
   dorendaelGokCooldown: null,
-  dorendaelFinaleLeiderGezet: false,
-  dorendaelFinaleLeider: null,
+  // Wie het stemrecht bij een heksengok heeft staat NIET hier: dat is een
+  // gedeeld feit (heks_beslisser / dorendael_beslisser / hd_beslisser in de
+  // sessie), anders denkt elke tablet dat hij de eerste bij het podium is.
   finalePopupGetoond: false,
-  finaleLeiderGezet: false,
   // Heer Donatuslaan finale (Tobbe-gok + kerkkelder + podium)
   hdFinalePopupGetoond: false,
   tobbeGokOpgelost: false,
   hdGokCooldown: null,
-  hdFinaleLeiderGezet: false,
-  hdFinaleLeider: null,
   kerkkelderGezien: false,
   podiumFinaleKlaar: false,
   gekozenArm: null,
@@ -2263,6 +2292,7 @@ function verwerkBinnengekomenShared(data) {
       }
     }
     if (data.heks_opgelost && !state.heksOpgelost) { state.heksOpgelost = true; ietsNieuws = true; }
+    if (data.dorendael_gok_opgelost && !state.dorendaelGokOpgelost) { state.dorendaelGokOpgelost = true; ietsNieuws = true; }
     if (data.tobbe_gok_opgelost && !state.tobbeGokOpgelost) { state.tobbeGokOpgelost = true; ietsNieuws = true; }
     // Verhaal-fase gewijzigd door een ander apparaat: teller moet verversen.
     if (data.verhaal_fase) ietsNieuws = true;
@@ -2696,6 +2726,10 @@ const SHARED_VISITED_FLAGS = [
   //   anders verschijnt zijn aanneem-knop nooit.
   // - felix_code_ingevoerd: Jan mag pas weg als Felix de code heeft ingevoerd.
   'jan_bezocht_felix','felix_munten_aan_jan','felix_code_ingevoerd',
+  // Uitkomst van de Dorendael-heksengok. Sinds alleen de beslisser de gok
+  // zelf maakt is dit een wereldfeit: zonder delen blijft het woud (DD5)
+  // voor de meekijkers op slot.
+  'dorendael_finale_gestart',
   // District-unlock
   'sintdonatuslaan_unlocked'
 ];
@@ -3594,7 +3628,9 @@ function schaduwRedderCheckOpLocatie(locId, renderCallback) {
     for (var i = 0; i < rollen.length; i++) {
       if (rollen[i] === state.personage) continue;
       var l = getSharedState('schaduw_lock_' + rollen[i]);
-      if (l && l.code && l.loc === locId) { gevonden = l; break; }
+      // Zelfde hartslag-check als in schaduwRedderIntercept: weesrecords
+      // van een gecrasht tablet mogen de locatie niet dichthouden.
+      if (l && l.code && l.loc === locId && schaduwLockLeeft(rollen[i], l)) { gevonden = l; break; }
     }
   } catch (e) {}
   if (gevonden && window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
@@ -4569,6 +4605,10 @@ function controleerWachten() {
 // zonder het hele intro-pad te hoeven doorlopen.
 // ─────────────────────────────────────────────────────────────────
 function resetSpel() {
+  // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
+  // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
+  // tablets wissen. Daarom altijd eerst bevestigen.
+  if (!confirm('Alles resetten? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
   // Intro-slot altijd los: anders zou een reset midden in de intro je met
   // dode knoppen achterlaten.
   zetIntroVergrendeling(false);
@@ -4588,15 +4628,10 @@ function resetSpel() {
   state.dorendaelFinalePopupGetoond = false;
   state.dorendaelGokOpgelost = false;
   state.dorendaelGokCooldown = null;
-  state.dorendaelFinaleLeiderGezet = false;
-  state.dorendaelFinaleLeider = null;
   state.finalePopupGetoond = false;
-  state.finaleLeiderGezet = false;
   state.hdFinalePopupGetoond = false;
   state.tobbeGokOpgelost = false;
   state.hdGokCooldown = null;
-  state.hdFinaleLeiderGezet = false;
-  state.hdFinaleLeider = null;
   state.kerkkelderGezien = false;
   state.podiumFinaleKlaar = false;
   state.gekozenArm = null;
@@ -4715,10 +4750,24 @@ function debugSnelstart(p) {
   if (m) { m.volume = 0.45; m.play().catch(function(){}); }
   // Reset de cruciale gedeelde vlaggen zodat oude Firebase-data van een
   // vorige test geen spoken veroorzaakt (Tobbe al weg, herberg al klaar, etc.)
-  ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
-   'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
-   'dorendael_finale_gestart'
-  ].forEach(function(k){ setSharedState(k, false); });
+  // Maar niet blind: na een tablet-crash kom je via deze zelfde knoppen de
+  // LIVE sessie van het team weer binnen, en dan zou deze reset de andere
+  // drie tablets terugzetten (dagboek weer op slot, Tobbe terug, rollen
+  // vrijgegeven). Staan er al andere rollen op bezet, dan eerst vragen;
+  // bij annuleren stap je in zonder iets te wissen (herstel na crash).
+  var andereRolBezet = ['jan','kelly','fenna','felix'].some(function (r) {
+    return r !== p && getSharedState('rol_bezet_' + r);
+  });
+  var magResetten = !andereRolBezet || confirm(
+    'Er lijkt al een sessie te lopen (andere rollen zijn bezet).\n\n' +
+    'OK = verse testronde: gedeelde voortgang wordt gewist.\n' +
+    'Annuleren = instappen zonder te wissen (herstel na een crash).');
+  if (magResetten) {
+    ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
+     'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
+     'dorendael_finale_gestart'
+    ].forEach(function(k){ setSharedState(k, false); });
+  }
   state.personage = p;
   zetRolBezet(p, true);
   var dbg = document.getElementById('debug-btn');
@@ -4814,8 +4863,15 @@ function geefMeervoudigItem(emoji, naam, aantal) {
 }
 
 function updateInventoryBar() {
-  // Reset finale popup flag if tokens are no longer all present
-  if (!alleFinaleCodesVerzameld()) state.finalePopupGetoond = false;
+  // Reset finale popup flag if tokens are no longer all present.
+  // Zelfde dubbele voorwaarde als de trigger in checkAllTokens: die vuurt
+  // ook op een volle teamscore (kraaienMissieVoltooid). Zou de reset alleen
+  // naar de gedeelde sleutels kijken, dan komt de popup bij elke
+  // schermwissel terug zodra een van die sleutels niet gesynct is.
+  var kkCompleet = alleFinaleCodesVerzameld() ||
+    (typeof kraaienMissieVoltooid === 'function' &&
+     kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length);
+  if (!kkCompleet) state.finalePopupGetoond = false;
   const bar = document.getElementById('inv-bar');
   if (bar) bar.style.display = 'flex';
   // De voorwerpen staan niet meer op de balk; ze zijn te vinden in het
@@ -5390,6 +5446,53 @@ function felixKamerImage() {
   return state.locatieOnbekend ? null : 'locaties/heerdonatuslaan/nummer1.jpeg';
 }
 
+// ── De geheime deur van Nummer 1 ─────────────────────────────────
+// Verborgen klikgebied op nummer1.jpeg (1280 x 720): de voordeur, met de
+// twee rode lantaarns ("twee rode hoorns") erboven. Wie erop drukt, opent
+// de geheime bonuskamer. Nergens aangekondigd; hoort bij Stazia's diepere
+// hint voor deze wijk (zie VH_DIEPERE_HINT.sintdonatuslaan).
+function h2GeheimeDeurHotspot() {
+  // De deur doet pas iets nadat Stazia haar diepere hint voor deze wijk
+  // echt heeft uitgesproken. Die vlag is gedeeld, dus zodra een speler de
+  // hint hoorde, is de deur op alle vier de tablets klikbaar. Wie al bij
+  // Nummer 1 staat, ziet het klikgebied bij het eerstvolgende bezoek.
+  if (!getSharedState('vh_hint_gegeven_sintdonatuslaan')) return;
+  zetSceneHotspot({
+    bevat: 'heerdonatuslaan/nummer1',
+    natBreedte: 1280, natHoogte: 720,
+    x1: 877, y1: 415, x2: 935, y2: 561,
+    ankerOnder: true,   // de deur zit onderin het beeld, die moet in beeld blijven
+    onKlik: function () { openKamer1Bonus(); }
+  });
+}
+
+// De geheime bonuskamer achter de voordeur. Bewust kaal: alleen het beeld
+// en een regel tekst. De normale terugknop brengt je, zoals overal, terug
+// op straat (en de vastzit-gate in showScreen houdt een opgesloten speler
+// gewoon binnen, mocht die hier ooit komen).
+function openKamer1Bonus() {
+  verbergNpcPop();
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: '', sub: '',
+    image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
+    dialog: ['Vraag een hint aan Tom.']
+  });
+  // Ook echt naar het locatie-scherm: via de testknop kan deze functie
+  // vanaf het straatscherm aangeroepen worden, en dan zou de kamer
+  // onzichtbaar in de verborgen container renderen.
+  showScreen('screen-locatie');
+}
+
+// Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
+// bevat-check in zetSceneHotspot vangt de fases zonder buitenbeeld af
+// (Felix opgesloten: felixKamerImage() is dan null). Zelfde patroon als
+// molenScene bij de oude molen.
+function h2Scene(opts) {
+  renderLocatieScene(opts);
+  h2GeheimeDeurHotspot();
+}
+
 function renderH2FelixKamer(loc) {
   const p = state.personage;
   const scenario = VASTZIT_SCENARIOS.felix_hd2;
@@ -5414,7 +5517,7 @@ function renderH2FelixKamer(loc) {
       // Nog geen vloek: onboarding eerst, met de placeholder als achtergrond
       // onder het zwarte intro-scherm.
       vloekOnboarding(naWakker);
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: '???', sub: '', image: felixKamerImage(),
         dialog: ['Ergens, ver weg, begint iets te fluisteren.']
@@ -5502,7 +5605,7 @@ function renderH2FelixKamer(loc) {
       ];
     }
 
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
       dialog: dialog,
@@ -5514,7 +5617,7 @@ function renderH2FelixKamer(loc) {
 
   // ── Andere rollen (of Jan als Felix niet vastzit): sfeer en een hint ──
   if (p !== 'felix') {
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
       dialog: [
@@ -5538,7 +5641,7 @@ function renderH2FelixKamer(loc) {
 
   // ── Felix is vrij: hij kan vrij in en uit ─────────────────────
   if (felixVrij) {
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
       dialog: [
@@ -5560,7 +5663,7 @@ function renderH2FelixKamer(loc) {
     // Felix zich vermommen. De code invoeren (Felix hieronder, of Jan via zijn
     // tijdelijke knop) is dus wat de kleding laat vallen.
     if (hasVisited('felix_code_ingevoerd')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5573,7 +5676,7 @@ function renderH2FelixKamer(loc) {
 
     // F4: Jan staat aan het gat en Felix heeft de munten. Doorgeven.
     if (hasVisited('jan_bezocht_felix') && hasVisited('felix_munten_gevonden') && !hasVisited('felix_munten_aan_jan')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5589,7 +5692,7 @@ function renderH2FelixKamer(loc) {
     // Munten gegeven, wachten op de outfit. Felix voert de code in die Jan
     // hem doorgeeft; die code laat de kleding vallen (F5).
     if (hasVisited('felix_munten_aan_jan')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5607,7 +5710,7 @@ function renderH2FelixKamer(loc) {
 
     // F1b: net wakker, de kamer.
     if (!hasVisited('felix_sleutelgat')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5621,7 +5724,7 @@ function renderH2FelixKamer(loc) {
 
     // F2: door het sleutelgat, dan de kamer doorzoeken (munten vinden).
     if (!hasVisited('felix_munten_gevonden')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5634,7 +5737,7 @@ function renderH2FelixKamer(loc) {
 
     // Na de munten: het kratje en het gat.
     if (!hasVisited('felix_kratje_bekeken')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5647,7 +5750,7 @@ function renderH2FelixKamer(loc) {
 
     // F3: het kratje, start de spiek-mechanic.
     if (!hasVisited('felix_hd2_gespiekt')) {
-      return renderLocatieScene({
+      return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
@@ -5658,7 +5761,7 @@ function renderH2FelixKamer(loc) {
     }
 
     // Na het spieken: wachtstand tot een teamgenoot langskomt.
-    return renderLocatieScene({
+    return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
       dialog: [
@@ -5670,7 +5773,7 @@ function renderH2FelixKamer(loc) {
   }
 
   // Fallback (zou niet bereikt moeten worden).
-  return renderLocatieScene({
+  return h2Scene({
     container: document.getElementById('locatie-content'),
     titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
     dialog: ['Stil.']
@@ -7146,7 +7249,7 @@ function renderH5Gemeentehuis(loc) {
     if (stap === 20) {
       // Conclusie, dan automatisch terug.
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
         dialog: felixV('conclusie'),
         acties: [{ label: 'Wegwezen', onclick: terug }]
       });
@@ -7179,7 +7282,11 @@ function renderH5Gemeentehuis(loc) {
         { n: 13, emoji: '\ud83d\udcdc', label: 'Derde voorwerp' },
         { n: 14, emoji: '\ud83d\udeaa', label: 'Vierde voorwerp' }
       ];
-      var paneel = '<div style="display:flex;gap:4px;height:100%;padding:4px;box-sizing:border-box">';
+      // Achter de panelen schemert de burgemeesterkamer door: de kamer als
+      // achtergrond met een donkere waas erover, net genoeg voor sfeer.
+      var paneel = '<div style="display:flex;gap:4px;height:100%;padding:4px;box-sizing:border-box;' +
+        'background:linear-gradient(rgba(13,10,6,.62),rgba(13,10,6,.62)),' +
+        'url(\'locaties/heerdonatuslaan/burgemeesterkamer.jpeg\') center/cover">';
       voorwerpen.forEach(function (v) {
         paneel +=
           '<button onclick="felixBekijkVoorwerp(' + v.n + ')" ' +
@@ -7194,7 +7301,7 @@ function renderH5Gemeentehuis(loc) {
       });
       paneel += '</div>';
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
         mediaSlot: paneel,
         dialog: [
           'Vier dingen, bewust bij elkaar gelegd. Tik ze aan om ze van dichtbij te bekijken.'
@@ -7204,7 +7311,7 @@ function renderH5Gemeentehuis(loc) {
     }
     // stap 1: via het raam naar binnen, registratie, dan de voorwerpen.
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+      container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: [
         'Een raam op een kier aan de zijkant. Voor jou is dat een uitnodiging. Je glijdt naar binnen.',
         'Klein, ordelijk kantoor achter de raadszaal. Papieren netjes gestapeld, een doofgebrande kaars, een half glas water. Iemand is haastig vertrokken, maar zorgvuldig.'
@@ -7265,7 +7372,7 @@ function renderH5Gemeentehuis(loc) {
   // Helper: een voorwerp tonen met een knop terug naar de voorwerpen.
   function voorwerp(sub, dialog) {
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+      container: cont, titel: loc.naam, sub: sub, image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: dialog,
       acties: [{ label: 'Terug naar het bureau', onclick: function () { ga(2); } }]
     });
@@ -8293,15 +8400,17 @@ function renderDd4Herberg(loc) {
     return;
   }
 
-  // Late-game: is Heer Donatuslaan open? Dan altijd de na-HD sfeer
-  // (vijandige drukte, dichtgenaaide monden, geen kikker, geen Wallingen).
-  // Of Fenna al gezongen heeft of niet maakt niet uit voor de herberg-sfeer.
+  // Late-game: is Heer Donatuslaan open? De herberg doorloopt dan drie
+  // toestanden en de zolder is dicht (de zolderflow hoort bij Dorendael):
+  // 1) gespannen drukte zolang Fenna nog niet bij het gemeentehuis was,
+  // 2) kokende zaal zodra Robbie's briefje is overhandigd (H5),
+  // 3) dromerige zaal na Fenna's zang.
   if (hasVisited('sintdonatuslaan_unlocked')) {
-    return renderDd4NaZang(loc, p);
+    return renderDd4HeerDonatusFase(loc, p);
   }
 
-  // Pre-HD: is Fenna bij het gemeentehuis geweest maar heeft ze nog niet
-  // gezongen, dan kookt de herberg van de boze menigte.
+  // Vangnet voor losse debug-vlaggen: gemeentehuis-vlag zonder open district.
+  // In normaal spel is H5 pas bereikbaar als Heer Donatuslaan open is.
   if (hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis')) {
     if (hasVisited('fenna_herberg_gedaan') || getSharedState('fenna_herberg_gedaan')) {
       return renderDd4NaZang(loc, p);
@@ -8333,38 +8442,50 @@ function renderDd4Herberg(loc) {
   return renderDd4VoorZolder(loc, p);
 }
 
-// ── Na Fenna's zang: dromerige volle hut, de zolder is weer open ─────
+// ── Routering zodra Heer Donatuslaan open is ─────────────────────────
+// Kiest tussen de drie herberg-toestanden van de late fase. Geen enkele
+// toestand heeft een trap-knop: de zolder is dicht na de Dorendael-fase.
+function renderDd4HeerDonatusFase(loc, p) {
+  const gemeentehuis = hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis');
+  const gezongen = hasVisited('fenna_herberg_gedaan') || getSharedState('fenna_herberg_gedaan');
+  if (gezongen) return renderDd4NaZang(loc, p);
+  if (gemeentehuis) return renderDd4Menigte(loc, p);
+  return renderDd4GespannenHD(loc, p);
+}
+
+// ── Heer Donatuslaan open, Fenna nog niet bij het gemeentehuis ───────
+// Gespannen drukte, de opmaat naar de kokende zaal.
+function renderDd4GespannenHD(loc, p) {
+  const cont = document.getElementById('locatie-content');
+  return renderLocatieScene({
+    container: cont, titel: loc.naam, sub: 'De herberg', image: null,
+    dialog: [
+      'De herberg zit vol. Strakke gezichten en een mix van onvrede en woede. Veel mensen hebben hun monden dichtgenaaid. Het is een beklemmend gezicht.',
+      'Je houdt je gedeisd. Dit kan elk moment omslaan.'
+    ]
+  });
+}
+
+// ── Na Fenna's zang: dromerige volle zaal, betoverd publiek ──────────
 // Buiten-stap wordt afgehandeld door renderDd4Herberg (_herbergBinnen).
 function renderDd4NaZang(loc, p) {
   const cont = document.getElementById('locatie-content');
-  const st = loc._nzStap || 0;
-  const naHD = hasVisited('sintdonatuslaan_unlocked');
 
-  if (st === 1) {
-    return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'De zolder', image: null,
-      dialog: [
-        '[Placeholder: de zolderkamer, precies zoals je hem eerder liet. Interactie nog uit te werken.]'
-      ]
-    });
-  }
-  // Binnen-scene: na HD vijandige sfeer, anders dromerig
-  if (naHD) {
+  if (p === 'fenna') {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'De herberg', image: null,
       dialog: [
-        'De herberg zit vol. Strakke gezichten en een mix van onvrede en woede. Veel mensen hebben hun monden dichtgenaaid. Het is een beklemmend gezicht.',
-        'De herbergier is er nog, boven. De zolder is begaanbaar.'
-      ],
-      acties: [{ label: '\u2191 Ga naar boven', onclick: function () { renderDd4NaZang(Object.assign({}, loc, { _nzStap: 1 }), p); } }]
+        'De zaal die eerder kookte, hangt nu rozig in de banken. Dromerige blikken, halve glimlachjes. Zodra je binnenkomt gaat er een zucht door de herberg, en tientallen ogen volgen je alsof je elk moment weer kunt gaan zingen.',
+        { spreker: 'Fenna-Vivi\u00e8nne', tekst: 'Nog steeds betoverd. Uiteraard. Kwaliteit slijt niet.' },
+        'Ergens achterin neuriet iemand zachtjes jouw lied. Vals. Je vergeeft het ze, voor deze ene avond. Maar niet te lang blijven, straks beginnen ze nog om een toegift te roepen.'
+      ]
     });
   }
   return renderLocatieScene({
     container: cont, titel: loc.naam, sub: 'De herberg', image: null,
     dialog: [
       'De herberg zit vol. Iedereen oogt wat rozig en dromerig, alsof ze nog ergens van nagenieten. Of van iemand...'
-    ],
-    acties: [{ label: '\u2191 Ga naar boven', onclick: function () { renderDd4NaZang(Object.assign({}, loc, { _nzStap: 1 }), p); } }]
+    ]
   });
 }
 
@@ -8380,7 +8501,8 @@ function renderDd4Menigte(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'De herberg', image: null,
         dialog: [
-          'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt. Op een verhoging staat de burgemeester, die probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.',
+          'Je stapt de herberg binnen. Het zit bomvol en de sfeer is ronduit vijandig. Mensen zijn bang, boos, opgejut. De hele meute lijkt in paniek, alsof het slechtste in de mens naar boven komt.',
+          { tekst: 'Op een verhoging staat de burgemeester. Hij probeert de boel te sussen, maar niemand luistert echt naar hem. Dit kan elk moment heel lelijk worden.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
           'Dit vraagt om mij.'
         ],
         acties: [{ label: 'Stap het podium op', onclick: function () { mga(1); } }]
@@ -8393,7 +8515,7 @@ function renderDd4Menigte(loc, p) {
         container: cont, titel: loc.naam, sub: 'Op het podium',
         geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
         dialog: [
-          'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.',
+          { tekst: 'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.', onShow: function() { verbergNpcPop(); } },
           { spreker: 'Fenna-Viviènne', tekst: 'Eén lied. Het juiste lied. Dan heb ik ze.' }
         ],
         extra: function (mount) {
@@ -8406,14 +8528,23 @@ function renderDd4Menigte(loc, p) {
     // st === 2: na de zang. Hier landt de finale-key.
     markVisited('fenna_herberg_gedaan');
     setSharedState('fenna_herberg_gedaan', true);
+    // Geen terug-knop meer: Fenna staat na dit dialoog buiten via de
+    // achterdeur, dus "terug" zou de zaal in leiden die ze net bespeeld
+    // heeft. De actie-knop na de laatste regel is de enige uitgang en
+    // brengt haar op straat (goBackFromLocatie reset ook _herbergBinnen,
+    // dus een later bezoek begint netjes weer buiten).
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'De achterdeur', image: null,
+      geenTerug: true,
       dialog: [
         'De zaal hangt aan je lippen, en het gemopper heeft plaatsgemaakt voor gezwijmel. Precies waar je ze wilt hebben.',
+        { tekst: 'De burgemeester baant zich een weg naar het podium en grijpt je hand met beide handen vast.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/burgemeester-pop.png'); }, 200); } },
+        { spreker: 'Burgemeester', tekst: 'Fenna-Viviènne, dankjewel. Oprecht! Het hele dorp is van slag. Zelf ben ik ook een onderzoek gestart, maar als er iets is wat jij en je vrienden kunnen doen: help ons!' },
         { spreker: 'Fenna', tekst: '"Ik ben over een uurtje terug. Jullie wachten toch wel op deze dame?"' },
-        'Je glipt snel via de achterdeur naar buiten.',
+        { tekst: 'Je glipt snel via de achterdeur naar buiten.', onShow: function() { verbergNpcPop(); } },
         'Dit houdt de boel voorlopig wel rustig. Voorlopig...'
-      ]
+      ],
+      acties: [{ label: 'De straat op', onclick: goBackFromLocatie }]
     });
   }
 
@@ -8589,9 +8720,10 @@ function dd4JanBijWallingen() {
 function renderDd4NaZolder(loc, p) {
   const cont = document.getElementById('locatie-content');
 
-  // Vangnet: na HD altijd naar NaZang (geen kikker, vijandige sfeer)
+  // Vangnet: na HD altijd naar de late-fase routering (geen kikker,
+  // geen Wallingen, geen zolder)
   if (hasVisited('sintdonatuslaan_unlocked')) {
-    return renderDd4NaZang(loc, p);
+    return renderDd4HeerDonatusFase(loc, p);
   }
 
   const trapActie = [{ label: 'Naar de zolder', onclick: klikZolder }];
@@ -9503,7 +9635,7 @@ function renderK1Uitkijktoren(loc) {
       } else if (dorendaelOpen) {
         observaties = [
           { quote: '"Wat hangt daar nu, een uithangbord met een klok erop? Te ver om te lezen wat er bij staat. Zulke borden hangen alleen bij vakmensen. Onthouden."' },
-          { quote: '"Die oude molen steekt boven alles uit. Als ik ergens zou beginnen met zoeken, dan daar. En wat we daar vinden, kan iemand daarna mooi opzoeken in het archief."' },
+          { quote: '"Die oude molen steekt boven alles uit. Verbrand, naar het eruit ziet. Vergt onderzoek en daarna misschien het archief in duiken."' },
         ];
       } else {
         observaties = [
@@ -10117,6 +10249,7 @@ function renderK1Naaldmasker(loc) {
   else if (p === 'felix') {
     const heeftLucinde = heeftItem('Breiwerkje');
     const heeftLola = heeftItem('Latin Jurk');
+    const heeftHoedje = heeftItem(ITEMS.coneHoedje.naam) || heeftItem(ITEMS.felixOutfit.naam);
     const heeftStoopMunten = heeftItem('Munten van Stoop');
     const heeftBewonerMunten = heeftItem('Munten van de Bewoner');
 
@@ -10145,7 +10278,7 @@ function renderK1Naaldmasker(loc) {
     if (heeftBewonerMunten && !heeftLola) {
       acties.push({ label: '💰 Lola-outfit kopen', onclick: koopLolaOutfit });
     }
-    if (heeftLucinde || heeftLola) {
+    if (heeftLucinde || heeftLola || heeftHoedje) {
       acties.push({ label: '👗 Vermommen', onclick: toonVermomKeuze });
       if (state.vermomming) {
         acties.push({ label: 'Vermomming uittrekken', onclick: uittrekkenVermomming, stijl: 'blood' });
@@ -11251,6 +11384,12 @@ function toonVermomKeuze() {
   if (heeftItem('Latin Jurk')) {
     knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lola\')">💃 Word Lola</button>';
   }
+  // Liu-Yen hoort er hier ook bij: K8 is dé omkleedplek, en wie hem hier
+  // uittrekt moest anders helemaal terug naar het Steegje (H8) om hem weer
+  // aan te kunnen. Zelfde conditie als in toonVermomKeuzeSteegje.
+  if (heeftItem(ITEMS.coneHoedje.naam) || heeftItem(ITEMS.felixOutfit.naam)) {
+    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Liu-Yen\')">🐉 Word Liu-Yen</button>';
+  }
   toonLade(
     '👗 Wie wil je zijn?',
     '<p style="font-size:.95rem;color:var(--mist);font-style:italic;margin-bottom:1rem">Kies een vermomming om aan te trekken.</p>' +
@@ -11301,6 +11440,14 @@ function goBackFromLocatie() {
   // Jan zit vast in de achterkamer van de slagerij: geen terug mogelijk
   // totdat hij het slot forceert (of via test-modus).
   if (state.janVastInAchterkamer) return;
+  // Felix zit opgesloten in zijn kamer (H2): geen terug mogelijk tot hij
+  // vrij is. Zonder deze blokkade loopt hij via de straat naar buiten,
+  // wordt daar locatieOnbekend gereset en verraadt Nummer 1 zichzelf.
+  if (state.personage === 'felix' && state.lastOpenedLocatie === 'h2_felixkamer'
+      && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
+    toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.');
+    return;
+  }
   // Verlaat je een locatie, dan stopt de molen-ambient (no-op als die niet
   // speelt) en hervat de hoofdmuziek.
   stopMolenSfeer();
@@ -11976,6 +12123,164 @@ function bouwGokGrid(opties, gridId, kiesFunctie, extraGridClass) {
   return html;
 }
 
+// ─────────────────────────────────────────────────────────────────
+// STEMRECHT BIJ DE HEKSENGOKKEN
+// Wie als eerste bij het podium op "Ik beslis" drukt, krijgt het stemrecht.
+// De claim gaat via een Firebase-transactie: er wordt alleen geschreven als
+// het veld nog leeg is, dus ook als twee tablets tegelijk drukken wint er
+// precies een. De rest kijkt mee en krijgt de uitslag live te zien.
+// ─────────────────────────────────────────────────────────────────
+function claimBeslisser(key, onKlaar) {
+  var rol = state.personage;
+  if (firebaseSharedBeschikbaar() && _sharedDbRef) {
+    _sharedDbRef.child(key).transaction(function (huidig) {
+      // Alleen schrijven als het veld nog leeg is; anders afbreken.
+      if (huidig === null || huidig === undefined) return rol;
+      return;
+    }, function (err, committed, snap) {
+      var winnaar = (snap && snap.exists()) ? snap.val() : null;
+      // Bij een fout (bijv. offline) spelen we lokaal door, net als de
+      // rest van het spel zonder Firebase.
+      if (err) console.warn('claimBeslisser mislukt, lokale fallback:', err);
+      if (!winnaar) winnaar = rol;
+      state.shared[key] = winnaar;
+      onKlaar(winnaar);
+    });
+  } else {
+    state.shared[key] = rol;
+    onKlaar(rol);
+  }
+}
+
+// De beslis-pop-up: ligt bovenop een neutraal podium-scherm. De knop telt
+// eerst 3 seconden af (niet indrukbaar) en wordt dan "Ik beslis". Claimt een
+// teamgenoot het stemrecht terwijl deze pop-up openstaat, dan sluit hij
+// vanzelf en wordt er voor deze speler besloten (door naar het meekijken).
+var _beslisAftelId = null;
+function sluitBeslisLadeStil() {
+  if (_beslisAftelId) { clearInterval(_beslisAftelId); _beslisAftelId = null; }
+  var knop = document.getElementById('spel-lade-knop');
+  var backdrop = document.getElementById('spel-lade-backdrop');
+  if (knop) { knop._ladeCallback = null; knop.disabled = false; knop.style.opacity = ''; }
+  if (backdrop) backdrop.style.pointerEvents = '';
+  document.getElementById('spel-lade').classList.remove('open');
+  document.getElementById('spel-lade-backdrop').classList.remove('open');
+}
+
+function toonBeslisPopup(cfg) {
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'Wie is de heks?',
+    sub:      cfg.sub,
+    image:    podiumAfbeelding(),
+    geenTerug: true,
+    dialog: [
+      'Alles is verzameld. Nu moet er beslist worden.'
+    ]
+  });
+  plaatsGateMarker(cfg.markerId);
+  startGatePoll(cfg.markerId, function () {
+    // Iemand anders heeft het stemrecht geclaimd terwijl deze pop-up
+    // openstond: er wordt voor deze speler besloten.
+    sluitBeslisLadeStil();
+    cfg.openFn();
+  }, function () { return getSharedState(cfg.beslisserKey) || null; });
+  state.lastOpenedLocatie = null;
+  showScreen('screen-locatie');
+  startKeuzeMuziek();
+  state.lastZone = 'dorpsplein';
+
+  toonLade(
+    'Wie beslist?',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Let op: ben jij de eerste van het team bij het podium? Dan bepaal jij wie de heks is. Overleg eerst met elkaar. Wie op de knop drukt maakt straks de keuze, de rest kijkt mee.</p>',
+    '3',
+    null
+  );
+  var knop = document.getElementById('spel-lade-knop');
+  var backdrop = document.getElementById('spel-lade-backdrop');
+  // Wegklikken via de achtergrond uitzetten: het stemrecht mag niet per
+  // ongeluk vallen door een tik naast de knop.
+  backdrop.style.pointerEvents = 'none';
+  knop.disabled = true;
+  knop.style.opacity = '.45';
+  knop.textContent = '3';
+  var tel = 3;
+  if (_beslisAftelId) clearInterval(_beslisAftelId);
+  _beslisAftelId = setInterval(function () {
+    if (!document.getElementById('spel-lade').classList.contains('open')) {
+      clearInterval(_beslisAftelId); _beslisAftelId = null; return;
+    }
+    tel--;
+    if (tel > 0) { knop.textContent = String(tel); return; }
+    clearInterval(_beslisAftelId); _beslisAftelId = null;
+    knop.textContent = 'Ik beslis';
+    knop.disabled = false;
+    knop.style.opacity = '';
+    knop._ladeCallback = function () {
+      backdrop.style.pointerEvents = '';
+      claimBeslisser(cfg.beslisserKey, function () { cfg.openFn(); });
+    };
+  }, 1000);
+}
+
+// Meekijkscherm voor de spelers zonder stemrecht: zelfde portretten, niet
+// klikbaar. Een poll houdt de gedeelde stand in de gaten: bij een foute
+// keuze verschijnt de wachttekst, bij de juiste keuze speelt op deze tablet
+// hetzelfde onthullingsmoment (portret licht op, geluid, lade) als bij de
+// beslisser, en mag iedereen door.
+function gokMeekijkStatusTekst(cfg) {
+  var foutTot = getSharedState(cfg.foutKey);
+  if (foutTot && gedeeldeTijdNu() < foutTot) {
+    return 'Er is fout gekozen. 20 seconden wachten voor een nieuwe poging.';
+  }
+  return 'Jouw teamgenoot heeft het stemrecht. Overleg mee.';
+}
+
+function toonGokMeekijk(cfg) {
+  var statusId = cfg.gridId + '-status';
+  var beslisserBijRender = getSharedState(cfg.beslisserKey) || null;
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'Wie is de heks?',
+    sub:      cfg.sub,
+    image:    podiumAfbeelding(),
+    geenTerug: true,
+    dialog: [
+      { spreker: 'Verteller', tekst: 'Een teamgenoot was hier als eerste en heeft het stemrecht. Jij kunt meekijken, maar de keuze is niet aan jou.' }
+    ],
+    mediaSlotAfterDialog: bouwGokGrid(cfg.opties, cfg.gridId, null, cfg.gridClass),
+    extra: '<div id="' + statusId + '" style="text-align:center;margin-top:.75rem;font-family:Cinzel,serif;font-size:.8rem;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase">' + gokMeekijkStatusTekst(cfg) + '</div>'
+  });
+  plaatsGateMarker(cfg.gridId + '-marker');
+  var onthuld = false;
+  startGatePoll(cfg.gridId + '-marker', function () {
+    if (onthuld) return;
+    if (cfg.isOpgelost()) {
+      onthuld = true;
+      markeerGokKeuze(cfg.gridId, cfg.succesCode, function () {
+        toonLade(cfg.succesTitel, cfg.succesHtml, 'Verder →', cfg.openFn);
+      });
+      return;
+    }
+    // Beslisser gewist of gewijzigd (bijv. via het testpaneel): opnieuw
+    // langs de normale route, zodat de pop-up weer kan verschijnen.
+    if ((getSharedState(cfg.beslisserKey) || null) !== beslisserBijRender) {
+      cfg.openFn();
+      return;
+    }
+    var el = document.getElementById(statusId);
+    if (el) el.textContent = gokMeekijkStatusTekst(cfg);
+  }, function () {
+    var foutTot = getSharedState(cfg.foutKey);
+    return (cfg.isOpgelost() ? '1' : '0') + '|' +
+           ((foutTot && gedeeldeTijdNu() < foutTot) ? '1' : '0') + '|' +
+           String(getSharedState(cfg.beslisserKey) || '');
+  });
+  showScreen('screen-locatie');
+  startKeuzeMuziek();
+  state.lastZone = 'dorpsplein';
+}
+
 function openBeslispunt() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
   if (state.heksOpgelost) {
@@ -12006,29 +12311,29 @@ function openBeslispunt() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  if (state.finaleLeiderGezet && state.finaleLeider !== state.personage) {
-    // Medespeler: mag de opties zien, maar niet kiezen.
-    var kijkOpties = [
-      { code: 'robbie',    naam: 'Robbie Kweekel', sub: 'Nummer 5',          portret: 'karakters/terugkerend/robbie-pop.png' },
-      { code: 'madeleine', naam: 'Madeleine',      sub: 'Naald en Masker',   portret: 'karakters/kraaienkwartier/madeleine.png' },
-      { code: 'stoop',     naam: 'Stoop',          sub: 'De groenteboer',       portret: 'karakters/kraaienkwartier/stoop-bezorgd.png' },
-      { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'De Nachtenwens', portret: 'karakters/terugkerend/wallingen.png' },
+  const opties = [
+    { code: 'robbie',    naam: 'Robbie Kweekel', sub: 'Nummer 5',          portret: 'karakters/terugkerend/robbie-pop.png' },
+    { code: 'madeleine', naam: 'Madeleine',      sub: 'Naald en Masker',   portret: 'karakters/kraaienkwartier/madeleine.png' },
+    { code: 'stoop',     naam: 'Stoop',          sub: 'De groenteboer',       portret: 'karakters/kraaienkwartier/stoop-bezorgd.png' },
+    { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'De Nachtenwens', portret: 'karakters/terugkerend/wallingen.png' },
     { code: 'man7',      naam: 'De Man van Nummer 7', sub: 'Het gesloten huis', portret: 'karakters/kraaienkwartier/mannummer7-pop.png' },
-    ];
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel:    'Wie is de heks?',
-      sub:      'Dorpsplein — het podium',
-      image:    podiumAfbeelding(),
-      geenTerug: true,
-      dialog: [
-        { spreker: 'Verteller', tekst: 'Een teamgenoot was hier als eerste en heeft het stemrecht. Jij kunt meekijken, maar de keuze is niet aan jou.' }
-      ],
-      mediaSlotAfterDialog: bouwGokGrid(kijkOpties, 'heks-opties-kijk', null, 'heks-grid-5')
+  ];
+  var beslisser = getSharedState('heks_beslisser');
+  if (beslisser && beslisser !== state.personage) {
+    // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
+    toonGokMeekijk({
+      sub: 'Dorpsplein, het podium',
+      opties: opties,
+      gridId: 'heks-opties-kijk',
+      gridClass: 'heks-grid-5',
+      beslisserKey: 'heks_beslisser',
+      foutKey: 'heks_fout_tot',
+      isOpgelost: function () { return state.heksOpgelost || !!getSharedState('heks_opgelost'); },
+      succesCode: 'man7',
+      succesTitel: '✦  Juist!',
+      succesHtml: '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">De man van Nummer 7. Jullie kunnen nu allemaal Nummer 7 bezoeken voor de finale. Ga er samen heen.</p>',
+      openFn: openBeslispunt
     });
-    showScreen('screen-locatie');
-    startKeuzeMuziek();
-    state.lastZone = 'dorpsplein';
     return;
   }
   // Gate: filmpje moet ergens in het team bekeken zijn voor de gok mogelijk is.
@@ -12047,19 +12352,21 @@ function openBeslispunt() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  state.finaleLeiderGezet = true;
-  state.finaleLeider = state.personage;
+  if (!beslisser) {
+    // Nog niemand heeft het stemrecht: eerst de beslis-pop-up.
+    toonBeslisPopup({
+      sub: 'Dorpsplein, het podium',
+      beslisserKey: 'heks_beslisser',
+      markerId: 'heks-beslis-marker',
+      openFn: openBeslispunt
+    });
+    return;
+  }
 
+  // Deze speler heeft het stemrecht geclaimd.
   // Gok-keuze via bouwGokGrid. Het grid verschijnt pas NA de laatste
   // dialoogregel (mediaSlotAfterDialog), zodat spelers niet al kunnen
   // klikken terwijl de tekst nog loopt (dat gaf een onzichtbare cooldown).
-  const opties = [
-    { code: 'robbie',    naam: 'Robbie Kweekel', sub: 'Nummer 5',          portret: 'karakters/terugkerend/robbie-pop.png' },
-    { code: 'madeleine', naam: 'Madeleine',      sub: 'Naald en Masker',   portret: 'karakters/kraaienkwartier/madeleine.png' },
-    { code: 'stoop',     naam: 'Stoop',          sub: 'De groenteboer',       portret: 'karakters/kraaienkwartier/stoop-bezorgd.png' },
-    { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'De Nachtenwens', portret: 'karakters/terugkerend/wallingen.png' },
-    { code: 'man7',      naam: 'De Man van Nummer 7', sub: 'Het gesloten huis', portret: 'karakters/kraaienkwartier/mannummer7-pop.png' },
-  ];
   const gridHtml = bouwGokGrid(opties, 'heks-opties', 'kiesHeks', 'heks-grid-5');
 
   // Timer- en msg-displays komen onder de scene-image, als extra-blok.
@@ -12147,6 +12454,8 @@ function kiesHeks(code) {
         : 'Dat is niet de juiste persoon...';
     }
     state.heksCooldown = Date.now() + 20000;
+    // Meekijkers laten zien dat er fout gekozen is en er gewacht wordt.
+    setSharedState('heks_fout_tot', gedeeldeTijdNu() + 20000);
     document.querySelectorAll('#heks-opties button').forEach(b => b.disabled = true);
     let secs = 20;
     if (timer) timer.style.display = 'block';
@@ -12184,34 +12493,6 @@ function openDorendaelGok() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  if (state.dorendaelFinaleLeiderGezet && state.dorendaelFinaleLeider !== state.personage) {
-    // Medespeler: mag de opties zien, maar niet kiezen.
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel: 'Wie is de heks?',
-      sub: 'Dorpsplein — het podium',
-      image:    podiumAfbeelding(),
-      geenTerug: true,
-      dialog: [
-        { spreker: 'Verteller', tekst: 'Een teamgenoot was hier als eerste en heeft het stemrecht. Jij kunt meekijken, maar de keuze is niet aan jou.' }
-      ],
-      mediaSlotAfterDialog: bouwGokGrid([
-        { code: 'bart',      naam: 'Bart',                sub: 'Nummer 2',            portret: 'karakters/dorendael/bartintens-pop.png' },
-        { code: 'trijn10',   naam: 'Trijn',               sub: 'De moeder, Nummer 10',portret: 'karakters/dorendael/trijn-pop.png' },
-        { code: 'merel',     naam: 'Merel',               sub: 'Het meisje, Nummer 10',portret: 'karakters/dorendael/merelenstrix-pop.png' },
-        { code: 'schim',     naam: 'De Schim',            sub: 'Bij de oude molen',   portret: 'karakters/dorendael/schim.jpeg' },
-        { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'Overal en nergens',   portret: 'karakters/terugkerend/wallingen.png' },
-        { code: 'strix',     naam: 'Strix',               sub: 'De kikker',           portret: 'karakters/dorendael/strix-pop.png' },
-      ], 'dorendael-heks-kijk', null, 'heks-grid-6')
-    });
-    showScreen('screen-locatie');
-    startKeuzeMuziek();
-    state.lastZone = 'dorpsplein';
-    return;
-  }
-  state.dorendaelFinaleLeiderGezet = true;
-  state.dorendaelFinaleLeider = state.personage;
-
   const opties = [
     { code: 'bart',      naam: 'Bart',                sub: 'Nummer 2',             portret: 'karakters/dorendael/bartintens-pop.png' },
     { code: 'trijn10',   naam: 'Trijn',               sub: 'De moeder, Nummer 10', portret: 'karakters/dorendael/trijn-pop.png' },
@@ -12220,6 +12501,37 @@ function openDorendaelGok() {
     { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'Overal en nergens',    portret: 'karakters/terugkerend/wallingen.png' },
     { code: 'strix',     naam: 'Strix',               sub: 'De kikker',            portret: 'karakters/dorendael/strix-pop.png' },
   ];
+  var beslisser = getSharedState('dorendael_beslisser');
+  if (beslisser && beslisser !== state.personage) {
+    // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
+    toonGokMeekijk({
+      sub: 'Dorpsplein, het podium',
+      opties: opties,
+      gridId: 'dorendael-heks-kijk',
+      gridClass: 'heks-grid-6',
+      beslisserKey: 'dorendael_beslisser',
+      foutKey: 'dorendael_fout_tot',
+      isOpgelost: function () { return state.dorendaelGokOpgelost || !!getSharedState('dorendael_gok_opgelost'); },
+      succesCode: 'strix',
+      succesTitel: '✦  Juist, de kikker',
+      succesHtml: '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Strix. Al die tijd zat de heks op een schouder, op een vensterbank, op een steen aan de oever. Kijkend. Luisterend. En ze is het woud in gevlucht.</p>' +
+        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Het woud staat nu open voor het team.</p>',
+      openFn: openDorendaelGok
+    });
+    return;
+  }
+  if (!beslisser) {
+    // Nog niemand heeft het stemrecht: eerst de beslis-pop-up.
+    toonBeslisPopup({
+      sub: 'Dorpsplein, het podium',
+      beslisserKey: 'dorendael_beslisser',
+      markerId: 'dorendael-beslis-marker',
+      openFn: openDorendaelGok
+    });
+    return;
+  }
+
+  // Deze speler heeft het stemrecht geclaimd.
   const gridHtml = bouwGokGrid(opties, 'dorendael-heks-opties', 'kiesDorendaelHeks', 'heks-grid-6');
 
   const extraHtml =
@@ -12254,6 +12566,9 @@ function kiesDorendaelHeks(code) {
   if (code === 'strix') {
     // Juist! Eerst het keuze-moment, dan de lade.
     state.dorendaelGokOpgelost = true;
+    // Deel de uitslag, zodat de meekijkende tablets de onthulling zien en
+    // hun woud ook opengaat.
+    setSharedState('dorendael_gok_opgelost', true);
     // Markeer flag zodat checkCodeToegankelijk DD5 woud unlockt.
     markVisited('dorendael_finale_gestart');
     markeerGokKeuze('dorendael-heks-opties', 'strix', function() { toonLade(
@@ -12268,6 +12583,8 @@ function kiesDorendaelHeks(code) {
     markeerFouteKeuze('dorendael-heks-opties', code, function() {
     if (msg) { msg.className = 'code-error'; msg.textContent = 'Dat is niet de juiste persoon...'; }
     state.dorendaelGokCooldown = Date.now() + 20000;
+    // Meekijkers laten zien dat er fout gekozen is en er gewacht wordt.
+    setSharedState('dorendael_fout_tot', gedeeldeTijdNu() + 20000);
     document.querySelectorAll('#dorendael-heks-opties button').forEach(b => b.disabled = true);
     let secs = 20;
     if (timer) { timer.style.display = 'block'; timer.textContent = 'Wacht ' + secs + ' seconden...'; }
@@ -13122,17 +13439,26 @@ var VH_SCHERM_DISTRICT = {
 // De diepere hint per district. `aanloopEerste` is de aanloop voor een groep
 // die nog nooit bij de Verborgen Hand was (de klok liep al, maar Stazia
 // stelde haar vraag nog niet), `aanloopLater` voor een groep die de vraag al
-// eens kreeg en er niet uit kwam. Dorendael en Heer Donatuslaan volgen later.
+// eens kreeg en er niet uit kwam. Dorendael volgt later.
 // `faseVoorbij` zegt wanneer dit district verhaal-technisch klaar is. Daarna
 // zwijgt Stazia hierover, ook als de vraag nooit beantwoord is: de hint zou
 // dan naar een wijk wijzen waar het team allang klaar is. Voor het
-// Kraaienkwartier is dat de heks-gok (gedeeld via heks_opgelost).
+// Kraaienkwartier is dat de heks-gok (gedeeld via heks_opgelost), voor
+// Heer Donatuslaan de Tobbe-gok.
 var VH_DIEPERE_HINT = {
   kraaienkwartier: {
     aanloopEerste: '"En ik geef jullie alvast een extra hint."',
     aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
     hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."',
     faseVoorbij:   function () { return !!state.heksOpgelost || hasVisited('dorendael_unlocked'); }
+  },
+  // Heer Donatuslaan: de hint wijst naar de geheime deur van Nummer 1
+  // (zie h2GeheimeDeurHotspot); daarachter staat "Vraag een hint aan Tom."
+  sintdonatuslaan: {
+    aanloopEerste: '"En ik geef jullie alvast een extra hint."',
+    aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
+    hint:          '"Haal voor mij een magisch item. De sfeer in het dorp wordt grimmig en ook ik moet mezelf indekken. Mijn hint: het ligt op een locatie die geen locatie is. Twee rode hoorns aan zijn hoofd, subtiel, maar hij verbergt iets zwaars."',
+    faseVoorbij:   function () { return !!state.tobbeGokOpgelost; }
   }
 };
 
@@ -13774,7 +14100,11 @@ function schaduwRedderIntercept(locId, zone) {
     for (var i = 0; i < rollen.length; i++) {
       if (rollen[i] === state.personage) continue;
       var l = getSharedState('schaduw_lock_' + rollen[i]);
-      if (l && l.code && l.loc === locId) { gevondenRol = rollen[i]; break; }
+      // Alleen locks waar nog een levend tablet achter zit (hartslag).
+      // Een weesrecord van een gecrasht tablet zou anders deze locatie
+      // voor het hele team dichthouden, met een code die nergens meer
+      // op een scherm staat.
+      if (l && l.code && l.loc === locId && schaduwLockLeeft(rollen[i], l)) { gevondenRol = rollen[i]; break; }
     }
   } catch (e) { console.warn('schaduwRedderIntercept:', e); }
   if (!gevondenRol) return false;
@@ -14320,19 +14650,17 @@ function heerDonatusFinaleStatus() {
     janSlagerij:   hasVisited('jan_slagerij_gevlucht')    || getSharedState('jan_slagerij_gevlucht'),
     fennaHerberg:  hasVisited('fenna_herberg_gedaan')     || getSharedState('fenna_herberg_gedaan'),
     kellyKerk:     hasVisited('kerk_non_weg')             || getSharedState('kerk_non_weg'),
-    // Loopt nu gelijk met de zes verhaalscore-vlaggen van de teller
-    // (HEER_DONATUSLAAN_MISSIE_KEYS). Eerder stond hier muziekdoosje_afgeleverd,
-    // maar dat is de Dorendael-vlag (doosje bij de klokkenmaker), die al waar is
-    // zodra HD opent. Daardoor kon de gok opengaan voordat Felix bij Vrouwe Roet
-    // was geweest en Kelly het doosje bij Aaltje had afgeleverd.
-    klokkenmaker:  hasVisited('h6_klokkenmaker_gezien')   || getSharedState('h6_klokkenmaker_gezien'),
+    // De HD-stap is het doosje bij Aaltje (H8). Niet muziekdoosje_afgeleverd
+    // nemen: dat is de Dorendael-stap bij de klokkenmaker, die staat hier
+    // altijd al aan, en dan klapt de straat dicht voordat Kelly en Felix de
+    // muziekdoosje-arm (H6, DD7, H8) hebben kunnen doen.
     muziekdoosje:  hasVisited('muziekdoosje_bij_aaltje')  || getSharedState('muziekdoosje_bij_aaltje'),
   };
 }
 
 function heerDonatusFinaleKlaar() {
   var s = heerDonatusFinaleStatus();
-  return s.felixVrij && s.janSlagerij && s.fennaHerberg && s.kellyKerk && s.klokkenmaker && s.muziekdoosje;
+  return s.felixVrij && s.janSlagerij && s.fennaHerberg && s.kellyKerk && s.muziekdoosje;
 }
 
 function checkHeerDonatusTokens() {
@@ -14369,42 +14697,45 @@ function openHeerDonatusGok() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  if (state.hdFinaleLeiderGezet && state.hdFinaleLeider !== state.personage) {
-    // Medespeler: mag de opties zien, maar niet kiezen.
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel: 'Wie is de heks?',
-      sub: 'Dorpsplein, het podium',
-      image: podiumAfbeelding(),
-      geenTerug: true,
-      dialog: [
-        { spreker: 'Verteller', tekst: 'Een teamgenoot was hier als eerste en heeft het stemrecht. Jij kunt meekijken, maar de keuze is niet aan jou.' }
-      ],
-      mediaSlotAfterDialog: bouwGokGrid([
-        { code: 'priscilla',   naam: 'De Non',           sub: 'Priscilla',          portret: 'karakters/heerdonatuslaan/non-pop.png' },
-        { code: 'tobbe',       naam: 'Tobbe',             sub: 'Het jongetje',       portret: 'karakters/terugkerend/tobbearrogant-pop.png' },
-        { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/heerdonatuslaan/burgemeester-pop.png' },
-        { code: 'slager',      naam: 'Slager Verstilt',   sub: 'De slagerij',        portret: 'karakters/heerdonatuslaan/slager-pop.png' },
-        { code: 'roet',        naam: 'Vrouwe Roet',       sub: 'Het Hol',            portret: 'karakters/heerdonatuslaan/vrouwevroet-pop.png' },
-        { code: 'apotheker',   naam: 'De Apotheker',      sub: 'Kruidentuin',        portret: 'karakters/heerdonatuslaan/apotheker-pop.png' },
-      ], 'hd-heks-kijk', null, 'heks-grid-6')
-    });
-    showScreen('screen-locatie');
-    startKeuzeMuziek();
-    state.lastZone = 'dorpsplein';
-    return;
-  }
-  state.hdFinaleLeiderGezet = true;
-  state.hdFinaleLeider = state.personage;
-
   var opties = [
     { code: 'priscilla',   naam: 'De Non',           sub: 'Priscilla',          portret: 'karakters/heerdonatuslaan/non-pop.png' },
     { code: 'tobbe',       naam: 'Tobbe',             sub: 'Het jongetje',       portret: 'karakters/terugkerend/tobbearrogant-pop.png' },
-    { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/heerdonatuslaan/burgemeester-pop.png' },
+    { code: 'burgemeester',naam: 'De Burgemeester',   sub: 'Het gemeentehuis',   portret: 'karakters/terugkerend/burgemeester-pop.png' },
     { code: 'slager',      naam: 'Slager Verstilt',   sub: 'De slagerij',        portret: 'karakters/heerdonatuslaan/slager-pop.png' },
     { code: 'roet',        naam: 'Vrouwe Roet',       sub: 'Het Hol',            portret: 'karakters/heerdonatuslaan/vrouwevroet-pop.png' },
     { code: 'apotheker',   naam: 'De Apotheker',      sub: 'Kruidentuin',        portret: 'karakters/heerdonatuslaan/apotheker-pop.png' },
   ];
+  var beslisser = getSharedState('hd_beslisser');
+  if (beslisser && beslisser !== state.personage) {
+    // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
+    toonGokMeekijk({
+      sub: 'Dorpsplein, het podium',
+      opties: opties,
+      gridId: 'hd-heks-kijk',
+      gridClass: 'heks-grid-6',
+      beslisserKey: 'hd_beslisser',
+      foutKey: 'hd_fout_tot',
+      isOpgelost: function () { return state.tobbeGokOpgelost || !!getSharedState('tobbe_gok_opgelost'); },
+      succesCode: 'tobbe',
+      succesTitel: '✦  Juist!',
+      succesHtml: '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Tobbe was bij de kerk toch?! Kom, we gaan daarheen.</p>' +
+        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Ga naar de kerk in Heer Donatuslaan.</p>',
+      openFn: openHeerDonatusGok
+    });
+    return;
+  }
+  if (!beslisser) {
+    // Nog niemand heeft het stemrecht: eerst de beslis-pop-up.
+    toonBeslisPopup({
+      sub: 'Dorpsplein, het podium',
+      beslisserKey: 'hd_beslisser',
+      markerId: 'hd-beslis-marker',
+      openFn: openHeerDonatusGok
+    });
+    return;
+  }
+
+  // Deze speler heeft het stemrecht geclaimd.
   var gridHtml = bouwGokGrid(opties, 'hd-heks-opties', 'kiesHeerDonatusHeks', 'heks-grid-6');
 
   var extraHtml =
@@ -14455,6 +14786,8 @@ function kiesHeerDonatusHeks(code) {
     markeerFouteKeuze('hd-heks-opties', code, function() {
     if (msg) { msg.className = 'code-error'; msg.textContent = 'Dat is niet de juiste persoon...'; }
     state.hdGokCooldown = Date.now() + 20000;
+    // Meekijkers laten zien dat er fout gekozen is en er gewacht wordt.
+    setSharedState('hd_fout_tot', gedeeldeTijdNu() + 20000);
     document.querySelectorAll('#hd-heks-opties button').forEach(function(b) { b.disabled = true; });
     var secs = 20;
     if (timer) timer.style.display = 'block';
@@ -15103,6 +15436,30 @@ function podiumStills() {
 // gesynchroniseerd. Pakken twee spelers tegelijk dezelfde arm (race via
 // Firebase), dan wint de eerste in de vaste rolvolgorde; de ander krijgt
 // een rode melding en moet snel opnieuw kiezen.
+//
+// Schrijven gaat per rol als kind-pad (armen_gekozen/<rol>), niet als heel
+// object: alle vier de spelers kiezen hier tegelijk, en een write van het
+// complete object zou de keuze van een ander kunnen overschrijven (verloren
+// update, hetzelfde patroon als de 3/4-hang bij de intro destijds).
+function zetArmGekozen(rol, armId) {
+  var armen = getSharedState('armen_gekozen') || {};
+  if (armId == null) delete armen[rol]; else armen[rol] = armId;
+  state.shared['armen_gekozen'] = armen;
+  if (firebaseSharedBeschikbaar() && _sharedDbRef) {
+    if (armId == null) {
+      _sharedDbRef.child('armen_gekozen/' + rol).remove().catch(function (e) {
+        console.warn('Firebase arm-remove mislukt:', e);
+      });
+    } else {
+      var update = {};
+      update['armen_gekozen/' + rol] = armId;
+      _sharedDbRef.update(update).catch(function (e) {
+        console.warn('Firebase arm-write mislukt:', e);
+      });
+    }
+  }
+}
+
 function podiumArmSelectie() {
   var cont = document.getElementById('locatie-content');
   var p = state.personage;
@@ -15118,8 +15475,7 @@ function podiumArmSelectie() {
       if (rol === p) break;   // ik sta eerder: ik behoud de arm
       if (armen[rol] === armen[p]) {
         // Verloren: keuze wissen en melden
-        delete armen[p];
-        setSharedState('armen_gekozen', armen);
+        zetArmGekozen(p, null);
         state.gekozenArm = null;
         state._armConflict = true;
         break;
@@ -15203,8 +15559,7 @@ function kiesArm(armId) {
     podiumArmSelectie();
     return;
   }
-  armen[state.personage] = armId;
-  setSharedState('armen_gekozen', armen);
+  zetArmGekozen(state.personage, armId);
   state.gekozenArm = armId;
   podiumArmSelectie(); // herrender
 }
@@ -15282,11 +15637,17 @@ function podiumEinde() {
 var PF_GELUID_PAD = 'geluid/plein/';
 var PF_BG_VOLUME = 0.35;
 var PF_POPS = {
-  heksen:     { src: 'karakters/dorpsplein/heksensamen-pop.png',  label: 'DE HEKSEN' },
-  aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA' },
+  // De heksen samen: geen los samen-bestand, maar de twee individuele pops
+  // net naast elkaar in een slot (Hilketrude links, Aleida rechts).
+  // Aleida is de langere van de twee; via pf-groot en de duo-regels in de
+  // CSS staat zij anderhalf keer zo hoog als Hilketrude.
+  heksen:     { srcs: ['karakters/dorpsplein/hilketrude-pop.png', 'karakters/dorpsplein/aleida-pop.png'], label: 'DE HEKSEN' },
+  aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA', klasse: 'pf-groot' },
   hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
-  // Tijdelijk hergebruik van de kerkkelder-pops tot er plein-varianten zijn.
-  gebogen:    { src: 'karakters/heerdonatuslaan/sybilleknielend-pop.png', label: 'GEBOGEN FIGUUR' },
+  // De gebogen figuur is bewust de anonieme molen-schim, zodat niet te
+  // zien is wie er op het podium sluipt tot de onthulling. Het is een
+  // jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
+  gebogen:    { src: 'karakters/dorendael/schim.jpeg', label: 'GEBOGEN FIGUUR', klasse: 'pf-schim' },
   sybille:    { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
   jan:        { src: 'karakters/spelers/jan-pop.png',   label: 'JAN' },
   kelly:      { src: 'karakters/spelers/kelly-pop.png', label: 'KELLY' },
@@ -15341,7 +15702,7 @@ function pfSlotEl(id) {
     el = document.createElement('div');
     el.id = id;
     el.className = 'pf-slot';
-    el.innerHTML = '<img src="" alt=""><div class="pf-vlak"></div>';
+    el.innerHTML = '<div class="pf-vlak"></div>';
     document.body.appendChild(el);
   }
   return el;
@@ -15354,26 +15715,56 @@ function pfToon(id, naam) {
   el._gevraagd = naam;
   var zet = function () {
     if (el._gevraagd !== naam) return;
-    var img = el.querySelector('img');
+    // Een pop kan uit meerdere afbeeldingen bestaan (srcs), zoals de twee
+    // heksen naast elkaar. Eén src wordt als lijst van één behandeld.
+    var bronnen = pop.srcs || [pop.src];
     var vlak = el.querySelector('.pf-vlak');
-    img.style.display = 'none';
     vlak.style.display = 'none';
-    img.onload = function () {
-      if (el._gevraagd !== naam) return;
-      img.style.display = '';
-      el.style.opacity = '1';
+    Array.prototype.slice.call(el.querySelectorAll('img')).forEach(function (oud) {
+      el.removeChild(oud);
+    });
+    el.classList.toggle('pf-duo', bronnen.length > 1);
+    // Eigen klasse van deze pop op het slot (pf-groot, pf-schim, ...),
+    // en die van de vorige pop weer weghalen.
+    if (el._popKlasse) el.classList.remove(el._popKlasse);
+    el._popKlasse = pop.klasse || null;
+    if (el._popKlasse) el.classList.add(el._popKlasse);
+    var imgs = bronnen.map(function () {
+      var img = document.createElement('img');
+      img.alt = '';
+      img.style.display = 'none';
+      el.insertBefore(img, vlak);
+      return img;
+    });
+    // Placeholder-vlak alleen tonen als geen enkele afbeelding laadt;
+    // laadt er één van de twee wel, dan staat die er gewoon alleen.
+    var toonVlakBijNiks = function () {
+      var eenZichtbaar = imgs.some(function (i) { return i._klaar; });
+      var allesAfgerond = imgs.every(function (i) { return i._klaar || i._fout; });
+      if (allesAfgerond && !eenZichtbaar) {
+        vlak.textContent = pop.label;
+        vlak.style.display = 'flex';
+      }
     };
-    img.onerror = function () {
-      if (el._gevraagd !== naam) return;
-      vlak.textContent = pop.label;
-      vlak.style.display = 'flex';
-      el.style.opacity = '1';
-    };
-    img.src = pop.src;
-    // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
-    if (img.complete) {
-      if (img.naturalWidth > 0) img.onload(); else img.onerror();
-    }
+    imgs.forEach(function (img, i) {
+      img.onload = function () {
+        if (el._gevraagd !== naam) return;
+        img._klaar = true;
+        img.style.display = '';
+        el.style.opacity = '1';
+      };
+      img.onerror = function () {
+        if (el._gevraagd !== naam) return;
+        img._fout = true;
+        toonVlakBijNiks();
+        el.style.opacity = '1';
+      };
+      img.src = bronnen[i];
+      // Al gecachet: dan vuurt er geen nieuw load/error-event meer.
+      if (img.complete) {
+        if (img.naturalWidth > 0) img.onload(); else img.onerror();
+      }
+    });
   };
   if (el.style.opacity === '1') {
     el.style.opacity = '0';
@@ -15653,7 +16044,11 @@ function buildDebugPanel() {
     const robbieKlaar  = !!getSharedState('kk_sleutel_robbie');
     const dagboekKlaar = !!getSharedState('dagboek_gerestaureerd');
     const sleutelKlaar = !!getSharedState('kk_sleutel_wallingen');
-    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld') || !!getSharedState('kk_sleutel_speld');
+    // Bewust alleen de eigen inventaris: na een crash+herlaad van Jans
+    // tablet staat de gedeelde spiegel (kk_sleutel_speld) nog op true
+    // terwijl zijn rugzak leeg is, en dan moet de +knop juist zichtbaar
+    // zijn om de speld terug te kunnen geven.
+    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld');
     btns = [
       // ── Kelly & de put
       ['🕳️ Kelly valt in de put',    function(){ markVisited('kelly_in_put'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Kelly & de put'],
@@ -15710,6 +16105,7 @@ function buildDebugPanel() {
       ['🔮 Toon magische voorspelling', function(){ close(); toonMagischeVoorspelling('kraaienkwartier'); }, true, 'Verborgen Hand'],
       // ── Finale
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
+      ['👑 Reset beslisser (heks-gok)', function(){ setSharedState('heks_beslisser', null); setSharedState('heks_fout_tot', null); close(); }, true, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
       ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
       ['🔄 Reset Kraaienkwartier',   function(){
@@ -15723,6 +16119,8 @@ function buildDebugPanel() {
         setSharedState('kk_sleutel_speld', false);
         setSharedState('dagboek_gerestaureerd', false);
         setSharedState('heks_opgelost', false);
+        setSharedState('heks_beslisser', null);
+        setSharedState('heks_fout_tot', null);
         setSharedState('nummer7_aanwezig', []);
         debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
@@ -15790,7 +16188,8 @@ function buildDebugPanel() {
       ['🗝️ Jan maakt sleutel',        function(){ debugJanSleutel(); close(); }, !heeftSleutel && !inWoudWinScreen, 'Sleutel-keten'],
       // ── Finale / Heksengok
       ['🌹 Trigger DD-finale popup', function(){ debugDorendaelKlaar(); markVisited('herberg_scene_voltooid'); state.dorendaelFinalePopupGetoond = false; state.dorendaelGokOpgelost = false; close(); checkDorendaelTokens(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
-      ['🎯 Forceer DD-gok juist (woud open)', function(){ state.dorendaelGokOpgelost = true; markVisited('dorendael_finale_gestart'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === 'Latin Jurk'; })) { addInventory('💃', 'Latin Jurk', false); } debugDoolhofKlaar(); close(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
+      ['🎯 Forceer DD-gok juist (woud open)', function(){ state.dorendaelGokOpgelost = true; setSharedState('dorendael_gok_opgelost', true); markVisited('dorendael_finale_gestart'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === 'Latin Jurk'; })) { addInventory('💃', 'Latin Jurk', false); } debugDoolhofKlaar(); close(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
+      ['👑 Reset beslisser (DD-gok)', function(){ setSharedState('dorendael_beslisser', null); setSharedState('dorendael_fout_tot', null); close(); }, true, 'Finale'],
       // ── Woud
       ['🌲 Alle 4 uit doolhof',      function(){ debugWoudAlleVoltooid(); close(); }, inWoudWinScreen, 'Woud'],
       ['👍 Alle 4 Klaar gedrukt',    function(){ ['jan','kelly','fenna','felix'].forEach(function(r){ woudKlaarZet(r); }); toonWoudEindBlok(); close(); }, inWoudWinScreen, 'Woud'],
@@ -15802,14 +16201,21 @@ function buildDebugPanel() {
   } else if (inHeerDonatuslaan) {
     label = 'Heer Donatuslaan';
     btns = [
-      ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, true, 'Felix H2'],
+      // Alleen op Felix' eigen tablet: de functie wist ook de gedeelde
+      // keten-vlaggen (vrij, munten, code), en dat mag niet per ongeluk
+      // vanaf het tablet van een teamgenoot gebeuren.
+      ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, state.personage === 'felix', 'Felix H2'],
       ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
       ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
+      ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
       ['⏱️ Forceer tijd op (rust-straf)', function(){ close(); if (typeof h3TimerVoorbij === 'function') h3TimerVoorbij(); }, !!_h3Lp, 'H3 Slagerij'],
+      // Let op: wist de slagerij-stap voor het HELE team (gedeelde vlag).
+      ['🔓 Slagerij weer open (wist teamstap)', function(){ debugSlagerijWeerOpen(); close(); }, true, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
         markVisited('kerk_non_weg');
         setSharedState('kerk_non_weg', true);
@@ -15844,6 +16250,7 @@ function buildDebugPanel() {
       // ── HD Finale
       ['🌹 Trigger HD-finale popup', function(){ markVisited('felix_hd2_vrij'); setSharedState('felix_hd2_vrij',true); markVisited('jan_slagerij_gevlucht'); setSharedState('jan_slagerij_gevlucht',true); markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan',true); markVisited('kerk_non_weg'); setSharedState('kerk_non_weg',true); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien',true); markVisited('muziekdoosje_afgeleverd'); setSharedState('muziekdoosje_afgeleverd',true); markVisited('muziekdoosje_bij_aaltje'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } state.hdFinalePopupGetoond = false; close(); checkHeerDonatusTokens(); }, !state.tobbeGokOpgelost, 'HD Finale'],
       ['🎯 Forceer Tobbe-gok juist', function(){ debugHdFaseCompleet(); state.tobbeGokOpgelost = true; setSharedState('tobbe_gok_opgelost', true); if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer(); close(); if (typeof toonToast === 'function') toonToast('🎯', 'Tobbe-gok juist en de HD-fase staat compleet: verhaalscore 6/6, items bijgewerkt. Ga naar De Kerk (H4) en ga naar binnen voor het vervolg.'); }, !state.tobbeGokOpgelost, 'HD Finale'],
+      ['👑 Reset beslisser (Tobbe-gok)', function(){ setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); close(); }, true, 'HD Finale'],
       ['⛪ Alle 4 bij kerkkelder',   function(){ setSharedState('kerk_kelder_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['🎭 Alle 4 op podium (finale)', function(){ setSharedState('podium_finale_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
@@ -15858,7 +16265,9 @@ function buildDebugPanel() {
       ['🎬 Kerkkelder gezien', function(){ state.kerkkelderGezien = true; close(); }, !state.kerkkelderGezien, 'HD Finale'],
       ['🎭 Open finale podium', function(){ close(); openFinalePodium(); }, state.kerkkelderGezien && !state.podiumFinaleKlaar, 'HD Finale'],
       ['🏆 Podium finale klaar', function(){ state.podiumFinaleKlaar = true; close(); }, !state.podiumFinaleKlaar, 'HD Finale'],
-      ['🔄 Reset HD finale', function(){ state.tobbeGokOpgelost = false; state.kerkkelderGezien = false; state.podiumFinaleKlaar = false; state.hdFinalePopupGetoond = false; state.hdFinaleLeiderGezet = false; state.gekozenArm = null; setSharedState('kerk_kelder_aanwezig',[]); setSharedState('podium_finale_aanwezig',[]); setSharedState('podium_verhaal_klaar',[]); setSharedState('kerk_verhaal_klaar',[]); setSharedState('armen_gekozen',{}); close(); }, true, 'HD Finale'],
+      ['🔄 Reset HD finale', function(){ state.tobbeGokOpgelost = false; state.kerkkelderGezien = false; state.podiumFinaleKlaar = false; state.hdFinalePopupGetoond = false; state.gekozenArm = null; setSharedState('tobbe_gok_opgelost', false); setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); setSharedState('kerk_kelder_aanwezig',[]); setSharedState('podium_finale_aanwezig',[]); setSharedState('podium_verhaal_klaar',[]); setSharedState('kerk_verhaal_klaar',[]); setSharedState('armen_gekozen',{}); close(); }, true, 'HD Finale'],
+      ['⏳ VH-klok HD laten aflopen (diepere hint)', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
+      ['🔄 VH-klok HD resetten', function(){ debugVhKlokReset('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
     ];
   } else {
     label = 'Algemeen';
@@ -15876,6 +16285,8 @@ function buildDebugPanel() {
       ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
       ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }],
       ['🔄 VH-klok Kraaienkwartier resetten',      function(){ debugVhKlokReset('kraaienkwartier'); close(); }],
+      ['⏳ VH-klok Heer Donatuslaan laten aflopen', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }],
+      ['🔄 VH-klok Heer Donatuslaan resetten',      function(){ debugVhKlokReset('sintdonatuslaan'); close(); }],
       ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }],
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
@@ -16025,8 +16436,6 @@ function debugSkipNaarDorendael() {
 
   state.heksOpgelost = true;
   state.heksCooldown = null;
-  state.finaleLeiderGezet = true;
-  state.finaleLeider = state.personage;
 
   // Vermomming uit
   state.vermomming = null;
@@ -16181,14 +16590,18 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   debugDorendaelKlaar();
   // Herberg afronden zodat de Dorendael-finale-gates kloppen.
   markVisited('herberg_scene_voltooid');
-  // Herberg voorbij de zolder-scène zetten (anders start die opnieuw bij bezoek).
-  setSharedState('herberg_resultaat', 'succes');
+  // Herberg voorbij de zolder-scène zetten (anders start die opnieuw bij
+  // bezoek). Alleen als er nog geen uitkomst is: bij crash-herstel midden in
+  // een echte sessie kan hier 'gefaald' staan, en dat resultaat is van het
+  // team, niet van deze skip.
+  if (!getSharedState('herberg_resultaat')) setSharedState('herberg_resultaat', 'succes');
   // Dorendael-intro-popup niet opnieuw tonen.
   markVisited('dorendael_intro_gezien');
   // Dorendael-heksengok als gemaakt markeren (anders triggert de finale-
   // popup op overworld omdat alle 5 flags binnen zijn).
   state.dorendaelGokOpgelost = true;
   state.dorendaelFinalePopupGetoond = true;
+  setSharedState('dorendael_gok_opgelost', true);
   markVisited('dorendael_finale_gestart');
   // Woud-doolhof: alle 4 spelers voltooid + Klaar gedrukt + filmpje gezien.
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function(rol) {
@@ -16205,7 +16618,12 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   // elke pagina-load terug uit de sessie. Zonder dit blijft Jans slagerij-lijn
   // onspeelbaar tot iemand een Firebase-reset doet. Wie de dichte winkel wil
   // zien gebruikt de aparte testknop "🔪 Slagerij dicht (na Jan)".
-  debugSlagerijWeerOpen();
+  // MAAR: alleen wissen zolang de stap in deze sessie nog niet echt gezet is.
+  // Wordt deze skip gebruikt om een gecrasht tablet midden in het spel terug
+  // te zetten, dan zou het wissen Jans missiestap voor het hele team
+  // terugdraaien. Voor een verse ronde na een oude sessie: eerst Firebase
+  // resetten, of de losse testknop "🔓 Slagerij weer open" gebruiken.
+  if (!hasVisited('jan_slagerij_gevlucht')) debugSlagerijWeerOpen();
   // Felix zit standaard vast in zijn kamer zodra Heer Donatuslaan begint, maar
   // alleen voor de andere rollen (voor de hint). Speel je Felix zelf, dan geeft
   // de normale skip vrije doorgang naar H1 en verder; alleen de knop "Felix
@@ -16662,7 +17080,8 @@ const SPREKER_POPS = {
   'Herbergier':          WAARD_POP,
   'Mevr. van Wallingen': 'karakters/terugkerend/wallingen.png',
   'Bart Intens':         'karakters/dorendael/bartintens-pop.png',
-  'Tobbe':               'karakters/terugkerend/tobbe.png'
+  'Tobbe':               'karakters/terugkerend/tobbe.png',
+  'Wijkwacht':           'karakters/dorendael/stadswacht-pop.png'
 };
 
 function renderLocatieScene(opts) {
@@ -16769,7 +17188,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Voor de deur staat Mevr. van Wallingen na te kletsen met een wijkwachter. Ze ziet Kelly en laat haar stem zakken.',
+          { tekst: 'Voor de deur staat Mevr. van Wallingen na te kletsen met een wijkwachter. Ze ziet Kelly en laat haar stem zakken.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           { spreker: 'Mevr. van Wallingen', tekst: 'Weten jullie wel hoe dat meisje het daar bij Trijn heeft? Ik hoorde dat ze in een bezemkast moet slapen...' },
           'Ze laat de woorden hangen en kijkt Kelly veelbetekenend aan.'
         ]
@@ -16790,7 +17209,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'De wijkwacht ziet Fenna aankomen met Merel aan haar hand en gebaart haar haastig naar binnen.',
+        { tekst: 'De wijkwacht ziet Fenna aankomen met Merel aan haar hand en gebaart haar haastig naar binnen.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Fenna-Viviènne', tekst: 'Ze begon onderweg te praten. Maar Strix, haar kikker, is ergens onderweg verloren gegaan. Ze is er erg van slag van.' },
         { spreker: 'De moeder', tekst: '*(te snel, te scherp)* Ze práát?', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/trijn-pop.png'); }, 200); } },
         'Een stilte van een tel. Dan verandert er iets in het gezicht van de moeder. De scherpte is weg, alsof er een gordijn dichtschuift.',
@@ -16813,7 +17232,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Voor de deur van Nummer 10 staat Mevr. van Wallingen te smoezen met een wijkwachter.',
+        { tekst: 'Voor de deur van Nummer 10 staat Mevr. van Wallingen te smoezen met een wijkwachter.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         'Ze ziet Kelly aankomen. Met een beladen toon en een dreigend opgetrokken wenkbrauw:',
         { spreker: 'Mevr. van Wallingen', tekst: 'Wel, wel. Daar is ze dan.' },
         'Kelly besluit dat ze hier niets te zoeken heeft en maakt rechtsomkeert.'
@@ -16824,7 +17243,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Voor de deur staat een wijkwacht met gekruiste armen.',
+        { tekst: 'Voor de deur staat een wijkwacht met gekruiste armen.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Wijkwacht', tekst: 'Doorlopen! Hier valt niets te zien.' },
         'Het raam staat op een kier. Van binnen komt frustratie, één stem, fel:',
         { spreker: 'Een stem binnen', tekst: 'Sinds Strix erbij is zegt dat rotkind steeds minder! Kan mij wat schelen dat ze weg is!' }
@@ -16835,7 +17254,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Fenna stapt op de wijkwacht af — ze zijn tenslotte op heksenjacht, en een wachter ziet veel.',
+        { tekst: 'Fenna stapt op de wijkwacht af — ze zijn tenslotte op heksenjacht, en een wachter ziet veel.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Fenna-Viviènne', tekst: 'Zeg eens, is u hier in de straat soms iets vreemds opgevallen?' },
         { spreker: 'Wijkwacht', tekst: 'Als u iets wilt zien — ga bij de vijver kijken. Daar verzamelt zich op dit moment een hoop bezorgd volk.' }
       ]
@@ -16846,7 +17265,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          { spreker: 'Wijkwacht', tekst: 'Bent u de oma? Kom gauw naar binnen!' },
+          { spreker: 'Wijkwacht', tekst: 'Bent u de oma? Kom gauw naar binnen!', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           'Voor Lucinde kan protesteren wordt ze al naar binnen gewuifd.',
           { spreker: 'Wijkwacht', tekst: 'Eh... mevrouw, uw moeder is er.' },
           'Een gestreste vrouw kijkt verward op. Dit is duidelijk niet háár moeder.',
@@ -16860,7 +17279,7 @@ function renderDd3Nummer10(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lola ziet de wijkwacht bij de deur staan en blijft op veilige afstand.',
+          { tekst: 'Lola ziet de wijkwacht bij de deur staan en blijft op veilige afstand.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
           { spreker: 'Lola', tekst: '*(mompelt)* Ay, wijkwachters... daar meng ik me maar beter niet in. Niet met alles wat er nog op mijn naam staat, querido.' },
           'Ze glipt de schaduw weer in, vóór iemand haar gezicht goed kan bekijken.'
         ]
@@ -16870,7 +17289,7 @@ function renderDd3Nummer10(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Als oud-spion kent Felix de taal van mannen die de overheid dienen. Hij slentert op de wachter af alsof hij hier hoort.',
+        { tekst: 'Als oud-spion kent Felix de taal van mannen die de overheid dienen. Hij slentert op de wachter af alsof hij hier hoort.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
         { spreker: 'Felix', tekst: 'Zware avond, collega?' },
         { spreker: 'Wijkwacht', tekst: '*(zucht)* Een vermissing. Een meisje. En haar kikker, geloof het of niet.' },
         { spreker: 'Felix', tekst: '*(knikt wijs)* Een kikker. Natuurlijk. Het is altijd de kikker.' }
@@ -16882,7 +17301,7 @@ function renderDd3Nummer10(loc) {
   return renderLocatieScene({
     container: cont, titel: loc.naam, sub: loc.sub, image: null,
     dialog: [
-      'Voor de deur staat een wijkwacht. Van binnen komt rumoer.',
+      { tekst: 'Voor de deur staat een wijkwacht. Van binnen komt rumoer.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/stadswacht-pop.png'); }, 200); } },
       { spreker: 'Wijkwacht', tekst: 'Doorlopen! Hier valt niets te halen.' }
     ]
   });
@@ -19373,9 +19792,14 @@ function openHeerDonatuslaanVanuitWoud() {
       state.vermomming = null;
       if (typeof updateVermommingBadge === 'function') updateVermommingBadge();
       var afpakNamen = ['Breiwerkje', 'Latin Jurk', ITEMS.coneHoedje.naam];
-      state.felixAfgepakt = state.inventory
+      var afgepakt = state.inventory
         .filter(function(i){ return afpakNamen.indexOf(i.naam) !== -1; })
         .map(function(i){ return { emoji: i.emoji, naam: i.naam }; });
+      // Alleen overschrijven als er nu echt iets af te pakken valt. Draait
+      // deze afloop een tweede keer (outfits al ingenomen), dan zou een lege
+      // lijst zijn vermommingen definitief kwijtmaken en is H6 (Lola)
+      // onhaalbaar. Zelfde guard als in debugFelixWeerVastInH2.
+      if (afgepakt.length) state.felixAfgepakt = afgepakt;
       state.inventory = state.inventory.filter(function(i){ return afpakNamen.indexOf(i.naam) === -1; });
       updateInventoryBar();
       toonZwartScherm(1000, function () {

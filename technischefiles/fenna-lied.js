@@ -110,7 +110,7 @@
         'Tot niets van gisteren je nog verveelt.',
         '',
         'Honing... en vuur...',
-        'Smelt met me samen, in ons laatste uur.'
+        'Smelt met me samen, in ons laatste uur. (volgt)'
       ]
     }
   };
@@ -124,6 +124,8 @@
   // muziekTerugBijVerder: true betekent dat de achtergrondmuziek pas
   // terugkomt als de speler op Verder klikt, niet al als het fragment
   // is uitgeklonken.
+  // verderNaMs: extra wachttijd na duurMs voordat de Verder-knop
+  // verschijnt (adempauze na de laatste noot).
   var LIED_AUDIO = {
     robbie: {
       bestand: 'geluid/fenna/liedvoorrobbie.mp4',
@@ -135,6 +137,17 @@
       bestand: 'geluid/fenna/fennavijver.mpeg',
       duurMs: 24000,
       regelVertragingMs: [0, 6000, 11000, 18000],
+      muziekTerugBijVerder: true
+    },
+    herberg: {
+      bestand: 'geluid/fenna/fennaherberg.mpeg',
+      duurMs: 26000,
+      // Regels 1 t/m 4 op 4, 10, 16 en 21 seconden. Regel 5 is de lege
+      // strofe-scheiding. De refreinregels (Honing... en vuur / Smelt met
+      // me samen) zijn een schatting binnen de laatste vijf seconden,
+      // op gehoor bij te stellen.
+      regelVertragingMs: [4000, 10000, 16000, 21000, 21000, 22500, 24000],
+      verderNaMs: 2000,
       muziekTerugBijVerder: true
     }
   };
@@ -478,7 +491,9 @@
       // beluisteren. Regels zonder eigen tijdstip (bv. als er ooit meer
       // regels bijkomen dan vastgelegd) vallen terug op een gelijkmatige
       // verdeling na de laatste bekende regel.
-      wachtMs = audioCfg.duurMs;
+      // De Verder-knop wacht tot het fragment is uitgeklonken, plus de
+      // eventuele adempauze (verderNaMs) van dit lied.
+      wachtMs = audioCfg.duurMs + (audioCfg.verderNaMs || 0);
       var vertragingen = audioCfg.regelVertragingMs;
       var laatsteBekend = vertragingen[vertragingen.length - 1] || 0;
       var restMs = Math.max(0, audioCfg.duurMs - laatsteBekend - 1200);
