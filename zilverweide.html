@@ -3964,9 +3964,9 @@ function showScreen(id) {
   if (typeof VH_SCHERM_DISTRICT !== 'undefined' && VH_SCHERM_DISTRICT[id]) vhStartKlok(VH_SCHERM_DISTRICT[id]);
   if (id === 'screen-dorendael' || id === 'screen-dorpsplein') setTimeout(checkDorendaelTokens, 500);
   if (id === 'screen-locatie' && state.lastZone === 'dorendael') setTimeout(checkDorendaelTokens, 600);
-  if (id === 'screen-heerdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
+  if (id === 'screen-sintdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
   // Check ook vanuit locatie-detail als de speler in HD zit (vangt debug-flags op).
-  if (id === 'screen-locatie' && state.lastZone === 'heerdonatuslaan') setTimeout(checkHeerDonatusTokens, 600);
+  if (id === 'screen-locatie' && state.lastZone === 'sintdonatuslaan') setTimeout(checkHeerDonatusTokens, 600);
   // Character pop-up alleen op locatie-detail schermen
   if (id === 'screen-locatie') {
     toonCharPop(state.pendingBubble || null);
@@ -7043,7 +7043,7 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie. Hij ziet je, en de paniek slaat in zijn ogen. Snel krabbelt hij iets op een briefje en drukt het in je hand.',
+          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie. Hij ziet je, en de paniek slaat in zijn ogen. Snel krabbelt hij iets op een briefje en drukt het in je hand.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
           { spreker: 'Briefje', tekst: '"Help, herberg. Gaat mis. Burgemeester is er al. Snel!"' }
         ],
         acties: [{ label: 'Naar de herberg', onclick: terug }]
@@ -14247,13 +14247,19 @@ function heerDonatusFinaleStatus() {
     janSlagerij:   hasVisited('jan_slagerij_gevlucht')    || getSharedState('jan_slagerij_gevlucht'),
     fennaHerberg:  hasVisited('fenna_herberg_gedaan')     || getSharedState('fenna_herberg_gedaan'),
     kellyKerk:     hasVisited('kerk_non_weg')             || getSharedState('kerk_non_weg'),
-    muziekdoosje:  hasVisited('muziekdoosje_afgeleverd')  || getSharedState('muziekdoosje_afgeleverd'),
+    // Loopt nu gelijk met de zes verhaalscore-vlaggen van de teller
+    // (HEER_DONATUSLAAN_MISSIE_KEYS). Eerder stond hier muziekdoosje_afgeleverd,
+    // maar dat is de Dorendael-vlag (doosje bij de klokkenmaker), die al waar is
+    // zodra HD opent. Daardoor kon de gok opengaan voordat Felix bij Vrouwe Roet
+    // was geweest en Kelly het doosje bij Aaltje had afgeleverd.
+    klokkenmaker:  hasVisited('h6_klokkenmaker_gezien')   || getSharedState('h6_klokkenmaker_gezien'),
+    muziekdoosje:  hasVisited('muziekdoosje_bij_aaltje')  || getSharedState('muziekdoosje_bij_aaltje'),
   };
 }
 
 function heerDonatusFinaleKlaar() {
   var s = heerDonatusFinaleStatus();
-  return s.felixVrij && s.janSlagerij && s.fennaHerberg && s.kellyKerk && s.muziekdoosje;
+  return s.felixVrij && s.janSlagerij && s.fennaHerberg && s.kellyKerk && s.klokkenmaker && s.muziekdoosje;
 }
 
 function checkHeerDonatusTokens() {
