@@ -3597,7 +3597,9 @@ function schaduwRedderCheckOpLocatie(locId, renderCallback) {
     for (var i = 0; i < rollen.length; i++) {
       if (rollen[i] === state.personage) continue;
       var l = getSharedState('schaduw_lock_' + rollen[i]);
-      if (l && l.code && l.loc === locId) { gevonden = l; break; }
+      // Zelfde hartslag-check als in schaduwRedderIntercept: weesrecords
+      // van een gecrasht tablet mogen de locatie niet dichthouden.
+      if (l && l.code && l.loc === locId && schaduwLockLeeft(rollen[i], l)) { gevonden = l; break; }
     }
   } catch (e) {}
   if (gevonden && window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonRedderInvoer) {
@@ -3967,9 +3969,9 @@ function showScreen(id) {
   if (typeof VH_SCHERM_DISTRICT !== 'undefined' && VH_SCHERM_DISTRICT[id]) vhStartKlok(VH_SCHERM_DISTRICT[id]);
   if (id === 'screen-dorendael' || id === 'screen-dorpsplein') setTimeout(checkDorendaelTokens, 500);
   if (id === 'screen-locatie' && state.lastZone === 'dorendael') setTimeout(checkDorendaelTokens, 600);
-  if (id === 'screen-heerdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
+  if (id === 'screen-sintdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
   // Check ook vanuit locatie-detail als de speler in HD zit (vangt debug-flags op).
-  if (id === 'screen-locatie' && state.lastZone === 'heerdonatuslaan') setTimeout(checkHeerDonatusTokens, 600);
+  if (id === 'screen-locatie' && state.lastZone === 'sintdonatuslaan') setTimeout(checkHeerDonatusTokens, 600);
   // Character pop-up alleen op locatie-detail schermen
   if (id === 'screen-locatie') {
     toonCharPop(state.pendingBubble || null);
@@ -4572,6 +4574,10 @@ function controleerWachten() {
 // zonder het hele intro-pad te hoeven doorlopen.
 // ─────────────────────────────────────────────────────────────────
 function resetSpel() {
+  // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
+  // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
+  // tablets wissen. Daarom altijd eerst bevestigen.
+  if (!confirm('Alles resetten? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
   // Intro-slot altijd los: anders zou een reset midden in de intro je met
   // dode knoppen achterlaten.
   zetIntroVergrendeling(false);
@@ -4713,10 +4719,24 @@ function debugSnelstart(p) {
   if (m) { m.volume = 0.45; m.play().catch(function(){}); }
   // Reset de cruciale gedeelde vlaggen zodat oude Firebase-data van een
   // vorige test geen spoken veroorzaakt (Tobbe al weg, herberg al klaar, etc.)
-  ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
-   'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
-   'dorendael_finale_gestart'
-  ].forEach(function(k){ setSharedState(k, false); });
+  // Maar niet blind: na een tablet-crash kom je via deze zelfde knoppen de
+  // LIVE sessie van het team weer binnen, en dan zou deze reset de andere
+  // drie tablets terugzetten (dagboek weer op slot, Tobbe terug, rollen
+  // vrijgegeven). Staan er al andere rollen op bezet, dan eerst vragen;
+  // bij annuleren stap je in zonder iets te wissen (herstel na crash).
+  var andereRolBezet = ['jan','kelly','fenna','felix'].some(function (r) {
+    return r !== p && getSharedState('rol_bezet_' + r);
+  });
+  var magResetten = !andereRolBezet || confirm(
+    'Er lijkt al een sessie te lopen (andere rollen zijn bezet).\n\n' +
+    'OK = verse testronde: gedeelde voortgang wordt gewist.\n' +
+    'Annuleren = instappen zonder te wissen (herstel na een crash).');
+  if (magResetten) {
+    ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
+     'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
+     'dorendael_finale_gestart'
+    ].forEach(function(k){ setSharedState(k, false); });
+  }
   state.personage = p;
   zetRolBezet(p, true);
   var dbg = document.getElementById('debug-btn');
@@ -4812,8 +4832,15 @@ function geefMeervoudigItem(emoji, naam, aantal) {
 }
 
 function updateInventoryBar() {
-  // Reset finale popup flag if tokens are no longer all present
-  if (!alleFinaleCodesVerzameld()) state.finalePopupGetoond = false;
+  // Reset finale popup flag if tokens are no longer all present.
+  // Zelfde dubbele voorwaarde als de trigger in checkAllTokens: die vuurt
+  // ook op een volle teamscore (kraaienMissieVoltooid). Zou de reset alleen
+  // naar de gedeelde sleutels kijken, dan komt de popup bij elke
+  // schermwissel terug zodra een van die sleutels niet gesynct is.
+  var kkCompleet = alleFinaleCodesVerzameld() ||
+    (typeof kraaienMissieVoltooid === 'function' &&
+     kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length);
+  if (!kkCompleet) state.finalePopupGetoond = false;
   const bar = document.getElementById('inv-bar');
   if (bar) bar.style.display = 'flex';
   // De voorwerpen staan niet meer op de balk; ze zijn te vinden in het
@@ -5420,6 +5447,10 @@ function openKamer1Bonus() {
     image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
     dialog: ['Vraag een hint aan Tom.']
   });
+  // Ook echt naar het locatie-scherm: via de testknop kan deze functie
+  // vanaf het straatscherm aangeroepen worden, en dan zou de kamer
+  // onzichtbaar in de verborgen container renderen.
+  showScreen('screen-locatie');
 }
 
 // Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
@@ -10114,6 +10145,7 @@ function renderK1Naaldmasker(loc) {
   else if (p === 'felix') {
     const heeftLucinde = heeftItem('Breiwerkje');
     const heeftLola = heeftItem('Latin Jurk');
+    const heeftHoedje = heeftItem(ITEMS.coneHoedje.naam) || heeftItem(ITEMS.felixOutfit.naam);
     const heeftStoopMunten = heeftItem('Munten van Stoop');
     const heeftBewonerMunten = heeftItem('Munten van de Bewoner');
 
@@ -10142,7 +10174,7 @@ function renderK1Naaldmasker(loc) {
     if (heeftBewonerMunten && !heeftLola) {
       acties.push({ label: '💰 Lola-outfit kopen', onclick: koopLolaOutfit });
     }
-    if (heeftLucinde || heeftLola) {
+    if (heeftLucinde || heeftLola || heeftHoedje) {
       acties.push({ label: '👗 Vermommen', onclick: toonVermomKeuze });
       if (state.vermomming) {
         acties.push({ label: 'Vermomming uittrekken', onclick: uittrekkenVermomming, stijl: 'blood' });
@@ -11248,6 +11280,12 @@ function toonVermomKeuze() {
   if (heeftItem('Latin Jurk')) {
     knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lola\')">💃 Word Lola</button>';
   }
+  // Liu-Yen hoort er hier ook bij: K8 is dé omkleedplek, en wie hem hier
+  // uittrekt moest anders helemaal terug naar het Steegje (H8) om hem weer
+  // aan te kunnen. Zelfde conditie als in toonVermomKeuzeSteegje.
+  if (heeftItem(ITEMS.coneHoedje.naam) || heeftItem(ITEMS.felixOutfit.naam)) {
+    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Liu-Yen\')">🐉 Word Liu-Yen</button>';
+  }
   toonLade(
     '👗 Wie wil je zijn?',
     '<p style="font-size:.95rem;color:var(--mist);font-style:italic;margin-bottom:1rem">Kies een vermomming om aan te trekken.</p>' +
@@ -11298,6 +11336,14 @@ function goBackFromLocatie() {
   // Jan zit vast in de achterkamer van de slagerij: geen terug mogelijk
   // totdat hij het slot forceert (of via test-modus).
   if (state.janVastInAchterkamer) return;
+  // Felix zit opgesloten in zijn kamer (H2): geen terug mogelijk tot hij
+  // vrij is. Zonder deze blokkade loopt hij via de straat naar buiten,
+  // wordt daar locatieOnbekend gereset en verraadt Nummer 1 zichzelf.
+  if (state.personage === 'felix' && state.lastOpenedLocatie === 'h2_felixkamer'
+      && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
+    toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.');
+    return;
+  }
   // Verlaat je een locatie, dan stopt de molen-ambient (no-op als die niet
   // speelt) en hervat de hoofdmuziek.
   stopMolenSfeer();
@@ -13950,7 +13996,11 @@ function schaduwRedderIntercept(locId, zone) {
     for (var i = 0; i < rollen.length; i++) {
       if (rollen[i] === state.personage) continue;
       var l = getSharedState('schaduw_lock_' + rollen[i]);
-      if (l && l.code && l.loc === locId) { gevondenRol = rollen[i]; break; }
+      // Alleen locks waar nog een levend tablet achter zit (hartslag).
+      // Een weesrecord van een gecrasht tablet zou anders deze locatie
+      // voor het hele team dichthouden, met een code die nergens meer
+      // op een scherm staat.
+      if (l && l.code && l.loc === locId && schaduwLockLeeft(rollen[i], l)) { gevondenRol = rollen[i]; break; }
     }
   } catch (e) { console.warn('schaduwRedderIntercept:', e); }
   if (!gevondenRol) return false;
@@ -14496,7 +14546,11 @@ function heerDonatusFinaleStatus() {
     janSlagerij:   hasVisited('jan_slagerij_gevlucht')    || getSharedState('jan_slagerij_gevlucht'),
     fennaHerberg:  hasVisited('fenna_herberg_gedaan')     || getSharedState('fenna_herberg_gedaan'),
     kellyKerk:     hasVisited('kerk_non_weg')             || getSharedState('kerk_non_weg'),
-    muziekdoosje:  hasVisited('muziekdoosje_afgeleverd')  || getSharedState('muziekdoosje_afgeleverd'),
+    // De HD-stap is het doosje bij Aaltje (H8). Niet muziekdoosje_afgeleverd
+    // nemen: dat is de Dorendael-stap bij de klokkenmaker, die staat hier
+    // altijd al aan, en dan klapt de straat dicht voordat Kelly en Felix de
+    // muziekdoosje-arm (H6, DD7, H8) hebben kunnen doen.
+    muziekdoosje:  hasVisited('muziekdoosje_bij_aaltje')  || getSharedState('muziekdoosje_bij_aaltje'),
   };
 }
 
@@ -15278,6 +15332,30 @@ function podiumStills() {
 // gesynchroniseerd. Pakken twee spelers tegelijk dezelfde arm (race via
 // Firebase), dan wint de eerste in de vaste rolvolgorde; de ander krijgt
 // een rode melding en moet snel opnieuw kiezen.
+//
+// Schrijven gaat per rol als kind-pad (armen_gekozen/<rol>), niet als heel
+// object: alle vier de spelers kiezen hier tegelijk, en een write van het
+// complete object zou de keuze van een ander kunnen overschrijven (verloren
+// update, hetzelfde patroon als de 3/4-hang bij de intro destijds).
+function zetArmGekozen(rol, armId) {
+  var armen = getSharedState('armen_gekozen') || {};
+  if (armId == null) delete armen[rol]; else armen[rol] = armId;
+  state.shared['armen_gekozen'] = armen;
+  if (firebaseSharedBeschikbaar() && _sharedDbRef) {
+    if (armId == null) {
+      _sharedDbRef.child('armen_gekozen/' + rol).remove().catch(function (e) {
+        console.warn('Firebase arm-remove mislukt:', e);
+      });
+    } else {
+      var update = {};
+      update['armen_gekozen/' + rol] = armId;
+      _sharedDbRef.update(update).catch(function (e) {
+        console.warn('Firebase arm-write mislukt:', e);
+      });
+    }
+  }
+}
+
 function podiumArmSelectie() {
   var cont = document.getElementById('locatie-content');
   var p = state.personage;
@@ -15293,8 +15371,7 @@ function podiumArmSelectie() {
       if (rol === p) break;   // ik sta eerder: ik behoud de arm
       if (armen[rol] === armen[p]) {
         // Verloren: keuze wissen en melden
-        delete armen[p];
-        setSharedState('armen_gekozen', armen);
+        zetArmGekozen(p, null);
         state.gekozenArm = null;
         state._armConflict = true;
         break;
@@ -15378,8 +15455,7 @@ function kiesArm(armId) {
     podiumArmSelectie();
     return;
   }
-  armen[state.personage] = armId;
-  setSharedState('armen_gekozen', armen);
+  zetArmGekozen(state.personage, armId);
   state.gekozenArm = armId;
   podiumArmSelectie(); // herrender
 }
@@ -15828,7 +15904,11 @@ function buildDebugPanel() {
     const robbieKlaar  = !!getSharedState('kk_sleutel_robbie');
     const dagboekKlaar = !!getSharedState('dagboek_gerestaureerd');
     const sleutelKlaar = !!getSharedState('kk_sleutel_wallingen');
-    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld') || !!getSharedState('kk_sleutel_speld');
+    // Bewust alleen de eigen inventaris: na een crash+herlaad van Jans
+    // tablet staat de gedeelde spiegel (kk_sleutel_speld) nog op true
+    // terwijl zijn rugzak leeg is, en dan moet de +knop juist zichtbaar
+    // zijn om de speld terug te kunnen geven.
+    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld');
     btns = [
       // ── Kelly & de put
       ['🕳️ Kelly valt in de put',    function(){ markVisited('kelly_in_put'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Kelly & de put'],
@@ -15981,7 +16061,10 @@ function buildDebugPanel() {
   } else if (inHeerDonatuslaan) {
     label = 'Heer Donatuslaan';
     btns = [
-      ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, true, 'Felix H2'],
+      // Alleen op Felix' eigen tablet: de functie wist ook de gedeelde
+      // keten-vlaggen (vrij, munten, code), en dat mag niet per ongeluk
+      // vanaf het tablet van een teamgenoot gebeuren.
+      ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, state.personage === 'felix', 'Felix H2'],
       ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
       ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
@@ -15990,6 +16073,8 @@ function buildDebugPanel() {
       ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
       ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
+      // Let op: wist de slagerij-stap voor het HELE team (gedeelde vlag).
+      ['🔓 Slagerij weer open (wist teamstap)', function(){ debugSlagerijWeerOpen(); close(); }, true, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
         markVisited('kerk_non_weg');
         setSharedState('kerk_non_weg', true);
@@ -16364,8 +16449,11 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   debugDorendaelKlaar();
   // Herberg afronden zodat de Dorendael-finale-gates kloppen.
   markVisited('herberg_scene_voltooid');
-  // Herberg voorbij de zolder-scène zetten (anders start die opnieuw bij bezoek).
-  setSharedState('herberg_resultaat', 'succes');
+  // Herberg voorbij de zolder-scène zetten (anders start die opnieuw bij
+  // bezoek). Alleen als er nog geen uitkomst is: bij crash-herstel midden in
+  // een echte sessie kan hier 'gefaald' staan, en dat resultaat is van het
+  // team, niet van deze skip.
+  if (!getSharedState('herberg_resultaat')) setSharedState('herberg_resultaat', 'succes');
   // Dorendael-intro-popup niet opnieuw tonen.
   markVisited('dorendael_intro_gezien');
   // Dorendael-heksengok als gemaakt markeren (anders triggert de finale-
@@ -16389,7 +16477,12 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   // elke pagina-load terug uit de sessie. Zonder dit blijft Jans slagerij-lijn
   // onspeelbaar tot iemand een Firebase-reset doet. Wie de dichte winkel wil
   // zien gebruikt de aparte testknop "🔪 Slagerij dicht (na Jan)".
-  debugSlagerijWeerOpen();
+  // MAAR: alleen wissen zolang de stap in deze sessie nog niet echt gezet is.
+  // Wordt deze skip gebruikt om een gecrasht tablet midden in het spel terug
+  // te zetten, dan zou het wissen Jans missiestap voor het hele team
+  // terugdraaien. Voor een verse ronde na een oude sessie: eerst Firebase
+  // resetten, of de losse testknop "🔓 Slagerij weer open" gebruiken.
+  if (!hasVisited('jan_slagerij_gevlucht')) debugSlagerijWeerOpen();
   // Felix zit standaard vast in zijn kamer zodra Heer Donatuslaan begint, maar
   // alleen voor de andere rollen (voor de hint). Speel je Felix zelf, dan geeft
   // de normale skip vrije doorgang naar H1 en verder; alleen de knop "Felix
@@ -19558,9 +19651,14 @@ function openHeerDonatuslaanVanuitWoud() {
       state.vermomming = null;
       if (typeof updateVermommingBadge === 'function') updateVermommingBadge();
       var afpakNamen = ['Breiwerkje', 'Latin Jurk', ITEMS.coneHoedje.naam];
-      state.felixAfgepakt = state.inventory
+      var afgepakt = state.inventory
         .filter(function(i){ return afpakNamen.indexOf(i.naam) !== -1; })
         .map(function(i){ return { emoji: i.emoji, naam: i.naam }; });
+      // Alleen overschrijven als er nu echt iets af te pakken valt. Draait
+      // deze afloop een tweede keer (outfits al ingenomen), dan zou een lege
+      // lijst zijn vermommingen definitief kwijtmaken en is H6 (Lola)
+      // onhaalbaar. Zelfde guard als in debugFelixWeerVastInH2.
+      if (afgepakt.length) state.felixAfgepakt = afgepakt;
       state.inventory = state.inventory.filter(function(i){ return afpakNamen.indexOf(i.naam) === -1; });
       updateInventoryBar();
       toonZwartScherm(1000, function () {
