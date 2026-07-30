@@ -6016,6 +6016,15 @@ function h3SetMesInterval(ms) { _h3Snd.mes.intervalMs = Math.max(500, ms | 0); i
 function h3GromSpeel() { h3SndPlayOnce('grom'); }
 
 var _h3TimerOnEnd = null;
+// Tijdsdruk tijdens het lockpicken (los van de fouten in de mini-game zelf):
+// elke keer dat de 60s-klok afloopt zonder open slot moet Jan 20s uitrusten
+// (zwart scherm). Bij de 4e keer breekt het slot vanzelf open en gaat hij naar
+// buiten. _h3RustTeller telt de rust-schermen; _h3RustAftel is de 20s-aftelling.
+var _h3RustTeller = 0;
+var _h3RustMax = 4;
+var _h3RustAftel = null;
+var _h3Lp = null;        // huidige lockpick-instantie (voor afbreken bij tijd-op)
+var _h3LockLoc = null;   // loc van de lockpick
 function h3StartTimer(sec, onEnd) {
   h3StopTimer();
   _h3TimerOnEnd = onEnd;
@@ -6030,8 +6039,7 @@ function h3StartTimer(sec, onEnd) {
         '<circle id="h3-ring" cx="50" cy="50" r="42" fill="none" stroke="#b5402f" stroke-width="6" stroke-linecap="round" transform="rotate(-90 50 50)" stroke-dasharray="' + C + '" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"></circle>' +
       '</svg>' +
       '<div id="h3-ring-num" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:\'Cinzel\',serif;font-size:1.7rem;font-weight:700;color:#e6d29a">' + sec + '</div>' +
-    '</div>' +
-    '<button onclick="h3TimerVoorbij()" style="pointer-events:auto;font-family:\'Cinzel\',serif;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:#e8a; background:rgba(13,10,6,.9);border:1px dashed rgba(181,64,47,.65);border-radius:4px;padding:.4rem .7rem;cursor:pointer">Tijd voorbij</button>';
+    '</div>';
   document.body.appendChild(wrap);
   var remaining = sec;
   _h3Timer = setInterval(function () {
@@ -6314,16 +6322,18 @@ const SLOTEN_CONFIG = {
 };
 
 function startLockpick(loc) {
-  h3StopTimer();   // de achterkamer-timer mag de mini-game niet onderbreken
   var cont = document.getElementById('locatie-content');
   if (!cont || typeof Lockpick === 'undefined') {
     if (cont) cont.innerHTML = '<p style="color:var(--blood);font-style:italic">Lockpick-engine niet geladen.</p>';
     return;
   }
-  // De Schaduw-vloek staat stil tijdens de mini-game. Pas hier pauzeren, ná de
-  // guard hierboven: bij een ontbrekende engine keerden we anders terug met een
-  // pauze die niemand meer opheft.
+  h3StopTimer();   // eventuele oude ring opruimen; we starten hieronder een verse
+  // De Schaduw-vloek staat stil tijdens de mini-game (en dus ook tijdens de
+  // rust-straf). setBusy werkt met een Set van redenen, dus 'lockpick' twee keer
+  // toevoegen (bij een herstart na rust) en één keer opheffen laat de meter
+  // netjes weer lopen.
   schaduwPauze(true, 'lockpick');
+  _h3LockLoc = loc;
   cont.innerHTML = '<div id="lockpick-mount"></div>';
   var mount = document.getElementById('lockpick-mount');
   var zwBackBtn = document.getElementById('locatie-back-btn');
@@ -6331,8 +6341,10 @@ function startLockpick(loc) {
   function schaduwTerug() {
     schaduwPauze(false, 'lockpick');
   }
-  // Fail-safe: kan iemand er niet uitkomen, dan bezwijkt het slot na 5 volledige
-  // resets (5 x 3 fouten) vanzelf, zodat je altijd verder kunt.
+  // Fail-safe binnen de mini-game zelf: te veel FOUTEN (klemmende pinnen) breekt
+  // het slot na 5 volledige resets. Dit staat los van de TIJD-straf hieronder
+  // (h3StartTimer): dat is de aparte teller _h3RustTeller die de rust-schermen
+  // telt en het slot bij de 4e keer te laat vanzelf openbreekt.
   var maxFouten = (SLOTEN_CONFIG.dieHard && SLOTEN_CONFIG.dieHard.maxFouten) || 3;
   var resetTeller = 0;
   var autoDoor = false;
@@ -6348,9 +6360,12 @@ function startLockpick(loc) {
       resetTeller++;   // dit was een volledige reset (3 fouten)
       if (resetTeller >= 5) {
         autoDoor = true;
+        h3StopTimer();
         setTimeout(function () {
           schaduwTerug();
           try { lp.destroy(); } catch (e) {}
+          _h3Lp = null;
+          _h3RustTeller = 0;
           if (zwBackBtn) zwBackBtn.style.display = '';
           toonLade(
             'Het slot begeeft het',
@@ -6362,22 +6377,92 @@ function startLockpick(loc) {
       }
     },
     onExit: function () {
+      h3StopTimer();
       schaduwTerug();
       try { lp.destroy(); } catch (e) {}
+      _h3Lp = null;
+      _h3RustTeller = 0;   // verse poging zodra Jan terugkomt in de achterkamer
       if (zwBackBtn) zwBackBtn.style.display = '';
-      // Terug de achterkamer in (timer en audio starten opnieuw).
-      renderH3Slagerij(Object.assign({}, loc, { _stap: 2, _tijdOp: false }));
+      // Terug de achterkamer in (audio start opnieuw). De klok start pas weer
+      // zodra Jan opnieuw op forceren drukt.
+      renderH3Slagerij(Object.assign({}, loc, { _stap: 2 }));
     },
     onWin: function () {
+      h3StopTimer();   // klok direct stoppen, anders kan de rust-straf nog afgaan
       schaduwTerug();
       try { lp.destroy(); } catch (e) {}
+      _h3Lp = null;
+      _h3RustTeller = 0;
       if (zwBackBtn) zwBackBtn.style.display = '';
       // Opgelost: uit de kamer, met de vleespen, en de winkel gaat dicht.
       h3JanVlucht(loc);
     }
   });
+  _h3Lp = lp;
   lp.mount();
   lp.start();   // geen keuzescherm, direct spelen
+  // Verse klok van 60s die MEE loopt met de mini-game. Loopt hij af zonder dat
+  // het slot open is, dan volgt de rust-straf (h3TijdOpTijdensPicken).
+  h3StartTimer(60, function () { h3TijdOpTijdensPicken(loc); });
+}
+
+// Tijd op tijdens het lockpicken: mini-game afbreken, rust-teller ophogen, en of
+// een rust-scherm tonen of, bij de 4e keer te laat, het slot laten openbreken.
+function h3TijdOpTijdensPicken(loc) {
+  h3StopTimer();
+  if (_h3Lp) { try { _h3Lp.destroy(); } catch (e) {} _h3Lp = null; }
+  _h3RustTeller++;
+  if (_h3RustTeller >= _h3RustMax) {
+    h3SlotBreektOpen(loc);
+    return;
+  }
+  h3RustScherm(loc);
+}
+
+// Zwart rustscherm met witte tekst en een aftelling van 20s. De Schaduw blijft
+// stil: de 'lockpick'-pauze staat nog aan en wordt hier NIET opgeheven. Na de
+// aftelling start een verse mini-game met een nieuwe klok van 60s.
+function h3RustScherm(loc) {
+  var oud = document.getElementById('h3-rust-overlay');
+  if (oud && oud.parentNode) oud.parentNode.removeChild(oud);
+  if (_h3RustAftel) { clearInterval(_h3RustAftel); _h3RustAftel = null; }
+  var ov = document.createElement('div');
+  ov.id = 'h3-rust-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;background:#000;z-index:9998;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.3rem;text-align:center;padding:2rem;box-sizing:border-box;opacity:0;transition:opacity .5s ease';
+  ov.innerHTML =
+    '<div style="color:#f4ecd8;font-family:\'Crimson Text\',Georgia,serif;font-style:italic;font-size:1.25rem;line-height:1.6;max-width:34rem">Je hand verkrampt om de vleespen. Even bijkomen, even ademhalen. Dan weer verder.</div>' +
+    '<div id="h3-rust-num" style="color:#e6d29a;font-family:\'Cinzel\',serif;font-size:2.6rem;font-weight:700">20</div>';
+  document.body.appendChild(ov);
+  requestAnimationFrame(function () { ov.style.opacity = '1'; });
+  var rest = 20;
+  _h3RustAftel = setInterval(function () {
+    rest--;
+    var n = document.getElementById('h3-rust-num');
+    if (n) n.textContent = Math.max(0, rest);
+    if (rest <= 0) {
+      clearInterval(_h3RustAftel); _h3RustAftel = null;
+      var el = document.getElementById('h3-rust-overlay');
+      if (el) {
+        el.style.opacity = '0';
+        setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
+      }
+      startLockpick(loc);   // verse mini-game + verse 60s-klok
+    }
+  }, 1000);
+}
+
+// 4e keer te laat: het slot breekt vanzelf open en Jan gaat naar buiten.
+function h3SlotBreektOpen(loc) {
+  schaduwPauze(false, 'lockpick');
+  _h3RustTeller = 0;
+  var zwBackBtn = document.getElementById('locatie-back-btn');
+  if (zwBackBtn) zwBackBtn.style.display = '';
+  toonLade(
+    'Het slot begeeft het',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je handen zijn moe, maar je blijft wurmen. En dan, eindelijk, knakt er iets diep in het slot. De grendel schiet los en de deur klapt open.</p>',
+    'Verder',
+    function () { h3JanVlucht(loc); }
+  );
 }
 
 // ══ H3: Slagerij Verstilt ══════════════════════════════════════════
@@ -6439,29 +6524,22 @@ function renderH3Slagerij(loc) {
         var b = document.getElementById('locatie-back-btn');
         if (b) b.style.display = 'none';
       }, 100);
-      var tijdOp = !!loc._tijdOp;
       _h3AchterLoc = loc;
-      var forceerKnop = { label: 'Forceer het slot met de vleespen', onclick: function () { startLockpick(loc); } };
-      var acties = tijdOp
-        ? [forceerKnop, { label: 'Opnieuw', onclick: function () { renderH3Slagerij(Object.assign({}, loc, { _stap: 2, _tijdOp: false })); } }]
-        : [forceerKnop];
+      _h3RustTeller = 0;   // verse poging: de tijd-straf begint pas bij het picken
       var achterkamerScene = renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'De achterkamer', image: 'locaties/heerdonatuslaan/slagerijachter.jpeg',
-        dialog: tijdOp
-          ? ['De tijd is om. De voetstappen zijn vlakbij. En beide deuren zitten dicht. Je moet dat slot nu forceren.']
-          : [
-              'Je loopt de achterkamer in. Achter je valt de deur naar de winkel dicht. Je hoort de klink, en als je eraan voelt, geeft hij niet mee. Klem.',
-              'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer. Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
-              'Ergens, je kunt niet zeggen waar, wordt een mes geslepen. Traag. Steeds opnieuw.',
-              'Je wilt terug. De deur naar de winkel zit klem. Je rukt eraan, niks. De achterdeur naar de steeg dan. Op slot.',
-              'Je hart bonst tegen je ribben. Denk na, denk na. Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
-            ],
-        acties: acties
+        dialog: [
+          'Je loopt de achterkamer in. Achter je valt de deur naar de winkel dicht. Je hoort de klink, en als je eraan voelt, geeft hij niet mee. Klem.',
+          'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer. Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
+          'Ergens, je kunt niet zeggen waar, wordt een mes geslepen. Traag. Steeds opnieuw.',
+          'Je wilt terug. De deur naar de winkel zit klem. Je rukt eraan, niks. De achterdeur naar de steeg dan. Op slot.',
+          'Je hart bonst tegen je ribben. Denk na, denk na. Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
+        ],
+        acties: [{ label: 'Forceer het slot met de vleespen', onclick: function () { startLockpick(loc); } }]
       });
       h3StartHartslag();
-      if (!tijdOp) {
-        h3StartTimer(60, function () { renderH3Slagerij(Object.assign({}, loc, { _stap: 2, _tijdOp: true })); });
-      }
+      // De klok van 60s start nu pas bij het lockpicken zelf (in startLockpick),
+      // niet meer hier in de achterkamer.
       return achterkamerScene;
     }
     // stap 3: het slot geforceerd. Jan houdt de vleespen bij zich; winkel dicht.
@@ -15736,6 +15814,7 @@ function buildDebugPanel() {
       ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
+      ['⏱️ Forceer tijd op (rust-straf)', function(){ close(); if (typeof h3TimerVoorbij === 'function') h3TimerVoorbij(); }, !!_h3Lp, 'H3 Slagerij'],
       ['⛪ Kelly kerkdoolhof gedaan', function(){
         markVisited('kerk_non_weg');
         setSharedState('kerk_non_weg', true);
