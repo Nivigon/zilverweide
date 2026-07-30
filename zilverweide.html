@@ -6376,17 +6376,10 @@ function startLockpick(loc) {
         }, 1100);
       }
     },
-    onExit: function () {
-      h3StopTimer();
-      schaduwTerug();
-      try { lp.destroy(); } catch (e) {}
-      _h3Lp = null;
-      _h3RustTeller = 0;   // verse poging zodra Jan terugkomt in de achterkamer
-      if (zwBackBtn) zwBackBtn.style.display = '';
-      // Terug de achterkamer in (audio start opnieuw). De klok start pas weer
-      // zodra Jan opnieuw op forceren drukt.
-      renderH3Slagerij(Object.assign({}, loc, { _stap: 2 }));
-    },
+    // Geen onExit-callback: zonder die geeft de engine geen "Terug"-knop meer.
+    // Zodra Jan begint te forceren zit hij vast tot winst, rust of openbreken.
+    // Anders kon hij via Terug de (klokloze) achterkamer in en zo de tijdsdruk
+    // ontlopen door telkens met een verse 60s opnieuw te beginnen.
     onWin: function () {
       h3StopTimer();   // klok direct stoppen, anders kan de rust-straf nog afgaan
       schaduwTerug();
