@@ -1644,9 +1644,52 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
       <h1 style="font-family:'Cinzel',serif;font-size:clamp(1.6rem,6vw,2.8rem);font-weight:600;color:var(--gold);letter-spacing:.08em;text-shadow:0 0 60px rgba(201,168,76,.6),0 2px 20px rgba(0,0,0,.9);line-height:1.2;margin-bottom:.5rem">De Rozen van Zilverweide</h1>
 
       <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;margin-top:.25rem">
-        <button onclick="showVerhaal()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid var(--gold);color:var(--gold);background:rgba(13,10,6,.6);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">✦ &nbsp; Begin &nbsp; ✦</button>
+        <button onclick="startBegin()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid var(--gold);color:var(--gold);background:rgba(13,10,6,.6);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">✦ &nbsp; Begin &nbsp; ✦</button>
         <button onclick="toonTeaser()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid rgba(201,168,76,.4);color:rgba(201,168,76,.7);background:rgba(13,10,6,.4);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">▶ &nbsp; Teaser</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- TEAMKEUZE (voor de intro): vier tablets kiezen samen dezelfde teamnaam -->
+<style>
+  #screen-teamnaam .tk-wrap { max-width: 44rem; margin: 0 auto; padding: 2rem 1.25rem 3rem; text-align: center; }
+  #screen-teamnaam .tk-titel { font-family: 'Cinzel', serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--gold); letter-spacing: .05em; margin-bottom: .6rem; }
+  #screen-teamnaam .tk-waarschuwing {
+    font-family: 'Crimson Text', Georgia, serif; font-style: italic; color: var(--parchment);
+    background: rgba(180,85,63,.12); border: 1px solid rgba(201,168,76,.3); border-radius: 6px;
+    padding: .7rem 1rem; margin: 0 auto 1.5rem; max-width: 34rem; font-size: 1.02rem; line-height: 1.5;
+  }
+  #screen-teamnaam #team-tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+  @media (max-width: 30rem) { #screen-teamnaam #team-tiles { grid-template-columns: 1fr; } }
+  .team-tile {
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+    font-family: 'Cinzel', serif; font-size: .92rem; color: var(--parchment);
+    background: rgba(13,10,6,.7); border: 1px solid rgba(201,168,76,.3); border-radius: 6px;
+    padding: .85rem 1rem; cursor: pointer; text-align: left; transition: all .15s; min-height: 3.2rem;
+  }
+  .team-tile:hover { border-color: rgba(201,168,76,.6); background: rgba(201,168,76,.06); }
+  .team-tile.gekozen {
+    border-color: var(--gold); background: rgba(201,168,76,.18); color: var(--gold);
+    box-shadow: 0 0 16px rgba(201,168,76,.35); animation: teamPuls 1.4s ease-in-out infinite;
+  }
+  @keyframes teamPuls { 0%,100% { box-shadow: 0 0 12px rgba(201,168,76,.25); } 50% { box-shadow: 0 0 22px rgba(201,168,76,.55); } }
+  .team-tile-badge {
+    font-family: 'Cinzel', serif; font-size: .78rem; color: var(--gold-dim); font-variant-numeric: tabular-nums;
+    background: rgba(201,168,76,.1); border-radius: 10px; padding: .12rem .55rem; flex-shrink: 0;
+  }
+  .team-tile.gekozen .team-tile-badge { color: var(--gold); background: rgba(201,168,76,.22); }
+  .team-tile.compleet { border-color: var(--gold); background: rgba(201,168,76,.24); }
+</style>
+<div class="screen" id="screen-teamnaam">
+  <div class="tk-wrap">
+    <div class="tk-titel">Kies een teamnaam</div>
+    <div class="tk-waarschuwing">Let op: jullie gaan pas verder als alle vier hetzelfde kiezen. Overleg samen en tik dezelfde naam aan. Je kunt altijd nog wisselen.</div>
+    <div id="team-tiles"></div>
+    <!-- Testmodus: in je eentje testen. Kies eerst een naam, dan vult deze
+         knop drie medespelers aan zodat je op 4/4 komt en de flow doorloopt. -->
+    <div style="margin-top:1.6rem">
+      <button type="button" onclick="debugSimuleerTeam()" style="background:none;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--mist);text-transform:uppercase;opacity:.55">▪ test: vul aan tot vier ▪</button>
     </div>
   </div>
 </div>
@@ -2202,13 +2245,55 @@ function firebaseSharedBeschikbaar() {
   return typeof firebase !== 'undefined' && firebase.database && _sharedSessieId;
 }
 
-function initSharedFirebase(sessieId) {
+// De beginwaarden van de gedeelde stand, op een plek zodat het herpunten van
+// de sessie (nieuw team) en resetSpel dezelfde verse stand gebruiken.
+function standaardGedeeldeState() {
+  return {
+    dagboek_gerestaureerd: false,
+    filmpje_gezien: false,
+    herberg_binnen: [],
+    herberg_timer_start: null,
+    herberg_resterend: null,
+    herberg_klok_eigenaar: null,
+    herberg_fenna_gesimuleerd: null,
+    herberg_resultaat: null,
+    tobbe_gevonden: false,
+    woud_voltooid: [],
+    woud_klaar: [],
+    woudscene_klaar: [],
+    oude_kranten_ontdekt: false,
+    nummer7_aanwezig: [],
+    kerk_kelder_aanwezig: [],
+    podium_finale_aanwezig: [],
+    podium_verhaal_klaar: [],
+    kerk_verhaal_klaar: [],
+    podium_intro_aanwezig: [],
+    armen_gekozen: {},
+  };
+}
+
+var _serverOffsetGekoppeld = false;
+function initSharedFirebase(sessieId, versGedeeld) {
+  // Herpunten kan: de teamkeuze roept dit later opnieuw aan met de echte
+  // sessie. Draaide er al een listener op een andere sessie, dan eerst
+  // loskoppelen, anders blijft de oude sessie meebinnenkomen.
+  if (_sharedDbRef && _sharedSessieId !== sessieId) {
+    try { _sharedDbRef.off(); } catch (e) {}
+    _sharedDbRef = null;
+    _sharedListenerActief = false;
+  }
+  // Bij een verse sessie (nieuw team) de lokale gedeelde stand terug naar
+  // de beginwaarden, zodat data van een vorige sessie (bv. 'test' bij het
+  // laden) niet meelekt in de nieuwe ronde.
+  if (versGedeeld) state.shared = standaardGedeeldeState();
   _sharedSessieId = sessieId;
   if (!firebaseSharedBeschikbaar()) return;
   _sharedDbRef = firebase.database().ref('sessies/' + sessieId + '/shared');
 
   // Klokverschil met de server bijhouden (zie _serverTijdOffset hierboven).
-  try {
+  // Maar 1x koppelen: bij herpunten hoeft dit niet opnieuw.
+  if (!_serverOffsetGekoppeld) try {
+    _serverOffsetGekoppeld = true;
     firebase.database().ref('.info/serverTimeOffset').on('value', function (s) {
       var v = s.val();
       if (typeof v === 'number' && isFinite(v)) _serverTijdOffset = v;
@@ -2457,6 +2542,219 @@ setInterval(function () {
     });
   } catch (e) {}
 }, 30000);
+
+// ─────────────────────────────────────────────────────────────────
+// TEAMKEUZE + LOBBY (sessie = teamnaam + datum)
+// Bij Begin kiezen de vier tablets samen een teamnaam uit een vaste lijst.
+// Voor er een gedeelde sessie is, kan geen tablet de ander zien, dus de
+// keuze loopt via een aparte 'lobby'-tak per dag: elke tablet zet alleen
+// zijn EIGEN keuze neer (op apparaat-id, zoals bij het herstel, zodat twee
+// tablets elkaars keuze nooit overschrijven, de oude wachtrace-fix). Zodra
+// vier tablets op dezelfde naam staan, leiden ze samen dezelfde sessie-id
+// af (teamnaam + datum, met een korte code uit de vier apparaat-ids zodat
+// twee groepen met dezelfde naam op dezelfde dag toch los blijven) en
+// stappen ze samen door. Spelers zien die code niet; het logboek nummert
+// de sessies per naam op tijd.
+// ─────────────────────────────────────────────────────────────────
+var TEAM_NAMEN = [
+  'De Rozendetectives',
+  'Het Zilveren Gezelschap',
+  'De Nachtwakers',
+  'Toeval Bestaat Niet',
+  'De Fluisteraars',
+  'Speurneuzen van Zilverweide',
+  'Het Vergeten Genootschap',
+  'Geen Zaak Te Groot',
+  'De Schemerwacht',
+  'Klopt Er Iets Niet?'
+];
+var TEAM_AANTAL_NODIG = 4;       // vier tablets moeten dezelfde naam kiezen
+var LOBBY_VERS_MS = 2 * 60 * 1000;   // lobby-keuzes ouder dan 2 min negeren (stale)
+var LOBBY_VERNIEUW_MS = 30 * 1000;   // eigen keuze elke 30s vernieuwen zolang je kiest
+
+var _teamLobbyRef = null;
+var _teamMijnSlug = null;        // welke naam deze tablet nu aantikt
+var _teamAfgerond = false;       // sessie is al gekozen, niet nog eens
+var _teamLobbySnapshot = {};     // laatste lobby-stand
+var _teamVernieuwTimer = null;   // houdt de eigen keuze "vers" in de lobby
+
+// Nette sleutel van een teamnaam: kleine letters, alles wat geen letter of
+// cijfer is wordt een streepje, en streepjes aan de randen eraf. De tien
+// vaste namen hebben geen accenten, dus dit is genoeg.
+function teamSlug(naam) {
+  return (naam || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+// Datumsleutel YYYY-MM-DD op basis van de (server-gecorrigeerde) klok.
+function teamDatumSleutel() {
+  var d = new Date(gedeeldeTijdNu());
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+}
+
+// Korte, stabiele code uit de vier apparaat-ids: elke tablet in de groep
+// rekent dezelfde code uit, twee verschillende groepen krijgen een andere.
+function teamCodeVanApparaten(ids) {
+  var s = ids.slice().sort().slice(0, TEAM_AANTAL_NODIG).join('|');
+  var h = 5381;
+  for (var i = 0; i < s.length; i++) { h = ((h << 5) + h + s.charCodeAt(i)) >>> 0; }
+  return h.toString(36).slice(0, 4);
+}
+
+function teamLobbyPad() { return 'lobby/' + teamDatumSleutel(); }
+
+function teamPrettyVanSlug(slug) {
+  for (var i = 0; i < TEAM_NAMEN.length; i++) { if (teamSlug(TEAM_NAMEN[i]) === slug) return TEAM_NAMEN[i]; }
+  return slug;
+}
+
+// Toon het teamkeuze-scherm en koppel de lobby-listener. Aangeroepen bij Begin.
+function toonTeamKeuze() {
+  _teamAfgerond = false;
+  _teamMijnSlug = null;
+  if (_teamVernieuwTimer) { clearInterval(_teamVernieuwTimer); _teamVernieuwTimer = null; }
+  var wrap = document.getElementById('team-tiles');
+  if (wrap) {
+    wrap.innerHTML = TEAM_NAMEN.map(function (naam) {
+      var slug = teamSlug(naam);
+      return '<button type="button" class="team-tile" id="team-tile-' + slug + '" onclick="kiesTeam(\'' + slug + '\')">' +
+        '<span class="team-tile-naam">' + naam + '</span>' +
+        '<span class="team-tile-badge" id="team-badge-' + slug + '">0/' + TEAM_AANTAL_NODIG + '</span>' +
+        '</button>';
+    }).join('');
+  }
+  showScreen('screen-teamnaam');
+  // Lobby-listener aan: we zien meteen wat de andere tablets kiezen.
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      if (_teamLobbyRef) { try { _teamLobbyRef.off(); } catch (e) {} }
+      _teamLobbyRef = firebase.database().ref(teamLobbyPad());
+      _teamLobbyRef.on('value', verwerkLobby);
+    }
+  } catch (e) { console.warn('lobby-listener mislukt:', e); }
+}
+
+// Deze tablet tikt een naam aan (of wisselt): eigen keuze in de lobby zetten.
+function kiesTeam(slug) {
+  if (_teamAfgerond) return;
+  _teamMijnSlug = slug;
+  updateTeamTegels();
+  schrijfEigenLobbyKeuze();
+  // Houd de eigen keuze vers zolang we op het keuzescherm staan, zodat een
+  // groep die lang overlegt niet als "stale" wegvalt.
+  if (!_teamVernieuwTimer) {
+    _teamVernieuwTimer = setInterval(function () {
+      if (_teamMijnSlug && !_teamAfgerond) schrijfEigenLobbyKeuze();
+    }, LOBBY_VERNIEUW_MS);
+  }
+}
+
+function schrijfEigenLobbyKeuze() {
+  try {
+    if (_teamLobbyRef && _teamMijnSlug) {
+      _teamLobbyRef.child(herstelApparaatId()).set({
+        slug: _teamMijnSlug, naam: teamPrettyVanSlug(_teamMijnSlug), t: gedeeldeTijdNu()
+      }).catch(function () {});
+    }
+  } catch (e) {}
+}
+
+// Reageer op de live lobby-stand: tel per naam de verse keuzes, werk de
+// tegels bij, en ga door zodra vier tablets op mijn naam staan.
+function verwerkLobby(snap) {
+  _teamLobbySnapshot = (snap && snap.val()) || {};
+  var nu = gedeeldeTijdNu();
+  var perSlug = {};
+  for (var dev in _teamLobbySnapshot) {
+    if (!_teamLobbySnapshot.hasOwnProperty(dev)) continue;
+    var e = _teamLobbySnapshot[dev];
+    if (!e || !e.slug) continue;
+    if (e.t && (nu - e.t) > LOBBY_VERS_MS) continue;   // stale keuze negeren
+    (perSlug[e.slug] = perSlug[e.slug] || []).push(dev);
+  }
+  _teamLaatstePerSlug = perSlug;
+  updateTeamTegels();
+  // Vier tablets op mijn naam: samen door met dezelfde sessie-id.
+  if (_teamMijnSlug && (perSlug[_teamMijnSlug] || []).length >= TEAM_AANTAL_NODIG) {
+    rondTeamAf(_teamMijnSlug, perSlug[_teamMijnSlug]);
+  }
+}
+var _teamLaatstePerSlug = {};
+
+// Tegels bijwerken: X/4-teller, mijn gekozen tegel oplichten, volle tegels
+// markeren.
+function updateTeamTegels() {
+  TEAM_NAMEN.forEach(function (naam) {
+    var slug = teamSlug(naam);
+    var tile = document.getElementById('team-tile-' + slug);
+    var badge = document.getElementById('team-badge-' + slug);
+    if (!tile || !badge) return;
+    var n = (_teamLaatstePerSlug[slug] || []).length;
+    badge.textContent = n + '/' + TEAM_AANTAL_NODIG;
+    tile.classList.toggle('gekozen', slug === _teamMijnSlug);
+    tile.classList.toggle('compleet', n >= TEAM_AANTAL_NODIG);
+  });
+}
+
+// Vier zijn het eens: leid de sessie-id af (naam + datum + korte code uit de
+// apparaat-ids), herpunt de gedeelde stand erheen, leg de mooie naam vast
+// en ga door naar de intro. Alle vier rekenen dezelfde id uit.
+function rondTeamAf(slug, deviceIds) {
+  if (_teamAfgerond) return;
+  _teamAfgerond = true;
+  var datum = teamDatumSleutel();
+  var code = teamCodeVanApparaten(deviceIds);
+  var sid = slug + '-' + datum + '-' + code;
+  var pretty = teamPrettyVanSlug(slug);
+  // Gedeelde stand naar de teamsessie, met verse beginwaarden.
+  initSharedFirebase(sid, true);
+  try { localStorage.setItem('zw_sessie', sid); } catch (e) {}
+  var ind = document.getElementById('sessie-indicator');
+  if (ind) ind.textContent = 'sessie: ' + sid;
+  // Mooie naam en aanmaaktijd vastleggen (het logboek toont en nummert hierop).
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('sessies/' + sid + '/meta').update({
+        team: pretty, slug: slug, datum: datum, code: code, aangemaakt: gedeeldeTijdNu()
+      }).catch(function () {});
+    }
+  } catch (e) {}
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'team_gekozen', team: pretty });
+  teamLobbyVerlaat();
+  // Door naar de intro (die leidt daarna naar de karakterkeuze).
+  showVerhaal();
+}
+
+// Testmodus (solo testen): drie nep-medespelers aan de lobby toevoegen voor
+// de naam die deze tablet net gekozen heeft, zodat de teller 4/4 raakt en de
+// flow doorloopt. De nep-keuzes verlopen vanzelf via het vers-venster. Alleen
+// bedoeld om het teamkeuze-scherm in je eentje te kunnen doorlopen; de echte
+// vier-tablet-sync moet nog steeds met echte apparaten getest worden.
+function debugSimuleerTeam() {
+  if (!_teamMijnSlug) {
+    if (typeof toonToast === 'function') toonToast('▪', 'Kies eerst een naam');
+    return;
+  }
+  try {
+    if (_teamLobbyRef) {
+      for (var i = 1; i <= TEAM_AANTAL_NODIG - 1; i++) {
+        _teamLobbyRef.child('sim_' + i).set({
+          slug: _teamMijnSlug, naam: teamPrettyVanSlug(_teamMijnSlug), t: gedeeldeTijdNu()
+        }).catch(function () {});
+      }
+    }
+  } catch (e) {}
+}
+
+// Listener en vernieuw-timer loskoppelen. De eigen keuze wissen we hier
+// bewust NIET: een net-iets-tragere tablet moet de vier keuzes nog kunnen
+// tellen op het moment dat wij al doorlopen. De keuze verloopt vanzelf via
+// het vers-venster (LOBBY_VERS_MS).
+function teamLobbyVerlaat() {
+  try { if (_teamLobbyRef) _teamLobbyRef.off(); } catch (e) {}
+  if (_teamVernieuwTimer) { clearInterval(_teamVernieuwTimer); _teamVernieuwTimer = null; }
+  _teamLobbyRef = null;
+}
 
 // ─────────────────────────────────────────────────────────────────
 // Herberg-specifieke shared-state helpers.
@@ -4458,6 +4756,14 @@ function sluitTeaser() {
   document.getElementById('teaser-overlay').style.display = 'none';
 }
 
+// Begin op het splash-scherm: normaal eerst de teamkeuze, daarna de intro.
+// Is de sessie al expliciet gezet via ?sessie= (begeleider of testen), dan
+// slaan we de teamkeuze over en gaan direct naar de intro.
+function startBegin() {
+  if (window._sessieOverride) { showVerhaal(); return; }
+  toonTeamKeuze();
+}
+
 function showVerhaal() {
   showScreen('screen-intro');
   var vid = document.getElementById('intro-video');
@@ -5115,28 +5421,7 @@ function resetSpel() {
   state.codes = { kraai: 'KRAAIENKWARTIER' };
   state.lastZone = null;
   state.locatieOnbekend = false;
-  state.shared = {
-    dagboek_gerestaureerd: false,
-    filmpje_gezien: false,
-    herberg_binnen: [],
-    herberg_timer_start: null,
-    herberg_resterend: null,
-    herberg_klok_eigenaar: null,
-    herberg_fenna_gesimuleerd: null,
-    herberg_resultaat: null,
-    tobbe_gevonden: false,
-    woud_voltooid: [],
-    woud_klaar: [],
-    woudscene_klaar: [],
-    oude_kranten_ontdekt: false,
-    nummer7_aanwezig: [],
-    kerk_kelder_aanwezig: [],
-    podium_finale_aanwezig: [],
-    podium_verhaal_klaar: [],
-    kerk_verhaal_klaar: [],
-    podium_intro_aanwezig: [],
-    armen_gekozen: {},
-  };
+  state.shared = standaardGedeeldeState();
   // Wis ook de Firebase shared-node: de listener merget anders de oude
   // data (van een eerdere test) direct weer terug ("Firebase wint").
   try {
@@ -5272,6 +5557,11 @@ function kiesPersonage(p) {
 // De echte spelentree, zodra alle vier de rollen gekozen zijn.
 function startSpelNaKeuze() {
   var p = state.personage;
+  // Oplostijd: de klok start zodra alle vier de rollen bezet zijn. Eenmalig,
+  // gedeeld, zodat alle tablets (en het logboek) dezelfde starttijd zien.
+  if (typeof getSharedState === 'function' && !getSharedState('team_start')) {
+    setSharedState('team_start', gedeeldeTijdNu());
+  }
   // Debug-knop nu beschikbaar.
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
@@ -16434,6 +16724,11 @@ function pleinFinaleIntro() {
 // naweeën, de verteller en Kelly's slot (beats 7 tot 12).
 function pleinFinaleNaArmen() {
   var cont = document.getElementById('locatie-content');
+  // Oplostijd: de slotscene is bereikt, het spel is opgelost. Eindtijd
+  // eenmalig en gedeeld vastleggen (het logboek toont start, eind en duur).
+  if (typeof getSharedState === 'function' && !getSharedState('team_eind')) {
+    setSharedState('team_eind', gedeeldeTijdNu());
+  }
   dempMuziek();
   pfRoosReset();
   pfZetCinema(true);
@@ -20886,7 +21181,11 @@ function toonStemmenStil(stil) {
     // parameter niet meegeeft), dan komt hij toch in dezelfde sessie terecht
     // en vindt het herstel zijn herstelpunt. Zonder ooit een parameter blijft
     // alles gewoon 'test'.
-    var _zvSessieId = new URLSearchParams(window.location.search).get('sessie');
+    var _zvParamSessie = new URLSearchParams(window.location.search).get('sessie');
+    var _zvSessieId = _zvParamSessie;
+    // Een expliciete ?sessie= is de begeleider-sluiproute: die slaat de
+    // teamkeuze over (window._sessieOverride) en gebruikt die sessie direct.
+    window._sessieOverride = !!_zvParamSessie;
     try {
       if (_zvSessieId) localStorage.setItem('zw_sessie', _zvSessieId);
       else _zvSessieId = localStorage.getItem('zw_sessie');
