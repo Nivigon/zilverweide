@@ -2392,7 +2392,71 @@ function setSharedState(key, value) {
       });
     }
   }
+  // Logboek: leg vast wie wat schreef (bug-forensiek achteraf).
+  if (typeof logboekSchrijf === 'function' && !LOGBOEK_NEGEER_KEYS[key]) {
+    logboekSchrijf('shared', { key: key, waarde: value });
+  }
 }
+
+// ─────────────────────────────────────────────────────────────────
+// LOGBOEK (sessie-analyse)
+// Elke tablet schrijft een tijdreeks van gebeurtenissen naar
+// sessies/<sessie>/log: schermwissels, gedeelde schrijfacties, een
+// hartslag elke 30s en sleutelmomenten (paginaload, snelstart, reset,
+// herstel). Bewust een APARTE tak: geen enkele listener leest /log, dus
+// dit kan de gameplay of de sync niet beinvloeden. De losse logboek.html
+// leest deze tak uit om te zien waar spelers vastlopen, wat te lang duurt
+// en waar bugs zaten. Altijd aan; via het debugpaneel uit te zetten.
+// ─────────────────────────────────────────────────────────────────
+var LOGBOEK_AAN = true;
+try { if (localStorage.getItem('zw_logboek_uit') === '1') LOGBOEK_AAN = false; } catch (e) {}
+// Gedeelde schrijfacties die te vaak vuren om zinvol te loggen: de
+// zolderklok schrijft elke seconde de resterende tijd. Die slaan we over,
+// anders verzuipt het logboek in tellertjes.
+var LOGBOEK_NEGEER_KEYS = { herberg_resterend: true };
+
+function logboekRef() {
+  if (typeof firebase === 'undefined' || !firebase.database) return null;
+  try { return firebase.database().ref('sessies/' + herstelSessieId() + '/log'); }
+  catch (e) { return null; }
+}
+
+// Fire-and-forget: elke schrijffout wordt genegeerd zodat het logboek de
+// gameplay nooit kan ophouden of laten crashen.
+function logboekSchrijf(type, payload) {
+  if (!LOGBOEK_AAN) return;
+  var ref = logboekRef();
+  if (!ref) return;
+  var entry = {
+    t: (typeof gedeeldeTijdNu === 'function' ? gedeeldeTijdNu() : Date.now()),
+    rol: state.personage || '?',
+    apparaat: (typeof herstelApparaatId === 'function' ? herstelApparaatId() : null),
+    type: type
+  };
+  if (payload) { for (var k in payload) { if (payload.hasOwnProperty(k)) entry[k] = payload[k]; } }
+  try { ref.push(entry).catch(function () {}); } catch (e) {}
+}
+
+function logboekZetAan(aan) {
+  LOGBOEK_AAN = !!aan;
+  try { localStorage.setItem('zw_logboek_uit', aan ? '0' : '1'); } catch (e) {}
+  if (typeof toonToast === 'function') toonToast('📊', 'Logboek loggen ' + (aan ? 'aan' : 'uit'));
+}
+
+// Hartslag: elke 30s een monster van het huidige scherm. Zo is een speler
+// die lang op dezelfde plek blijft (vastgelopen) te onderscheiden van een
+// tablet die stilviel (dan stopt de hartslag helemaal). Pas actief zodra
+// een rol gekozen is.
+setInterval(function () {
+  try {
+    if (!state.personage) return;
+    var scherm = document.querySelector('.screen.active');
+    logboekSchrijf('hartslag', {
+      scherm: scherm ? scherm.id : null,
+      locatie: state.lastOpenedLocatie || null
+    });
+  } catch (e) {}
+}, 30000);
 
 // ─────────────────────────────────────────────────────────────────
 // Herberg-specifieke shared-state helpers.
@@ -3096,6 +3160,7 @@ function pasHerstelpuntToe(hp) {
   _herstelOvergenomen = false;
   _herstelClaimTijd = gedeeldeTijdNu();
   schrijfHerstelpuntNu(true);
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'herstel', doelrol: hp.rol });
 }
 
 // Debug: laatste herstelpunt inzien of wissen (knoppen in het debugpaneel).
@@ -4273,6 +4338,11 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
 
+  // Logboek: schermwissel vastleggen (tijdlijn voor verblijftijd-analyse).
+  if (typeof logboekSchrijf === 'function') {
+    logboekSchrijf('scherm', { scherm: id, locatie: state.lastOpenedLocatie || null });
+  }
+
   // Schaduw: meter loopt alleen op locatie-schermen. In overworld/invoer/zone-selectie
   // staat de meter stil. Bij terugkeer naar een locatie loopt hij weer door.
   if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.setOpLocatie) {
@@ -5007,6 +5077,9 @@ function resetSpel() {
   // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
   // tablets wissen. Daarom altijd eerst bevestigen.
   if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
+  // Logboek: de testmodus-reset laat de log-tak staan, dus dit moment is
+  // achteraf terug te vinden (in tegenstelling tot de volledige Firebase-reset).
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_testmodus' });
   // Intro-slot altijd los: anders zou een reset midden in de intro je met
   // dode knoppen achterlaten.
   zetIntroVergrendeling(false);
@@ -5173,6 +5246,7 @@ function debugSnelstart(p) {
     'Er lijkt al een sessie te lopen (andere rollen zijn bezet).\n\n' +
     'OK = verse testronde: gedeelde voortgang wordt gewist.\n' +
     'Annuleren = instappen zonder te wissen (herstel na een crash).');
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'snelstart', doelrol: p, reset: magResetten });
   if (magResetten) {
     ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
      'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
@@ -16722,6 +16796,10 @@ function buildDebugPanel() {
     ['💾 Herstelpunt nu opslaan', function(){ schrijfHerstelpuntNu(true); close(); }, true],
     ['🔎 Herstelpunt in console', function(){ herstelpuntNaarConsole(); close(); }, true],
     ['🗑️ Herstelpunt wissen (deze rol)', function(){ wisHerstelpunt(state.personage); close(); }, true],
+    // Logboek (sessie-analyse): open de losse analysepagina voor deze sessie,
+    // of zet het loggen aan/uit (staat standaard aan).
+    ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
+    ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
@@ -20822,6 +20900,11 @@ function toonStemmenStil(stil) {
     // Gedeelde state via Firebase initialiseren (ingrediënten, herberg, woud, etc.)
     if (typeof initSharedFirebase === 'function') {
       initSharedFirebase(_zvSessieId);
+    }
+    // Logboek: paginaload vastleggen. Elke herlaad (ook na een crash) is zo
+    // terug te vinden, met het gat in de hartslag ervoor.
+    if (typeof logboekSchrijf === 'function') {
+      logboekSchrijf('sessie', { actie: 'paginaload', versie: (typeof HERSTEL_VERSIE !== 'undefined' ? HERSTEL_VERSIE : null) });
     }
     // Bolletje-status updaten na korte vertraging (Firebase moet even laden)
     setTimeout(function () { if (typeof updateFirebaseBolletje === 'function') updateFirebaseBolletje(); }, 1500);
