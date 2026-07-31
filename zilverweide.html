@@ -2801,8 +2801,12 @@ var HERSTEL_VELDEN = [
   'dorendaelFinalePopupGetoond', 'dorendaelGokOpgelost', 'dorendaelGokCooldown',
   'hdFinalePopupGetoond', 'tobbeGokOpgelost', 'hdGokCooldown',
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
-  'opZolder', 'janVastInAchterkamer', 'vhTorenTellingGetoond',
+  'janVastInAchterkamer', 'vhTorenTellingGetoond',
   'locatieOnbekend', 'felixAfgepakt'
+  // opZolder staat hier bewust NIET: herstel landt altijd op straat, nooit
+  // boven. Zou het wel meegaan en herstelt Fenna terwijl de zolderscène nog
+  // loopt, dan speelt de oogleden-afsluiter over het straatscherm heen zodra
+  // de uitkomst valt. pasHerstelpuntToe zet het veld daarom expliciet op false.
 ];
 var _herstelTimer = null;
 var _herstelVorigeKern = '';
@@ -3050,7 +3054,7 @@ function pasHerstelpuntToe(hp) {
     state.activeKwartier = hp.activeKwartier || null;
     state.lastOpenedLocatie = hp.lastOpenedLocatie || null;
     state.locAfbeelding = null;   // bekende lekker tussen schermen: nooit mee herstellen
-
+    state.opZolder = false;       // herstel landt op straat, nooit op de zolder
     var zu = hp.zoneUnlocked || {};
     Object.keys(zoneUnlocked).forEach(function (z) { zoneUnlocked[z] = !!zu[z]; });
     zoneUnlocked['dorpsplein'] = true;
