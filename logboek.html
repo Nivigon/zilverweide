@@ -183,6 +183,15 @@ function analyse(sessie) {
     res.dwellPerRol[rol] = dwell;
     res.gatenPerRol[rol] = gaten;
   }
+  // Teamnaam en oplostijd (uit meta en de gedeelde stand).
+  var meta = sessie && sessie.meta;
+  var shared = sessie && sessie.shared;
+  res.team = (meta && meta.team) || null;
+  res.slug = (meta && meta.slug) || null;
+  res.aangemaakt = (meta && meta.aangemaakt) || res.start;
+  res.teamStart = (shared && shared.team_start) || null;
+  res.teamEind = (shared && shared.team_eind) || null;
+  res.oplostijd = (res.teamStart && res.teamEind) ? (res.teamEind - res.teamStart) : null;
   return res;
 }
 
@@ -217,10 +226,15 @@ function renderDetail(id) {
   html += '</div>';
 
   // Samenvatting
-  html += '<div class="kaart"><h2>Sessie ' + esc(id) + '</h2>';
+  html += '<div class="kaart"><h2>' + esc(a.team || id) + '</h2>';
+  if (a.team) html += '<div class="rij"><span class="tijd">team</span>' + esc(a.team) + '</div>';
+  html += '<div class="rij"><span class="tijd">sessie-id</span><code>' + esc(id) + '</code></div>';
   html += '<div class="rij"><span class="tijd">start</span>' + esc(datumStr(a.start)) + '</div>';
   html += '<div class="rij"><span class="tijd">eind</span>' + esc(datumStr(a.eind)) + '</div>';
   html += '<div class="rij"><span class="tijd">duur</span>' + esc(duurStr((a.eind || 0) - (a.start || 0))) + '</div>';
+  if (a.oplostijd != null) {
+    html += '<div class="rij"><span class="tijd">oplostijd</span><strong style="color:var(--goud)">' + esc(duurStr(a.oplostijd)) + '</strong> <span style="color:var(--mist)">(van vier gekozen tot slotscene)</span></div>';
+  }
   html += '<div class="rij"><span class="tijd">rollen</span>' + (rollen.length ? esc(rollen.join(', ')) : 'geen') + '</div>';
   html += '</div>';
 
@@ -306,14 +320,33 @@ function renderLijst() {
     var ax = analyse(_sessies[x]).eind || 0, ay = analyse(_sessies[y]).eind || 0;
     return ay - ax;
   });
+  // Nummer sessies met dezelfde teamnaam op volgorde van aanmaken, zodat een
+  // naam die op een dag vaker gespeeld is als "2e", "3e" te herkennen is.
+  var perSlugVolgorde = {};
+  Object.keys(_sessies).forEach(function (sid) {
+    var aa = analyse(_sessies[sid]);
+    var sleutel = aa.slug || aa.team || sid;
+    (perSlugVolgorde[sleutel] = perSlugVolgorde[sleutel] || []).push({ sid: sid, t: aa.aangemaakt || aa.start || 0 });
+  });
+  var volgnr = {};
+  Object.keys(perSlugVolgorde).forEach(function (sleutel) {
+    perSlugVolgorde[sleutel].sort(function (x, y) { return (x.t || 0) - (y.t || 0); });
+    perSlugVolgorde[sleutel].forEach(function (item, i) { volgnr[item.sid] = i + 1; });
+  });
+
   var html = '';
   ids.forEach(function (id) {
     var a = analyse(_sessies[id]);
     var rollen = Object.keys(a.rollen).length;
+    var sleutel = a.slug || a.team || id;
+    var n = volgnr[id] || 1;
+    var totaal = (perSlugVolgorde[sleutel] || []).length;
+    var titel = a.team ? esc(a.team) + (totaal > 1 ? ' <span style="color:var(--mist)">(' + n + 'e)</span>' : '') : esc(id);
+    var extra = a.oplostijd != null ? ' · opgelost in ' + esc(duurStr(a.oplostijd)) : '';
     html += '<div class="sessie-item" data-id="' + esc(id) + '" onclick="kies(\'' + esc(id) + '\')">' +
-      '<div class="naam">' + esc(id) + '</div>' +
+      '<div class="naam">' + titel + '</div>' +
       '<div class="meta">' + (a.start ? esc(datumStr(a.start)) : 'geen log') + '</div>' +
-      '<div class="meta">' + rollen + ' rollen · ' + esc(duurStr((a.eind || 0) - (a.start || 0))) + '</div>' +
+      '<div class="meta">' + rollen + ' rollen · ' + esc(duurStr((a.eind || 0) - (a.start || 0))) + extra + '</div>' +
       '</div>';
   });
   lijst.innerHTML = html;
@@ -361,8 +394,11 @@ function downloadMd(id) {
   var a = analyse(sessie);
   var rollen = Object.keys(a.rollen).sort();
   var L = [];
-  L.push('# Sessie ' + id);
+  L.push('# ' + (a.team || id));
   L.push('');
+  if (a.team) L.push('- Team: ' + a.team);
+  L.push('- Sessie-id: ' + id);
+  if (a.oplostijd != null) L.push('- Oplostijd: ' + duurStr(a.oplostijd) + ' (van vier gekozen tot slotscene)');
   L.push('- Start: ' + datumStr(a.start));
   L.push('- Eind: ' + datumStr(a.eind));
   L.push('- Duur: ' + duurStr((a.eind || 0) - (a.start || 0)));
