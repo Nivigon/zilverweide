@@ -1624,6 +1624,18 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
+    <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
+         laatste herstelpunt van die speler uit de sessie en zet hem terug
+         in zijn straat, met inventaris en voortgang intact. -->
+    <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
+      style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
+      onkeydown="if(event.key==='Enter')herstelViaNaam()">
+    <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
+    <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+    <!-- Actieve sessienaam. Sinds ?sessie= lokaal onthouden wordt kan een
+         tablet zonder parameter in een eerdere echte sessie zitten; dat
+         moet je hier kunnen zien voordat je speelt of reset. -->
+    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8"></div>
   </div>
   <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
@@ -2754,6 +2766,7 @@ function markVisited(flag) {
   if (wasNieuw && HEER_DONATUSLAAN_MISSIE_KEYS.indexOf(flag) !== -1) {
     onMissieKeyVoltooid(HEER_DONATUSLAAN_MISSIE_LABELS[flag] || 'Stap voltooid');
   }
+  bewaarHerstelpunt();
 }
 function hasVisited(flag) {
   if (!(flag in VISITED_FLAGS)) {
@@ -2763,6 +2776,342 @@ function hasVisited(flag) {
   if (state.visited.has(flag)) return true;
   if (SHARED_VISITED_FLAGS.indexOf(flag) !== -1 && state.shared['vflag_' + flag]) return true;
   return false;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// HERSTELPUNT (crash-herstel per rol)
+// Elke tablet schrijft zijn eigen voortgang naar
+// sessies/<sessie>/spelers/<rol>/herstelpunt, bewust los van /shared:
+// de shared-listener merget alles wat daar staat in state.shared van
+// alle vier de tablets, en persoonlijke voortgang mag nooit bij een
+// andere speler terechtkomen. Daarnaast een lokale kopie in
+// localStorage als vangnet bij slechte wifi (alleen bruikbaar op
+// dezelfde tablet). Herstellen gaat via het naamveld op het
+// splash-scherm (testmodus), zie herstelViaNaam hieronder.
+// ─────────────────────────────────────────────────────────────────
+var HERSTEL_VERSIE = 1;
+// Losse state-velden die meegaan in het herstelpunt. Nieuw veld in state
+// dat een herlaad moet overleven? Hier toevoegen. Bewust NIET erin:
+// locAfbeelding (lekte eerder tussen schermen), debugSkipBezig,
+// pendingBubble, laatsteSceneTitel, schaduwGedropt en janTorenDitBezoek
+// (allemaal tijdelijk), en de schaduwmeter (na een crash schone lei).
+var HERSTEL_VELDEN = [
+  'heksOpgelost', 'heksCooldown', 'kraaiCooldown',
+  'finalePopupGetoond',
+  'dorendaelFinalePopupGetoond', 'dorendaelGokOpgelost', 'dorendaelGokCooldown',
+  'hdFinalePopupGetoond', 'tobbeGokOpgelost', 'hdGokCooldown',
+  'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
+  'opZolder', 'janVastInAchterkamer', 'vhTorenTellingGetoond',
+  'locatieOnbekend', 'felixAfgepakt'
+];
+var _herstelTimer = null;
+var _herstelVorigeKern = '';
+var _herstelOvergenomen = false;   // andere tablet nam deze rol over: stoppen met schrijven
+var _herstelWatchActief = false;
+var _herstelBezig = false;         // tijdens het terugzetten zelf niet schrijven
+var _herstelClaimTijd = 0;         // moment waarop deze tablet de rol via herstel claimde
+
+function herstelSessieId() { return _sharedSessieId || 'test'; }
+
+// Vast apparaat-id per tablet (overleeft herladen). Hiermee merkt een oude
+// tablet dat de rol elders is hersteld, zodat hij het verse herstelpunt
+// niet overschrijft met zijn eigen verouderde stand.
+function herstelApparaatId() {
+  var id = null;
+  try { id = localStorage.getItem('zw_apparaat_id'); } catch (e) {}
+  if (!id) {
+    id = 'ap_' + Math.random().toString(36).slice(2, 10);
+    try { localStorage.setItem('zw_apparaat_id', id); } catch (e) {}
+  }
+  return id;
+}
+
+function herstelLsKey(rol) { return 'zw_herstelpunt_' + herstelSessieId() + '_' + rol; }
+
+function maakHerstelpunt() {
+  // Sets als map ({vlag: true}) in plaats van array: Firebase geeft arrays
+  // na een echo soms als object terug, een map heeft die dubbelzinnigheid niet.
+  var visited = {};
+  state.visited.forEach(function (f) { visited[f] = true; });
+  var bezocht = {};
+  state.visitedLocations.forEach(function (l) { bezocht[l] = true; });
+  var velden = {};
+  HERSTEL_VELDEN.forEach(function (k) {
+    if (state[k] !== undefined && state[k] !== null) velden[k] = state[k];
+  });
+  return {
+    versie: HERSTEL_VERSIE,
+    tijd: gedeeldeTijdNu(),
+    apparaat: herstelApparaatId(),
+    rol: state.personage,
+    zone: state.zone || null,
+    lastZone: state.lastZone || null,
+    activeKwartier: state.activeKwartier || null,
+    lastOpenedLocatie: state.lastOpenedLocatie || null,
+    vermomming: state.vermomming || null,
+    inventory: state.inventory.slice(),
+    visited: visited,
+    visitedLocations: bezocht,
+    zoneUnlocked: {
+      dorpsplein: !!zoneUnlocked.dorpsplein,
+      kraaienkwartier: !!zoneUnlocked.kraaienkwartier,
+      dorendael: !!zoneUnlocked.dorendael,
+      sintdonatuslaan: !!zoneUnlocked.sintdonatuslaan
+    },
+    velden: velden
+  };
+}
+
+// Debounced opslaan. Aangeroepen vanuit markVisited, updateInventoryBar,
+// showScreen, unlockZone en updateVermommingBadge; vlak na elkaar vurende
+// hooks leveren zo maar 1 schrijfactie op.
+function bewaarHerstelpunt() {
+  if (!state.personage || _herstelBezig || _herstelOvergenomen) return;
+  if (document.getElementById('rol-wacht')) return;   // nog op het wachtscherm
+  clearTimeout(_herstelTimer);
+  _herstelTimer = setTimeout(function () { schrijfHerstelpuntNu(false); }, 800);
+}
+
+function schrijfHerstelpuntNu(forceer) {
+  if (!state.personage || _herstelBezig || _herstelOvergenomen) return;
+  clearTimeout(_herstelTimer);
+  var hp;
+  try { hp = maakHerstelpunt(); } catch (e) { console.warn('herstelpunt maken mislukt:', e); return; }
+  // Alleen schrijven als er echt iets veranderd is (tijd en apparaat tellen
+  // niet mee, anders is elke vergelijking altijd "veranderd").
+  var kern = JSON.stringify([hp.rol, hp.zone, hp.lastZone, hp.activeKwartier,
+    hp.lastOpenedLocatie, hp.vermomming, hp.inventory, hp.visited,
+    hp.visitedLocations, hp.zoneUnlocked, hp.velden]);
+  if (!forceer && kern === _herstelVorigeKern) return;
+  _herstelVorigeKern = kern;
+  try { localStorage.setItem(herstelLsKey(hp.rol), JSON.stringify(hp)); } catch (e) {}
+  if (typeof firebase !== 'undefined' && firebase.database) {
+    try {
+      firebase.database().ref('sessies/' + herstelSessieId() + '/spelers/' + hp.rol + '/herstelpunt').set(hp)
+        .then(function () { startHerstelWatch(hp.rol); })
+        .catch(function (e) { console.warn('herstelpunt schrijven mislukt:', e); });
+    } catch (e) { console.warn('herstelpunt schrijven mislukt:', e); }
+  }
+}
+
+// Vangnet: elke 20s controleren of er iets te schrijven valt. Vangt velden
+// die buiten de hooks om veranderen (bv. opZolder tijdens de herberg).
+setInterval(function () { try { bewaarHerstelpunt(); } catch (e) {} }, 20000);
+window.addEventListener('pagehide', function () { try { schrijfHerstelpuntNu(false); } catch (e) {} });
+
+// Merkt op dat deze rol elders hersteld is: het apparaat-veld in Firebase
+// verandert dan naar een ander id. Deze (oude) tablet stopt met schrijven.
+function startHerstelWatch(rol) {
+  if (_herstelWatchActief) return;
+  if (typeof firebase === 'undefined' || !firebase.database) return;
+  _herstelWatchActief = true;
+  try {
+    firebase.database().ref('sessies/' + herstelSessieId() + '/spelers/' + rol + '/herstelpunt/apparaat')
+      .on('value', function (s) {
+        var v = s.val();
+        if (v && v !== herstelApparaatId()) {
+          // Race-venster: hebben WIJ deze rol net via herstel geclaimd en
+          // schrijft de oude tablet er nog net overheen, dan wijken we niet
+          // maar stempelen we opnieuw. De oude tablet ziet die stempel en
+          // stopt. Buiten het venster geldt: de ander heeft hersteld, wij
+          // stoppen met schrijven.
+          if (gedeeldeTijdNu() - _herstelClaimTijd < 15000) {
+            schrijfHerstelpuntNu(true);
+            return;
+          }
+          _herstelOvergenomen = true;
+          if (typeof toonToast === 'function') toonToast('⚠️', 'Deze rol draait nu op een ander apparaat');
+        }
+      });
+  } catch (e) { _herstelWatchActief = false; }
+}
+
+// ── Herstellen via het naamveld op het splash-scherm ──
+var HERSTEL_NAAM_NAAR_ROL = {
+  jan: 'jan', kelly: 'kelly', fenna: 'fenna', 'fenna-vivienne': 'fenna',
+  fennavivienne: 'fenna', vivienne: 'fenna', felix: 'felix', vos: 'felix', 'de vos': 'felix'
+};
+
+function herstelMsg(t) {
+  var el = document.getElementById('herstel-msg');
+  if (el) el.textContent = t || '';
+}
+
+function herstelViaNaam() {
+  var input = document.getElementById('herstel-naam');
+  var naam = ((input && input.value) || '').trim().toLowerCase();
+  var rol = HERSTEL_NAAM_NAAR_ROL[naam];
+  if (!rol) { herstelMsg('Onbekende naam. Gebruik Jan, Kelly, Fenna of Felix.'); return; }
+  herstelMsg('Zoeken...');
+  haalHerstelpunt(rol, function (hp, bron) {
+    if (!hp) {
+      herstelMsg('Geen herstelpunt voor ' + rol + ' in sessie "' + herstelSessieId() + '". Gebruik eventueel een snelstart plus de skip-knoppen in het debugpaneel.');
+      return;
+    }
+    if (hp.versie !== HERSTEL_VERSIE) {
+      herstelMsg('Herstelpunt is van een oudere spelversie en kan niet veilig geladen worden. Gebruik een snelstart plus de skip-knoppen in het debugpaneel.');
+      return;
+    }
+    herstelMsg('');
+    toonHerstelBevestiging(hp, bron);
+  });
+}
+
+// Firebase eerst; lukt dat niet (of staat er niets), dan de lokale kopie.
+// Met een wachttijd-vangnet: bij een onbereikbare database geeft Firebase
+// geen antwoord en ook geen fout (hij blijft eindeloos opnieuw verbinden),
+// waardoor once() nooit terugkomt. Zonder dit vangnet bleef het naamveld
+// hangen op "Zoeken..." en werd de lokale kopie, die juist voor slechte
+// wifi bestaat, nooit gebruikt.
+function haalHerstelpunt(rol, klaar) {
+  var lokaal = null;
+  try { lokaal = JSON.parse(localStorage.getItem(herstelLsKey(rol)) || 'null'); } catch (e) {}
+  var afgerond = false;
+  function geef(hp, bron) {
+    if (afgerond) return;
+    afgerond = true;
+    klaar(hp, bron);
+  }
+  if (typeof firebase !== 'undefined' && firebase.database) {
+    try {
+      setTimeout(function () { geef(lokaal, lokaal ? 'lokaal' : null); }, 4000);
+      firebase.database().ref('sessies/' + herstelSessieId() + '/spelers/' + rol + '/herstelpunt')
+        .once('value')
+        .then(function (snap) {
+          var hp = snap.val();
+          if (hp) geef(hp, 'firebase');
+          else geef(lokaal, lokaal ? 'lokaal' : null);
+        })
+        .catch(function () { geef(lokaal, lokaal ? 'lokaal' : null); });
+      return;
+    } catch (e) {}
+  }
+  geef(lokaal, lokaal ? 'lokaal' : null);
+}
+
+function herstelLeeftijdTekst(tijd) {
+  if (!tijd) return 'tijd onbekend';
+  var sec = Math.max(0, Math.round((gedeeldeTijdNu() - tijd) / 1000));
+  if (sec < 60) return 'net opgeslagen';
+  var min = Math.round(sec / 60);
+  if (min < 60) return min + ' min geleden';
+  var uur = Math.round(min / 60);
+  if (uur < 24) return uur + ' uur geleden';
+  return Math.round(uur / 24) + ' dagen geleden';
+}
+
+function toonHerstelBevestiging(hp, bron) {
+  var zoneNamen = { dorpsplein: 'Dorpsplein', kraaienkwartier: 'Kraaienkwartier', dorendael: 'Dorendael', sintdonatuslaan: 'Heer Donatuslaan' };
+  var zoneNaam = zoneNamen[hp.zone || hp.lastZone] || 'Dorpsplein';
+  var inv = Array.isArray(hp.inventory) ? hp.inventory : Object.values(hp.inventory || {});
+  var naam = (typeof personageRollen !== 'undefined' && personageRollen[hp.rol]) || hp.rol;
+  var oud = document.getElementById('herstel-bevestig');
+  if (oud) oud.remove();
+  var ov = document.createElement('div');
+  ov.id = 'herstel-bevestig';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:540;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
+  ov.innerHTML =
+    '<div style="max-width:26rem;text-align:center;background:linear-gradient(180deg,#160f08,#0d0a06);border:1px solid var(--gold-dim);border-radius:8px;padding:1.6rem 1.5rem;box-shadow:0 0 40px rgba(0,0,0,.7)">' +
+      '<div style="font-family:Cinzel,serif;font-size:1.1rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.9rem">Herstelpunt gevonden</div>' +
+      '<p style="font-family:\'Crimson Text\',Georgia,serif;font-size:1rem;line-height:1.7;color:var(--parchment);margin:0 0 1.3rem">' +
+        naam + ' &middot; ' + zoneNaam + ' &middot; ' + inv.length + ' voorwerpen<br>' +
+        herstelLeeftijdTekst(hp.tijd) +
+        (bron === 'lokaal' ? '<br><span style="color:#d4826e">Let op: uit de lokale kopie (Firebase onbereikbaar)</span>' : '') +
+      '</p>' +
+      '<button id="herstel-bevestig-ja" class="spel-lade-knop" style="margin-bottom:.55rem">Zet mij terug</button>' +
+      '<button id="herstel-bevestig-nee" class="spel-lade-knop" style="border-color:rgba(201,168,76,.2);color:var(--gold-dim);background:transparent">Annuleer</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  document.getElementById('herstel-bevestig-ja').onclick = function () { ov.remove(); pasHerstelpuntToe(hp); };
+  document.getElementById('herstel-bevestig-nee').onclick = function () { ov.remove(); };
+}
+
+// Map- of arrayvorm terug naar een lijst sleutels (zie maakHerstelpunt).
+function herstelSleutels(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  return Object.keys(v).filter(function (k) { return v[k]; });
+}
+
+function pasHerstelpuntToe(hp) {
+  _herstelBezig = true;
+  try {
+    var rol = hp.rol;
+    state.personage = rol;
+    rolTestFase = false;
+    zetRolBezet(rol, true);   // stond al op bezet; expliciet bevestigen kan geen kwaad
+
+    state.visited = new Set(herstelSleutels(hp.visited));
+    state.visitedLocations = new Set(herstelSleutels(hp.visitedLocations));
+    state.inventory = Array.isArray(hp.inventory) ? hp.inventory.slice() : Object.values(hp.inventory || {});
+    state.vermomming = hp.vermomming || null;
+    state.zone = hp.zone || 'dorpsplein';
+    state.lastZone = hp.lastZone || null;
+    state.activeKwartier = hp.activeKwartier || null;
+    state.lastOpenedLocatie = hp.lastOpenedLocatie || null;
+    state.locAfbeelding = null;   // bekende lekker tussen schermen: nooit mee herstellen
+
+    var zu = hp.zoneUnlocked || {};
+    Object.keys(zoneUnlocked).forEach(function (z) { zoneUnlocked[z] = !!zu[z]; });
+    zoneUnlocked['dorpsplein'] = true;
+
+    var velden = hp.velden || {};
+    HERSTEL_VELDEN.forEach(function (k) { if (velden[k] !== undefined) state[k] = velden[k]; });
+
+    // UI en modules bijwerken, dezelfde stappen als startSpelNaKeuze.
+    // Nadrukkelijk GEEN enkele reset van gedeelde stand: dat is het
+    // verschil met de snelstartknoppen.
+    if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.setSpelerId) {
+      window.ZilverweideSchaduw.setSpelerId(rol);
+    }
+    showAvatarBadge(rol);
+    updateVermommingBadge();
+    var dbg = document.getElementById('debug-btn');
+    if (dbg) dbg.style.display = '';
+    var m = document.getElementById('bg-music');
+    if (m) { m.volume = 0.45; m.play().catch(function () {}); }
+    updateInventoryBar();
+
+    // Terug de straat in (veilig ankerpunt), nooit midden in een scene of
+    // puzzel. Zit de speler ergens vast (put, vijver, H2), dan stuurt de
+    // vastzit-gate in showScreen hem vanzelf door naar die locatie.
+    var doelZone = hp.zone || hp.lastZone || 'dorpsplein';
+    var schermen = { kraaienkwartier: 'screen-kwartier1', dorendael: 'screen-dorendael', sintdonatuslaan: 'screen-sintdonatuslaan' };
+    var indicators = {
+      kraaienkwartier: ['kraaienkwartier', '🐦‍⬛', 'Kraaienkwartier'],
+      dorendael: ['dorendael', '🌲', 'Dorendael'],
+      sintdonatuslaan: ['sintdonatuslaan', '⚜️', 'Heer Donatuslaan']
+    };
+    showScreen(schermen[doelZone] || 'screen-overworld');
+    var ind = indicators[doelZone] || ['dorpsplein', '👥', 'Dorpsplein'];
+    updateIndicator(ind[0], ind[1], ind[2]);
+  } finally {
+    _herstelBezig = false;
+  }
+  // Vanaf nu is dit het apparaat van deze rol: nieuw herstelpunt stempelen.
+  _herstelOvergenomen = false;
+  _herstelClaimTijd = gedeeldeTijdNu();
+  schrijfHerstelpuntNu(true);
+}
+
+// Debug: laatste herstelpunt inzien of wissen (knoppen in het debugpaneel).
+function herstelpuntNaarConsole() {
+  console.log('HERSTELPUNT (huidige stand, nog niet per se opgeslagen):', maakHerstelpunt());
+  if (state.personage) {
+    haalHerstelpunt(state.personage, function (hp, bron) {
+      console.log('HERSTELPUNT (opgeslagen, bron: ' + (bron || 'geen') + '):', hp);
+    });
+  }
+  if (typeof toonToast === 'function') toonToast('💾', 'Herstelpunt staat in de console');
+}
+function wisHerstelpunt(rol) {
+  if (!rol) return;
+  try { localStorage.removeItem(herstelLsKey(rol)); } catch (e) {}
+  if (typeof firebase !== 'undefined' && firebase.database) {
+    try { firebase.database().ref('sessies/' + herstelSessieId() + '/spelers/' + rol + '/herstelpunt').remove().catch(function () {}); } catch (e) {}
+  }
+  _herstelVorigeKern = '';
+  if (typeof toonToast === 'function') toonToast('🗑️', 'Herstelpunt van ' + rol + ' gewist');
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -4017,6 +4366,7 @@ function showScreen(id) {
   
   // Clear all pending input fields to prevent stale callbacks
   document.querySelectorAll('.code-input:not(#zone-invoer-input), .zone-code-row input, #code-k-locatie, #code-dp-locatie, #code-dd-locatie').forEach(el => { el.value = ''; });
+  bewaarHerstelpunt();
 }
 
 function toonTeaser() {
@@ -4652,7 +5002,7 @@ function resetSpel() {
   // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
   // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
   // tablets wissen. Daarom altijd eerst bevestigen.
-  if (!confirm('Alles resetten? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
+  if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
   // Intro-slot altijd los: anders zou een reset midden in de intro je met
   // dode knoppen achterlaten.
   zetIntroVergrendeling(false);
@@ -4717,6 +5067,19 @@ function resetSpel() {
       _sharedDbRef.remove().catch(function(e){ console.warn('Firebase shared reset mislukt:', e); });
     }
   } catch (e) {}
+  // Herstelpunten horen bij de ronde die we net wissen: ook weg (Firebase
+  // en de lokale kopieen), anders kan iemand na de reset via het naamveld
+  // een verouderde stand van de vorige ronde terugladen.
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('sessies/' + herstelSessieId() + '/spelers').remove().catch(function () {});
+    }
+  } catch (e) {}
+  ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
+    try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
+  });
+  _herstelVorigeKern = '';
+  _herstelOvergenomen = false;
 
   // Zone-unlocks resetten naar default (alleen overworld zichtbaar,
   // alle districten op slot tot ze legitiem worden ontgrendeld).
@@ -4922,6 +5285,7 @@ function updateInventoryBar() {
   // inventaris-overzicht. Een nieuw voorwerp verschijnt kort naast de knop.
   updateInvTeller();
   updateMissieTeller();
+  bewaarHerstelpunt();
 }
 
 // Rond telcirkeltje: toont het aantal voorwerpen en knippert zolang er iets
@@ -11478,6 +11842,7 @@ function updateVermommingBadge() {
   } else {
     badge.style.display = 'none';
   }
+  bewaarHerstelpunt();
 }
 
 function goBackFromLocatie() {
@@ -13894,6 +14259,7 @@ function unlockZone(zone) {
   updateOverworldTiles();
   // Story-teller activeren of switchen bij elke zone-unlock.
   updateMissieTeller();
+  bewaarHerstelpunt();
 }
 
 function updateIndicator(zone, symbol, name) {
@@ -16348,6 +16714,10 @@ function buildDebugPanel() {
     ['💃 Kleed om naar Lola',    function(){ debugVermomFelix('Lola'); }, isFelix],
     ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix],
     ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming],
+    // Herstelpunt (crash-herstel): forceer een save, kijk wat er staat, of wis.
+    ['💾 Herstelpunt nu opslaan', function(){ schrijfHerstelpuntNu(true); close(); }, true],
+    ['🔎 Herstelpunt in console', function(){ herstelpuntNaarConsole(); close(); }, true],
+    ['🗑️ Herstelpunt wissen (deze rol)', function(){ wisHerstelpunt(state.personage); close(); }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
@@ -20244,15 +20614,31 @@ function firebaseVolleReset() {
     alert('Firebase is niet geladen.');
     return;
   }
-  if (!confirm('Alles resetten in Firebase? (schaduw + alle gedeelde state)')) return;
-  var sessieId = window.ZilverweideSchaduw && window.ZilverweideSchaduw.getSessieId ? window.ZilverweideSchaduw.getSessieId() : 'test';
+  // Zelfde bron als schaduwFirebaseReset: getSessieId bestaat niet in de
+  // schaduw-module, waardoor deze reset altijd op 'test' uitkwam, ook in een
+  // sessie met een eigen naam.
+  var sessieId = _sharedSessieId || 'test';
   if (!sessieId) { alert('Geen sessie-ID.'); return; }
+  // De sessienaam MOET in de vraag staan: sinds ?sessie= lokaal onthouden
+  // wordt kan een tablet zonder parameter stilletjes in een echte sessie
+  // zitten, en dan zou je hier denken dat je 'test' aan het schonen bent.
+  if (!confirm('Alles resetten in Firebase-sessie "' + sessieId + '"?\n(schaduw + alle gedeelde state + herstelpunten)')) return;
   firebase.database().ref('sessies/' + sessieId).remove()
     .then(function () {
       alert('Firebase volledig gereset voor sessie: ' + sessieId);
       updateFirebaseBolletje();
     })
     .catch(function (e) { alert('Fout: ' + e.message); });
+  // Herstelpunten: de spelers-tak gaat met de sessie mee weg; de lokale
+  // kopieen ook wissen zodat een oud punt niet als vangnet terugkomt.
+  ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
+    try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
+  });
+  _herstelVorigeKern = '';
+  // Kreeg deze tablet ooit "rol draait op een ander apparaat", dan stond
+  // het schrijven van herstelpunten uit. Na een volledige reset begint
+  // alles opnieuw, dus mag deze tablet ook weer schrijven.
+  _herstelOvergenomen = false;
   if (window.ZilverweideSchaduw) {
     window.ZilverweideSchaduw.kalmeer();
   }
@@ -20261,7 +20647,8 @@ function updateFirebaseBolletje() {
   var btn = document.getElementById('firebase-reset-btn');
   if (!btn) return;
   if (typeof firebase === 'undefined' || !firebase.database) { btn.textContent = '⚪'; return; }
-  var sessieId = window.ZilverweideSchaduw && window.ZilverweideSchaduw.getSessieId ? window.ZilverweideSchaduw.getSessieId() : 'test';
+  // Zelfde sessie-bron als de resets hierboven (getSessieId bestaat niet).
+  var sessieId = _sharedSessieId || 'test';
   if (!sessieId) { btn.textContent = '⚪'; return; }
   firebase.database().ref('sessies/' + sessieId).once('value').then(function (snap) {
     btn.textContent = snap.exists() ? '🔴' : '🟢';
@@ -20332,7 +20719,9 @@ function setSchaduwStatus() {
   var fbEl = document.getElementById('schaduw-firebase-status');
   if (fbEl && window.ZilverweideSchaduw) {
     var fbAan = window.ZilverweideSchaduw.isFirebaseActief && window.ZilverweideSchaduw.isFirebaseActief();
-    var sid = window.ZilverweideSchaduw.getSessieId && window.ZilverweideSchaduw.getSessieId();
+    // Zelfde sessie-bron als de resets: getSessieId bestaat niet in de
+    // schaduw-module, dus hier stond altijd "undefined" in beeld.
+    var sid = _sharedSessieId || 'test';
     var sharedOk = typeof _sharedListenerActief !== 'undefined' && _sharedListenerActief;
     fbEl.textContent = fbAan ? ('🟢 Firebase: ' + sid + (sharedOk ? ' (shared sync ✓)' : ' (shared wacht...)')) : '⚫ Lokaal (geen sessie)';
   }
@@ -20410,7 +20799,21 @@ function toonStemmenStil(stil) {
   if (window.ZilverweideSchaduw) {
     // Sessie-ID: gedeeld tussen alle tablets. Standaard 'test' voor lokaal testen.
     // In productie wordt dit per speelronde uniek gemaakt.
-    var _zvSessieId = new URLSearchParams(window.location.search).get('sessie') || 'test';
+    // Een expliciete ?sessie= wordt lokaal onthouden: start de tablet later
+    // zonder parameter op (bv. na een crash via het app-icoon, dat de
+    // parameter niet meegeeft), dan komt hij toch in dezelfde sessie terecht
+    // en vindt het herstel zijn herstelpunt. Zonder ooit een parameter blijft
+    // alles gewoon 'test'.
+    var _zvSessieId = new URLSearchParams(window.location.search).get('sessie');
+    try {
+      if (_zvSessieId) localStorage.setItem('zw_sessie', _zvSessieId);
+      else _zvSessieId = localStorage.getItem('zw_sessie');
+    } catch (e) {}
+    if (!_zvSessieId) _zvSessieId = 'test';
+    // Toon de actieve sessienaam op het splash-scherm (testmodus-hoekje),
+    // zodat een onthouden sessie nooit ongemerkt blijft.
+    var _zvSessieEl = document.getElementById('sessie-indicator');
+    if (_zvSessieEl) _zvSessieEl.textContent = 'sessie: ' + _zvSessieId;
 
     // Gedeelde state via Firebase initialiseren (ingrediënten, herberg, woud, etc.)
     if (typeof initSharedFirebase === 'function') {
