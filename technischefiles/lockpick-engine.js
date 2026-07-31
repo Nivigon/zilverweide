@@ -240,7 +240,11 @@
     ]);
     spelScreen.appendChild(status);
 
-    var zetBtn = el('button', { class: 'lp-zet-btn', onclick: function () { self.zet(); } }, [
+    // pointerdown in plaats van click: op iOS wacht een click op een pagina die
+    // dubbeltik-zoomen toestaat nog ongeveer 300ms op een mogelijke tweede tik.
+    // Bij een accept-venster van rond de 170ms is dat het verschil tussen wel
+    // en niet kunnen timen. Zie ook touch-action in lockpick.css.
+    var zetBtn = el('button', { class: 'lp-zet-btn', onpointerdown: function (e) { e.preventDefault(); self.zet(); } }, [
       el('span', { class: 'lp-zet-icon', text: '⤒' }), el('span', { class: 'lp-zet-label', text: 'Zet' })
     ]);
     spelScreen.appendChild(zetBtn);
@@ -338,7 +342,19 @@
     this._laadSlot(0);
     this._toonScreen('spel');
     this._updateFouten(); this._plaatsSfeer();
-    if (!this._resizeH) { var self = this; this._resizeH = function () { self._plaatsSfeer(); }; window.addEventListener('resize', this._resizeH); }
+    if (!this._resizeH) {
+      var self = this;
+      this._resizeH = function () {
+        self._plaatsSfeer();
+        // Baanhoogte verandert mee, dus opnieuw meten en de pinnen herplaatsen.
+        self._meetBanen();
+        for (var i = 0; i < self._trackNodes.length; i++) {
+          var h = self._state.gezet[i];
+          self._zetToken(i, h != null ? h : 0, h != null);
+        }
+      };
+      window.addEventListener('resize', this._resizeH);
+    }
     this._startMuziek();
     this._startGeluid();
     this._startLoop();
@@ -496,6 +512,10 @@
     slot.appendChild(tracks);
     slot.appendChild(el('div', { class: 'lp-schaar' }));           // schaarlijn-decor
     slot.appendChild(el('div', { class: 'lp-keyway' }));           // sleutelgat-decor
+    // Baanhoogte in pixels onthouden. De pin beweegt met transform (zie
+    // _zetToken); daarvoor is een pixelafstand nodig, want een translateY in
+    // procenten rekent met de hoogte van de pin zelf, niet van de baan.
+    this._meetBanen();
     // zet reeds gezette pinnen + ruststand
     for (var j = 0; j < n; j++) {
       if (this._state.gezet[j] != null) this._zetToken(j, this._state.gezet[j], true);
@@ -503,9 +523,21 @@
     }
     this._zetActieveZone();
   };
+  // Meet de hoogte van elke baan. Apart gehouden zodat een resize hem opnieuw
+  // kan opnemen zonder het slot te herbouwen.
+  Lockpick.prototype._meetBanen = function () {
+    for (var i = 0; i < this._trackNodes.length; i++) {
+      var tn = this._trackNodes[i];
+      if (tn && tn.track) tn.hPx = tn.track.clientHeight || 0;
+    }
+  };
+  // Zet een pin op hoogte 0..1. Met transform in plaats van bottom in procenten:
+  // een procentuele bottom dwingt elke frame een nieuwe layout af en gaat niet
+  // via de compositor, en dat maakte de sweep op een tablet zichtbaar hakkelig.
   Lockpick.prototype._zetToken = function (i, hoogte, gezet) {
     var tn = this._trackNodes[i]; if (!tn) return;
-    tn.token.style.bottom = (hoogte * 90) + '%';
+    if (!tn.hPx) tn.hPx = (tn.track && tn.track.clientHeight) || 0;
+    tn.token.style.transform = 'translate(-50%, ' + (-(hoogte * 0.9 * tn.hPx)).toFixed(1) + 'px)';
     tn.token.classList.toggle('lp-gezet', !!gezet);
   };
   Lockpick.prototype._zetActieveZone = function () {
@@ -522,7 +554,7 @@
   };
   Lockpick.prototype._updateActief = function (pos) {
     var s = this._state, i = s.pinIdx, tn = this._trackNodes[i];
-    if (tn && s.gezet[i] == null) tn.token.style.bottom = (pos * 90) + '%';
+    if (tn && s.gezet[i] == null) this._zetToken(i, pos, false);
     // De haak is losgekoppeld van de meter: hij staat vast (zie _plaatsHaak).
   };
 
