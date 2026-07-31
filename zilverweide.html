@@ -1686,6 +1686,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <div class="tk-titel">Kies een teamnaam</div>
     <div class="tk-waarschuwing">Let op: jullie gaan pas verder als alle vier hetzelfde kiezen. Overleg samen en tik dezelfde naam aan. Je kunt altijd nog wisselen.</div>
     <div id="team-tiles"></div>
+    <!-- Testmodus: in je eentje testen. Kies eerst een naam, dan vult deze
+         knop drie medespelers aan zodat je op 4/4 komt en de flow doorloopt. -->
+    <div style="margin-top:1.6rem">
+      <button type="button" onclick="debugSimuleerTeam()" style="background:none;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--mist);text-transform:uppercase;opacity:.55">▪ test: vul aan tot vier ▪</button>
+    </div>
   </div>
 </div>
 
@@ -2718,6 +2723,27 @@ function rondTeamAf(slug, deviceIds) {
   teamLobbyVerlaat();
   // Door naar de intro (die leidt daarna naar de karakterkeuze).
   showVerhaal();
+}
+
+// Testmodus (solo testen): drie nep-medespelers aan de lobby toevoegen voor
+// de naam die deze tablet net gekozen heeft, zodat de teller 4/4 raakt en de
+// flow doorloopt. De nep-keuzes verlopen vanzelf via het vers-venster. Alleen
+// bedoeld om het teamkeuze-scherm in je eentje te kunnen doorlopen; de echte
+// vier-tablet-sync moet nog steeds met echte apparaten getest worden.
+function debugSimuleerTeam() {
+  if (!_teamMijnSlug) {
+    if (typeof toonToast === 'function') toonToast('▪', 'Kies eerst een naam');
+    return;
+  }
+  try {
+    if (_teamLobbyRef) {
+      for (var i = 1; i <= TEAM_AANTAL_NODIG - 1; i++) {
+        _teamLobbyRef.child('sim_' + i).set({
+          slug: _teamMijnSlug, naam: teamPrettyVanSlug(_teamMijnSlug), t: gedeeldeTijdNu()
+        }).catch(function () {});
+      }
+    }
+  } catch (e) {}
 }
 
 // Listener en vernieuw-timer loskoppelen. De eigen keuze wissen we hier
