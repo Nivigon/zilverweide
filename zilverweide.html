@@ -1632,6 +1632,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
       onkeydown="if(event.key==='Enter')herstelViaNaam()">
     <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
     <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+    <!-- Actieve sessienaam. Sinds ?sessie= lokaal onthouden wordt kan een
+         tablet zonder parameter in een eerdere echte sessie zitten; dat
+         moet je hier kunnen zien voordat je speelt of reset. -->
+    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8"></div>
   </div>
   <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
@@ -2793,11 +2797,9 @@ var HERSTEL_VERSIE = 1;
 // (allemaal tijdelijk), en de schaduwmeter (na een crash schone lei).
 var HERSTEL_VELDEN = [
   'heksOpgelost', 'heksCooldown', 'kraaiCooldown',
-  'finalePopupGetoond', 'finaleLeiderGezet', 'finaleLeider',
+  'finalePopupGetoond',
   'dorendaelFinalePopupGetoond', 'dorendaelGokOpgelost', 'dorendaelGokCooldown',
-  'dorendaelFinaleLeiderGezet', 'dorendaelFinaleLeider',
   'hdFinalePopupGetoond', 'tobbeGokOpgelost', 'hdGokCooldown',
-  'hdFinaleLeiderGezet', 'hdFinaleLeider',
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
   'opZolder', 'janVastInAchterkamer', 'vhTorenTellingGetoond',
   'locatieOnbekend', 'felixAfgepakt'
@@ -2956,23 +2958,35 @@ function herstelViaNaam() {
 }
 
 // Firebase eerst; lukt dat niet (of staat er niets), dan de lokale kopie.
+// Met een wachttijd-vangnet: bij een onbereikbare database geeft Firebase
+// geen antwoord en ook geen fout (hij blijft eindeloos opnieuw verbinden),
+// waardoor once() nooit terugkomt. Zonder dit vangnet bleef het naamveld
+// hangen op "Zoeken..." en werd de lokale kopie, die juist voor slechte
+// wifi bestaat, nooit gebruikt.
 function haalHerstelpunt(rol, klaar) {
   var lokaal = null;
   try { lokaal = JSON.parse(localStorage.getItem(herstelLsKey(rol)) || 'null'); } catch (e) {}
+  var afgerond = false;
+  function geef(hp, bron) {
+    if (afgerond) return;
+    afgerond = true;
+    klaar(hp, bron);
+  }
   if (typeof firebase !== 'undefined' && firebase.database) {
     try {
+      setTimeout(function () { geef(lokaal, lokaal ? 'lokaal' : null); }, 4000);
       firebase.database().ref('sessies/' + herstelSessieId() + '/spelers/' + rol + '/herstelpunt')
         .once('value')
         .then(function (snap) {
           var hp = snap.val();
-          if (hp) klaar(hp, 'firebase');
-          else klaar(lokaal, lokaal ? 'lokaal' : null);
+          if (hp) geef(hp, 'firebase');
+          else geef(lokaal, lokaal ? 'lokaal' : null);
         })
-        .catch(function () { klaar(lokaal, lokaal ? 'lokaal' : null); });
+        .catch(function () { geef(lokaal, lokaal ? 'lokaal' : null); });
       return;
     } catch (e) {}
   }
-  klaar(lokaal, lokaal ? 'lokaal' : null);
+  geef(lokaal, lokaal ? 'lokaal' : null);
 }
 
 function herstelLeeftijdTekst(tijd) {
@@ -4988,7 +5002,7 @@ function resetSpel() {
   // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
   // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
   // tablets wissen. Daarom altijd eerst bevestigen.
-  if (!confirm('Alles resetten? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
+  if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
   // Intro-slot altijd los: anders zou een reset midden in de intro je met
   // dode knoppen achterlaten.
   zetIntroVergrendeling(false);
@@ -5053,6 +5067,19 @@ function resetSpel() {
       _sharedDbRef.remove().catch(function(e){ console.warn('Firebase shared reset mislukt:', e); });
     }
   } catch (e) {}
+  // Herstelpunten horen bij de ronde die we net wissen: ook weg (Firebase
+  // en de lokale kopieen), anders kan iemand na de reset via het naamveld
+  // een verouderde stand van de vorige ronde terugladen.
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('sessies/' + herstelSessieId() + '/spelers').remove().catch(function () {});
+    }
+  } catch (e) {}
+  ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
+    try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
+  });
+  _herstelVorigeKern = '';
+  _herstelOvergenomen = false;
 
   // Zone-unlocks resetten naar default (alleen overworld zichtbaar,
   // alle districten op slot tot ze legitiem worden ontgrendeld).
@@ -20587,12 +20614,15 @@ function firebaseVolleReset() {
     alert('Firebase is niet geladen.');
     return;
   }
-  if (!confirm('Alles resetten in Firebase? (schaduw + alle gedeelde state)')) return;
   // Zelfde bron als schaduwFirebaseReset: getSessieId bestaat niet in de
   // schaduw-module, waardoor deze reset altijd op 'test' uitkwam, ook in een
   // sessie met een eigen naam.
   var sessieId = _sharedSessieId || 'test';
   if (!sessieId) { alert('Geen sessie-ID.'); return; }
+  // De sessienaam MOET in de vraag staan: sinds ?sessie= lokaal onthouden
+  // wordt kan een tablet zonder parameter stilletjes in een echte sessie
+  // zitten, en dan zou je hier denken dat je 'test' aan het schonen bent.
+  if (!confirm('Alles resetten in Firebase-sessie "' + sessieId + '"?\n(schaduw + alle gedeelde state + herstelpunten)')) return;
   firebase.database().ref('sessies/' + sessieId).remove()
     .then(function () {
       alert('Firebase volledig gereset voor sessie: ' + sessieId);
@@ -20605,6 +20635,10 @@ function firebaseVolleReset() {
     try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
   });
   _herstelVorigeKern = '';
+  // Kreeg deze tablet ooit "rol draait op een ander apparaat", dan stond
+  // het schrijven van herstelpunten uit. Na een volledige reset begint
+  // alles opnieuw, dus mag deze tablet ook weer schrijven.
+  _herstelOvergenomen = false;
   if (window.ZilverweideSchaduw) {
     window.ZilverweideSchaduw.kalmeer();
   }
@@ -20685,7 +20719,9 @@ function setSchaduwStatus() {
   var fbEl = document.getElementById('schaduw-firebase-status');
   if (fbEl && window.ZilverweideSchaduw) {
     var fbAan = window.ZilverweideSchaduw.isFirebaseActief && window.ZilverweideSchaduw.isFirebaseActief();
-    var sid = window.ZilverweideSchaduw.getSessieId && window.ZilverweideSchaduw.getSessieId();
+    // Zelfde sessie-bron als de resets: getSessieId bestaat niet in de
+    // schaduw-module, dus hier stond altijd "undefined" in beeld.
+    var sid = _sharedSessieId || 'test';
     var sharedOk = typeof _sharedListenerActief !== 'undefined' && _sharedListenerActief;
     fbEl.textContent = fbAan ? ('🟢 Firebase: ' + sid + (sharedOk ? ' (shared sync ✓)' : ' (shared wacht...)')) : '⚫ Lokaal (geen sessie)';
   }
@@ -20774,6 +20810,10 @@ function toonStemmenStil(stil) {
       else _zvSessieId = localStorage.getItem('zw_sessie');
     } catch (e) {}
     if (!_zvSessieId) _zvSessieId = 'test';
+    // Toon de actieve sessienaam op het splash-scherm (testmodus-hoekje),
+    // zodat een onthouden sessie nooit ongemerkt blijft.
+    var _zvSessieEl = document.getElementById('sessie-indicator');
+    if (_zvSessieEl) _zvSessieEl.textContent = 'sessie: ' + _zvSessieId;
 
     // Gedeelde state via Firebase initialiseren (ingrediënten, herberg, woud, etc.)
     if (typeof initSharedFirebase === 'function') {
