@@ -3983,6 +3983,7 @@ function showScreen(id) {
         }, 5300);
       }
     }
+    toonPersonageWaarschuwing();
   }
   if (id === 'screen-overworld') { state.activeKwartier = null; setTimeout(checkAllTokens, 500); setTimeout(checkDorendaelTokens, 500); setTimeout(checkHeerDonatusTokens, 500); setTimeout(updateOverworldTiles, 50); }
   // Eerste aankomst op de kaart: korte introductie (inventaris, verhaalscore,
@@ -4306,32 +4307,75 @@ function bevestigPersonageKeuze(p) {
   toonRolBevestiging(p);
 }
 
+// Waarschuwing bij aankomst op het gezelschap-scherm: keuzes zijn definitief.
+// Eén keer per paginalading, bovenop de lantaarn-onthulling.
+function toonPersonageWaarschuwing() {
+  if (window._persWaarschuwingGetoond) return;
+  window._persWaarschuwingGetoond = true;
+  var oud = document.getElementById('pers-waarschuwing');
+  if (oud) oud.remove();
+  var ov = document.createElement('div');
+  ov.id = 'pers-waarschuwing';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:540;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
+  ov.innerHTML =
+    '<div style="max-width:26rem;text-align:center;background:linear-gradient(180deg,#160f08,#0d0a06);border:1px solid var(--gold-dim);border-radius:8px;padding:1.6rem 1.5rem;box-shadow:0 0 40px rgba(0,0,0,.7)">' +
+      '<div style="font-family:Cinzel,serif;font-size:1.1rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.9rem">Let op!</div>' +
+      '<p style="font-family:\'Crimson Text\',Georgia,serif;font-size:1rem;line-height:1.7;color:var(--parchment);font-style:italic;margin:0 0 1.3rem">Karakterkeuzes zijn definitief. De ene rol past beter bij de een dan bij de ander, en dat kan jullie spelervaring beïnvloeden. Overleg dus eerst met je teamgenoten voordat je kiest.</p>' +
+      '<button id="pers-waarschuwing-ok" class="spel-lade-knop">Begrepen</button>' +
+    '</div>';
+  document.body.appendChild(ov);
+  document.getElementById('pers-waarschuwing-ok').onclick = function() { ov.remove(); };
+}
+
 // "Weet je het zeker?" — eigen popup met één knop, klik ernaast = annuleren.
+// De ja-knop telt eerst 7 seconden zichtbaar af (niet indrukbaar), net als de
+// beslis-knop bij de heksengokken, zodat er tijd is om te overleggen.
 var rolTestFase = false;
+var _rolBevestigAftelId = null;
 
 function toonRolBevestiging(p) {
   var d = personageDetails[p];
   var naam = d ? d.naam : p;
   var oud = document.getElementById('rol-bevestig');
   if (oud) oud.remove();
+  if (_rolBevestigAftelId) { clearInterval(_rolBevestigAftelId); _rolBevestigAftelId = null; }
   var ov = document.createElement('div');
   ov.id = 'rol-bevestig';
   ov.style.cssText = 'position:fixed;inset:0;z-index:540;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(0,0,0,.6);backdrop-filter:blur(2px)';
   ov.innerHTML =
     '<div style="max-width:26rem;text-align:center;background:linear-gradient(180deg,#160f08,#0d0a06);border:1px solid var(--gold-dim);border-radius:8px;padding:1.6rem 1.5rem;box-shadow:0 0 40px rgba(0,0,0,.7)">' +
       '<div style="font-family:Cinzel,serif;font-size:1.1rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.9rem">Weet je het zeker?</div>' +
-      '<p style="font-family:\'Crimson Text\',Georgia,serif;font-size:1rem;line-height:1.7;color:var(--parchment);font-style:italic;margin:0 0 1.3rem">Weet je zeker dat je ' + naam + ' wilt? Overleg met je teamgenoten. Eenmaal gekozen kun je niet meer terug.</p>' +
-      '<button id="rol-bevestig-ja" class="spel-lade-knop" style="margin-bottom:.55rem">Ja, geef me ' + naam + '!</button>' +
+      '<p style="font-family:\'Crimson Text\',Georgia,serif;font-size:1rem;line-height:1.7;color:var(--parchment);font-style:italic;margin:0 0 1.3rem">Weet je zeker dat je ' + naam + ' wilt? Deze keuze is definitief, eenmaal gekozen kun je niet meer terug. Overleg nog even met je teamgenoten.</p>' +
+      '<button id="rol-bevestig-ja" class="spel-lade-knop" style="margin-bottom:.55rem" disabled>Ja, ik wil ' + naam + '! (7)</button>' +
       '<button id="rol-bevestig-nee" class="spel-lade-knop" style="border-color:rgba(201,168,76,.2);color:var(--gold-dim);background:transparent">Ik kijk nog even</button>' +
     '</div>';
   document.body.appendChild(ov);
-  document.getElementById('rol-bevestig-ja').onclick = function() {
+  var jaKnop = document.getElementById('rol-bevestig-ja');
+  jaKnop.style.opacity = '.45';
+  var tel = 7;
+  _rolBevestigAftelId = setInterval(function() {
+    if (!document.body.contains(ov)) {
+      clearInterval(_rolBevestigAftelId); _rolBevestigAftelId = null; return;
+    }
+    tel--;
+    if (tel > 0) { jaKnop.textContent = 'Ja, ik wil ' + naam + '! (' + tel + ')'; return; }
+    clearInterval(_rolBevestigAftelId); _rolBevestigAftelId = null;
+    jaKnop.textContent = 'Ja, ik wil ' + naam + '!';
+    jaKnop.disabled = false;
+    jaKnop.style.opacity = '';
+  }, 1000);
+  function sluitRolBevestiging() {
+    if (_rolBevestigAftelId) { clearInterval(_rolBevestigAftelId); _rolBevestigAftelId = null; }
     ov.remove();
+  }
+  jaKnop.onclick = function() {
+    if (jaKnop.disabled) return;
+    sluitRolBevestiging();
     if (rolBezet(p)) { toonRolBezet(naam); return; }   // net voor je gekozen
     kiesPersonage(p);
   };
-  document.getElementById('rol-bevestig-nee').onclick = function() { ov.remove(); };
-  ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
+  document.getElementById('rol-bevestig-nee').onclick = sluitRolBevestiging;
+  ov.addEventListener('click', function(e) { if (e.target === ov) sluitRolBevestiging(); });
 }
 
 function toonRolBezet(naam) {
@@ -12153,7 +12197,7 @@ function claimBeslisser(key, onKlaar) {
 }
 
 // De beslis-pop-up: ligt bovenop een neutraal podium-scherm. De knop telt
-// eerst 3 seconden af (niet indrukbaar) en wordt dan "Ik beslis". Claimt een
+// eerst 7 seconden af (niet indrukbaar) en wordt dan "Ik beslis". Claimt een
 // teamgenoot het stemrecht terwijl deze pop-up openstaat, dan sluit hij
 // vanzelf en wordt er voor deze speler besloten (door naar het meekijken).
 var _beslisAftelId = null;
@@ -12193,7 +12237,7 @@ function toonBeslisPopup(cfg) {
   toonLade(
     'Wie beslist?',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Let op: ben jij de eerste van het team bij het podium? Dan bepaal jij wie de heks is. Overleg eerst met elkaar. Wie op de knop drukt maakt straks de keuze, de rest kijkt mee.</p>',
-    '3',
+    '7',
     null
   );
   var knop = document.getElementById('spel-lade-knop');
@@ -12203,8 +12247,8 @@ function toonBeslisPopup(cfg) {
   backdrop.style.pointerEvents = 'none';
   knop.disabled = true;
   knop.style.opacity = '.45';
-  knop.textContent = '3';
-  var tel = 3;
+  knop.textContent = '7';
+  var tel = 7;
   if (_beslisAftelId) clearInterval(_beslisAftelId);
   _beslisAftelId = setInterval(function () {
     if (!document.getElementById('spel-lade').classList.contains('open')) {
