@@ -370,6 +370,41 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   .rol-ov-kaart{grid-template-columns:1fr;max-width:min(84vw,360px);gap:1rem}
   .rol-ov-foto{max-width:min(44vh,220px);margin:0 auto}
 }
+/* Spelers-overzicht: onder je eigen rol de drie andere spelers, klein en
+   stijlvol. Vaste hoogte (flex:0 0 auto), zodat het nooit scroll veroorzaakt. */
+#rol-ov-anderen{flex:0 0 auto;width:100%;max-width:760px;margin:.6rem auto 0}
+.rol-ov-anderen-kop{display:flex;align-items:center;justify-content:center;gap:.7rem;margin:0 0 .8rem}
+.rol-ov-anderen-kop::before,.rol-ov-anderen-kop::after{content:'';width:min(90px,14vw);height:1px;background:linear-gradient(to right,transparent,rgba(201,168,76,.4))}
+.rol-ov-anderen-kop::after{background:linear-gradient(to left,transparent,rgba(201,168,76,.4))}
+.rol-ov-anderen-kop span{font-family:'Cinzel',serif;font-size:.64rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;white-space:nowrap}
+.rol-ov-anderen-rij{display:flex;gap:1.4rem;justify-content:center;flex-wrap:wrap}
+.rol-ov-mini{display:flex;flex-direction:column;align-items:center;gap:.45rem;width:5.4rem;padding:0;background:none;border:none;font-family:inherit;cursor:pointer}
+.rol-ov-mini-foto{width:4.6rem;height:4.6rem;border-radius:50%;overflow:hidden;border:1px solid rgba(201,168,76,.4);background:radial-gradient(circle,rgba(46,32,14,.7),rgba(13,10,6,.85));box-shadow:0 3px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
+.rol-ov-mini-foto img{width:100%;height:100%;object-fit:cover}
+.rol-ov-mini:hover .rol-ov-mini-foto{border-color:var(--gold);box-shadow:0 0 16px rgba(201,168,76,.4);transform:translateY(-2px)}
+.rol-ov-mini-naam{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.04em;color:var(--parchment);text-align:center;line-height:1.2;max-width:6rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rol-ov-mini.leeg{cursor:default}
+.rol-ov-mini.leeg .rol-ov-mini-foto{border-style:dashed;opacity:.55}
+.rol-ov-mini.leeg:hover .rol-ov-mini-foto{border-color:rgba(201,168,76,.4);box-shadow:0 3px 12px rgba(0,0,0,.45);transform:none}
+.rol-ov-mini-mark{font-family:'Cinzel',serif;font-size:1.5rem;color:var(--gold-dim);opacity:.7}
+.rol-ov-mini.leeg .rol-ov-mini-naam{color:var(--gold-dim);font-style:italic;font-size:.6rem}
+/* Detail van een medespeler (laag bovenop het rol-overzicht). */
+#ander-speler-pop{position:fixed;inset:0;z-index:360;display:none;align-items:center;justify-content:center;padding:1.5rem;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);opacity:0;transition:opacity .3s ease}
+#ander-speler-pop.zichtbaar{display:flex;opacity:1}
+.asp-kaart{position:relative;width:min(92vw,600px);background:linear-gradient(180deg,#160f08,#0d0a06);border:1px solid var(--gold-dim);border-radius:10px;padding:1.6rem 1.5rem 1.4rem;box-shadow:0 0 44px rgba(0,0,0,.7)}
+.asp-sluit{position:absolute;top:.6rem;right:.7rem;background:none;border:none;color:var(--gold-dim);font-size:1.1rem;cursor:pointer;line-height:1;padding:.2rem .35rem;transition:color .2s ease}
+.asp-sluit:hover{color:var(--gold)}
+.asp-top{display:flex;gap:1.2rem;align-items:center}
+.asp-foto{flex:0 0 auto;width:6.5rem;height:8.5rem;overflow:hidden;border:1px solid rgba(201,168,76,.3);border-radius:6px;background:#000}
+.asp-foto img{width:100%;height:100%;object-fit:cover}
+.asp-speler{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.14em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.3rem}
+.asp-naam{font-family:'Cinzel',serif;font-size:clamp(1.1rem,2.4vw,1.5rem);color:var(--gold);letter-spacing:.04em;line-height:1.15;margin-bottom:.15rem}
+.asp-rol{font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.14em;color:var(--gold-dim);text-transform:uppercase}
+.asp-tekst{font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.6;color:var(--parchment);font-style:italic;margin:1.1rem 0 0}
+@media (max-width:520px){
+  .asp-top{flex-direction:column;text-align:center;gap:.9rem}
+  .asp-foto{width:5.5rem;height:7.2rem}
+}
 /* De naam-badge rechtsboven is klikbaar (opent het rol-overzicht). */
 #avatar-badge{cursor:pointer;transition:border-color .22s ease,box-shadow .22s ease}
 #avatar-badge:hover{border-color:rgba(201,168,76,.7);box-shadow:0 0 14px rgba(201,168,76,.25)}
@@ -1568,8 +1603,16 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <div class="inv-ov-orn">wie ben jij ook alweer</div>
     <div class="inv-ov-divider"><span>✦</span></div>
     <div id="rol-ov-slot"></div>
+    <div id="rol-ov-anderen"></div>
     <button class="back-btn" style="margin-top:1.1rem" onclick="sluitRolOverzicht()">← Terug naar Zilverweide</button>
   </div>
+</div>
+
+<!-- Detail van een medespeler: klik op een mini-portret in het rol-overzicht.
+     Aparte laag bovenop, zodat je eigen rol zichtbaar blijft en de hoogte
+     begrensd is (geen scroll). -->
+<div id="ander-speler-pop" aria-hidden="true" onclick="if(event.target===this)sluitAnderSpeler()">
+  <div class="asp-kaart" id="asp-kaart"></div>
 </div>
 
 <!-- ══ TOAST ══ -->
@@ -1648,6 +1691,39 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
         <button onclick="toonTeaser()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid rgba(201,168,76,.4);color:rgba(201,168,76,.7);background:rgba(13,10,6,.4);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">▶ &nbsp; Teaser</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- SPELERNAAM (vóór de teamkeuze): elke speler vult op zijn eigen tablet zijn
+     eigen naam in. Lokaal bewaard; bij de rolkeuze aan de rol gekoppeld en
+     gedeeld, zodat teamgenoten (en later een begeleider) zien wie wie is. -->
+<style>
+  #screen-spelernaam .sn-wrap { max-width: 32rem; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; text-align: center; }
+  #screen-spelernaam .sn-titel { font-family: 'Cinzel', serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--gold); letter-spacing: .05em; margin-bottom: .5rem; }
+  #screen-spelernaam .sn-orn { color: var(--gold-dim); letter-spacing: .32em; font-size: .62rem; text-transform: uppercase; margin-bottom: 1.4rem; }
+  #screen-spelernaam .sn-uitleg {
+    font-family: 'Crimson Text', Georgia, serif; font-style: italic; color: var(--parchment);
+    font-size: 1.02rem; line-height: 1.6; margin: 0 auto 1.6rem; max-width: 26rem;
+  }
+  #screen-spelernaam .sn-veld {
+    width: 100%; box-sizing: border-box; font-family: 'Cinzel', serif; font-size: 1.1rem;
+    text-align: center; letter-spacing: .04em; color: var(--parchment); background: rgba(13,10,6,.7);
+    border: 1px solid rgba(201,168,76,.35); border-radius: 6px; padding: .9rem 1rem;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  #screen-spelernaam .sn-veld:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 16px rgba(201,168,76,.3); }
+  #screen-spelernaam .sn-veld::placeholder { color: var(--mist); font-style: italic; letter-spacing: 0; }
+  #screen-spelernaam .sn-fout { min-height: 1.2rem; margin-top: .55rem; font-family: 'Crimson Text', Georgia, serif; font-style: italic; color: #d4826e; font-size: .92rem; }
+  #screen-spelernaam .sn-knop { margin-top: 1.2rem; }
+</style>
+<div class="screen" id="screen-spelernaam">
+  <div class="sn-wrap">
+    <div class="sn-titel">Hoe heet jij?</div>
+    <div class="sn-orn">✦ &nbsp; jouw naam &nbsp; ✦</div>
+    <p class="sn-uitleg">Vul je eigen naam in. Straks zien je teamgenoten wie welke rol speelt, dus schrijf hem zoals je genoemd wilt worden.</p>
+    <input class="sn-veld" id="spelernaam-input" type="text" maxlength="24" autocomplete="off" placeholder="Typ je naam..." oninput="wisSpelerNaamFout()" onkeydown="if(event.key==='Enter')bevestigSpelerNaam()">
+    <div class="sn-fout" id="spelernaam-fout"></div>
+    <button class="btn sn-knop" onclick="bevestigSpelerNaam()">Verder →</button>
   </div>
 </div>
 
@@ -2147,6 +2223,10 @@ function geluidNaarConsole() {
 
 const state = {
   personage: null,
+  // Eigen naam van deze speler, ingevoerd vóór de teamkeuze. Blijft eerst
+  // lokaal (er is dan nog geen sessie); bij de rolkeuze koppelen we hem aan de
+  // rol en delen we hem als speler_naam_<rol> zodat teamgenoten zien wie wie is.
+  spelerNaam: '',
   vermomming: null,
   inventory: [],
   lastOpenedLocatie: null,
@@ -2219,6 +2299,11 @@ const state = {
     armen_gekozen: {},
   },
 };
+
+// Naam kan al in de browser staan van eerder (bijvoorbeeld als een tablet
+// ververst voordat de rol gekozen is). Zo hoeft de speler hem niet opnieuw te
+// typen; het invoerscherm vult hem dan alvast in.
+try { var _bewaardeSpelerNaam = localStorage.getItem('zw_spelernaam'); if (_bewaardeSpelerNaam) state.spelerNaam = _bewaardeSpelerNaam; } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════════════
 // GEDEELDE STATE — Firebase Realtime Database
@@ -3737,7 +3822,7 @@ function startOverworldIntro() {
     { lift: '#topright-cluster', doel: '#missie-teller', dim: ['#avatar-badge'],
       tekst: 'Rechts van het inventaris staat jullie verhaalscore. Als deze vol is, kunnen jullie naar een volgend deel van het verhaal. Je kunt erop drukken om terug te lezen wat jullie al gedaan hebben. Er staat niet wat er nog moet gebeuren, dat moeten jullie zelf uitvinden.' },
     { lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller'],
-      tekst: 'En weer rechts daarvan kun je terecht als je je afvraagt wie je karakter ook alweer was. Druk dan hierop, dan kun je het altijd nog even teruglezen.' },
+      tekst: 'En weer rechts daarvan kun je terecht als je je afvraagt wie je karakter ook alweer was. Druk dan hierop, dan kun je het altijd nog even teruglezen. Ook zie je hier wie je teamgenoten zijn en wat hun personage kan.' },
     { doel: '#tile-dorpsplein',
       tekst: 'Tot slot. Door op deze knoppen op de kaart te drukken bezoek je een deel van het dorp. Voer je daarna de code van de bordjes in, dan bezoek je een locatie. Jullie verhaal gaat starten bij het podium. Ik zou daar snel heen gaan. Succes!' }
   ];
@@ -4760,8 +4845,47 @@ function sluitTeaser() {
 // Is de sessie al expliciet gezet via ?sessie= (begeleider of testen), dan
 // slaan we de teamkeuze over en gaan direct naar de intro.
 function startBegin() {
-  if (window._sessieOverride) { showVerhaal(); return; }
-  toonTeamKeuze();
+  if (window._sessieOverride) { toonSpelerNaam(showVerhaal); return; }
+  toonSpelerNaam(toonTeamKeuze);
+}
+
+// Naam-invoer vóór de teamkeuze. De naam blijft eerst lokaal (er is nog geen
+// sessie), bij de rolkeuze koppelen we hem aan de rol en delen we hem. De
+// vervolgstap (normaal de teamkeuze, bij een sessie-override direct de intro)
+// geven we mee als callback.
+var _spelerNaamVervolg = null;
+function toonSpelerNaam(vervolg) {
+  _spelerNaamVervolg = (typeof vervolg === 'function') ? vervolg : toonTeamKeuze;
+  var inv = document.getElementById('spelernaam-input');
+  if (inv) {
+    var bewaard = state.spelerNaam || '';
+    try { if (!bewaard) bewaard = localStorage.getItem('zw_spelernaam') || ''; } catch (e) {}
+    inv.value = bewaard;
+  }
+  wisSpelerNaamFout();
+  showScreen('screen-spelernaam');
+  if (inv) { try { inv.focus(); } catch (e) {} }
+}
+
+function wisSpelerNaamFout() {
+  var f = document.getElementById('spelernaam-fout');
+  if (f) f.textContent = '';
+}
+
+function bevestigSpelerNaam() {
+  var inv = document.getElementById('spelernaam-input');
+  var naam = inv ? inv.value.trim().replace(/\s+/g, ' ') : '';
+  if (!naam) {
+    var f = document.getElementById('spelernaam-fout');
+    if (f) f.textContent = 'Vul eerst je naam in om verder te gaan.';
+    if (inv) { try { inv.focus(); } catch (e) {} }
+    return;
+  }
+  state.spelerNaam = naam;
+  try { localStorage.setItem('zw_spelernaam', naam); } catch (e) {}
+  var vervolg = _spelerNaamVervolg || toonTeamKeuze;
+  _spelerNaamVervolg = null;
+  vervolg();
 }
 
 function showVerhaal() {
@@ -5540,14 +5664,46 @@ function debugSnelstart(p) {
   }
   state.personage = p;
   zetRolBezet(p, true);
+  registreerSpelerNaam(p);
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
   startSpelNaKeuze();
 }
 
+// Koppel de eigen naam aan de zojuist gekozen rol en deel hem, zodat
+// teamgenoten in het spelers-overzicht zien wie wie is. Naast de platte
+// gedeelde sleutel (speler_naam_<rol>, die een begeleider onder
+// sessies/<sid>/shared kan lezen) ook een nette roster-tak, klaar voor een
+// latere begeleiders-module. Lege naam (bijvoorbeeld bij een testsnelstart)
+// slaan we over.
+function registreerSpelerNaam(rol) {
+  var naam = (state.spelerNaam || '').trim();
+  if (!naam) return;
+  setSharedState('speler_naam_' + rol, naam);
+  try {
+    if (typeof firebase !== 'undefined' && firebase.database) {
+      firebase.database().ref('sessies/' + herstelSessieId() + '/meta/spelers/' + rol)
+        .update({ naam: naam, rol: rol }).catch(function () {});
+    }
+  } catch (e) {}
+}
+
+// Testmodus: vul voor de drie andere rollen een bezet-vlag en een testnaam,
+// zodat het spelers-overzicht (knop rechtsboven) in je eentje te bekijken is.
+function debugVulAndereSpelers() {
+  var testNamen = { jan: 'Tom', kelly: 'Sanne', fenna: 'Nora', felix: 'Ravi' };
+  ['jan', 'kelly', 'fenna', 'felix'].forEach(function (rol) {
+    if (rol === state.personage) return;
+    zetRolBezet(rol, true);
+    setSharedState('speler_naam_' + rol, testNamen[rol]);
+  });
+  if (typeof toonToast === 'function') toonToast('🧑‍🤝‍🧑', 'Testnamen voor de andere spelers gezet');
+}
+
 function kiesPersonage(p) {
   state.personage = p;
   zetRolBezet(p, true);
+  registreerSpelerNaam(p);
   rolTestFase = true;
   showAvatarBadge(p);
   // Nog niet het spel in: eerst wachten tot alle vier de rollen bezet zijn.
@@ -5720,18 +5876,90 @@ function openRolOverzicht() {
   var slot = document.getElementById('rol-ov-slot');
   if (!ov || !slot) return;
   slot.innerHTML = rolKaartHtml(p);
+  var anderen = document.getElementById('rol-ov-anderen');
+  if (anderen) anderen.innerHTML = bouwAndereSpelersHtml();
   ov.style.display = 'block';
   void ov.offsetWidth;            // reflow zodat de opacity-transitie loopt
   ov.classList.add('zichtbaar');
   ov.setAttribute('aria-hidden', 'false');
 }
 function sluitRolOverzicht() {
+  sluitAnderSpeler();
   var ov = document.getElementById('rol-overzicht');
   if (!ov || ov.style.display === 'none') return;
   ov.classList.remove('zichtbaar');
   ov.setAttribute('aria-hidden', 'true');
   clearTimeout(ov._sluitTimer);
   ov._sluitTimer = setTimeout(function () { ov.style.display = 'none'; }, 450);
+}
+
+// Kleine HTML-escaper: spelersnamen zijn vrije invoer en gaan als tekst in de
+// markup, dus tekens die de HTML zouden breken onschadelijk maken.
+function escSpelerNaam(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Bouw het "andere spelers"-blok: de drie rollen die deze speler niet speelt.
+// Een gekozen rol toont het portret plus de ingevoerde naam en is aanklikbaar;
+// een nog niet gekozen rol krijgt een discrete "nog niet gekozen"-plek.
+function bouwAndereSpelersHtml() {
+  var eigen = state.personage;
+  var volgorde = ['jan', 'kelly', 'fenna', 'felix'];
+  var minis = volgorde.filter(function (r) { return r !== eigen; }).map(function (rol) {
+    var d = personageDetails[rol];
+    if (!d) return '';
+    var naam = getSharedState('speler_naam_' + rol);
+    if (rolBezet(rol)) {
+      var label = (naam && String(naam).trim()) ? naam : d.naam;
+      return '<button type="button" class="rol-ov-mini" onclick="toonAnderSpeler(\'' + rol + '\')">' +
+        '<span class="rol-ov-mini-foto"><img src="' + d.img + '" alt="" style="object-position:' + d.imgPos + '"></span>' +
+        '<span class="rol-ov-mini-naam">' + escSpelerNaam(label) + '</span>' +
+      '</button>';
+    }
+    return '<div class="rol-ov-mini leeg">' +
+      '<span class="rol-ov-mini-foto"><span class="rol-ov-mini-mark">?</span></span>' +
+      '<span class="rol-ov-mini-naam">nog niet gekozen</span>' +
+    '</div>';
+  }).join('');
+  return '<div class="rol-ov-anderen-kop"><span>Bekijk ook de andere spelers</span></div>' +
+    '<div class="rol-ov-anderen-rij">' + minis + '</div>';
+}
+
+// Detail van een medespeler: het karakter dat die speler speelt, met zijn
+// ingevoerde naam erboven. Aparte laag over het rol-overzicht.
+function toonAnderSpeler(rol) {
+  var d = personageDetails[rol];
+  if (!d) return;
+  var pop = document.getElementById('ander-speler-pop');
+  var kaart = document.getElementById('asp-kaart');
+  if (!pop || !kaart) return;
+  var naam = getSharedState('speler_naam_' + rol);
+  var spelerNaam = (naam && String(naam).trim()) ? String(naam).trim() : null;
+  kaart.innerHTML =
+    '<button type="button" class="asp-sluit" onclick="sluitAnderSpeler()" aria-label="Sluiten">✕</button>' +
+    '<div class="asp-top">' +
+      '<div class="asp-foto"><img src="' + d.img + '" alt="" style="object-position:' + d.imgPos + '"></div>' +
+      '<div>' +
+        (spelerNaam ? '<div class="asp-speler">' + escSpelerNaam(spelerNaam) + ' speelt</div>' : '') +
+        '<div class="asp-naam">' + d.naam + '</div>' +
+        '<div class="asp-rol">' + d.rol + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<p class="asp-tekst">' + d.tekst + '</p>';
+  pop.style.display = 'flex';
+  void pop.offsetWidth;
+  pop.classList.add('zichtbaar');
+  pop.setAttribute('aria-hidden', 'false');
+}
+function sluitAnderSpeler() {
+  var pop = document.getElementById('ander-speler-pop');
+  if (!pop || pop.style.display === 'none') return;
+  pop.classList.remove('zichtbaar');
+  pop.setAttribute('aria-hidden', 'true');
+  clearTimeout(pop._sluitTimer);
+  pop._sluitTimer = setTimeout(function () { pop.style.display = 'none'; }, 320);
 }
 // Items met een eigen afbeelding i.p.v. een emoji (op naam). Uitbreidbaar.
 var ITEM_AFBEELDINGEN = {
@@ -17058,6 +17286,7 @@ function buildDebugPanel() {
       ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
       ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }],
       ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
+      ['🧑‍🤝‍🧑 Vul namen andere spelers (test)', function(){ debugVulAndereSpelers(); close(); }],
       ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
       ['🎬 Podium-finale solo (hele flow)', function(){ close(); debugPodiumFinaleSolo(); }],
