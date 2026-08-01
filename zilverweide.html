@@ -1914,30 +1914,35 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 
 
 <style>
-  /* Beginnersmodus: een read-only kaartje als losse overlay-laag LINKS op
-     het scherm (voorlopig alleen Kraaienkwartier). De code-invoer en alle
-     bestaande knoppen en afbeeldingen blijven exact op hun plek; het kaartje
-     ligt er los naast en verschuift niets. De code op de bordjes blijft de
-     enige echte ingang. Alleen zichtbaar met body-klasse beginner-modus. */
-  .kw-kaart { display: none; }
-  body.beginner-modus #screen-kwartier1 .kw-kaart {
-    display: grid; position: absolute; left: clamp(.75rem, 5vw, 4rem); top: 50%;
-    transform: translateY(-50%); grid-template-columns: repeat(3, auto);
-    gap: .3rem clamp(.9rem, 3.2vw, 2rem); justify-items: center; align-items: start; z-index: 2;
+  /* Beginnersmodus: read-only kaartje als losse VENSTERLAAG in de lege band
+     links van de smalle spelkolom (#app is 680px breed, gecentreerd). Daarom
+     hangt de kaart aan het venster (position:fixed, op body-niveau), niet aan
+     de kolom: zo raakt hij de gecentreerde invoer en afbeeldingen nooit en
+     verschuift hij niets. Alleen zichtbaar op het Kraaienkwartier-scherm
+     (body.kraai-actief) in beginnersmodus, en alleen als het scherm breed
+     genoeg is dat de linkerband de kaart kan dragen. Voorlopig alleen
+     Kraaienkwartier. */
+  #kraai-kaart { display: none; }
+  @media (min-width: 1080px) {
+    body.beginner-modus.kraai-actief #kraai-kaart {
+      display: grid; position: fixed; left: clamp(.75rem, 2.5vw, 1.75rem); top: 50%;
+      transform: translateY(-50%); grid-template-columns: repeat(3, auto);
+      gap: .4rem clamp(.8rem, 2.6vw, 1.7rem); justify-items: center; align-items: start; z-index: 120;
+    }
   }
-  .kw-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .28rem; width: clamp(47px, 6.3vw, 68px); }
-  .kw-kaart .kt-vak {
-    width: clamp(34px, 4.5vw, 49px); height: clamp(34px, 4.5vw, 49px); border-radius: 4px;
+  #kraai-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .26rem; width: clamp(44px, 5vw, 60px); }
+  #kraai-kaart .kt-vak {
+    width: clamp(32px, 3.6vw, 44px); height: clamp(32px, 3.6vw, 44px); border-radius: 4px;
     border: 1px solid rgba(45, 90, 95, .55); background: transparent;
     transition: background .3s, border-color .3s;
   }
-  .kw-kaart .kt.bezocht .kt-vak { background: #2d5a5f; border-color: #2d5a5f; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
-  .kw-kaart .kt-naam {
-    font-family: 'Cinzel', serif; font-size: clamp(.46rem, 1vw, .58rem); line-height: 1.15;
-    letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 1.7em;
+  #kraai-kaart .kt.bezocht .kt-vak { background: #2d5a5f; border-color: #2d5a5f; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+  #kraai-kaart .kt-naam {
+    font-family: 'Cinzel', serif; font-size: clamp(.44rem, .95vw, .56rem); line-height: 1.15;
+    letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 2.4em;
     opacity: 0; transition: opacity .3s;
   }
-  .kw-kaart .kt.bezocht .kt-naam { opacity: 1; color: var(--parchment); }
+  #kraai-kaart .kt.bezocht .kt-naam { opacity: 1; color: var(--parchment); }
 </style>
 <div class="screen" id="screen-kwartier1" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
@@ -1948,7 +1953,6 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <input class="code-input" id="code-k-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkKraaiLocatie(this.value)">
     <div class="code-error" id="code-k-locatie-msg"></div>
   </div>
-  <div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
 </div>
 
 <div class="screen" id="screen-dorendael">
@@ -1984,6 +1988,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 </div>
 
 </div>
+
+<!-- Beginnersmodus-kaartje: losse vensterlaag, staat bewust buiten #app zodat
+     het in de lege band links van de smalle spelkolom kan liggen. Alleen
+     zichtbaar op het Kraaienkwartier-scherm in beginnersmodus (zie CSS). -->
+<div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
 
 <div id="char-pop"><img id="char-pop-img" src="" alt=""><div id="char-bubble"></div></div>
 <div id="npc-pop"><img id="npc-pop-img" src="" alt=""><div id="npc-bubble"></div></div>
@@ -4863,7 +4872,8 @@ function showScreen(id) {
   }
   if (id === 'screen-locatie' && state.lastZone === 'kraaienkwartier') setTimeout(checkAllTokens, 600);
   if (id === 'screen-kwartier1' || id === 'screen-dorpsplein') setTimeout(checkAllTokens, 500);
-  // Beginnersmodus: kaartje bijwerken; eerste keer de korte uitleg tonen.
+  // Beginnersmodus: de kaart-vensterlaag hoort alleen bij het Kraaienkwartier.
+  if (document.body) document.body.classList.toggle('kraai-actief', id === 'screen-kwartier1');
   if (id === 'screen-kwartier1') {
     updateKraaiKaart();
     if (window._beginnerModus && state.personage && !state.debugSkipBezig &&
