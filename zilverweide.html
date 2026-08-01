@@ -1727,6 +1727,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <input class="sn-veld" id="spelernaam-input" type="text" maxlength="24" autocomplete="off" placeholder="Typ je naam..." oninput="wisSpelerNaamFout()" onkeydown="if(event.key==='Enter')bevestigSpelerNaam()">
     <div class="sn-fout" id="spelernaam-fout"></div>
     <button class="btn sn-knop" onclick="bevestigSpelerNaam()">Verder →</button>
+    <label class="ssi-toggle" style="justify-content:center;margin-top:1.6rem" title="Toont in het Kraaienkwartier een kaartje met de plekken waar je al geweest bent">
+      <span class="ssi-label">Makkelijker voor kinderen</span>
+      <input type="checkbox" id="beginner-modus-check" onchange="zetBeginnerModus(this.checked)">
+      <span class="ssi-schuif"></span>
+    </label>
   </div>
 </div>
 
@@ -1908,14 +1913,49 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 
 
 
+<style>
+  /* Beginnersmodus: een read-only kaartje naast de code-invoer (voorlopig
+     alleen Kraaienkwartier). De code op de bordjes blijft de enige echte
+     ingang; dit is puur hulp om te zien waar je al geweest bent. Zichtbaar
+     alleen als de body de klasse beginner-modus draagt. */
+  .kw-kaart { display: none; }
+  .kw-invoer-rij { display: flex; flex-direction: column; align-items: center; }
+  body.beginner-modus #screen-kwartier1 .kw-invoer-rij {
+    flex-direction: row; justify-content: center; align-items: center;
+    gap: clamp(1rem, 4vw, 3rem); flex-wrap: nowrap; max-width: 100%;
+  }
+  body.beginner-modus #screen-kwartier1 .kw-invoer-kol { flex: 0 0 auto; text-align: center; }
+  body.beginner-modus #screen-kwartier1 .kw-kaart {
+    display: grid; grid-template-columns: repeat(3, auto);
+    gap: .35rem clamp(1.4rem, 5vw, 3.2rem); justify-items: center; align-items: start; flex: 0 0 auto;
+  }
+  .kw-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .3rem; width: clamp(52px, 7vw, 76px); }
+  .kw-kaart .kt-vak {
+    width: clamp(38px, 5vw, 54px); height: clamp(38px, 5vw, 54px); border-radius: 4px;
+    border: 1px solid rgba(45, 90, 95, .55); background: transparent;
+    transition: background .3s, border-color .3s;
+  }
+  .kw-kaart .kt.bezocht .kt-vak { background: #2d5a5f; border-color: #2d5a5f; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+  .kw-kaart .kt-naam {
+    font-family: 'Cinzel', serif; font-size: clamp(.5rem, 1.1vw, .62rem); line-height: 1.15;
+    letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 1.7em;
+    opacity: 0; transition: opacity .3s;
+  }
+  .kw-kaart .kt.bezocht .kt-naam { opacity: 1; color: var(--parchment); }
+</style>
 <div class="screen" id="screen-kwartier1" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
   <div class="kwartier-header"><h2>Het Kraaienkwartier</h2><p>Smalle steegjes, lage daken, fluisterende schaduwen</p></div>
   <img class="kraai-vlucht" src="ui/kraaienkwartier/kraaien.png" alt="" aria-hidden="true">
-  <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
-  <div class="code-section">
-    <input class="code-input" id="code-k-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkKraaiLocatie(this.value)">
-    <div class="code-error" id="code-k-locatie-msg"></div>
+  <div class="kw-invoer-rij">
+    <div class="kw-invoer-kol">
+      <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
+      <div class="code-section">
+        <input class="code-input" id="code-k-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkKraaiLocatie(this.value)">
+        <div class="code-error" id="code-k-locatie-msg"></div>
+      </div>
+    </div>
+    <div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -3032,6 +3072,7 @@ const VISITED_FLAGS = {
   sintdonatuslaan_unlocked:   'Heer Donatuslaan is ontgrendeld',
   intro_filmpje_gezien:       'Het intro-filmpje op het podium is bekeken',
   overworld_intro_gezien:     'De kaart-introductie (eerste aankomst op de overworld) is getoond',
+  kraai_kaart_intro_gezien:   'De beginnerskaart-uitleg in het Kraaienkwartier is getoond',
 
   // Kelly bij de put
   kelly_in_put:               'Kelly is in de dorpsput gevallen',
@@ -4830,6 +4871,14 @@ function showScreen(id) {
   }
   if (id === 'screen-locatie' && state.lastZone === 'kraaienkwartier') setTimeout(checkAllTokens, 600);
   if (id === 'screen-kwartier1' || id === 'screen-dorpsplein') setTimeout(checkAllTokens, 500);
+  // Beginnersmodus: kaartje bijwerken; eerste keer de korte uitleg tonen.
+  if (id === 'screen-kwartier1') {
+    updateKraaiKaart();
+    if (window._beginnerModus && state.personage && !state.debugSkipBezig &&
+        !hasVisited('kraai_kaart_intro_gezien')) {
+      setTimeout(kraaiKaartIntro, 500);
+    }
+  }
   // Binnenkomst in een district start daar de stille hulpklok van de
   // Verborgen Hand (gedeeld, eenmalig, zie vhStartKlok).
   if (typeof VH_SCHERM_DISTRICT !== 'undefined' && VH_SCHERM_DISTRICT[id]) vhStartKlok(VH_SCHERM_DISTRICT[id]);
@@ -5660,6 +5709,92 @@ function zetSnelstartIntro(aan) {
   window._snelstartIntroAan = bewaard !== '0';
   var check = document.getElementById('snelstart-intro-check');
   if (check) check.checked = window._snelstartIntroAan;
+})();
+
+// ── Beginnersmodus (per tablet) ─────────────────────────────────────────
+// Hulp voor kinderen: in het Kraaienkwartier verschijnt naast de code-invoer
+// een kaartje met de zeven plekken van de straat. Een plek kleurt en toont
+// zijn naam pas zodra je er zelf geweest bent (lokaal, uit
+// state.visitedLocations, dus geen gedeelde stand). De code op de bordjes
+// blijft de enige echte ingang. De keuze staat per apparaat in localStorage,
+// net als de snelstart-instelling hierboven.
+// Vorm (top = K5, K2 en K8 onderaan bij de ingang, oplopend naar boven):
+//            K5
+//     K4          K6
+//     K3          K7
+//     K2          K8
+var KRAAI_KAART_TEGELS = [
+  { id: 'k1_dorpsput',     naam: 'De Dorpsput',          col: 2, row: 1 },
+  { id: 'k1_nachtenwens',  naam: 'De Nachtenwens',       col: 1, row: 2 },
+  { id: 'k1_nummer7',      naam: 'Nummer 7',             col: 3, row: 2 },
+  { id: 'k1_uitkijktoren', naam: 'De Uitkijktoren',      col: 1, row: 3 },
+  { id: 'k1_nummer5',      naam: 'Nummer 5',             col: 3, row: 3 },
+  { id: 'k1_groenteboer',  naam: 'Stoop de Groenteboer', col: 1, row: 4 },
+  { id: 'k1_naaldmasker',  naam: 'Naald en Masker',      col: 3, row: 4 },
+];
+
+function updateKraaiKaart() {
+  var kaart = document.getElementById('kraai-kaart');
+  if (!kaart) return;
+  var html = '';
+  for (var i = 0; i < KRAAI_KAART_TEGELS.length; i++) {
+    var t = KRAAI_KAART_TEGELS[i];
+    var bezocht = state.visitedLocations.has(t.id);
+    html += '<div class="kt' + (bezocht ? ' bezocht' : '') +
+              '" style="grid-column:' + t.col + ';grid-row:' + t.row + '">' +
+              '<div class="kt-vak"></div>' +
+              '<div class="kt-naam">' + (bezocht ? t.naam : '') + '</div>' +
+            '</div>';
+  }
+  kaart.innerHTML = html;
+}
+
+function zetBeginnerModus(aan) {
+  window._beginnerModus = !!aan;
+  try { localStorage.setItem('zw_beginner', aan ? '1' : '0'); } catch (e) {}
+  if (document.body) document.body.classList.toggle('beginner-modus', !!aan);
+  var check = document.getElementById('beginner-modus-check');
+  if (check) check.checked = !!aan;
+  if (aan) updateKraaiKaart();
+}
+
+// Eenmalig instructiemoment bij de eerste keer dat een beginner het
+// Kraaienkwartier binnenkomt: het scherm dimt, de kaart licht op, korte
+// uitleg. Hergebruikt de bestaande kaart-introductie-stijl (ow-intro-*).
+var _kraaiKaartIntroBezig = false;
+function kraaiKaartIntro() {
+  if (_kraaiKaartIntroBezig || hasVisited('kraai_kaart_intro_gezien')) return;
+  var kaart = document.getElementById('kraai-kaart');
+  if (!kaart) return;
+  _kraaiKaartIntroBezig = true;
+  var overlay = document.createElement('div');
+  overlay.id = 'ow-intro-overlay';
+  document.body.appendChild(overlay);
+  kaart.classList.add('ow-intro-lift', 'ow-intro-spot');
+  try { kaart.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+  var paneel = document.createElement('div');
+  paneel.className = 'ow-intro-paneel';
+  paneel.innerHTML =
+    '<div class="ow-intro-orn">✦</div>' +
+    '<p class="ow-intro-tekst" style="opacity:1">Om je te helpen hebben we hier voor jou een kaart neergezet. Ben je ergens nog niet geweest, dan staat er geen naam. Zorg dat je overal heen gaat! En als je overal geweest bent, kun je soms ergens nog een tweede keer heen. Dat is soms slim en nodig.</p>' +
+    '<button class="ow-intro-knop">Verder →</button>';
+  document.body.appendChild(paneel);
+  paneel.querySelector('.ow-intro-knop').addEventListener('click', function () {
+    markVisited('kraai_kaart_intro_gezien');
+    kaart.classList.remove('ow-intro-lift', 'ow-intro-spot');
+    [overlay, paneel].forEach(function (el) { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; });
+    setTimeout(function () {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (paneel.parentNode) paneel.parentNode.removeChild(paneel);
+      _kraaiKaartIntroBezig = false;
+    }, 500);
+  });
+}
+
+(function initBeginnerModus() {
+  var bewaard = '0';
+  try { bewaard = localStorage.getItem('zw_beginner') || '0'; } catch (e) {}
+  zetBeginnerModus(bewaard === '1');
 })();
 
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
@@ -17479,6 +17614,9 @@ function buildDebugPanel() {
           if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
         }
       }, true, 'Kelly & de put'],
+      // ── Beginnersmodus (kaartje)
+      ['🗺️ Beginnersmodus aan/uit', function(){ zetBeginnerModus(!window._beginnerModus); close(); var s=document.getElementById('screen-kwartier1'); if (s && s.classList.contains('active')) showScreen('screen-kwartier1'); }, true, 'Beginnersmodus'],
+      ['↺ Kaart-uitleg opnieuw tonen', function(){ state.visited.delete('kraai_kaart_intro_gezien'); close(); var s=document.getElementById('screen-kwartier1'); if (s && s.classList.contains('active')) showScreen('screen-kwartier1'); }, true, 'Beginnersmodus'],
       // ── Kelly & de hand (Naald en Masker)
       ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ eyebrow: 'Een schim en stemmen in je hoofd dringen zich op', onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
       ['🖤 Rouwstof-quest openzetten', function(){ setSharedState('apotheker_quest_actief', true); close(); }, p === 'kelly', 'Kelly & de hand'],
