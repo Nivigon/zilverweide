@@ -968,6 +968,9 @@ body.woudscene-actief .finale-btn{display:none !important;}
    randen in het niets oplossen zodat hij als rookflard over de scene
    hangt in plaats van als rechthoekige poster. */
 .pf-slot.pf-schim img{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* Midden-pop (Sybille in de slotscene): horizontaal gecentreerd in plaats
+   van rechts, zodat zij en de roos samen het middelpunt vormen. */
+#pf-pop.pf-midden{left:50%;right:auto;transform:translateX(-50%)}
 /* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
    en meer naar het midden, weg van de speler-pop linksonder. */
 #pf-zij.pf-schim{left:26vw;bottom:22vh}
@@ -985,6 +988,9 @@ body.pf-cinema-actief #char-pop{z-index:252}
 #pf-roos.pf-fel .pf-gloed{inset:-70%;background:radial-gradient(circle,rgba(120,180,255,.8),transparent 65%);animation-duration:1.2s}
 #pf-roos.pf-fel .pf-deeltje{background:radial-gradient(circle,rgba(240,248,255,1) 0%,rgba(185,215,255,.9) 45%,rgba(150,190,255,0) 72%);animation-duration:1.7s}
 #pf-roos.pf-fel img{filter:drop-shadow(0 0 26px rgba(140,190,255,.95))}
+/* Laag-stand: de roos zweeft voor Sybille, net iets onder het midden van
+   haar pop (die met bottom 0 en 52vh hoogte haar midden rond 74vh heeft). */
+#pf-roos.pf-laag{top:66%}
 #pf-roos.pf-omhoog{top:14%}
 #pf-roos.pf-as{animation:none}
 #pf-roos.pf-as .pf-gloed{opacity:0}
@@ -1022,6 +1028,7 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #pf-zij.pf-groot img{height:57vh;max-height:330px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
+  #pf-roos.pf-laag{top:72%}
   #pf-roos img{height:14vh;max-height:100px}
 }
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
@@ -17639,10 +17646,15 @@ var PF_POPS = {
   aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA', klasse: 'pf-groot' },
   hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
   // De gebogen figuur is bewust de anonieme molen-schim, zodat niet te
-  // zien is wie er op het podium sluipt tot de onthulling. Het is een
-  // jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
+  // zien is wie er in deel 1 op het podium sluipt tot de onthulling. Het is
+  // een jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
   gebogen:    { src: 'karakters/dorendael/schim.jpeg', label: 'GEBOGEN FIGUUR', klasse: 'pf-schim' },
   sybille:    { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
+  // Sybille in deel 2, centraal in beeld (pf-midden): eerst met het hoofd
+  // naar de grond en de roos zwevend voor haar, daarna de spreuk-houding
+  // zodra de roos omhoog gaat.
+  sybillegrond: { src: 'karakters/dorpsplein/sybillekijktgrond.png', label: 'SYBILLE', klasse: 'pf-midden' },
+  sybillecast:  { src: 'karakters/dorpsplein/sybillecast1.png',      label: 'SYBILLE', klasse: 'pf-midden' },
   jan:        { src: 'karakters/spelers/jan-pop.png',   label: 'JAN' },
   kelly:      { src: 'karakters/spelers/kelly-pop.png', label: 'KELLY' },
   fenna:      { src: 'karakters/spelers/fenna-pop.png', label: 'FENNA' },
@@ -17811,11 +17823,26 @@ function pfToonRoos(aan) {
   }
 }
 function pfRoosFel() { pfRoosEl().classList.add('pf-fel'); }
-function pfRoosOmhoog() { pfRoosEl().classList.add('pf-omhoog'); }
+function pfRoosOmhoog() {
+  var el = pfRoosEl();
+  el.classList.remove('pf-laag');
+  el.classList.add('pf-omhoog');
+}
+// Laag-stand: de roos voor Sybille, net onder het midden van haar pop.
+// Zonder overgang erin, zodat hij daar meteen staat in plaats van vanaf
+// de oude positie omlaag te glijden (de top-transition duurt 2.2s).
+function pfRoosLaag() {
+  var el = pfRoosEl();
+  el.style.transition = 'none';
+  el.classList.add('pf-laag');
+  void el.offsetHeight;
+  el.style.transition = '';
+}
 // Alle standen wissen (voor een schone start, ook via het debug-paneel).
 function pfRoosReset() {
   var el = pfRoosEl();
   el.classList.remove('pf-fel');
+  el.classList.remove('pf-laag');
   el.classList.remove('pf-omhoog');
   el.classList.remove('pf-as');
 }
@@ -17956,13 +17983,13 @@ function pleinFinaleNaArmen() {
   var flesjeGedronken = hasVisited('h7_gedronken');
 
   var dialog = [
-    { tekst: 'Vier armen, vier spelers. De heksen krijsen en trekken, maar er is geen kant meer op. Voor ze staat Sybille, haar hoofd voorovergebogen, de roos voor zich.', onShow: function () { pfToonRoos(true); pfToonZij('heksen'); pfToonPop('gebogen'); } },
+    { tekst: 'Vier armen, vier spelers. De heksen krijsen en trekken, maar er is geen kant meer op. Voor ze staat Sybille, haar hoofd voorovergebogen, de roos voor zich.', onShow: function () { pfRoosLaag(); pfToonRoos(true); pfToonZij('heksen'); pfToonPop('sybillegrond'); } },
     { spreker: 'Sybille', tekst: 'De dingen die ik met en voor jullie gedaan heb... Al die rampen, al die doden, en...', onShow: function () { kkFadeNaar('_pfTrack', 0.08, 1200); } },
     { tekst: 'Het wordt stil. Zo stil dat je je eigen hartslag hoort.' },
     { spreker: 'Sybille', tekst: '...Claes.' },
     { tekst: 'De heksen verstijven. Voor het eerst zie je angst in hun ogen.' },
     { spreker: 'Sybille', tekst: '*(fel, hakkend)* Dit... houdt... nu... op!', onShow: function () { kkFadeNaar('_pfTrack', PF_BG_VOLUME, 900); } },
-    { tekst: 'Sybilles hoofd komt omhoog. De roos stijgt boven haar handen uit, blauw licht golft eromheen.', onShow: function () { pfToonPop('sybille'); pfRoosOmhoog(); pfRoosFel(); } },
+    { tekst: 'Sybilles hoofd komt omhoog. De roos stijgt boven haar handen uit, blauw licht golft eromheen.', onShow: function () { pfToonPop('sybillecast'); pfRoosOmhoog(); pfRoosFel(); } },
     { spreker: 'Sybille', tekst: 'Mana impuira, Mana finita, Mana culta, Mana finita, Mana ultima, Mana...' },
     { tekst: 'Eén tel stilte. Alles op het plein houdt de adem in.', onShow: function () { kkFadeNaar('_pfTrack', 0.06, 500); } },
     { spreker: 'Sybille', tekst: 'Finita!', onShow: function () { pfRoosBurst(); kkFadeNaar('_pfTrack', PF_BG_VOLUME, 600); } },
