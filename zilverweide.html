@@ -2273,7 +2273,8 @@ const state = {
     herberg_binnen: [],         // array van personage-ids: ['jan','kelly',...]
     herberg_timer_start: null,  // tijdstip (server-relatief) waarop de klok begon
     herberg_resterend: null,    // resterende seconden, alleen door de leider geschreven
-    herberg_klok_eigenaar: null,// rol die de klok houdt als Fenna niet meespeelt
+    herberg_klok_eigenaar: null,// rol die de klok houdt (Fenna, of de overnemer)
+    herberg_leider_overgenomen: null, // klok overgenomen na stilgevallen leider
     herberg_fenna_gesimuleerd: null, // testknop bootst Fenna na, geen echt tablet
     herberg_resultaat: null,    // 'succes', 'gefaald', of null
     // Tobbe is weg bij de dorpsput (door Felix meegenomen naar Stoop).
@@ -2343,6 +2344,7 @@ function standaardGedeeldeState() {
     herberg_timer_start: null,
     herberg_resterend: null,
     herberg_klok_eigenaar: null,
+    herberg_leider_overgenomen: null,
     herberg_fenna_gesimuleerd: null,
     herberg_resultaat: null,
     tobbe_gevonden: false,
@@ -2885,6 +2887,13 @@ function herbergAlleBinnen() {
 // zolder"): dan zit er geen echt tablet achter die rol, dus die mag de klok
 // niet krijgen.
 function herbergKlokEigenaar() {
+  // Is de klok overgenomen omdat de vorige leider stilviel (tablet dicht, in
+  // slaap, weggewisseld), dan wint de expliciet gezette eigenaar, ook als
+  // Fenna nog in de binnen-lijst staat. Zonder dit bleef 'fenna' altijd de
+  // leider en bevroor de aftelling bij iedereen zodra haar tablet stil viel.
+  if (getSharedState('herberg_leider_overgenomen')) {
+    return getSharedState('herberg_klok_eigenaar') || null;
+  }
   if (!getSharedState('herberg_fenna_gesimuleerd')
       && sharedLijst('herberg_binnen').indexOf('fenna') !== -1) return 'fenna';
   return getSharedState('herberg_klok_eigenaar') || null;
@@ -10270,14 +10279,22 @@ function startHerbergTimer() {
       _herbergStilSinds = Date.now();
     }
     herbergWerkTellerBij();
-    // Vangnet: de leider is stil EN de scène duurt hier al langer dan hij ooit
-    // kan duren. Alleen verschillen op de eigen klok gebruiken, nooit een
-    // tijdstempel van een ander toestel, zodat klokverschil hier niets doet.
+    // Vangnet: staat de leider langer dan HERBERG_STIL_MS stil, dan nemen we
+    // de klok hier over in plaats van de aftelling te laten bevriezen. De
+    // starttijd (herberg_timer_start) is server-relatief, dus dit tablet
+    // rekent vanaf de volgende tik zelf de juiste resttijd uit en deelt die
+    // verder. De scène kan zo alsnog slagen als de vrienden op tijd zijn, of
+    // netjes falen op 0. Klokverschil doet hier niets: 'stil' meet alleen of
+    // het gedeelde getal nog verandert op de eigen klok, geen vreemde stempel.
     var stil = Date.now() - _herbergStilSinds;
-    var eigenDuur = Date.now() - _herbergEigenStart;
-    if (stil > HERBERG_STIL_MS && eigenDuur > HERBERG_TIMER_SEC * 1000 + HERBERG_STIL_MS) {
-      console.warn('Zolder: leidend tablet is stil, dit toestel rondt de scène af.');
-      herbergRondAf('gefaald');
+    if (stil > HERBERG_STIL_MS) {
+      console.warn('Zolder: leider stil, dit tablet (' + state.personage + ') neemt de klok over.');
+      setSharedState('herberg_klok_eigenaar', state.personage);
+      setSharedState('herberg_leider_overgenomen', true);
+      // Stil-teller resetten: pas op de volgende tik zijn we eigenaar (dan
+      // valt deze tak weg), en de Firebase-echo van het oude getal mag geen
+      // tweede overname triggeren.
+      _herbergStilSinds = Date.now();
     }
   }, 1000);
 }
