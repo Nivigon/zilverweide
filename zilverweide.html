@@ -8120,6 +8120,25 @@ function kellyKerkArchiefNaVideo() {
   });
 }
 
+// Instructie-popup die verschijnt zodra de speler op de startknop van een
+// doolhof drukt, vlak voordat het doolhof echt begint. In-stijl, kort, en
+// een tikje dreigend.
+const DOOLHOF_INSTRUCTIE =
+  '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">' +
+  'Je navigeert door het doolhof. Je begin- en eindpunt zijn onbekend. ' +
+  'Leer van je fouten, want anders...' +
+  '</p>';
+
+// Wikkel de start() van een doolhof-instantie zodat de instructie-popup eerst
+// verschijnt; pas na "Verder" begint het doolhof echt. Roep dit aan na mount(),
+// nadat eventuele andere start-wrappers al gezet zijn.
+function wikkelDoolhofInstructie(dh) {
+  const _origStart = dh.start.bind(dh);
+  dh.start = function () {
+    toonLade('Het doolhof', DOOLHOF_INSTRUCTIE, 'Verder', function () { _origStart(); });
+  }.bind(dh);
+}
+
 // Het kerkarchief-doolhof. Hergebruikt de doolhof-engine en KERK_CONFIG.
 // Bij een fout: fullscreen non-pop overlay (zelfde patroon als archivaris).
 function startKerkDoolhof() {
@@ -8176,6 +8195,7 @@ function startKerkDoolhof() {
       );
     });
   }.bind(huidigDoolhof);
+  wikkelDoolhofInstructie(huidigDoolhof);   // instructie-popup bij Start doolhof
   schaduwTijdensDoolhof(huidigDoolhof);
 }
 
@@ -20126,6 +20146,7 @@ function openArchiefDoolhof() {
     }
   });
   huidigDoolhof.mount();
+  wikkelDoolhofInstructie(huidigDoolhof);   // instructie-popup bij Start doolhof
   startDoolhofMuziek('geluid/doolhof/doolhofarchief.mp3', 0.15);
   schaduwTijdensDoolhof(huidigDoolhof);   // schaduw zwijgt/bevriest tijdens dit doolhof
 
