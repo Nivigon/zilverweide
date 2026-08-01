@@ -2336,6 +2336,10 @@ const state = {
   activeKwartier: null,
   visited: new Set(),
   visitedLocations: new Set(),
+  // Foute lied-pogingen per lied (robbie/stiltevijver/herberg). Persoonlijk
+  // (alleen Fenna), en het telt door over een herstart heen: het staat in het
+  // herstelpunt. Na GRATIS_PASS_NA fouten geeft de lied-mechanic een free pass.
+  fennaLiedPogingen: {},
   zone: 'dorpsplein',
   unlockedKwartieren: ['kraaienkwartier'],
   codes: { kraai: 'KRAAIENKWARTIER' },
@@ -3366,7 +3370,10 @@ var HERSTEL_VELDEN = [
   'hdFinalePopupGetoond', 'tobbeGokOpgelost', 'hdGokCooldown',
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
   'janVastInAchterkamer', 'vhTorenTellingGetoond',
-  'locatieOnbekend', 'felixAfgepakt'
+  'locatieOnbekend', 'felixAfgepakt',
+  // Foute lied-pogingen (per lied) moeten een crash overleven, anders begint
+  // de free-pass-teller na een herstart weer op nul.
+  'fennaLiedPogingen'
   // opZolder staat hier bewust NIET: herstel landt altijd op straat, nooit
   // boven. Zou het wel meegaan en herstelt Fenna terwijl de zolderscène nog
   // loopt, dan speelt de oogleden-afsluiter over het straatscherm heen zodra
@@ -5682,6 +5689,7 @@ function resetSpel() {
   state.activeKwartier = null;
   state.visited = new Set();
   state.visitedLocations = new Set();
+  state.fennaLiedPogingen = {};
   state.zone = 'dorpsplein';
   state.unlockedKwartieren = ['kraaienkwartier'];
   state.codes = { kraai: 'KRAAIENKWARTIER' };
@@ -10138,8 +10146,13 @@ function renderDd4Herberg(loc) {
   }
   const timerStart   = getSharedState('herberg_timer_start');
   const resultaat    = getSharedState('herberg_resultaat');
-  const naZolder     = !!resultaat;
-  const tijdensTimer = timerStart && !resultaat;
+  // De scène is voorbij zodra dat als wereld-feit vastligt (herberg_scene_voltooid
+  // is gedeeld en staat in het herstelpunt), ook als het vluchtige herberg_resultaat
+  // na een herstart nog niet terug-gesynct is. Zonder deze regel stuurt de herberg
+  // Fenna opnieuw de trap op voor een al afgeronde scène.
+  const sceneVoorbij = !!resultaat || hasVisited('herberg_scene_voltooid');
+  const naZolder     = sceneVoorbij;
+  const tijdensTimer = timerStart && !sceneVoorbij;
 
   // ── DEEL 3 — NÁ de zolder-scène ──
   if (naZolder) return renderDd4NaZolder(loc, p);
@@ -10233,6 +10246,7 @@ function renderDd4Menigte(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Op het podium',
         geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+        geenTerug: true,          // op het podium geen terug-knop: de puzzel houdt haar hier tot lied of free pass
         dialog: [
           { tekst: 'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.', onShow: function() { verbergNpcPop(); } },
           { spreker: 'Fenna-Viviènne', tekst: 'Eén lied. Het juiste lied. Dan heb ik ze.' }
@@ -10240,7 +10254,7 @@ function renderDd4Menigte(loc, p) {
         extra: function (mount) {
           FennaLied.mount(mount, 'herberg', function () {
             mga(2);
-          });
+          }, fennaLiedOpts('herberg'));
         }
       });
     }
@@ -10565,8 +10579,11 @@ function klikZolder() {
   // mee: pop opruimen, anders blijft hij op de zolder in beeld hangen.
   verbergNpcPop();
 
-  // Scène is al voorbij — toon eind-staat op de zolder
-  if (resultaat) {
+  // Scène is al voorbij, toon eind-staat op de zolder. We kijken ook naar het
+  // wereld-feit herberg_scene_voltooid (gedeeld en in het herstelpunt), zodat een
+  // nog-niet-gesynct herberg_resultaat na een herstart Fenna niet terug de trap op
+  // stuurt of in de knoploze wachtstand dumpt.
+  if (resultaat || hasVisited('herberg_scene_voltooid')) {
     renderZolderEindStaat(resultaat);
     return;
   }
@@ -10724,6 +10741,12 @@ function spelerGaatNaarBoven() {
 }
 
 function renderHerbergZolder(p) {
+  // Veiligheidsslot: is de scène al voltooid, dan nooit de knoploze wachtstand
+  // openen (ZolderFx.showWaiting heeft geen uitgang). Toon de eind-staat.
+  if (hasVisited('herberg_scene_voltooid')) {
+    renderZolderEindStaat(getSharedState('herberg_resultaat'));
+    return;
+  }
   // Terugkeer op de zolder terwijl de scène nog loopt: de levende zolder
   // (overlay) met teller + timer. Wie hier is, staat erbij → inchecken.
   state.opZolder = true;
@@ -11303,6 +11326,7 @@ function fennaZingt() {
     titel: loc ? loc.naam : 'De Stiltevijver',
     sub:   loc ? loc.sub : 'Een vijver waar het wateroppervlak nooit beweegt',
     geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+    geenTerug: true,          // tijdens het kiezen geen terug-knop: de puzzel houdt haar hier tot lied of free pass
     dialog: [
       { spreker: 'Fenna-Viviènne', tekst: 'Ze staan daar maar, met hun stille gezichten. Wat heeft deze avond nodig?' }
     ],
@@ -11311,7 +11335,7 @@ function fennaZingt() {
         markVisited('fenna_vijver_vast');
         const l = locatiesDorendael.find(x => x.id === 'dd8_stiltevijver');
         if (l) renderDd8Stiltevijver(l);
-      });
+      }, fennaLiedOpts('stiltevijver'));
     }
   });
 }
@@ -12636,6 +12660,20 @@ function verzamelItem(locId, emoji, naam, beschrijving, stilPopup) {
   }
 }
 
+// Bouwt de mount-opties voor Fenna's lied-mechanic: de opgeslagen foute-pogingen
+// meegeven en elke nieuwe fout persistent wegschrijven, zodat de free-pass-teller
+// doortelt over een herstart (crash). liedKey: 'robbie' | 'stiltevijver' | 'herberg'.
+function fennaLiedOpts(liedKey) {
+  return {
+    pogingenStart: (state.fennaLiedPogingen && state.fennaLiedPogingen[liedKey]) || 0,
+    opFoutePoging: function (n) {
+      if (!state.fennaLiedPogingen) state.fennaLiedPogingen = {};
+      state.fennaLiedPogingen[liedKey] = n;
+      bewaarHerstelpunt();
+    }
+  };
+}
+
 function fennaZingtVoorRobbie() {
   // Mastermind-mechaniek, ingebed in de locatie-UI (kop, sfeer, inventaris
   // blijven staan). Pas bij alle drie goed volgt het token en de afsluiting.
@@ -12645,6 +12683,7 @@ function fennaZingtVoorRobbie() {
     titel: loc ? loc.naam : 'Nummer 5',
     sub:   loc ? loc.sub : 'Een woonhuis midden in de straat',
     geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+    geenTerug: true,          // tijdens het kiezen geen terug-knop: de puzzel houdt haar hier tot lied of free pass
     dialog: [
       { spreker: 'Robbie Kweekel', tekst: '"Zing je iets voor mij? Alsjeblieft? Eén liedje maar!"' },
       { spreker: 'Fenna-Viviènne', tekst: 'Hij straalt helemaal. Nu alleen nog het juiste lied kiezen.' }
@@ -12662,7 +12701,7 @@ function fennaZingtVoorRobbie() {
           // Dat is de tekst van een volgend bezoek. Ze neemt afscheid en gaat.
           goBackFromLocatie
         );
-      });
+      }, fennaLiedOpts('robbie'));
     }
   });
 }
@@ -13245,7 +13284,7 @@ function goBackFromLocatie() {
     // gerend, mond dichtgenaaid. Eénmalig per speler, en alleen voor wie de
     // scène zelf op de zolder heeft meegemaakt. Wie beneden stond, ziet hem
     // niet langsrennen: die vindt hem gewoon in de hoek als hij naar boven gaat.
-    if (getSharedState('herberg_resultaat')
+    if ((getSharedState('herberg_resultaat') || hasVisited('herberg_scene_voltooid'))
         && hasVisited('zolder_scene_beleefd')
         && !hasVisited('herbergier_trap_gezien')) {
       renderHerbergierOpTrap();
@@ -18050,6 +18089,7 @@ function buildDebugPanel() {
       // kennismakingsscene bij Robbie, terwijl je in de test al verder bent.
       ['🎤 + Microfoon',              function(){ markVisited('fenna_robbie_bezoek'); debugItem('🎙️','Microfoon'); }, p === 'fenna' && !heeftMicro, 'Robbie & het lied'],
       ['✦ Robbie akkoord (skip lied)', function(){ kkSleutelVerkregen('robbie'); document.getElementById('debug-panel').style.display='none'; }, !robbieKlaar, 'Robbie & het lied'],
+      ['🎵 Lied: alles goed', function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); document.getElementById('debug-panel').style.display='none'; }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Robbie & het lied'],
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
@@ -18116,6 +18156,7 @@ function buildDebugPanel() {
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🚪 Reset ingang-geheugen',   function(){ debugResetIngangen(); close(); }, true, 'Algemeen'],
+      ['🎵 Lied: alles goed',        function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); close(); }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Algemeen'],
       // ── Herberg
       ['🍺 Forceer herberg-succes',  function(){ debugHerbergSucces(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🌑 Forceer herberg-faal',    function(){ debugHerbergFaal(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
