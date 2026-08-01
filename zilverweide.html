@@ -8106,7 +8106,8 @@ function kellyKerkArchief() {
 }
 
 // (kellyKerkArchiefNaVideo blijft bestaan als tussenstap voor de bestaande
-// video-placeholder-route, wordt door onExit gebruikt.)
+// video-placeholder-route. Het doolhof heeft geen terugknop meer, dus deze
+// stap wordt niet langer door een onExit aangeroepen.)
 function kellyKerkArchiefNaVideo() {
   const cont = document.getElementById('locatie-content');
   renderLocatieScene({
@@ -8124,6 +8125,7 @@ function kellyKerkArchiefNaVideo() {
 function startKerkDoolhof() {
   const c = document.getElementById('locatie-content');
   if (!c) return;
+  kerkFoutenTeller = 0;   // verse start van de puzzel
   if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
   c.innerHTML = '<div id="kerk-doolhof-mount"></div>';
   const mount = document.getElementById('kerk-doolhof-mount');
@@ -8139,11 +8141,9 @@ function startKerkDoolhof() {
     config: KERK_CONFIG,
     showDebug: false,
     compactHeader: true,
-    onExit: function () {
-      if (zwBackBtn) zwBackBtn.style.display = '';
-      if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
-      kellyKerkArchiefNaVideo();
-    },
+    // Geen onExit: Kelly moet door het gangenstelsel heen, er is geen
+    // terugknop. Wie te vaak wordt betrapt (10x) krijgt hieronder in
+    // _heksReset een uitweg.
     onWin: function () {
       if (zwBackBtn) zwBackBtn.style.display = '';
       if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
@@ -8155,8 +8155,26 @@ function startKerkDoolhof() {
   // Monkey-patch _heksReset: fullscreen non-pop overlay bij elke fout.
   const origHeksReset = huidigDoolhof._heksReset.bind(huidigDoolhof);
   huidigDoolhof._heksReset = function() {
+    kerkFoutenTeller++;
     speelDoolhofDrop();
-    toonNonPakt(function() { origHeksReset(); });
+    toonNonPakt(function() {
+      if (kerkFoutenTeller < 10) {
+        origHeksReset();
+        return;
+      }
+      // 10e keer betrapt: de non geeft het op en Kelly glipt erdoor. Zelfde
+      // afloop als winst (de boekenvondst), zonder Schaduw-vloek.
+      toonLade(
+        'Je glipt erdoor',
+        '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: de non wendt haar hoofd af, heel even maar. Genoeg. Je glipt langs haar de duisternis in, en dit keer neemt het gangenstelsel je niet terug.]</p>',
+        'Verder',
+        function() {
+          if (zwBackBtn) zwBackBtn.style.display = '';
+          if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
+          kellyKerkBoekVondst();
+        }
+      );
+    });
   }.bind(huidigDoolhof);
   schaduwTijdensDoolhof(huidigDoolhof);
 }
@@ -20033,6 +20051,9 @@ const ARCHIEF_CONFIG = {
 // vloek (De Schaduw 🌑), net als Felix bij Nummer 2.
 // ─────────────────────────────────────────────────────────────────
 let archiefFoutenTeller = 0;
+// Kerk-doolhof: aparte foutenteller. Na 10x betrapt geeft de non het op en
+// glipt Kelly erdoor (uitweg in startKerkDoolhof._heksReset).
+let kerkFoutenTeller = 0;
 
 // Archivaris-pakt overlay: portretfoto snel naar voren in een zwart kader.
 // Verdwijnt na 1.5s en roept dan de callback aan.
