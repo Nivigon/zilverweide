@@ -17689,7 +17689,7 @@ function buildDebugPanel() {
   var isFelix = state.personage === 'felix';
   btns = btns.concat([
     ['👵 Kleed om naar Lucinde', function(){ debugVermomFelix('Lucinde'); }, isFelix],
-    ['💃 Kleed om naar Lola',    function(){ debugVermomFelix('Lola'); }, isFelix],
+    ['💃 Kleed om naar Lola',    function(){ addInventory(ITEMS.lolaOutfit.emoji, ITEMS.lolaOutfit.naam, false); debugVermomFelix('Lola'); }, isFelix],
     ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix],
     ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming],
     // Herstelpunt (crash-herstel): forceer een save, kijk wat er staat, of wis.
