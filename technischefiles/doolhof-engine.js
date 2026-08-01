@@ -55,7 +55,7 @@
 
   var RICHTINGEN = ['vooruit', 'achter', 'links', 'rechts'];
   var PIJLEN = { vooruit: '↑', achter: '↓', links: '←', rechts: '→' };
-  var LABELS = { vooruit: 'Vooruit', achter: 'Terug', links: 'Links', rechts: 'Rechts' };
+  var LABELS = { vooruit: 'Vooruit', achter: 'Omlaag', links: 'Links', rechts: 'Rechts' };
 
   // ─── Klasse ─────────────────────────────────────────────────────
   function Doolhof(opts) {
