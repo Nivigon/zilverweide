@@ -29,6 +29,7 @@
     robbie: {
       titel: 'Robbie verdient een lied. Maar welke...',
       hint: '1 op 1 met zo\'n fan. Dit vraagt om iets intiems.',
+      gratisRegel: 'Met een fan zo 1 op 1 in de woonkamer. Dat vraagt om een intiem moment.',
       vragen: [
         { id: 'genre', label: 'Toon', correct: 1, options: [
           'Bombastische operette, groots en meeslepend voor volle zalen',
@@ -57,6 +58,7 @@
     stiltevijver: {
       titel: 'Deze mensen verdienen een lied. Maar welke...',
       hint: 'Neem deze mensen mee. Het is een zware avond.',
+      gratisRegel: 'Wanneer men zo verdrietig, geschokt en bezorgd is, dan is troost het beste.',
       vragen: [
         { id: 'genre', label: 'Toon', correct: 2, options: [
           'Zwoele fluister-chanson, verleidelijk en persoonlijk',
@@ -85,6 +87,7 @@
     herberg: {
       titel: 'Deze situatie vraagt een lied, maar welke?',
       hint: 'Agressiviteit kan soms agressie beantwoorden, maar de juiste afleiding of ver...',
+      gratisRegel: 'Verder opruien van de emoties is niet handig en intimiteit misplaatst, maar als ik ze wat afleiding en verleiding geef?',
       vragen: [
         { id: 'genre', label: 'Toon', correct: 0, options: [
           'Betoverend en verleidelijk, ze pakt de hele meute in',
@@ -116,6 +119,11 @@
   };
 
   var cfg = { rollMs: 2500, emergeMs: 900 };
+
+  // Na dit aantal foute pogingen geeft Fenna zichzelf de juiste keuzes (free
+  // pass). De teller loopt door over een herstart heen: de game leest de vorige
+  // stand in via mount-optie pogingenStart en bewaart elke fout via opFoutePoging.
+  var GRATIS_PASS_NA = 6;
 
   // Liederen die een echt geluidsfragment afspelen i.p.v. stil op te komen.
   // regelVertragingMs is per regel het moment waarop die regel in de zang
@@ -158,6 +166,9 @@
   var huidigLiedKey = null;
   var _liedAudio = null;
   var currentIndex = 0, selections = {}, onKlaarCb = null;
+  // Foute pogingen van deze puzzel (geseed uit de opgeslagen stand) en de
+  // callback waarmee de game elke nieuwe stand persistent wegschrijft.
+  var foutePogingen = 0, pogingCb = null;
 
   // ─────────────────────────────────────────────────────────────────
   // Stijl (eenmalig injecteren)
@@ -288,6 +299,13 @@
       '.fl-feedback.solved{border-color:rgba(201,168,76,.7);box-shadow:0 0 24px rgba(201,168,76,.2)}',
       '.fl-count{font-size:22px;font-weight:500;color:#c9a84c;margin:0;letter-spacing:1px}',
       '.fl-hint{font-size:13px;color:#7d6640;margin:12px 0 22px;font-family:"Crimson Text",Georgia,serif;font-style:italic}',
+      // Free pass: de drie juiste keuzes leesbaar onder elkaar.
+      '.fl-pass-keuzes{display:flex;flex-direction:column;gap:10px;margin:4px 0 24px;text-align:left}',
+      '.fl-pass-keuze{display:flex;flex-direction:column;gap:2px;padding:8px 12px;',
+        'border:1px solid rgba(201,168,76,.25);border-radius:4px;background:rgba(201,168,76,.05)}',
+      '.fl-pass-label{font-family:"Cinzel",Georgia,serif;font-size:10px;letter-spacing:3px;',
+        'text-transform:uppercase;color:#8a6d3b}',
+      '.fl-pass-waarde{font-family:"Crimson Text",Georgia,serif;font-size:15px;color:#d9bd72;line-height:1.35}',
       '@keyframes fl-emerge{0%{opacity:0;transform:scale(.92);filter:brightness(.2)}100%{opacity:1;transform:scale(1);filter:brightness(1)}}',
 
       '.fl-speed{position:fixed;right:16px;top:50%;transform:translateY(-50%);z-index:9550;',
@@ -434,15 +452,53 @@
     stageEl.innerHTML = '';
     if (goed === vragen.length) {
       toonLied();
-    } else {
-      var fb = el('div', 'fl-feedback');
-      fb.appendChild(el('p', 'fl-count', goed + ' van ' + vragen.length + ' goed'));
-      fb.appendChild(el('p', 'fl-hint', liedHint || 'Maar welke? Probeer een andere volgorde.'));
-      var btn = el('button', 'fl-btn', 'Opnieuw');
-      btn.onclick = function () { currentIndex = 0; renderVraag(0, true); };
-      fb.appendChild(btn);
-      stageEl.appendChild(fb);
+      return;
     }
+    // Foute poging: optellen en persistent wegschrijven (telt door over een
+    // herstart). Bij de drempel geeft Fenna zichzelf de juiste keuzes.
+    foutePogingen++;
+    if (pogingCb) { try { pogingCb(foutePogingen); } catch (e) { console.warn('FennaLied opFoutePoging:', e); } }
+    if (foutePogingen >= GRATIS_PASS_NA) {
+      toonGratisPass();
+      return;
+    }
+    var fb = el('div', 'fl-feedback');
+    fb.appendChild(el('p', 'fl-count', goed + ' van ' + vragen.length + ' goed'));
+    fb.appendChild(el('p', 'fl-hint', liedHint || 'Maar welke? Probeer een andere volgorde.'));
+    var btn = el('button', 'fl-btn', 'Opnieuw');
+    btn.onclick = function () { currentIndex = 0; renderVraag(0, true); };
+    fb.appendChild(btn);
+    stageEl.appendChild(fb);
+  }
+
+  // Free pass na te veel foute pogingen: Fenna herinnert zich het juiste lied.
+  // De drie goede keuzes komen in beeld en één knop leidt naar het lied, exact
+  // dezelfde route als zelf oplossen (het lied klinkt, het verhaal loopt door).
+  function toonGratisPass() {
+    stageEl.innerHTML = '';
+    var data = LIEDEREN[huidigLiedKey] || {};
+    var box = el('div', 'fl-feedback solved');
+    box.appendChild(el('p', 'fl-count', 'Ah, ik weet het alweer.'));
+    if (data.gratisRegel) box.appendChild(el('p', 'fl-hint', data.gratisRegel));
+
+    var lijst = el('div', 'fl-pass-keuzes');
+    for (var i = 0; i < vragen.length; i++) {
+      var q = vragen[i];
+      var rij = el('div', 'fl-pass-keuze');
+      rij.appendChild(el('span', 'fl-pass-label', q.label));
+      rij.appendChild(el('span', 'fl-pass-waarde', q.options[q.correct]));
+      lijst.appendChild(rij);
+    }
+    box.appendChild(lijst);
+
+    var btn = el('button', 'fl-btn', 'Zo zing ik het');
+    btn.onclick = function () {
+      for (var j = 0; j < vragen.length; j++) selections[vragen[j].id] = vragen[j].correct;
+      stageEl.innerHTML = '';
+      toonLied();
+    };
+    box.appendChild(btn);
+    stageEl.appendChild(box);
   }
 
   // Het juiste lied klinkt op: titel, dan de regels een voor een, alsof
@@ -612,7 +668,7 @@
   // ─────────────────────────────────────────────────────────────────
   // Gedeelde opbouw voor open() en mount().
   // ─────────────────────────────────────────────────────────────────
-  function bouwPaneel(liedKey, onKlaar, ingebed) {
+  function bouwPaneel(liedKey, onKlaar, ingebed, opts) {
     var data = LIEDEREN[liedKey];
     if (!data) { console.warn('FennaLied: onbekend lied "' + liedKey + '"'); return null; }
     ensureStyle();
@@ -627,6 +683,10 @@
     selections = {};
     for (var i = 0; i < vragen.length; i++) selections[vragen[i].id] = 0;
     onKlaarCb = onKlaar || null;
+    // Foute-pogingen-teller: seed uit de opgeslagen stand zodat hij doortelt
+    // over een herstart (crash), en onthoud de bewaar-callback.
+    foutePogingen = (opts && typeof opts.pogingenStart === 'number') ? opts.pogingenStart : 0;
+    pogingCb = (opts && typeof opts.opFoutePoging === 'function') ? opts.opFoutePoging : null;
 
     panelEl = el('div');
     panelEl.id = 'fl-panel';
@@ -656,9 +716,9 @@
     // Ingebed in de bestaande locatie-UI (via `extra` van renderLocatieScene).
     // Geef een container mee; de mechanic rendert daarbinnen. De omliggende
     // spel-UI (kop, dialoog, inventaris) blijft gewoon staan.
-    mount: function (container, liedKey, onKlaar) {
+    mount: function (container, liedKey, onKlaar, opts) {
       if (!container) { console.warn('FennaLied.mount: geen container'); return; }
-      var p = bouwPaneel(liedKey, onKlaar, true);
+      var p = bouwPaneel(liedKey, onKlaar, true, opts);
       if (!p) return;
 
       root = container;              // bij ingebed gebruik: container is de root
@@ -671,9 +731,9 @@
     },
 
     // Volledig scherm-overlay (los van de spel-UI).
-    open: function (liedKey, onKlaar) {
+    open: function (liedKey, onKlaar, opts) {
       this.close();
-      var p = bouwPaneel(liedKey, onKlaar, false);
+      var p = bouwPaneel(liedKey, onKlaar, false, opts);
       if (!p) return;
 
       root = el('div');
@@ -684,6 +744,22 @@
       applyVars();
       renderSpeed();
       renderVraag(0, true);
+    },
+
+    // Testmodus: is er nu een lied-puzzel actief? Gebruikt door de "alles
+    // goed"-knop in het testpaneel om zichzelf alleen te tonen als het zin heeft.
+    actief: function () {
+      return !!(vragen && stageEl);
+    },
+
+    // Testmodus: los de actieve puzzel meteen op (alle antwoorden juist) en
+    // speel het lied. Niet zichtbaar in het echte spel; alleen via het testpaneel.
+    allesGoed: function () {
+      if (!vragen || !stageEl) return false;
+      for (var i = 0; i < vragen.length; i++) selections[vragen[i].id] = vragen[i].correct;
+      stageEl.innerHTML = '';
+      toonLied();
+      return true;
     },
 
     close: function () {
