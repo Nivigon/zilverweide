@@ -7,7 +7,7 @@
    Publieke API (aangeroepen vanuit zilverweide.html):
      ZolderFx.open()                     – overlay tonen + sfeer starten
      ZolderFx.playFennaArc(onHelp)       – Fenna's 30s taunt-arc → Help
-     ZolderFx.showArriver(role, onErbij) – aankomende speler treft Fenna/Robbie
+     ZolderFx.showArriver(role, onErbij) – aankomende speler treft Fenna
      ZolderFx.showWaiting(role)          – teller + timer terwijl de klok loopt
      ZolderFx.playResolution(onDone)     – gedeelde afsluiter (heks vertrekt)
      ZolderFx.setTeller(aantal, totaal)  – live teller bijwerken
@@ -427,17 +427,18 @@
   }
 
   // ─────────────────────────────────────────────────────────────────
-  // Publiek: aankomende speler treft Fenna en Robbie
+  // Publiek: aankomende speler treft Fenna (alleen; Robbie liet enkel
+  // een briefje achter en is zelf al vertrokken)
   // ─────────────────────────────────────────────────────────────────
   function showArriver(role, onErbij) {
     clearOverlayContent();
     var story = document.getElementById('zc-story');
     story.innerHTML =
-      '<p>Je stormt de kraakende trap op. Boven staan Fenna en Robbie tegen elkaar aan gedrukt, doodsbang, starend het donker in.</p>' +
+      '<p>Je stormt de kraakende trap op. Boven staat Fenna, tegen de muur gedrukt, doodsbang, starend het donker in.</p>' +
       '<p>De lucht klopt niet. Iets fluistert. Iets lacht.</p>' +
       '<p class="zc-red">Wat is dit\u2026</p>';
     requestAnimationFrame(function () { story.classList.add('show'); });
-    setActions([{ label: 'Ga snel bij ze staan', alarm: true, onclick: function () {
+    setActions([{ label: 'Ga snel bij haar staan', alarm: true, onclick: function () {
       story.classList.remove('show');
       setActions([]);
       if (typeof onErbij === 'function') onErbij();
@@ -452,7 +453,7 @@
     var flavor = hud.querySelector('.zc-flavor');
     flavor.textContent = (role === 'fenna')
       ? 'Blijf schreeuwen. Je vrienden moeten snel naar de herberg komen.'
-      : 'Blijf bij Fenna en Robbie. Houd vol tot er genoeg hulp is.';
+      : 'Blijf bij Fenna. Houd vol tot er genoeg hulp is.';
     requestAnimationFrame(function () { hud.classList.add('show'); });
   }
 

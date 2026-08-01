@@ -2504,6 +2504,10 @@ function verwerkBinnengekomenShared(data) {
         typeof speelPutReunie === 'function') {
       speelPutReunie();
     } else if (typeof renderK1Dorpsput === 'function') {
+      // Her-render sloopt de sluitknop van een eventueel lopende pop-dialoog
+      // (die staat in de scene-DOM): dan de dialoog netjes sluiten in plaats
+      // van hem als wees te laten hangen.
+      if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
       var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
@@ -4705,6 +4709,10 @@ function showScreen(id) {
   // Een magische onthulling hoort bij het scherm eronder: bij een
   // schermwissel gaat hij weg, zodat hij nergens blijft hangen.
   if (typeof sluitMagischOverlay === 'function') sluitMagischOverlay(true);
+  // Zelfde verhaal voor de pop-dialoog (bv. de put-reünie): die hoort bij de
+  // scène waarin hij startte. Zonder dit vangnet bleef hij na een
+  // schermwissel als wees over alle volgende schermen heen staan.
+  if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
   // De podium-intro speelt volledig op het locatie-scherm. Beland je op een
   // ander scherm, dan is de intro hoe dan ook voorbij (of overgeslagen) en
   // mag het slot op de vaste knoppen eraf. Vangnet, zodat niemand met dode
@@ -5948,6 +5956,14 @@ function toonAnderSpeler(rol) {
   if (!pop || !kaart) return;
   var naam = getSharedState('speler_naam_' + rol);
   var spelerNaam = (naam && String(naam).trim()) ? String(naam).trim() : null;
+  // Zelfde "waarom deze rol"-blok als op het keuzescherm en het eigen
+  // rol-overzicht, zodat spelers hier terugzien waarom de rollen ook alweer
+  // zo verdeeld zijn.
+  var kies = d.kiesAls ?
+    '<div class="rol-ov-kies" style="margin-top:1rem">' +
+      '<div class="rol-ov-kies-titel">Speel ' + d.naam + ' als jij:</div>' +
+      d.kiesAls.map(function (r) { return '<div class="rol-ov-kies-regel"><span style="color:var(--gold)">✦</span>&nbsp; ' + r + '</div>'; }).join('') +
+    '</div>' : '';
   kaart.innerHTML =
     '<button type="button" class="asp-sluit" onclick="sluitAnderSpeler()" aria-label="Sluiten">✕</button>' +
     '<div class="asp-top">' +
@@ -5958,7 +5974,8 @@ function toonAnderSpeler(rol) {
         '<div class="asp-rol">' + d.rol + '</div>' +
       '</div>' +
     '</div>' +
-    '<p class="asp-tekst">' + d.tekst + '</p>';
+    '<p class="asp-tekst">' + d.tekst + '</p>' +
+    kies;
   pop.style.display = 'flex';
   void pop.offsetWidth;
   pop.classList.add('zichtbaar');
@@ -9913,6 +9930,27 @@ function renderDd4NaZolder(loc, p) {
   });
 }
 
+// De trap zonder lopende zolderscène: de herbergier houdt iedereen behalve
+// Fenna tegen. Terug de gelagkamer in is de enige optie.
+function renderZolderGeweigerd() {
+  const loc = locatiesDorendael.find(l => l.id === 'dd4_herberg');
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: loc ? loc.naam : 'De Herberg',
+    sub: 'Onderaan de trap',
+    image: null,
+    dialog: [
+      { tekst: 'Je zet een voet op de onderste trede. Uit het niets staat de herbergier naast je, een halfdroog glas nog in zijn hand.', onShow: function () { toonNpcPop(WAARD_POP); } },
+      { spreker: 'Herbergier', tekst: 'Boven is niets voor jou. Nog niet.' },
+      'Hij blijft staan tot je van de trap stapt. Dit was geen uitnodiging om het nog eens te proberen.'
+    ],
+    acties: [{ label: '← Terug de gelagkamer in', onclick: function () {
+      verbergNpcPop();
+      if (loc) renderDd4Herberg(loc);
+    } }]
+  });
+}
+
 // Centrale dispatcher voor de zolder-knop. Routeert naar de juiste
 // scène afhankelijk van waar de speler zich in het verhaal bevindt.
 function klikZolder() {
@@ -9929,8 +9967,19 @@ function klikZolder() {
     return;
   }
 
-  // Fenna's allereerste bezoek — speciale leesscène met briefje
-  if (p === 'fenna' && !hasVisited('herberg_betreden')) {
+  // Zolang Fenna de klok niet gestart heeft (haar schreeuw, of het
+  // testpaneel) heeft niemand anders boven iets te zoeken: de herbergier
+  // verspert de trap. Zonder deze poort kon een teamgenoot voor Fenna uit
+  // naar boven en begon de zolderscène zonder haar.
+  if (p !== 'fenna' && !getSharedState('herberg_timer_start')) {
+    renderZolderGeweigerd();
+    return;
+  }
+
+  // Fenna zonder lopende klok: de leesscène met het briefje. Bewust niet op
+  // herberg_betreden gekeurd: liep ze eerder halverwege het briefje weg, dan
+  // staat die vlag al en belandde ze hier in de wachtstand zonder klok.
+  if (p === 'fenna' && !getSharedState('herberg_timer_start')) {
     fennaGaatNaarBoven();
     return;
   }
@@ -10056,13 +10105,14 @@ function spelerGaatNaarBoven() {
   // er niets, ook niet bij de skip-knoppen.
   state.opZolder = true;
   ZolderFx.open();
-  // Ze treffen Fenna en Robbie in paniek aan; 'ga erbij staan' = inchecken.
+  // Ze treffen Fenna in paniek aan (Robbie liet alleen een briefje achter);
+  // 'ga erbij staan' = inchecken.
   ZolderFx.showArriver(state.personage, function onErbij() {
     herbergZetBinnen(state.personage);
-    // Offline test: Fenna zit op een ander device, dus haar timer_start staat
-    // niet in deze state. Zonder start stopt startHerbergTimer meteen. Kom je
-    // hier als eerste binnen, dan begint de klok hier.
-    if (!getSharedState('herberg_timer_start')) herbergStartKlok();
+    // Geen eigen klok-start meer als vangnet: de klok start alleen nog via
+    // Fenna's schreeuw (fennaMaarPlots) of het testpaneel. Het oude vangnet
+    // liet een teamgenoot die te vroeg boven kwam de scène zonder Fenna
+    // beginnen; klikZolder laat die route nu sowieso niet meer door.
     ZolderFx.showWaiting(state.personage);
     ZolderFx.setTeller(herbergAantalBinnen(), 3);
     startHerbergTimer();
@@ -10075,7 +10125,8 @@ function renderHerbergZolder(p) {
   state.opZolder = true;
   ZolderFx.open();
   herbergZetBinnen(p);
-  if (!getSharedState('herberg_timer_start')) herbergStartKlok();
+  // Geen klok-start-vangnet meer: klikZolder laat deze route alleen door
+  // als de klok al loopt (of voor Fenna, die via haar eigen arc start).
   ZolderFx.showWaiting(p);
   ZolderFx.setTeller(herbergAantalBinnen(), 3);
   startHerbergTimer();
@@ -13868,8 +13919,24 @@ function openToneel() {
 // Gebruik: toonPopDialoog(stappen, callback)
 // stappen = array van { links: {img, naam, tekst} | null, rechts: {img, naam, tekst} | null }
 // callback = functie die aangeroepen wordt na de laatste stap
+
+// Vangnet: sluit een nog openstaande pop-dialoog zonder de afronding af te
+// spelen. De overlay hangt los aan document.body en zijn enige sluitknop
+// staat in de scene-DOM (sc-acties-mount); raakt die knop weg door een
+// schermwissel of her-render, dan bleef de dialoog voorgoed over elk scherm
+// heen staan (speeltest 2: Jan plus tekstballon bleef bij Kelly in beeld).
+function sluitPopDialoog() {
+  var ov = document.getElementById('pop-dialoog-overlay');
+  if (!ov) return;
+  if (ov._forceerSluit) ov._forceerSluit();
+  else if (ov.parentElement) ov.parentElement.removeChild(ov);
+}
+
 function toonPopDialoog(stappen, callback) {
+  // Nooit twee tegelijk: een eventuele oude dialoog eerst weg.
+  sluitPopDialoog();
   const overlay = document.createElement('div');
+  overlay.id = 'pop-dialoog-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:550;pointer-events:none';
 
   // Grootte per personage — zelfde als de echte pop-CSS
@@ -13917,6 +13984,26 @@ function toonPopDialoog(stappen, callback) {
   overlay.appendChild(popRechts);
   document.body.appendChild(overlay);
 
+  // De overlay zelf heeft pointer-events:none, dus de scene-terugknop
+  // eronder bleef gewoon klikbaar. Wie tijdens de dialoog wegnavigeerde
+  // sloopte daarmee de sluitknop (die staat in de scene-DOM) en hield de
+  // overlay voorgoed in beeld. Terugknop dus uit zolang de dialoog loopt.
+  const sceneBack = document.querySelector('#locatie-content .sc-back-btn');
+  const sceneBackDisplay = sceneBack ? sceneBack.style.display : '';
+  if (sceneBack) sceneBack.style.display = 'none';
+
+  // Geforceerd sluiten (via sluitPopDialoog, o.a. het vangnet in showScreen):
+  // overlay en knop weg, terugknop terug, en de speler-pop weer zichtbaar.
+  // De aanroepers (put-reünie, intro) verbergen char-pop tot hun callback,
+  // maar die callback speelt bij een geforceerde sluiting niet meer.
+  overlay._forceerSluit = function () {
+    if (knop.parentElement) knop.parentElement.removeChild(knop);
+    if (overlay.parentElement) overlay.parentElement.removeChild(overlay);
+    if (sceneBack) sceneBack.style.display = sceneBackDisplay;
+    var cp = document.getElementById('char-pop');
+    if (cp && cp.style.display === 'none') cp.style.display = '';
+  };
+
   let stap = 0;
 
   function updatePop(el, data) {
@@ -13951,7 +14038,8 @@ function toonPopDialoog(stappen, callback) {
       overlay.style.transition = 'opacity .4s';
       overlay.style.opacity = '0';
       setTimeout(function() {
-        document.body.removeChild(overlay);
+        if (sceneBack) sceneBack.style.display = sceneBackDisplay;
+        if (overlay.parentElement) document.body.removeChild(overlay);
         if (callback) callback();
       }, 400);
     }
@@ -18078,6 +18166,10 @@ function debugHerbergVriendenArriveren() {
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function(rol) {
     herbergZetBinnen(rol);
   });
+  // De klok start in het echte spel alleen nog via Fenna's schreeuw; deze
+  // testknop moet dus zelf voor een lopende klok zorgen, anders blijft de
+  // scène in de wachtstand hangen zonder aftelling.
+  if (!getSharedState('herberg_timer_start')) herbergStartKlok();
   // Als de zolder-scène nu open is, ververs hem zodat de teller bijwerkt.
   // De startHerbergTimer-loop merkt vanzelf dat iedereen binnen is en eindigt.
   if (state.lastOpenedLocatie === 'dd4_herberg' || hasVisited('herberg_betreden')) {
