@@ -1666,6 +1666,11 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
       <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
       <span class="ssi-schuif"></span>
     </label>
+    <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
+      <span class="ssi-label">Beginner modus</span>
+      <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
+      <span class="ssi-schuif"></span>
+    </label>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
     <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
@@ -5813,8 +5818,11 @@ function zetBeginnerModus(aan) {
   window._beginnerModus = !!aan;
   try { localStorage.setItem('zw_beginner', aan ? '1' : '0'); } catch (e) {}
   if (document.body) document.body.classList.toggle('beginner-modus', !!aan);
-  var check = document.getElementById('beginner-modus-check');
-  if (check) check.checked = !!aan;
+  // Beide schuifjes (spelernaam-scherm en testmodus op splash) gelijk houden.
+  ['beginner-modus-check', 'beginner-modus-check-splash'].forEach(function (cid) {
+    var c = document.getElementById(cid);
+    if (c) c.checked = !!aan;
+  });
   if (aan) updateKraaiKaart();
   // Stand delen zodra een rol vastligt, zodat het begeleiderspaneel live de
   // echte stand ziet. Alleen bij echt verschil met de gedeelde stand: een
