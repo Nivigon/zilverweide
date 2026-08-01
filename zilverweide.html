@@ -4013,6 +4013,8 @@ const ITEMS = {
   kraalBeengiht:      { emoji: '📿', naam: 'Kraal van Beengiht' },
   rouwstof:           { emoji: '🖤', naam: 'Rouwstof' },
   flesje:             { emoji: '🧪', naam: 'Flesje' },
+  // Stazia's D4-missie: de gebroken crystal uit de geheime kamer van Nummer 1
+  crystal:            { emoji: '🔮', naam: 'Mysterieus gebroken Crystal' },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -4682,6 +4684,12 @@ function showScreen(id) {
   // stop hem zodra we screen-locatie verlaten.
   if (id !== 'screen-locatie' && typeof stopWoudStorm === 'function') stopWoudStorm();
   if (id !== 'screen-locatie' && typeof stopKeuzeMuziek === 'function') stopKeuzeMuziek();
+  // De geheime kamer heeft eigen muziek en zet de schaduw stil. Verlaat je
+  // screen-locatie, dan stopt die muziek en loopt de schaduw weer (de pauze
+  // werkt op naam, dus dit heft alleen de kamer-pauze op, niet die van een
+  // ander onderdeel).
+  if (id !== 'screen-locatie' && typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
+  if (id !== 'screen-locatie' && typeof schaduwPauze === 'function') schaduwPauze(false, 'geheimekamer');
 
   if (id !== 'screen-locatie' && huidigDoolhof) {
     try { huidigDoolhof.destroy(); } catch (e) {}
@@ -5755,7 +5763,8 @@ var ITEM_AFBEELDINGEN = {
   'Kraal van Beengiht':   'items/kraalitem.png',         // H7 Apotheker-quest
   'Rouwstof':             'items/rouwstofitem.png',      // H7 Apotheker-quest
   'Vleespen':             'items/vleespenitem.png',      // Jan's lockpick-speld (slagerij)
-  'Flesje':               'items/flesjeitem.png'         // anti-Schaduw middel (H7 Apotheker)
+  'Flesje':               'items/flesjeitem.png',        // anti-Schaduw middel (H7 Apotheker)
+  'Mysterieus gebroken Crystal': 'items/crystalitem.png' // Stazia's D4-missie
 };
 // Voorwerpen waarvan de afbeelding nog gemaakt moet worden. Tot die tijd
 // staat het woord zelf in het plaatjesvak, herkenbaar als placeholder. Zodra
@@ -5808,7 +5817,8 @@ var ITEM_TEKSTEN = {
   'Kraal van Beengiht':         'Geen steen, geen glas. Iets anders.',
   'Rouwstof':                   'Iemand droeg dit tot het verdriet erin trok.',
   'Donderbloesem':              'De geur brandt in je neus. Toch wil de apotheker precies dit.',
-  'Flesje':                     'Wat de schaduw nam, kan hier weer los. Als je durft.'
+  'Flesje':                     'Wat de schaduw nam, kan hier weer los. Als je durft.',
+  'Mysterieus gebroken Crystal': 'Gebroken, en toch tintelt hij na in je hand. Iets ouds en magisch, iemand heeft dit met opzet stukgeslagen.'
   // 'Zakje Munten' staat niet hier: die tekst hangt af van wie het draagt,
   // zie itemTekst() hieronder (Felix vindt het, Jan gebruikt het).
 };
@@ -6242,22 +6252,73 @@ function h2GeheimeDeurHotspot() {
   });
 }
 
-// De geheime bonuskamer achter de voordeur. Bewust kaal: alleen het beeld
-// en een regel tekst. De normale terugknop brengt je, zoals overal, terug
-// op straat (en de vastzit-gate in showScreen houdt een opgesloten speler
-// gewoon binnen, mocht die hier ooit komen).
+// De geheime bonuskamer achter de voordeur. Een altaar met een gebroken,
+// duidelijk magische crystal. Wie hem pakt, krijgt hem in de inventaris
+// (gedeelde vlag crystal_gepakt), zodat teamgenoten die later binnenkomen
+// zien dat er alleen scherven over zijn. In deze kamer speelt eigen muziek
+// (loop) in plaats van de achtergrondmuziek, en staat de schaduw stil.
+// De normale terugknop brengt je, zoals overal, terug op straat (en de
+// vastzit-gate in showScreen houdt een opgesloten speler gewoon binnen,
+// mocht die hier ooit komen). Het opruimen van muziek en schaduwpauze
+// gebeurt in showScreen zodra je screen-locatie verlaat.
 function openKamer1Bonus() {
   verbergNpcPop();
+  var gepakt   = !!getSharedState('crystal_gepakt');
+  var zelfHeeft = !!state.inventory.find(function (i) { return i.naam === ITEMS.crystal.naam; });
+
+  var dialog;
+  if (!gepakt) {
+    // De crystal ligt er nog: sfeertekst met de keuze om hem mee te nemen.
+    dialog = [
+      'Bloed. Overal. Het stinkt.',
+      'Wat is dat voor voorwerp op het altaar? Er ligt een hamer naast. Iemand heeft het kapot geslagen.',
+      'Mee nemen?'
+    ];
+  } else if (zelfHeeft) {
+    // Jij hebt hem zelf al meegenomen.
+    dialog = ['Alleen scherven en een hamer op het altaar. De crystal zit al in je rugzak.'];
+  } else {
+    // Een teamgenoot was je voor (gedeelde vlag waar, maar niet bij jou).
+    dialog = ['Slechts kleine stukjes over. Een ander heeft het meegenomen.'];
+  }
+
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel: '', sub: '',
     image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
-    dialog: ['Vraag een hint aan Tom.']
+    dialog: dialog
   });
   // Ook echt naar het locatie-scherm: via de testknop kan deze functie
   // vanaf het straatscherm aangeroepen worden, en dan zou de kamer
   // onzichtbaar in de verborgen container renderen.
   showScreen('screen-locatie');
+
+  // Kamer-sfeer: eigen muziek in loop, achtergrondmuziek uit, schaduw stil.
+  startGeheimeKamerMuziek();
+  schaduwPauze(true, 'geheimekamer');
+
+  // Alleen als de crystal er nog ligt: klikgebied op de crystal.
+  if (!gepakt) setTimeout(kamer1CrystalHotspot, 60);
+}
+
+// Klikgebied op de gebroken crystal op het altaar (kamer1bonus.jpeg,
+// 1280 x 720). Bij een klik pak je hem op.
+function kamer1CrystalHotspot() {
+  zetSceneHotspot({
+    bevat: 'heerdonatuslaan/kamer1bonus',
+    natBreedte: 1280, natHoogte: 720,
+    x1: 580, y1: 343, x2: 682, y2: 410,
+    onKlik: pakKamer1Crystal
+  });
+}
+
+// De crystal oppakken. Gedeelde vlag zodat teamgenoten de lege plek zien;
+// daarna de kamer opnieuw tonen (altaar leeg, klikgebied weg).
+function pakKamer1Crystal() {
+  if (getSharedState('crystal_gepakt')) return;
+  setSharedState('crystal_gepakt', true);
+  addInventory(ITEMS.crystal.emoji, ITEMS.crystal.naam, true);
+  openKamer1Bonus();
 }
 
 // Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
@@ -7040,6 +7101,36 @@ function stopKeuzeMuziek() {
   // ook als hij daarvoor (bv. via een snelstart-knop) nog niet speelde.
   fadeMuziekIn();
   _keuzeWasMuziek = false;
+}
+
+// ── Geheime-kamer-muziek: vervangt de achtergrondmuziek zolang de speler in
+// de geheime altaarkamer van Nummer 1 staat (geheimekamermuziek.mp3, loop).
+// Zelfde patroon als de keuze-muziek: elke schermwissel weg van
+// screen-locatie stopt hem weer (zie showScreen) en laat de spelmuziek zacht
+// terugkomen. Het mp3-bestand mag ontbreken; dan blijft het simpelweg stil.
+var _kamerAudio = null;
+function startGeheimeKamerMuziek() {
+  if (!_kamerAudio) {
+    _kamerAudio = new Audio('geluid/geheimekamer/geheimekamermuziek.mp3');
+    _kamerAudio.loop = true;
+    _kamerAudio.addEventListener('error', function() {
+      console.warn('geheimekamermuziek.mp3 niet gevonden op geluid/geheimekamer/geheimekamermuziek.mp3');
+    });
+  }
+  _kamerAudio.volume = 0.6;
+  if (!_kamerAudio.paused) return;   // speelt al
+  var bg = document.getElementById('bg-music');
+  if (bg) { try { bg.pause(); } catch (e) {} }
+  try {
+    _kamerAudio.currentTime = 0;
+    _kamerAudio.play().catch(function(e) { console.warn('geheimekamermuziek.mp3 afspelen mislukt:', e); });
+  } catch (e) { console.warn('geheimekamermuziek.mp3 fout:', e); }
+}
+
+function stopGeheimeKamerMuziek() {
+  if (!_kamerAudio || _kamerAudio.paused) return;
+  try { _kamerAudio.pause(); _kamerAudio.currentTime = 0; } catch (e) {}
+  fadeMuziekIn();
 }
 
 function h3StartHartslag() {
@@ -12237,6 +12328,12 @@ function goBackFromLocatie() {
   ['lockpick', 'archief', 'molenfilm'].forEach(function (r) { schaduwPauze(false, r); });
   // Dagboekmuziek stoppen als die speelt.
   if (typeof stopDagboekMuziek === 'function') stopDagboekMuziek();
+  // Geheime kamer verlaten: stop de kamer-muziek (die hervat zelf de
+  // hoofdmuziek met een zachte fade) en laat de schaduw weer lopen. No-op als
+  // je niet in de kamer was. Dit staat vóór het bgm-vangnet hieronder, zodat
+  // de hoofdmuziek niet kort dubbel met de kamer-loop speelt.
+  if (typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
+  schaduwPauze(false, 'geheimekamer');
   // Vangnet: als de hoofdmuziek om wat voor reden dan ook gepauzeerd is,
   // hervat hem nu (ongeacht welke module hem had stilgezet).
   var bgm = document.getElementById('bg-music');
@@ -14168,9 +14265,7 @@ function kiesDistrictWaarzegster(district, unlocked) {
   }
 
   if (district === 'sintdonatuslaan') {
-    toonVerborgenHandVraag('sintdonatuslaan',
-      '"Heer Donatuslaan..." *(een dunne glimlach speelt om haar mond)* "Zeg me eens, kind. Wie is de knapste aan tafel?"',
-      false);
+    toonVerborgenHandCrystal();
     return;
   }
 
@@ -14229,12 +14324,15 @@ var VH_DIEPERE_HINT = {
     hint:          '"Wie beneden blijft, telt verkeerd. Er staat iets hoogs in dat kwartier, en er is iemand bij jullie die niet schrikt van een deur die op slot zit. Laat hem daar eens naar buiten kijken."',
     faseVoorbij:   function () { return !!state.heksOpgelost || hasVisited('dorendael_unlocked'); }
   },
-  // Heer Donatuslaan: de hint wijst naar de geheime deur van Nummer 1
-  // (zie h2GeheimeDeurHotspot); daarachter staat "Vraag een hint aan Tom."
+  // Heer Donatuslaan: de opdracht (haal de crystal) geeft Stazia nu meteen
+  // bij het aanklikken van de wijk (zie toonVerborgenHandCrystal). Deze
+  // diepere hint is de EXTRA hulp voor een team dat er niet uitkomt: hij wijst
+  // naar de geheime deur van Nummer 1 (de twee rode lantaarns, "duivelshoorns",
+  // erboven; zie h2GeheimeDeurHotspot).
   sintdonatuslaan: {
     aanloopEerste: '"En ik geef jullie alvast een extra hint."',
     aanloopLater:  '*(ze kijkt je lang aan, en haar stem wordt zachter)* "Jullie komen er niet uit, kind. Dat voel ik. Dan geef ik jullie er een hint bij."',
-    hint:          '"Haal voor mij een magisch item. De sfeer in het dorp wordt grimmig en ook ik moet mezelf indekken. Mijn hint: het ligt op een locatie die geen locatie is. Twee rode hoorns aan zijn hoofd, subtiel, maar hij verbergt iets zwaars."',
+    hint:          '"Kijken is niet genoeg, soms is directe interactie nodig. Aan het begin van de straat raak je aan daar waar de \'duivels\' hoorntjes samenkomen en een deur bewaken."',
     faseVoorbij:   function () { return !!state.tobbeGokOpgelost; }
   }
 };
@@ -14270,9 +14368,10 @@ function vhDiepereHintKlaar(district) {
 // tijdelijke hint "Vraag Tom om een hint".
 // Dorendael staat hier niet bij: daar vraagt Stazia geen getal meer, maar de
 // naalden zelf (zie toonVerborgenHandNaalden).
+// Heer Donatuslaan staat hier niet meer: die "knapste aan tafel"-vraag is
+// vervangen door de crystal-missie (zie toonVerborgenHandCrystal).
 var VH_VRAGEN = {
-  kraaienkwartier: { juist: '5',   inputId: 'kraai-tel-input', msgId: 'kraai-tel-msg', timerId: 'kraai-tel-timer' },
-  sintdonatuslaan: { juist: 'TOM', inputId: 'vh-hd-input',     msgId: 'vh-hd-msg',     timerId: 'vh-hd-timer' }
+  kraaienkwartier: { juist: '5',   inputId: 'kraai-tel-input', msgId: 'kraai-tel-msg', timerId: 'kraai-tel-timer' }
 };
 var VH_COOLDOWN = {};
 
@@ -14476,6 +14575,95 @@ function toonVerborgenHandNaalden() {
     dialog: dialog,
     acties: acties,
     onBack: openVerborgenHand
+  });
+  setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
+}
+
+// ── Heer Donatuslaan: de crystal-missie (vervangt de oude "knapste aan
+// tafel"-vraag). Drie toestanden:
+//   1. Nog geen crystal en niet ingeleverd: Stazia geeft direct de opdracht,
+//      zet de geheime deur van Nummer 1 klikbaar en biedt latere hulp aan.
+//      Is de stille klok verlopen en nog niks opgelost, dan geeft ze meteen
+//      haar diepere hint erbij.
+//   2. Crystal op zak: een knop "Lever crystal in".
+//   3. Al ingeleverd (door wie dan ook): ze verwijst terug naar de
+//      voorspelling.
+function toonVerborgenHandCrystal() {
+  var district = 'sintdonatuslaan';
+  var heeftCrystal = !!state.inventory.find(function (i) { return i.naam === ITEMS.crystal.naam; });
+  var alIngeleverd = !!getSharedState('crystal_ingeleverd');
+
+  var basis = {
+    container: document.getElementById('locatie-content'),
+    titel:    'De Verborgen Hand',
+    sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
+    image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg'
+  };
+  var toonStazia = function () {
+    setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
+  };
+
+  if (alIngeleverd) {
+    renderLocatieScene(Object.assign({}, basis, {
+      dialog: [ { spreker: 'Stazia', tekst: '"Je bracht me de crystal al, kind. Kijk nog eens naar wat ik je toonde."' } ],
+      acties: [
+        { label: 'Bekijk de voorspelling →', onclick: function () { toonMagischeVoorspelling(district); } },
+        { label: '← Terug', onclick: openVerborgenHand }
+      ]
+    }));
+    toonStazia();
+    return;
+  }
+
+  if (heeftCrystal) {
+    renderLocatieScene(Object.assign({}, basis, {
+      dialog: [ { spreker: 'Stazia', tekst: '"Heer Donatuslaan... heb je iets voor me meegebracht, kind?"' } ],
+      acties: [
+        { label: '🔮 Lever crystal in', onclick: leverCrystalIn },
+        { label: '← Terug', onclick: openVerborgenHand }
+      ]
+    }));
+    toonStazia();
+    return;
+  }
+
+  // Nog geen crystal: opdracht geven en de geheime deur meteen openzetten.
+  var dialog = [
+    { spreker: 'Stazia', tekst: '"Heer Donatuslaan..." *(een dunne glimlach speelt om haar mond)* "Haal voor mij een magisch item. De sfeer in het dorp wordt grimmig en ook ik moet mezelf indekken."' },
+    { spreker: 'Stazia', tekst: '"Lukt het je niet, kom dan later bij me terug. Dan help ik je een stukje verder."' }
+  ];
+  setSharedState('vh_hint_gegeven_' + district, true);
+  // Stille klok verlopen en nog niet opgelost? Dan haar diepere hint erbij.
+  if (vhDiepereHintKlaar(district)) {
+    dialog.push({ spreker: 'Stazia', tekst: VH_DIEPERE_HINT[district].hint });
+  }
+  setSharedState('vh_vraag_gezien_' + district, true);
+  renderLocatieScene(Object.assign({}, basis, {
+    dialog: dialog,
+    acties: [ { label: '← Terug', onclick: openVerborgenHand } ]
+  }));
+  toonStazia();
+}
+
+// De crystal inleveren bij Stazia. Haalt hem uit de inventaris, legt gedeeld
+// vast dat hij ingeleverd is (stille klok stopt), en toont daarna de
+// verhaal-voorspelling.
+function leverCrystalIn() {
+  var district = 'sintdonatuslaan';
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.crystal.naam; });
+  updateInventoryBar();
+  setSharedState('crystal_ingeleverd', true);
+  setSharedState('vh_opgelost_' + district, true);
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'De Verborgen Hand',
+    sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
+    image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
+    dialog: [
+      { spreker: 'Stazia', tekst: '"Gebroken? En waar heb je het gevonden? Bij een altaar?" *(haar blik verduistert, en heel even lijkt ze oprecht bezorgd, alsof ze meer weet dan ze zegt)*' },
+      { spreker: 'Stazia', tekst: '"Dankje, kind. Hier is je hint."' }
+    ],
+    acties: [ { label: 'Toon de voorspelling →', onclick: function () { toonMagischeVoorspelling(district); } } ]
   });
   setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
 }
@@ -16995,6 +17183,10 @@ function buildDebugPanel() {
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
       ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
+      // ── Crystal-missie (D4, Heer Donatuslaan)
+      ['🔮 + Crystal in rugzak', function(){ setSharedState('crystal_gepakt', true); if (!state.inventory.find(function(i){ return i.naam === ITEMS.crystal.naam; })) addInventory(ITEMS.crystal.emoji, ITEMS.crystal.naam, false); document.getElementById('debug-panel').style.display = 'none'; }, true, 'Crystal-missie'],
+      ['✅ Crystal ingeleverd bij Stazia', function(){ setSharedState('crystal_gepakt', true); setSharedState('crystal_ingeleverd', true); setSharedState('vh_opgelost_sintdonatuslaan', true); state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.crystal.naam; }); updateInventoryBar(); close(); if (typeof toonToast === 'function') toonToast('🔮', 'Crystal ingeleverd: verhaalscores Heer Donatuslaan vrij bij Stazia.'); }, !getSharedState('crystal_ingeleverd'), 'Crystal-missie'],
+      ['🔄 Reset crystal-missie', function(){ setSharedState('crystal_gepakt', null); setSharedState('crystal_ingeleverd', null); setSharedState('vh_opgelost_sintdonatuslaan', null); state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.crystal.naam; }); updateInventoryBar(); close(); if (typeof toonToast === 'function') toonToast('🔄', 'Crystal-missie gereset.'); }, true, 'Crystal-missie'],
       ['🔪 Slagerij dicht (na Jan)', function(){ markVisited('slagerij_dicht'); setSharedState('slagerij_dicht', true); markVisited('jan_slagerij_gevlucht'); state.janVastInAchterkamer = false; var b = document.getElementById('locatie-back-btn'); if (b) b.style.display = ''; close(); }, true, 'H3 Slagerij'],
       ['⏱️ Forceer tijd op (rust-straf)', function(){ close(); if (typeof h3TimerVoorbij === 'function') h3TimerVoorbij(); }, !!_h3Lp, 'H3 Slagerij'],
       // Let op: wist de slagerij-stap voor het HELE team (gedeelde vlag).
