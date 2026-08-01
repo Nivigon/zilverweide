@@ -5932,6 +5932,7 @@ var _bglIndex = {};        // { sid: { team, aangemaakt } } van vandaag
 var _bglPending = {};      // rol -> gewenste beginnerstand, nog niet bevestigd
 var _bglAutoOpen = true;   // nieuwste sessie vanzelf openen, tot de
                            // begeleider zelf terug naar de lijst gaat
+var _bglToonVerborgen = false; // verborgen (afgesloten) sessies in de lijst tonen
 
 function begeleiderFirebaseKlaar() {
   return typeof firebase !== 'undefined' && !!firebase.database;
@@ -5941,6 +5942,14 @@ function begeleiderFirebaseKlaar() {
 function begeleiderVeilig(t) {
   return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Tijdstempel als klok (14:32), voor de starttijd in lijst en paneel.
+function begeleiderKlok(t) {
+  if (typeof t !== 'number' || !isFinite(t)) return '';
+  var d = new Date(t);
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return p(d.getHours()) + ':' + p(d.getMinutes());
 }
 
 function begeleiderOpen() {
@@ -6014,7 +6023,8 @@ function begeleiderStartIndex() {
   _bglIndexRef.on('value', function (snap) {
     _bglIndex = (snap && snap.val()) || {};
     if (!_bglSid && _bglAutoOpen) {
-      var sids = begeleiderSessiesGesorteerd();
+      // Verborgen (afgesloten) sessies nooit vanzelf openen.
+      var sids = begeleiderSessiesGesorteerd().filter(function (sid) { return !begeleiderIsVerborgen(sid); });
       if (sids.length) { begeleiderKiesSessie(sids[0]); return; }
     }
     if (!_bglSid) begeleiderRenderSessieLijst();
@@ -6030,24 +6040,77 @@ function begeleiderSessiesGesorteerd() {
   return sids;
 }
 
+function begeleiderIsVerborgen(sid) {
+  return !!(_bglIndex[sid] && _bglIndex[sid].afgesloten);
+}
+
+// Eén regel in de sessielijst: sessieknop met teamnaam en starttijd, plus
+// een Verberg-knop (of Herstel voor een al verborgen sessie).
+function begeleiderSessieRij(sid, verborgen) {
+  var e = _bglIndex[sid] || {};
+  var tijd = begeleiderKlok(e.aangemaakt);
+  return '<div style="display:flex;gap:.5rem;align-items:stretch;margin-bottom:.5rem">' +
+    '<button class="bgl-sessieknop" style="flex:1;margin-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:.8rem' + (verborgen ? ';opacity:.55' : '') + '" onclick="begeleiderKiesSessie(\'' + sid + '\')">' +
+      '<span>' + begeleiderVeilig(e.team || sid) + '</span>' +
+      (tijd ? '<span style="color:var(--gold-dim);font-size:.7rem;letter-spacing:.08em">gestart ' + tijd + '</span>' : '') +
+    '</button>' +
+    (verborgen
+      ? '<button class="bgl-knopje" onclick="begeleiderHerstelSessie(\'' + sid + '\')">Herstel</button>'
+      : '<button class="bgl-knopje" onclick="begeleiderVerbergSessie(\'' + sid + '\')">Verberg</button>') +
+  '</div>';
+}
+
 function begeleiderRenderSessieLijst() {
   if (!_bglOpen || _bglSid) return;
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
   var sids = begeleiderSessiesGesorteerd();
+  var zichtbaar = sids.filter(function (sid) { return !begeleiderIsVerborgen(sid); });
+  var verborgen = sids.filter(function (sid) { return begeleiderIsVerborgen(sid); });
   var html =
     '<div class="bgl-titel">Begeleider</div>' +
     '<div class="bgl-sub">✦ &nbsp; sessies van vandaag &nbsp; ✦</div>';
-  if (!sids.length) {
+  if (!zichtbaar.length && !verborgen.length) {
     html += '<div class="bgl-info">Nog geen team gestart vandaag.<br>Dit scherm wacht mee: zodra de vier tablets samen een teamnaam kiezen, verschijnt de sessie hier vanzelf.</div>';
   } else {
-    sids.forEach(function (sid) {
-      var e = _bglIndex[sid] || {};
-      html += '<button class="bgl-sessieknop" onclick="begeleiderKiesSessie(\'' + sid + '\')">' + begeleiderVeilig(e.team || sid) + '</button>';
-    });
+    zichtbaar.forEach(function (sid) { html += begeleiderSessieRij(sid, false); });
+    if (!zichtbaar.length) {
+      html += '<div class="bgl-info">Alle sessies van vandaag zijn verborgen.</div>';
+    }
+    if (verborgen.length) {
+      html += '<div style="text-align:center;margin-top:1rem"><button class="bgl-knopje" onclick="_bglToonVerborgen=!_bglToonVerborgen;begeleiderRenderSessieLijst()">' +
+        (_bglToonVerborgen ? 'Verborgen sessies weer inklappen' : 'Verborgen sessies tonen (' + verborgen.length + ')') + '</button></div>';
+      if (_bglToonVerborgen) {
+        html += '<div style="margin-top:.6rem">';
+        verborgen.forEach(function (sid) { html += begeleiderSessieRij(sid, true); });
+        html += '</div>';
+      }
+    }
   }
   html += '<div style="text-align:center;margin-top:1.6rem"><button class="bgl-knopje" onclick="begeleiderKiesSessie(\'test\')">Testsessie openen</button></div>';
   c.innerHTML = html;
+}
+
+// Verbergen is alleen opruimen van de lijst: de spelgegevens en het logboek
+// van de sessie blijven gewoon bestaan.
+function begeleiderVerbergSessie(sid) {
+  var e = _bglIndex[sid] || {};
+  if (!confirm('Sessie "' + (e.team || sid) + '" verbergen uit de lijst?\nDe spelgegevens blijven bestaan; alleen deze lijst wordt opgeruimd.')) return;
+  if (_bglIndex[sid]) _bglIndex[sid].afgesloten = true;
+  try {
+    firebase.database().ref('sessies_index/' + teamDatumSleutel() + '/' + sid + '/afgesloten')
+      .set(true).catch(function () {});
+  } catch (er) {}
+  begeleiderRenderSessieLijst();
+}
+
+function begeleiderHerstelSessie(sid) {
+  if (_bglIndex[sid]) delete _bglIndex[sid].afgesloten;
+  try {
+    firebase.database().ref('sessies_index/' + teamDatumSleutel() + '/' + sid + '/afgesloten')
+      .remove().catch(function () {});
+  } catch (er) {}
+  begeleiderRenderSessieLijst();
 }
 
 function begeleiderKiesSessie(sid) {
@@ -6094,9 +6157,13 @@ function begeleiderRenderPaneel() {
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
+  // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
+  // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
+  var startTijd = begeleiderKlok(_bglShared.team_start || (_bglMeta && _bglMeta.aangemaakt));
   var html =
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
-    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() +
+      (startTijd ? ' &nbsp;·&nbsp; gestart om ' + startTijd : '') + ' &nbsp; ✦</div>' +
     '<div class="bgl-blok">';
   BEGELEIDER_ROLLEN.forEach(function (r) {
     var naam = _bglShared['speler_naam_' + r.id] ||
@@ -22135,6 +22202,12 @@ function firebaseVolleReset() {
       updateFirebaseBolletje();
     })
     .catch(function (e) { alert('Fout: ' + e.message); });
+  // Begeleiderspaneel: de index-vermelding van deze sessie mee opruimen,
+  // anders blijft een geresette sessie als spook in de sessielijst staan.
+  // De datum zit in de sessie-id (teamnaam-YYYY-MM-DD-code); een id zonder
+  // datum (zoals 'test') staat hooguit onder vandaag.
+  var idxDatum = (sessieId.match(/\d{4}-\d{2}-\d{2}/) || [teamDatumSleutel()])[0];
+  firebase.database().ref('sessies_index/' + idxDatum + '/' + sessieId).remove().catch(function () {});
   // Herstelpunten: de spelers-tak gaat met de sessie mee weg; de lokale
   // kopieen ook wissen zodat een oud punt niet als vangnet terugkomt.
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
