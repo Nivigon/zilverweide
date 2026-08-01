@@ -1276,6 +1276,9 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
 .vh-strip-btn:last-child { border-right: none; }
 .vh-strip-btn:hover { background: rgba(201, 168, 76, .12); }
 .vh-strip-btn:active { background: rgba(201, 168, 76, .2); }
+/* Afgeronde wijk: grijs en gedimd, geen hover- of klik-highlight meer. */
+.vh-strip-btn-afgerond:hover,
+.vh-strip-btn-afgerond:active { background: transparent; }
 
 /* Lantaarn-onthulling voor de strip: knoppen beginnen zwart en lichten
    snel één voor één op zodra de strip zichtbaar wordt (klasse-toggle
@@ -6272,7 +6275,7 @@ function openKamer1Bonus() {
     dialog = [
       'Bloed. Overal. Het stinkt.',
       'Wat is dat voor voorwerp op het altaar? Er ligt een hamer naast. Iemand heeft het kapot geslagen.',
-      'Mee nemen?'
+      'Meenemen?'
     ];
   } else if (zelfHeeft) {
     // Jij hebt hem zelf al meegenomen.
@@ -14130,9 +14133,15 @@ function openVerborgenHand() {
   // Het Schaduw-vak opent pas als minstens één speler bij de apotheker
   // is geweest (shared flag). Niet eerder, ook niet als je vervloekt bent.
   const schaduwVakOpen = !!getSharedState('apotheker_bezocht');
+  // Een wijk raakt "afgerond" zodra haar eigen gok is opgelost (gedeeld, dus
+  // teambreed): dan is de wijk uitgespeeld en wordt hij grijs en niet meer
+  // klikbaar op de strip. Heer Donatuslaan kent dit bewust niet: die blijft
+  // klikbaar zodat het team de verhaalscores kan blijven teruglezen.
+  const kkAfgerond = !!state.heksOpgelost || !!getSharedState('heks_opgelost');
+  const ddAfgerond = !!state.dorendaelGokOpgelost || !!getSharedState('dorendael_gok_opgelost');
   const districts = [
-    { id: 'kraaienkwartier', label: 'Kraaienkwartier', sub: 'Smalle steegjes, schaduwen',   emoji: '\ud83d\udc26', portret: 'locaties/zone-kraaienkwartier.jpg', unlocked: !!zoneUnlocked['kraaienkwartier'] },
-    { id: 'dorendael',       label: 'Dorendael',       sub: 'Doornen en klimop',            emoji: '\ud83c\udf32', portret: 'locaties/zone-dorendael.jpg',       unlocked: !!zoneUnlocked['dorendael']       },
+    { id: 'kraaienkwartier', label: 'Kraaienkwartier', sub: 'Smalle steegjes, schaduwen',   emoji: '\ud83d\udc26', portret: 'locaties/zone-kraaienkwartier.jpg', unlocked: !!zoneUnlocked['kraaienkwartier'], afgerond: kkAfgerond },
+    { id: 'dorendael',       label: 'Dorendael',       sub: 'Doornen en klimop',            emoji: '\ud83c\udf32', portret: 'locaties/zone-dorendael.jpg',       unlocked: !!zoneUnlocked['dorendael'], afgerond: ddAfgerond       },
     hdUnlocked
       ? { id: 'sintdonatuslaan', label: 'Heer Donatuslaan', sub: 'Een lange laan met hoge huizen', emoji: '\u269c\ufe0f', portret: 'locaties/zone-sintdonatuslaan.jpg', unlocked: true }
       : { id: 'derde',           label: '???',              sub: '',                                emoji: '\u2753', portret: null,                              unlocked: false },
@@ -14146,13 +14155,28 @@ function openVerborgenHand() {
   let stripBtns = '';
   districts.forEach(d => {
     const isSchaduw = d.id === 'schaduw';
-    const kleur = !d.unlocked ? 'var(--mist)' : isSchaduw ? '#cc3333' : 'var(--gold)';
-    const label = d.unlocked ? d.label : '\ud83d\udd12';
-    const cursor = d.unlocked ? 'pointer' : 'default';
-    const opaciteit = d.unlocked ? '1' : '.45';
+    let kleur, label, cursor, opaciteit;
+    if (d.afgerond) {
+      // Afgerond: de wijknaam blijft leesbaar, maar grijs en gedimd. Niet
+      // klikbaar (een tik toont alleen een korte reactie van Stazia).
+      kleur = 'var(--mist)';
+      label = d.label;
+      cursor = 'default';
+      opaciteit = '.5';
+    } else if (d.unlocked) {
+      kleur = isSchaduw ? '#cc3333' : 'var(--gold)';
+      label = d.label;
+      cursor = 'pointer';
+      opaciteit = '1';
+    } else {
+      kleur = 'var(--mist)';
+      label = '\ud83d\udd12';
+      cursor = 'default';
+      opaciteit = '.45';
+    }
     stripBtns +=
-      '<button class="vh-strip-btn" style="color:' + kleur + ';cursor:' + cursor + ';opacity:' + opaciteit + '" ' +
-        'onclick="kiesDistrictWaarzegster(\'' + d.id + '\', ' + (d.unlocked ? 'true' : 'false') + ')">' +
+      '<button class="vh-strip-btn' + (d.afgerond ? ' vh-strip-btn-afgerond' : '') + '" style="color:' + kleur + ';cursor:' + cursor + ';opacity:' + opaciteit + '" ' +
+        'onclick="kiesDistrictWaarzegster(\'' + d.id + '\', ' + (d.unlocked ? 'true' : 'false') + ', ' + (d.afgerond ? 'true' : 'false') + ')">' +
         label +
       '</button>';
   });
@@ -14165,9 +14189,9 @@ function openVerborgenHand() {
     sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
     image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
     dialog: [
-      { spreker: 'Stazia', tekst: '"Welkom, kind. Ik kan je helpen, maar let wel: foute antwoorden op mijn verzoeken hebben altijd een vervelende prijs..."' },
-      { spreker: 'Stazia', tekst: '"Welk district heb je hulp bij nodig?"', onShow: function() {
-        // Strip omhoog laten schuiven zodra Stazia de vraag stelt
+      { spreker: 'Stazia', tekst: '"Welkom, kind. Kom bij mij als je vastloopt in een van de wijken, of als je op zoek bent naar voorwerpen van... bijzondere waarde. Soms kan ik daarbij helpen. Maar let wel: een fout antwoord op mijn verzoeken heeft altijd een vervelende prijs..."' },
+      { spreker: 'Stazia', tekst: '"Klik hierboven waar je hulp bij nodig hebt."', onShow: function() {
+        // Strip omhoog laten schuiven zodra Stazia de instructie geeft
         var s = document.querySelector('.vh-strip');
         if (s) setTimeout(function() { s.classList.add('vh-strip-zichtbaar'); }, 150);
       } }
@@ -14218,7 +14242,14 @@ function toonWaarzegsterReactie(tekst) {
   }, 4500);
 }
 
-function kiesDistrictWaarzegster(district, unlocked) {
+function kiesDistrictWaarzegster(district, unlocked, afgerond) {
+  // Afgeronde wijk (gok al opgelost): niet meer klikbaar, alleen een korte
+  // reactie inline. Staat vóór de unlocked-check, want afgerond impliceert
+  // unlocked.
+  if (afgerond) {
+    toonWaarzegsterReactie('"Die wijk heb je al doorstaan, kind."');
+    return;
+  }
   // Niet-unlocked of "???" → toon reactie inline; speler blijft op
   // het waarzegster-scherm met het grid in beeld.
   if (!unlocked) {
@@ -14253,6 +14284,13 @@ function kiesDistrictWaarzegster(district, unlocked) {
   }
 
   if (district === 'kraaienkwartier') {
+    // Is de telvraag teambreed al goed beantwoord, dan toont Stazia meteen de
+    // voorspelling (de hint blijft voor iedereen zichtbaar) in plaats van de
+    // vraag opnieuw te stellen.
+    if (getSharedState('vh_opgelost_kraaienkwartier')) {
+      toonVerborgenHandVoorspelling('kraaienkwartier');
+      return;
+    }
     toonVerborgenHandVraag('kraaienkwartier',
       '"Ah, het Kraaienkwartier..." *(ze buigt zich naar je toe)* "Vertel me, kind. Hoeveel kraaien telde je daar?"',
       true);
@@ -14664,6 +14702,29 @@ function leverCrystalIn() {
       { spreker: 'Stazia', tekst: '"Dankje, kind. Hier is je hint."' }
     ],
     acties: [ { label: 'Toon de voorspelling →', onclick: function () { toonMagischeVoorspelling(district); } } ]
+  });
+  setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
+}
+
+// Toont een al eerder gegeven voorspelling opnieuw (teambreed zichtbaar), zonder
+// de bijbehorende vraag of opdracht te herhalen. Gebruikt voor het
+// Kraaienkwartier zodra de telvraag is opgelost; Dorendael en Heer Donatuslaan
+// regelen dit in hun eigen scènes.
+function toonVerborgenHandVoorspelling(district) {
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'De Verborgen Hand',
+    sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
+    image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
+    dialog: [
+      { spreker: 'Stazia', tekst: '"Dat heb ik jullie al getoond, kind. Kijk nog eens goed."', onShow: function () {
+        setTimeout(function () {
+          if (!document.querySelector('#locatie-content .sc-image')) return;
+          toonMagischeVoorspelling(district);
+        }, 500);
+      } }
+    ],
+    onBack: openVerborgenHand
   });
   setTimeout(function () { toonNpcPop('karakters/dorpsplein/stazia-pop.png'); }, 120);
 }
