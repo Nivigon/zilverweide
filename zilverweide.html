@@ -1934,18 +1934,18 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   #kraai-kaart { display: none; }
   @media (min-width: 1080px) {
     body.beginner-modus.kraai-actief #kraai-kaart {
-      display: grid; position: fixed; left: clamp(.75rem, 2.5vw, 1.75rem); top: 50%;
-      transform: translateY(-50%); grid-template-columns: repeat(3, auto);
+      display: grid; position: fixed; left: calc(25% - 170px); top: 50%;
+      transform: translate(-50%, -50%); grid-template-columns: repeat(3, auto);
       gap: .4rem clamp(.8rem, 2.6vw, 1.7rem); justify-items: center; align-items: start; z-index: 120;
     }
   }
   #kraai-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .26rem; width: clamp(44px, 5vw, 60px); }
   #kraai-kaart .kt-vak {
     width: clamp(32px, 3.6vw, 44px); height: clamp(32px, 3.6vw, 44px); border-radius: 4px;
-    border: 1px solid rgba(45, 90, 95, .55); background: transparent;
+    border: 1px solid rgba(201, 168, 76, .28); background: transparent;
     transition: background .3s, border-color .3s;
   }
-  #kraai-kaart .kt.bezocht .kt-vak { background: #2d5a5f; border-color: #2d5a5f; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
+  #kraai-kaart .kt.bezocht .kt-vak { background: var(--gold); border-color: var(--gold); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
   #kraai-kaart .kt-naam {
     font-family: 'Cinzel', serif; font-size: clamp(.44rem, .95vw, .56rem); line-height: 1.15;
     letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 2.4em;
