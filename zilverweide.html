@@ -1694,6 +1694,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
         <button onclick="toonTeaser()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid rgba(201,168,76,.4);color:rgba(201,168,76,.7);background:rgba(13,10,6,.4);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">▶ &nbsp; Teaser</button>
       </div>
     </div>
+    <!-- Begeleider-ingang: bewust een onopvallend symbooltje in de hoek,
+         zonder tekst, zodat het in de sfeer van het spel blijft. Opent het
+         begeleiderspaneel (wachtwoord vereist). -->
+    <button onclick="begeleiderOpen()" title="Begeleider" style="position:absolute;bottom:.9rem;right:1rem;z-index:3;background:none;border:none;font-size:1.3rem;cursor:pointer;opacity:.45">🕯️</button>
   </div>
 </div>
 
@@ -2024,6 +2028,38 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <h4>🛠️ Testpaneel</h4>
   <div id="debug-content"></div>
 </div>
+
+<!-- BEGELEIDERSPANEEL: overlay voor de begeleider op een eigen apparaat.
+     Bereikbaar via het kaars-symbooltje op het splash-scherm (met wachtwoord)
+     of via het testpaneel. Leeft volledig los van de spel-sessie van dit
+     apparaat: het paneel leest en schrijft rechtstreeks op de gekozen sessie
+     in Firebase en raakt de lokale spelstand nooit aan. -->
+<style>
+  #begeleider-overlay { display:none; position:fixed; inset:0; z-index:9500; background:#0d0a06; overflow-y:auto; }
+  #begeleider-overlay.open { display:block; }
+  .bgl-wrap { max-width:46rem; margin:0 auto; padding:2.2rem 1.25rem 3rem; }
+  .bgl-titel { font-family:'Cinzel',serif; font-size:clamp(1.2rem,4vw,1.7rem); color:var(--gold); letter-spacing:.07em; text-align:center; margin-bottom:.3rem; }
+  .bgl-sub { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin-bottom:1.5rem; }
+  .bgl-blok { border:1px solid rgba(201,168,76,.3); border-radius:8px; background:rgba(0,0,0,.35); padding:.9rem 1.2rem; margin-bottom:1rem; }
+  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0; border-bottom:1px solid rgba(201,168,76,.14); }
+  .bgl-regel:last-child { border-bottom:none; }
+  .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
+  .bgl-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bgl-naam.leeg { color:var(--mist); }
+  .bgl-veld { width:100%; box-sizing:border-box; font-family:'Cinzel',serif; font-size:1.05rem; text-align:center; letter-spacing:.06em; color:var(--parchment); background:rgba(13,10,6,.7); border:1px solid rgba(201,168,76,.35); border-radius:6px; padding:.85rem 1rem; }
+  .bgl-veld:focus { outline:none; border-color:var(--gold); box-shadow:0 0 16px rgba(201,168,76,.3); }
+  .bgl-fout { min-height:1.2rem; margin-top:.55rem; font-family:'Crimson Text',Georgia,serif; font-style:italic; color:#d4826e; font-size:.92rem; }
+  .bgl-info { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.95rem; text-align:center; line-height:1.6; }
+  .bgl-knopje { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); background:transparent; border:1px solid var(--gold-dim); border-radius:2px; padding:.45rem .8rem; cursor:pointer; flex:0 0 auto; }
+  .bgl-knopje:disabled { opacity:.35; cursor:default; }
+  .bgl-sessieknop { display:block; width:100%; box-sizing:border-box; text-align:left; margin-bottom:.5rem; font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.05em; color:var(--gold); background:rgba(0,0,0,.35); border:1px solid rgba(201,168,76,.35); border-radius:6px; padding:.85rem 1rem; cursor:pointer; }
+  #begeleider-sluit { position:fixed; top:.7rem; right:1rem; z-index:9501; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
+  #begeleider-overlay.open ~ #begeleider-sluit { display:block; }
+</style>
+<div id="begeleider-overlay">
+  <div class="bgl-wrap" id="begeleider-inhoud"></div>
+</div>
+<button id="begeleider-sluit" onclick="begeleiderSluit()" title="Sluiten">✕</button>
 
 <!-- Doolhof-engine (zit in losse bestanden: doolhof-engine.js + doolhof.css) -->
 <script src="technischefiles/doolhof-engine.js"></script>
@@ -2515,6 +2551,18 @@ function verwerkBinnengekomenShared(data) {
     if (data.tobbe_gok_opgelost && !state.tobbeGokOpgelost) { state.tobbeGokOpgelost = true; ietsNieuws = true; }
     // Verhaal-fase gewijzigd door een ander apparaat: teller moet verversen.
     if (data.verhaal_fase) ietsNieuws = true;
+    // Beginner modus op afstand omgezet (begeleiderspaneel): geldt alleen de
+    // eigen rol. zetBeginnerModus schrijft niet terug omdat de gedeelde
+    // stand hierboven al gemerged is (geen echo-lus).
+    if (state.personage && typeof zetBeginnerModus === 'function') {
+      var bglWaarde = data['beginner_modus_' + state.personage];
+      if (typeof bglWaarde === 'boolean' && bglWaarde !== !!window._beginnerModus) {
+        zetBeginnerModus(bglWaarde);
+        if (!eersteSnapshot && typeof toonToast === 'function') {
+          toonToast('🗺️', 'Beginner modus ' + (bglWaarde ? 'aangezet' : 'uitgezet') + ' door de begeleider');
+        }
+      }
+    }
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
@@ -2842,6 +2890,12 @@ function rondTeamAf(slug, deviceIds) {
     if (typeof firebase !== 'undefined' && firebase.database) {
       firebase.database().ref('sessies/' + sid + '/meta').update({
         team: pretty, slug: slug, datum: datum, code: code, aangemaakt: gedeeldeTijdNu()
+      }).catch(function () {});
+      // Kleine index per dag voor het begeleiderspaneel: alleen id, naam en
+      // tijd, zodat dat paneel nooit de volledige sessies-tak (met logs)
+      // hoeft binnen te halen. Alle vier de tablets schrijven hetzelfde.
+      firebase.database().ref('sessies_index/' + datum + '/' + sid).set({
+        team: pretty, aangemaakt: gedeeldeTijdNu()
       }).catch(function () {});
     }
   } catch (e) {}
@@ -3592,6 +3646,10 @@ function pasHerstelpuntToe(hp) {
   _herstelOvergenomen = false;
   _herstelClaimTijd = gedeeldeTijdNu();
   schrijfHerstelpuntNu(true);
+  // Beginner modus gelijktrekken met de gedeelde stand (begeleiderspaneel):
+  // de rol is nu pas bekend, dus een eerder binnengekomen stand alsnog
+  // toepassen.
+  if (typeof syncBeginnerModusMetShared === 'function') syncBeginnerModusMetShared();
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'herstel', doelrol: hp.rol });
 }
 
@@ -5748,6 +5806,39 @@ function zetBeginnerModus(aan) {
   var check = document.getElementById('beginner-modus-check');
   if (check) check.checked = !!aan;
   if (aan) updateKraaiKaart();
+  // Stand delen zodra een rol vastligt, zodat het begeleiderspaneel live de
+  // echte stand ziet. Alleen bij echt verschil met de gedeelde stand: een
+  // wijziging die net via de listener binnenkwam (begeleider) staat daar al
+  // in, dus die schrijft hier niet nog eens terug (geen echo-lus).
+  if (state.personage && typeof setSharedState === 'function'
+      && getSharedState('beginner_modus_' + state.personage) !== !!aan) {
+    setSharedState('beginner_modus_' + state.personage, !!aan);
+  }
+}
+
+// Bij de rolkeuze de eigen beginnerstand aan de rol koppelen (net als de
+// spelersnaam), zodat de begeleider vanaf dat moment de echte stand ziet,
+// ook als die uit staat.
+function registreerBeginnerModus(rol) {
+  setSharedState('beginner_modus_' + rol, !!window._beginnerModus);
+}
+
+// Randgeval na herstel of laat instappen: de gedeelde stand kan al binnen
+// zijn voordat de rol bekend was. Nu de rol vastligt: een afwijkende
+// gedeelde stand (bijvoorbeeld door de begeleider gezet) wint van de
+// lokale; is er nog geen gedeelde stand, dan delen we de lokale. Dat
+// laatste alleen als de eerste snapshot al binnen is, anders zou dit een
+// net gezette stand van de begeleider kunnen overschrijven voordat die
+// hier binnenkwam.
+function syncBeginnerModusMetShared() {
+  var p = state.personage;
+  if (!p) return;
+  var gedeeld = getSharedState('beginner_modus_' + p);
+  if (typeof gedeeld === 'boolean') {
+    if (gedeeld !== !!window._beginnerModus) zetBeginnerModus(gedeeld);
+  } else if (_sharedListenerActief || !firebaseSharedBeschikbaar()) {
+    registreerBeginnerModus(p);
+  }
 }
 
 // Eenmalig instructiemoment bij de eerste keer dat een beginner het
@@ -5789,6 +5880,256 @@ function kraaiKaartIntro() {
   zetBeginnerModus(bewaard === '1');
 })();
 
+// ─────────────────────────────────────────────────────────────────
+// BEGELEIDERSPANEEL
+// Voor de begeleider op een eigen (vijfde) apparaat: via het kaars-
+// symbooltje rechtsonder op het splash-scherm, met wachtwoord. Toont van
+// de lopende sessie de teamnaam, de verhaal-fase en per rol de spelersnaam
+// met een schuifje voor de beginner modus; een wijziging gaat pas naar de
+// tablet van de speler na Bevestig.
+// Het paneel leest en schrijft rechtstreeks op sessies/<sid>/... in
+// Firebase, los van de spel-sessie van dit apparaat. De sessies van
+// vandaag komen uit een kleine aparte index (sessies_index/<datum>) die
+// bij de teamkeuze gevuld wordt, zodat het paneel nooit de volledige
+// sessies-tak (met logs) hoeft binnen te halen.
+// ─────────────────────────────────────────────────────────────────
+var BEGELEIDER_WACHTWOORD = 'XXX';
+
+var BEGELEIDER_ROLLEN = [
+  { id: 'jan',   naam: 'Jan' },
+  { id: 'kelly', naam: 'Kelly' },
+  { id: 'fenna', naam: 'Fenna-Viviènne' },
+  { id: 'felix', naam: 'Felix' },
+];
+
+var _bglOpen = false;
+var _bglIngelogd = false;
+var _bglIndexRef = null;   // listener op sessies_index/<vandaag>
+var _bglSharedRef = null;  // listener op shared van de gekozen sessie
+var _bglMetaRef = null;    // listener op meta van de gekozen sessie
+var _bglSid = null;        // gekozen sessie-id, null = sessielijst/wachten
+var _bglShared = {};       // laatste shared-snapshot van de gekozen sessie
+var _bglMeta = {};         // laatste meta-snapshot van de gekozen sessie
+var _bglIndex = {};        // { sid: { team, aangemaakt } } van vandaag
+var _bglPending = {};      // rol -> gewenste beginnerstand, nog niet bevestigd
+var _bglAutoOpen = true;   // nieuwste sessie vanzelf openen, tot de
+                           // begeleider zelf terug naar de lijst gaat
+
+function begeleiderFirebaseKlaar() {
+  return typeof firebase !== 'undefined' && !!firebase.database;
+}
+
+// HTML-escape voor spelersnamen (vrije invoer van spelers).
+function begeleiderVeilig(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function begeleiderOpen() {
+  _bglOpen = true;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.add('open');
+  if (_bglIngelogd) begeleiderStartIndex();
+  else begeleiderRenderWachtwoord();
+}
+
+// Testpaneel-ingang: zonder wachtwoord, direct op de sessie van dit
+// apparaat (ook 'test'), om de sync solo te kunnen testen.
+function begeleiderOpenVoorTest() {
+  _bglIngelogd = true;
+  _bglOpen = true;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.add('open');
+  if (!begeleiderFirebaseKlaar()) { begeleiderStartIndex(); return; }
+  begeleiderKiesSessie(herstelSessieId());
+}
+
+function begeleiderSluit() {
+  _bglOpen = false;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.remove('open');
+  begeleiderStopSessieListeners();
+  if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} _bglIndexRef = null; }
+  _bglSid = null;
+  _bglPending = {};
+  _bglAutoOpen = true;
+}
+
+function begeleiderRenderWachtwoord() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  c.innerHTML =
+    '<div class="bgl-titel">Begeleider</div>' +
+    '<div class="bgl-sub">✦ &nbsp; toegang &nbsp; ✦</div>' +
+    '<div class="bgl-blok" style="max-width:24rem;margin:0 auto;text-align:center">' +
+      '<input class="bgl-veld" id="bgl-wachtwoord" type="password" autocomplete="off" placeholder="Wachtwoord..." onkeydown="if(event.key===\'Enter\')begeleiderControleerWachtwoord()">' +
+      '<div class="bgl-fout" id="bgl-wachtwoord-fout"></div>' +
+      '<button class="btn" style="margin-top:.3rem" onclick="begeleiderControleerWachtwoord()">Verder →</button>' +
+    '</div>';
+  var inv = document.getElementById('bgl-wachtwoord');
+  if (inv) inv.focus();
+}
+
+function begeleiderControleerWachtwoord() {
+  var inv = document.getElementById('bgl-wachtwoord');
+  if (!inv || inv.value !== BEGELEIDER_WACHTWOORD) {
+    var f = document.getElementById('bgl-wachtwoord-fout');
+    if (f) f.textContent = 'Dat wachtwoord klopt niet.';
+    return;
+  }
+  _bglIngelogd = true;
+  begeleiderStartIndex();
+}
+
+// Luister naar de sessies van vandaag. Nog geen sessie: het paneel wacht
+// mee en opent de nieuwste vanzelf zodra een team zijn naam gekozen heeft.
+function begeleiderStartIndex() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!begeleiderFirebaseKlaar()) {
+    if (c) c.innerHTML =
+      '<div class="bgl-titel">Begeleider</div>' +
+      '<div class="bgl-info">Geen verbinding met de database. Controleer het internet en herlaad de pagina.</div>';
+    return;
+  }
+  if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} }
+  _bglIndexRef = firebase.database().ref('sessies_index/' + teamDatumSleutel());
+  _bglIndexRef.on('value', function (snap) {
+    _bglIndex = (snap && snap.val()) || {};
+    if (!_bglSid && _bglAutoOpen) {
+      var sids = begeleiderSessiesGesorteerd();
+      if (sids.length) { begeleiderKiesSessie(sids[0]); return; }
+    }
+    if (!_bglSid) begeleiderRenderSessieLijst();
+  });
+  begeleiderRenderSessieLijst();
+}
+
+function begeleiderSessiesGesorteerd() {
+  var sids = Object.keys(_bglIndex);
+  sids.sort(function (a, b) {
+    return ((_bglIndex[b] && _bglIndex[b].aangemaakt) || 0) - ((_bglIndex[a] && _bglIndex[a].aangemaakt) || 0);
+  });
+  return sids;
+}
+
+function begeleiderRenderSessieLijst() {
+  if (!_bglOpen || _bglSid) return;
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  var sids = begeleiderSessiesGesorteerd();
+  var html =
+    '<div class="bgl-titel">Begeleider</div>' +
+    '<div class="bgl-sub">✦ &nbsp; sessies van vandaag &nbsp; ✦</div>';
+  if (!sids.length) {
+    html += '<div class="bgl-info">Nog geen team gestart vandaag.<br>Dit scherm wacht mee: zodra de vier tablets samen een teamnaam kiezen, verschijnt de sessie hier vanzelf.</div>';
+  } else {
+    sids.forEach(function (sid) {
+      var e = _bglIndex[sid] || {};
+      html += '<button class="bgl-sessieknop" onclick="begeleiderKiesSessie(\'' + sid + '\')">' + begeleiderVeilig(e.team || sid) + '</button>';
+    });
+  }
+  html += '<div style="text-align:center;margin-top:1.6rem"><button class="bgl-knopje" onclick="begeleiderKiesSessie(\'test\')">Testsessie openen</button></div>';
+  c.innerHTML = html;
+}
+
+function begeleiderKiesSessie(sid) {
+  begeleiderStopSessieListeners();
+  _bglSid = sid;
+  _bglShared = {};
+  _bglMeta = {};
+  _bglPending = {};
+  try {
+    _bglSharedRef = firebase.database().ref('sessies/' + sid + '/shared');
+    _bglMetaRef = firebase.database().ref('sessies/' + sid + '/meta');
+    _bglSharedRef.on('value', function (snap) { _bglShared = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
+    _bglMetaRef.on('value', function (snap) { _bglMeta = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
+  } catch (e) { console.warn('begeleider: sessie-listener mislukt:', e); }
+  begeleiderRenderPaneel();
+}
+
+function begeleiderStopSessieListeners() {
+  if (_bglSharedRef) { try { _bglSharedRef.off(); } catch (e) {} _bglSharedRef = null; }
+  if (_bglMetaRef) { try { _bglMetaRef.off(); } catch (e) {} _bglMetaRef = null; }
+}
+
+function begeleiderTerugNaarLijst() {
+  begeleiderStopSessieListeners();
+  _bglSid = null;
+  _bglPending = {};
+  _bglAutoOpen = false;   // niet meteen weer dezelfde sessie in springen
+  begeleiderRenderSessieLijst();
+}
+
+// Zelfde fase voor het hele team: de gedeelde verhaal_fase. Zolang die er
+// nog niet is (voor het openen van het Kraaienkwartier) zit het team in de
+// intro (dorpsplein, filmpje, rolkeuze).
+function begeleiderFaseTekst() {
+  return {
+    kraaienkwartier: 'Kraaienkwartier',
+    dorendael:       'Dorendael',
+    sintdonatuslaan: 'Heer Donatuslaan',
+  }[_bglShared.verhaal_fase] || 'Intro';
+}
+
+function begeleiderRenderPaneel() {
+  if (!_bglOpen || !_bglSid) return;
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  var team = (_bglMeta && _bglMeta.team) || _bglSid;
+  var html =
+    '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    '<div class="bgl-blok">';
+  BEGELEIDER_ROLLEN.forEach(function (r) {
+    var naam = _bglShared['speler_naam_' + r.id] ||
+      (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || '';
+    var bezet = !!_bglShared['rol_bezet_' + r.id];
+    var pending = _bglPending.hasOwnProperty(r.id);
+    var checked = pending ? _bglPending[r.id] : (_bglShared['beginner_modus_' + r.id] === true);
+    var naamHtml = naam
+      ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>'
+      : '<span class="bgl-naam leeg">' + (bezet ? '(naam onbekend)' : 'nog niet gekozen') + '</span>';
+    html += '<div class="bgl-regel">' +
+      '<span class="bgl-rol">' + r.naam + '</span>' +
+      naamHtml +
+      '<label class="ssi-toggle" title="Beginner modus voor deze speler">' +
+        '<span class="ssi-label">Beginner</span>' +
+        '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', this.checked)">' +
+        '<span class="ssi-schuif"></span>' +
+      '</label>' +
+      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="visibility:' + (pending ? 'visible' : 'hidden') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+    '</div>';
+  });
+  html += '</div>' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig.</div>' +
+    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+  c.innerHTML = html;
+}
+
+// Schuifje omgezet: nog niets schrijven, alleen onthouden en de
+// Bevestig-knop van die regel tonen. Terug naar de echte stand schuiven
+// maakt de wijziging weer ongedaan.
+function begeleiderZetPending(rol, aan) {
+  var huidig = _bglShared['beginner_modus_' + rol] === true;
+  if (aan === huidig) delete _bglPending[rol];
+  else _bglPending[rol] = aan;
+  var knop = document.getElementById('bgl-bevestig-' + rol);
+  if (knop) knop.style.visibility = _bglPending.hasOwnProperty(rol) ? 'visible' : 'hidden';
+}
+
+function begeleiderBevestig(rol) {
+  if (!_bglPending.hasOwnProperty(rol) || !_bglSid) return;
+  var waarde = !!_bglPending[rol];
+  delete _bglPending[rol];
+  // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt hem zo.
+  _bglShared['beginner_modus_' + rol] = waarde;
+  try {
+    firebase.database().ref('sessies/' + _bglSid + '/shared/beginner_modus_' + rol)
+      .set(waarde).catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+  begeleiderRenderPaneel();
+}
+
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
 // achtergrondmuziek, die normaal pas bij "Begin" aangaat.
 function debugSnelstart(p) {
@@ -5820,6 +6161,7 @@ function debugSnelstart(p) {
   state.personage = p;
   zetRolBezet(p, true);
   registreerSpelerNaam(p);
+  registreerBeginnerModus(p);
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
   startSpelNaKeuze();
@@ -5859,6 +6201,7 @@ function kiesPersonage(p) {
   state.personage = p;
   zetRolBezet(p, true);
   registreerSpelerNaam(p);
+  registreerBeginnerModus(p);
   rolTestFase = true;
   showAvatarBadge(p);
   // Nog niet het spel in: eerst wachten tot alle vier de rollen bezet zijn.
@@ -5873,6 +6216,8 @@ function startSpelNaKeuze() {
   if (typeof getSharedState === 'function' && !getSharedState('team_start')) {
     setSharedState('team_start', gedeeldeTijdNu());
   }
+  // Beginner modus gelijktrekken met de gedeelde stand (begeleiderspaneel).
+  syncBeginnerModusMetShared();
   // Debug-knop nu beschikbaar.
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
@@ -17850,6 +18195,9 @@ function buildDebugPanel() {
     // of zet het loggen aan/uit (staat standaard aan).
     ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
     ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
+    // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
+    // apparaat, om de begeleider-sync solo te kunnen testen.
+    ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
