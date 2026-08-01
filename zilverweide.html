@@ -1914,30 +1914,26 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 
 
 <style>
-  /* Beginnersmodus: een read-only kaartje naast de code-invoer (voorlopig
-     alleen Kraaienkwartier). De code op de bordjes blijft de enige echte
-     ingang; dit is puur hulp om te zien waar je al geweest bent. Zichtbaar
-     alleen als de body de klasse beginner-modus draagt. */
+  /* Beginnersmodus: een read-only kaartje als losse overlay-laag LINKS op
+     het scherm (voorlopig alleen Kraaienkwartier). De code-invoer en alle
+     bestaande knoppen en afbeeldingen blijven exact op hun plek; het kaartje
+     ligt er los naast en verschuift niets. De code op de bordjes blijft de
+     enige echte ingang. Alleen zichtbaar met body-klasse beginner-modus. */
   .kw-kaart { display: none; }
-  .kw-invoer-rij { display: flex; flex-direction: column; align-items: center; }
-  body.beginner-modus #screen-kwartier1 .kw-invoer-rij {
-    flex-direction: row; justify-content: center; align-items: center;
-    gap: clamp(1rem, 4vw, 3rem); flex-wrap: nowrap; max-width: 100%;
-  }
-  body.beginner-modus #screen-kwartier1 .kw-invoer-kol { flex: 0 0 auto; text-align: center; }
   body.beginner-modus #screen-kwartier1 .kw-kaart {
-    display: grid; grid-template-columns: repeat(3, auto);
-    gap: .35rem clamp(1.4rem, 5vw, 3.2rem); justify-items: center; align-items: start; flex: 0 0 auto;
+    display: grid; position: absolute; left: clamp(.75rem, 5vw, 4rem); top: 50%;
+    transform: translateY(-50%); grid-template-columns: repeat(3, auto);
+    gap: .3rem clamp(.9rem, 3.2vw, 2rem); justify-items: center; align-items: start; z-index: 2;
   }
-  .kw-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .3rem; width: clamp(52px, 7vw, 76px); }
+  .kw-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .28rem; width: clamp(47px, 6.3vw, 68px); }
   .kw-kaart .kt-vak {
-    width: clamp(38px, 5vw, 54px); height: clamp(38px, 5vw, 54px); border-radius: 4px;
+    width: clamp(34px, 4.5vw, 49px); height: clamp(34px, 4.5vw, 49px); border-radius: 4px;
     border: 1px solid rgba(45, 90, 95, .55); background: transparent;
     transition: background .3s, border-color .3s;
   }
   .kw-kaart .kt.bezocht .kt-vak { background: #2d5a5f; border-color: #2d5a5f; box-shadow: 0 2px 6px rgba(0, 0, 0, .25); }
   .kw-kaart .kt-naam {
-    font-family: 'Cinzel', serif; font-size: clamp(.5rem, 1.1vw, .62rem); line-height: 1.15;
+    font-family: 'Cinzel', serif; font-size: clamp(.46rem, 1vw, .58rem); line-height: 1.15;
     letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 1.7em;
     opacity: 0; transition: opacity .3s;
   }
@@ -1947,16 +1943,12 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
   <div class="kwartier-header"><h2>Het Kraaienkwartier</h2><p>Smalle steegjes, lage daken, fluisterende schaduwen</p></div>
   <img class="kraai-vlucht" src="ui/kraaienkwartier/kraaien.png" alt="" aria-hidden="true">
-  <div class="kw-invoer-rij">
-    <div class="kw-invoer-kol">
-      <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
-      <div class="code-section">
-        <input class="code-input" id="code-k-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkKraaiLocatie(this.value)">
-        <div class="code-error" id="code-k-locatie-msg"></div>
-      </div>
-    </div>
-    <div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
+  <p style="font-family:'Cinzel',serif;font-size:.9rem;color:var(--mist);text-align:center;margin-bottom:2rem;letter-spacing:.05em">Welke locatie ga je bezoeken?</p>
+  <div class="code-section">
+    <input class="code-input" id="code-k-locatie" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkKraaiLocatie(this.value)">
+    <div class="code-error" id="code-k-locatie-msg"></div>
   </div>
+  <div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
 </div>
 
 <div class="screen" id="screen-dorendael">
