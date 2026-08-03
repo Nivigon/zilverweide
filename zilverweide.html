@@ -3171,8 +3171,6 @@ const VISITED_FLAGS = {
   intro_filmpje_gezien:       'Het intro-filmpje op het podium is bekeken',
   overworld_intro_gezien:     'De kaart-introductie (eerste aankomst op de overworld) is getoond',
   kraai_kaart_intro_gezien:   'De beginnerskaart-uitleg in het Kraaienkwartier is getoond',
-  dorendael_kaart_intro_gezien: 'De beginnerskaart-uitleg in Dorendael is getoond',
-  hd_kaart_intro_gezien:      'De beginnerskaart-uitleg in Heer Donatuslaan is getoond',
 
   // Kelly bij de put
   kelly_in_put:               'Kelly is in de dorpsput gevallen',
@@ -4984,7 +4982,7 @@ function showScreen(id) {
   if (beginnerCfg) {
     updateBeginnerKaart(id);
     if (window._beginnerModus && state.personage && !state.debugSkipBezig &&
-        !hasVisited(beginnerCfg.introFlag)) {
+        beginnerCfg.introFlag && !hasVisited(beginnerCfg.introFlag)) {
       (function (sid) { setTimeout(function () { beginnerKaartIntro(sid); }, 500); })(id);
     }
   }
@@ -5862,20 +5860,21 @@ var BEGINNER_KAARTEN = {
   },
   'screen-dorendael': {
     kolommen: 4,
-    introFlag: 'dorendael_kaart_intro_gezien',
+    // Nummers overgestoken t.o.v. de andere straten: de bovenrij is 6-7-8 en
+    // de onderrij 4-3-2 (DD2 op de plek van DD8, enzovoort). De kop (Het Woud)
+    // blijft links op zijn plek.
     tegels: [
-      { id: 'dd4_herberg',      naam: 'De Herberg',      col: 2, row: 1 },
-      { id: 'dd3_nummer10',     naam: 'Nummer 10',       col: 3, row: 1 },
-      { id: 'dd2_nummer2',      naam: 'Nummer 2',        col: 4, row: 1 },
+      { id: 'dd6_molen',        naam: 'De Oude Molen',   col: 2, row: 1 },
+      { id: 'dd7_klokkenmaker', naam: 'De Klokkenmaker', col: 3, row: 1 },
+      { id: 'dd8_stiltevijver', naam: 'De Stiltevijver', col: 4, row: 1 },
       { id: 'dd5_woud',         naam: 'Het Woud',        col: 1, row: 2 },
-      { id: 'dd6_molen',        naam: 'De Oude Molen',   col: 2, row: 3 },
-      { id: 'dd7_klokkenmaker', naam: 'De Klokkenmaker', col: 3, row: 3 },
-      { id: 'dd8_stiltevijver', naam: 'De Stiltevijver', col: 4, row: 3 },
+      { id: 'dd4_herberg',      naam: 'De Herberg',      col: 2, row: 3 },
+      { id: 'dd3_nummer10',     naam: 'Nummer 10',       col: 3, row: 3 },
+      { id: 'dd2_nummer2',      naam: 'Nummer 2',        col: 4, row: 3 },
     ],
   },
   'screen-sintdonatuslaan': {
     kolommen: 4,
-    introFlag: 'hd_kaart_intro_gezien',
     tegels: [
       { id: 'h2_felixkamer',   naam: 'Nummer 1',          col: 1, row: 1 },
       { id: 'h3_slagerij',     naam: 'Slagerij Verstilt', col: 2, row: 1 },
@@ -18215,7 +18214,7 @@ function buildDebugPanel() {
       }, true, 'Kelly & de put'],
       // ── Beginnersmodus (kaartje)
       ['🗺️ Beginnersmodus aan/uit', function(){ zetBeginnerModus(!window._beginnerModus); close(); ['screen-kwartier1','screen-dorendael','screen-sintdonatuslaan'].forEach(function(sid){ var s=document.getElementById(sid); if (s && s.classList.contains('active')) showScreen(sid); }); }, true, 'Beginnersmodus'],
-      ['↺ Kaart-uitleg opnieuw tonen', function(){ ['kraai_kaart_intro_gezien','dorendael_kaart_intro_gezien','hd_kaart_intro_gezien'].forEach(function(f){ state.visited.delete(f); }); close(); ['screen-kwartier1','screen-dorendael','screen-sintdonatuslaan'].forEach(function(sid){ var s=document.getElementById(sid); if (s && s.classList.contains('active')) showScreen(sid); }); }, true, 'Beginnersmodus'],
+      ['↺ Kaart-uitleg opnieuw tonen', function(){ state.visited.delete('kraai_kaart_intro_gezien'); close(); var s=document.getElementById('screen-kwartier1'); if (s && s.classList.contains('active')) showScreen('screen-kwartier1'); }, true, 'Beginnersmodus'],
       // ── Kelly & de hand (Naald en Masker)
       ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ eyebrow: 'Een schim en stemmen in je hoofd dringen zich op', onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
       ['🖤 Rouwstof-quest openzetten', function(){ setSharedState('apotheker_quest_actief', true); close(); }, p === 'kelly', 'Kelly & de hand'],
@@ -22408,9 +22407,19 @@ function updateFirebaseBolletje() {
   // Zelfde sessie-bron als de resets hierboven (getSessieId bestaat niet).
   var sessieId = _sharedSessieId || 'test';
   if (!sessieId) { btn.textContent = '⚪'; return; }
-  firebase.database().ref('sessies/' + sessieId).once('value').then(function (snap) {
-    btn.textContent = snap.exists() ? '🔴' : '🟢';
-    btn.title = snap.exists() ? 'Firebase bevat data (klik om te resetten)' : 'Firebase is leeg (schone sessie)';
+  // Bewust NIET de hele sessie-node lezen: de /log-tak (telemetrie) wordt al
+  // bij elke paginaload geschreven, waardoor het bolletje anders meteen na een
+  // reset + reload weer rood is terwijl er geen speler en geen gedeelde stand
+  // is. Alleen echte sessie-data telt: /shared (gedeelde stand, rol_bezet) en
+  // /spelers (herstelpunten).
+  var _db = firebase.database();
+  Promise.all([
+    _db.ref('sessies/' + sessieId + '/shared').once('value'),
+    _db.ref('sessies/' + sessieId + '/spelers').once('value')
+  ]).then(function (snaps) {
+    var heeftData = snaps[0].exists() || snaps[1].exists();
+    btn.textContent = heeftData ? '🔴' : '🟢';
+    btn.title = heeftData ? 'Firebase bevat data (klik om te resetten)' : 'Firebase is leeg (schone sessie)';
   }).catch(function () { btn.textContent = '⚪'; });
 }
 // Testknop: rechtstreeks naar het kerkarchief, de scène die normaal pas komt
