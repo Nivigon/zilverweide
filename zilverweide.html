@@ -2535,6 +2535,7 @@ function verwerkBinnengekomenShared(data) {
   if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
   var ietsNieuws = false;
   var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
+  var vijverFlagBinnen = false, fennaVijverVrijBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -2544,6 +2545,8 @@ function verwerkBinnengekomenShared(data) {
           ietsNieuws = true;
           if (f === 'kelly_in_put' || f === 'kelly_gered') putFlagBinnen = true;
           if (f === 'kelly_gered') kellyGeredBinnen = true;
+          if (f === 'fenna_vijver_vast' || f === 'fenna_vijver_vrij') vijverFlagBinnen = true;
+          if (f === 'fenna_vijver_vrij') fennaVijverVrijBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
               || f === 'felix_code_ingevoerd') h2FlagBinnen = true;
           if (typeof DORENDAEL_MISSIE_KEYS !== 'undefined' && DORENDAEL_MISSIE_KEYS.indexOf(f) !== -1) {
@@ -2617,6 +2620,26 @@ function verwerkBinnengekomenShared(data) {
       if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
       var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
       if (_putLoc) renderK1Dorpsput(_putLoc);
+    }
+  }
+  // Zelfde voor de Stiltevijver (DD8). Sta je daar terwijl Fenna's status via
+  // een ander apparaat verandert, dan het scherm meteen herzien. Voor Kelly
+  // speelt bovendien dezelfde reunie-dialoog als bij de put zodra Fenna de
+  // code invoert, zo zien beide spelers dat de hulp gelukt is.
+  if (vijverFlagBinnen && !eersteSnapshot &&
+      state.lastOpenedLocatie === 'dd8_stiltevijver' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active')) {
+    if (fennaVijverVrijBinnen && state.personage === 'kelly' && hasVisited('kelly_vijver_code_gezien') &&
+        typeof speelVijverReunie === 'function') {
+      speelVijverReunie();
+    } else if (typeof renderDd8Stiltevijver === 'function') {
+      // Her-render sloopt de sluitknop van een eventueel lopende pop-dialoog
+      // (die staat in de scene-DOM): dan de dialoog netjes sluiten in plaats
+      // van hem als wees te laten hangen.
+      if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+      var _vijverLoc = locatiesDorendael.find(function(l){ return l.id === 'dd8_stiltevijver'; });
+      if (_vijverLoc) renderDd8Stiltevijver(_vijverLoc);
     }
   }
   // Zelfde voor de kamer van Felix (H2). Jan en Felix staan daar tegelijk aan
@@ -11362,27 +11385,67 @@ function checkFennaVijverCode(val) {
   const scenario = VASTZIT_SCENARIOS.fenna_vijver;
   if (val === scenario.code) {
     msg.className = 'code-success';
-    msg.textContent = '✦ De code klopt — het meisje komt naar je toe.';
+    msg.textContent = '✦ De code klopt! Het meisje komt naar je toe.';
     document.getElementById('code-fenna-vijver').disabled = true;
     markVisited(scenario.vrijFlag);
     geefItem(ITEMS.meisje.emoji, ITEMS.meisje.naam, false);
-    setTimeout(() => {
-      toonLade(
-        ITEMS.meisje.emoji + ' Het meisje gaat met je mee',
-        'Het meisje draait haar hoofd, kijkt je voor het eerst écht aan, en steekt dan haar hand uit. Ze pakt jouw hand. Eindelijk.<br><br>Goed dan — je brengt haar naar dat huis verderop. Die kikker laat je zitten waar hij zit.<br><br><span style="font-size:.9rem;color:var(--mist)">Breng het meisje naar het huis verderop. Zodra je haar daar afgeeft, gaat ze weer uit je inventaris.</span>',
-        'Begrepen →',
-        () => {
-          // Terug naar het locatie-invoerscherm. Niet opnieuw de vijver
-          // renderen: dan zou je meteen in de terugkeer-scene belanden
-          // (Van Wallingen) terwijl je nooit bent weggeweest.
-          showScreen('screen-dorendael');
-        }
-      );
-    }, 800);
+    // Reunie als speechbubbels bij de pops (zelfde patroon als de
+    // put-redding); de lade over het meisje volgt na de dialoog.
+    setTimeout(speelVijverReunie, 700);
   } else if (val.length >= 2) {
     msg.className = 'code-error';
     msg.textContent = 'Dat is niet de juiste code...';
   }
+}
+
+// De reunie na de vijver-redding: dezelfde tweezijdige pop-dialoog als na de
+// put-redding (speelPutReunie). Speelt op Fenna's scherm zodra zij de code
+// invoert, en op Kelly's scherm zodra de vrij-flag via de gedeelde stand
+// binnenkomt (verwerkBinnengekomenShared). Zo zien beide spelers expliciet
+// dat Kelly geholpen heeft.
+function speelVijverReunie() {
+  // De scene zelf blijft staan; alleen de dialoogbox en de code-invoer (bij
+  // Fenna) of de code-tegel (bij Kelly) gaan weg. De Verder-knop van de
+  // dialoog landt dan netjes in de acties-zone, zoals bij de put.
+  var cont = document.getElementById('locatie-content');
+  if (cont) {
+    cont.querySelectorAll('.sc-dialog').forEach(function (el) { el.remove(); });
+    var mount = cont.querySelector('.sc-acties-mount');
+    if (mount) { mount.innerHTML = ''; mount.style.display = ''; }
+  }
+  var charPop = document.getElementById('char-pop');
+  if (charPop) charPop.style.display = 'none';    // eigen pop wijkt voor de dialoog-pops
+  verbergNpcPop(true);                             // meisje-NPC rechtsonder weg: de
+                                                   // dialoog-pops nemen het beeld over
+  var fenna1 = { img: 'karakters/spelers/fenna-pop.png', naam: 'Fenna-Viviènne', tekst: 'Kelly! Het werkte, ze pakt mijn hand! Jij zag wat dat kind ons al die tijd probeerde te vertellen. Zonder jou stond ik hier morgenvroeg nog.' };
+  var kelly1 = { img: 'karakters/spelers/kelly-pop.png', naam: 'Kelly', tekst: 'Graag gedaan. Ze wees het zelf aan, ik hoefde alleen maar te kijken. Breng jij haar naar dat huis verderop? Dan kijk ik hier nog even rond.' };
+  var fenna2 = { img: 'karakters/spelers/fenna-pop.png', naam: 'Fenna-Viviènne', tekst: 'Doe ik. Kom maar, lieverd, we brengen je naar huis.' };
+  // Hoofdpersoon altijd links: op Fenna's scherm staat Fenna links en Kelly
+  // rechts, op Kelly's scherm precies andersom. paar() zet de speler links.
+  var speeltFenna = state.personage === 'fenna';
+  function paar(fennaData, kellyData) {
+    return speeltFenna ? { links: fennaData, rechts: kellyData }
+                       : { links: kellyData, rechts: fennaData };
+  }
+  var stappen = [ paar(fenna1, null), paar(fenna1, kelly1), paar(fenna2, kelly1) ];
+  toonPopDialoog(stappen, function () {
+    var cp = document.getElementById('char-pop');
+    if (cp) cp.style.display = '';
+    if (speeltFenna) {
+      // Fenna krijgt hierna de lade over het meisje en gaat terug naar het
+      // locatie-invoerscherm. Niet opnieuw de vijver renderen: dan zou ze
+      // meteen in de terugkeer-scene belanden (Van Wallingen) terwijl ze
+      // nooit is weggeweest.
+      toonLade(
+        ITEMS.meisje.emoji + ' Het meisje gaat met je mee',
+        'Het meisje draait haar hoofd, kijkt je voor het eerst écht aan, en steekt dan haar hand uit. Ze pakt jouw hand. Eindelijk.<br><br>Goed dan: je brengt haar naar dat huis verderop. Die kikker laat je zitten waar hij zit.<br><br><span style="font-size:.9rem;color:var(--mist)">Breng het meisje naar het huis verderop. Zodra je haar daar afgeeft, gaat ze weer uit je inventaris.</span>',
+        'Begrepen →',
+        function () { showScreen('screen-dorendael'); }
+      );
+    } else {
+      goBackFromLocatie();
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════
