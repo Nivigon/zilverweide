@@ -301,6 +301,13 @@
   color: var(--parchment);
   animation: sc-dialogTextIn .25s ease;
 }
+/* Leesbaarheid op tablets: op schermen met ruime hoogte mag de dialoogtekst
+   groter. Bewust alleen vanaf 701px hoogte: de band 521-700px is gevoelig
+   voor overflow (zie de dialoog-notities in zilverweide.html) en houdt de
+   basisgrootte, en onder 521px geldt de aparte verkleining daar al. */
+@media (min-height: 701px) {
+  .sc-dialog-tekst { font-size: 1.14rem; }
+}
 @keyframes sc-dialogTextIn {
   from { opacity: 0; }
   to   { opacity: 1; }
