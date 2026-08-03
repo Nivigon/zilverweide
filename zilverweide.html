@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=La+Belle+Aurore&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="technischefiles/doolhof.css">
 <link rel="stylesheet" href="technischefiles/lockpick.css">
-<link rel="stylesheet" href="technischefiles/scene.css?v=2">
+<link rel="stylesheet" href="technischefiles/scene.css?v=3">
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <link rel="stylesheet" href="technischefiles/woudscene.css">
@@ -7442,7 +7442,8 @@ function renderH2FelixKamer(loc) {
           'Een schaduw voor het gat in de muur. Groot genoeg om erbij te kunnen. Eindelijk iemand aan de goede kant van de muur, en met de juiste lengte.',
           { spreker: 'Felix', tekst: '"Jan? Goddank. Waar ben ik eigenlijk, man?"' },
           { spreker: 'Jan', tekst: '"Je zit in een huis in de Heer Donatuslaan. Wacht, hoe krijgen we jou hieruit?"' },
-          { spreker: 'Felix', tekst: '"Ik heb een plan. Maar ik heb jou nodig, want ik pas niet door dit gat en jij komt er wel bij. Ik heb hier een zakje munten. Haal daarmee een outfit voor me bij Naald en Masker in Kraaienkwartier. Dan klets ik mezelf hier wel uit."' }
+          { spreker: 'Felix', tekst: '"Ik heb een plan. Maar ik heb jou nodig, want ik pas niet door dit gat en jij komt er wel bij."' },
+          { spreker: 'Felix', tekst: '"Ik heb hier een zakje munten. Haal daarmee een outfit voor me bij Naald en Masker in Kraaienkwartier. Dan klets ik mezelf hier wel uit."' }
         ],
         acties: [{ label: '\ud83e\ude99 Geef het muntenzakje door het gat', onclick: felixGeefMuntenAanJan }]
       });
@@ -7487,7 +7488,8 @@ function renderH2FelixKamer(loc) {
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
-          'Door het sleutelgat kijk je de kamer in waar het geluid vandaan komt. Op een stoel liggen je vermommingen, op een stapel, net buiten je bereik. En er beweegt iemand, gebukt, driftig, tussen de rest van je spullen. Je hoort kleren over de grond schuiven.',
+          'Door het sleutelgat kijk je de kamer in waar het geluid vandaan komt. Op een stoel liggen je vermommingen, op een stapel, net buiten je bereik.',
+          'En er beweegt iemand, gebukt, driftig, tussen de rest van je spullen. Je hoort kleren over de grond schuiven.',
           'Wie het ook is, die heeft alles van je afgepakt.'
         ],
         acties: [{ label: '\ud83d\udd0d Doorzoek de kamer', onclick: felixDoorzoekKamer }]
@@ -8417,10 +8419,13 @@ function renderH3Slagerij(loc) {
         container: cont, titel: loc.naam, sub: 'De achterkamer', image: 'locaties/heerdonatuslaan/slagerijachter.jpeg',
         dialog: [
           'Je loopt de achterkamer in. Achter je valt de deur naar de winkel dicht. Je hoort de klink, en als je eraan voelt, geeft hij niet mee. Klem.',
-          'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer. Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
+          'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer.',
+          'Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt.',
+          'En op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
           'Ergens, je kunt niet zeggen waar, wordt een mes geslepen. Traag. Steeds opnieuw.',
           'Je wilt terug. De deur naar de winkel zit klem. Je rukt eraan, niks. De achterdeur naar de steeg dan. Op slot.',
-          'Je hart bonst tegen je ribben. Denk na, denk na. Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
+          'Je hart bonst tegen je ribben. Denk na, denk na.',
+          'Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
         ],
         acties: [{ label: 'Forceer het slot met de vleespen', onclick: function () { startLockpick(loc); } }]
       });
@@ -8460,7 +8465,8 @@ function renderH3Slagerij(loc) {
         });
       }
       return sfeer([
-        'Binnen slaat de kou je tegemoet. IJskoud, veel te koud voor een winkel. Aan de balk hangen de vleeshaken, eentje leeg. Tussen het vlees de gedroogde kruiden, de potjes, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
+        'Binnen slaat de kou je tegemoet. IJskoud, veel te koud voor een winkel. Aan de balk hangen de vleeshaken, eentje leeg.',
+        'Tussen het vlees de gedroogde kruiden, de potjes, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
         'De slager is weg. Op het hakblok ligt niets. Het is schoongeveegd, veel te schoon.'
       ]);
     }
@@ -8476,7 +8482,8 @@ function renderH3Slagerij(loc) {
       });
     }
     return sfeer([
-      'Je glipt naar binnen terwijl de slager achterin bezig is. Op de toonbank liggen stukken vlees, strak gebonden met dun garen. Je kijkt er langer naar dan je zou moeten. Dat garen. Precies zulk garen als waarmee je een mond zou dichtnaaien.',
+      'Je glipt naar binnen terwijl de slager achterin bezig is. Op de toonbank liggen stukken vlees, strak gebonden met dun garen.',
+      'Je kijkt er langer naar dan je zou moeten. Dat garen. Precies zulk garen als waarmee je een mond zou dichtnaaien.',
       'Uit de achterkamer komt het geneurie dichterbij. Wegwezen, voor hij terugkomt.'
     ]);
   }
@@ -9177,7 +9184,8 @@ function renderH5Gemeentehuis(loc) {
         dialog: [
           { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, gespannen, met zijn blik strak op de ingang. Hé, is dat niet die fan van Fenna?', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
           'Je kijkt nog eens. Hij wacht duidelijk op iemand, en hij is bang dat die niet op tijd komt. Je onthoudt hem.',
-          { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan. Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.', onShow: function() { verbergNpcPop(); } }
+          { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan.', onShow: function() { verbergNpcPop(); } },
+          'Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
         ]
       });
     }
@@ -11171,8 +11179,11 @@ function renderDd8Stiltevijver(loc) {
   const popWeg        = function () { verbergNpcPop(); };
 
   // ── Sfeer & flarden ───────────────────────────────────────────
-  const SFEER1 =
-    'Bij de Stiltevijver staat een groepje mensen bijeen. Dit is de plek waar men heen gaat om iets te verwerken. Sinds het voorval eerder op de avond staan er meer dan anders: stille gezichten, een enkele die zacht praat, een paar die alleen maar naar het water staren.';
+  // In twee dialoogregels geknipt voor de leesbaarheid; overal samen gebruiken.
+  const SFEER1A =
+    'Bij de Stiltevijver staat een groepje mensen bijeen. Dit is de plek waar men heen gaat om iets te verwerken.';
+  const SFEER1B =
+    'Sinds het voorval eerder op de avond staan er meer dan anders: stille gezichten, een enkele die zacht praat, een paar die alleen maar naar het water staren.';
   const FLARDEN1 = [
     '"Ik wist niet waar ik anders heen moest vanavond."',
     '"Het is hier tenminste stil. Even niet nadenken."',
@@ -11233,7 +11244,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 2a — Fenna komt aan (vóór het zingen)
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Fenna-Viviènne', tekst: 'Al die droeve gezichten... Dít is precies waarvoor ik besta. Even geen drama, geen onderzoek, gewoon een lied. Dit is wat ik te geven heb.' }
       ],
@@ -11287,7 +11298,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 1 — vóór Fenna's optreden
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Kelly', tekst: 'Stille mensen, stil water. Niemand zegt veel. Wat deze mensen nodig hebben, kan ik niet geven, in elk geval niet met woorden. Hier hoort iemand te zíjn die dat wél kan.' }
       ]
@@ -11324,7 +11335,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 1
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Jan', tekst: 'Veel bezorgde gezichten. Dit is geen plek om iets op te lossen. Dit is een plek waar mensen op adem komen. Iemand zou ze wat licht moeten brengen. Daar ben ik de man niet voor.' }
       ]
@@ -11396,7 +11407,7 @@ function renderDd8Stiltevijver(loc) {
     } else if (isLucinde) {
       return renderLocatieScene(Object.assign({}, base, {
         dialog: [
-          SFEER1,
+          SFEER1A, SFEER1B,
           'Naast Lucinde komt een oude vrouw staan. Ze staart over het water en begint te praten zonder haar aan te kijken, zoals oude mensen doen tegen wie ze vertrouwen.',
           { spreker: 'Oude vrouw', tekst: 'De man van Nummer 10 stond hier vroeger elke avond. Roken, staren, net als wij nu. Al een heel seizoen niet meer gezien. Werk elders, zeggen ze.' },
           'Een stilte. Dan, zachter:',
@@ -11408,12 +11419,12 @@ function renderDd8Stiltevijver(loc) {
       f1 = { spreker: 'Felix', tekst: 'Een treurende menigte. Mooie dekmantel om ongezien rond te lopen. Maar dit volk heeft geen ondervraging nodig. Het heeft afleiding nodig. Iemand met een podiumstem.' };
     }
     return renderLocatieScene(Object.assign({}, base, {
-      dialog: [ SFEER1, pakFlard(FLARDEN1), f1 ]
+      dialog: [ SFEER1A, SFEER1B, pakFlard(FLARDEN1), f1 ]
     }));
   }
 
   // Onbekend personage — alleen sfeer
-  renderLocatieScene(Object.assign({}, base, { dialog: [ SFEER1 ] }));
+  renderLocatieScene(Object.assign({}, base, { dialog: [ SFEER1A, SFEER1B ] }));
 }
 
 // Fenna kiest "Vrolijk op en zing!" — ze zit nu vast.
@@ -12099,7 +12110,8 @@ function renderK1Naaldmasker(loc) {
     if (!skipDialog) {
       if (!hasVisited('jan_naaldmasker_bezoek')) {
         markVisited('jan_naaldmasker_bezoek');
-        dialog.push({ spreker: 'Madeleine', tekst: '*(kijkt op, bekijkt hem traag van schoenen tot kruin, glimlacht zonder warmte)* "Lang. Heel lang. Dat valt op in een straat, hè." *(zet de naald in de stof)* "Vooral \'s nachts. De daken, de lantaarns... en dan jij." *(kijkt hem recht aan)* "Ik onthoud lange mannen."' });
+        dialog.push({ spreker: 'Madeleine', tekst: '*(kijkt op, bekijkt hem traag van schoenen tot kruin, glimlacht zonder warmte)* "Lang. Heel lang. Dat valt op in een straat, hè."' });
+        dialog.push({ spreker: 'Madeleine', tekst: '*(zet de naald in de stof)* "Vooral \'s nachts. De daken, de lantaarns... en dan jij." *(kijkt hem recht aan)* "Ik onthoud lange mannen."' });
         dialog.push({ spreker: 'Jan', tekst: '*(ongemakkelijk)* "...ik kom hier voor het eerst, hoor."' });
         dialog.push({ spreker: 'Madeleine', tekst: '"Dat weet ik."' });
       } else {
@@ -15256,7 +15268,9 @@ function openVerborgenHand() {
     sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
     image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
     dialog: [
-      { spreker: 'Stazia', tekst: '"Welkom, kind. Kom bij mij als je vastloopt in een van de wijken, of als je op zoek bent naar voorwerpen van... bijzondere waarde. Soms kan ik daarbij helpen. Maar let wel: een fout antwoord op mijn verzoeken heeft altijd een vervelende prijs..."' },
+      { spreker: 'Stazia', tekst: '"Welkom, kind. Kom bij mij als je vastloopt in een van de wijken, of als je op zoek bent naar voorwerpen van... bijzondere waarde. Soms kan ik daarbij helpen."' },
+      { spreker: 'Stazia', tekst: '"Maar let wel: een fout antwoord op mijn verzoeken heeft altijd een vervelende prijs..."' },
+      { spreker: '⚠', tekst: 'Stazia\'s verzoeken zijn een zijspoor. Houd haar met een schuin oog in de gaten, maar begin er pas aan als je er echt klaar voor bent: ze kunnen je vertragen.' },
       { spreker: 'Stazia', tekst: '"Klik hierboven waar je hulp bij nodig hebt."', onShow: function() {
         // Strip omhoog laten schuiven zodra Stazia de instructie geeft
         var s = document.querySelector('.vh-strip');
@@ -15327,7 +15341,8 @@ function kiesDistrictWaarzegster(district, unlocked, afgerond) {
   if (district === 'schaduw') {
     const dialog = [
       { spreker: 'Stazia', tekst: '*(haar ogen worden donkerder, alsof het licht in de wagen zelf terugdeinst)* "Ah. Dus jij draagt hem ook."' },
-      { spreker: 'Stazia', tekst: '"De rozen dragen meer dan schoonheid. Wie zwicht, wie zich laat verleiden tot iets kleins en donkers, wordt er net zo makkelijk door geraakt als wie oog in oog staat met een heks. Zij geven de vloek, ja... maar niet altijd bewust. Niet altijd willens."' }
+      { spreker: 'Stazia', tekst: '"De rozen dragen meer dan schoonheid. Wie zwicht, wie zich laat verleiden tot iets kleins en donkers, wordt er net zo makkelijk door geraakt als wie oog in oog staat met een heks."' },
+      { spreker: 'Stazia', tekst: '"Zij geven de vloek, ja... maar niet altijd bewust. Niet altijd willens."' }
     ];
     // Als de apotheker-quest actief is: hint naar de Kraal van Beengiht.
     // Het zien van deze hint maakt Mevr. van Wallingen "thuis" (shared).
@@ -19666,7 +19681,8 @@ function renderDd6Bord(loc) {
   if (p === 'jan') {
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Een houten bord op een paaltje, letters in het hout gebrand: VERBODEN TOEGANG — DE OUDE MOLEN. Daarachter een onverhard pad dat verdwijnt tussen kromme bomen. In de verte de molen: één wiek scheef, het dak half ingestort, zwarte vlekken waar ooit vuur was.',
+        'Een houten bord op een paaltje, letters in het hout gebrand: VERBODEN TOEGANG — DE OUDE MOLEN. Daarachter een onverhard pad dat verdwijnt tussen kromme bomen.',
+        'In de verte de molen: één wiek scheef, het dak half ingestort, zwarte vlekken waar ooit vuur was.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Verboden toegang. Altijd een goede reden om juist te gaan.' },
         'Er hangt iets in de lucht. Niet alleen de geur — iets in de stilte. Geen vogels. Geen krekels. Niets.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Het is hier te stil. Veel te stil voor een bos.' }
@@ -19878,7 +19894,8 @@ function renderMolenKellyDeel2(loc) {
     dialog: [
       { spreker: 'Kelly', tekst: '*(in gedachten)* Voor wie was dit ooit? Zo klein. Zo lief gemaakt. Iets wat een vader voor zijn dochter zou maken. Voor haar eerste schooldag, misschien.' },
       'Achter haar een schrapend geluid. Dichterbij nu. Maar haar oog valt op iets anders.',
-      'Aan de muur, half tegen een verkoolde balk, hangt een pop. Van stof, met de hand genaaid. In de borst steken twaalf naalden in een keurige cirkel. Eronder een streng donker haar, lang, gevlochten alsof iemand er zorg aan besteedde.',
+      'Aan de muur, half tegen een verkoolde balk, hangt een pop. Van stof, met de hand genaaid.',
+      'In de borst steken twaalf naalden in een keurige cirkel. Eronder een streng donker haar, lang, gevlochten alsof iemand er zorg aan besteedde.',
       'Op een verkoolde balk verderop is iets gekrast, onhandige letters, alsof iemand met een spijker werkte: "voor jou".',
       { spreker: 'Kelly', tekst: '*(in gedachten)* Iemand heeft hier iets verschrikkelijks gedaan. Met iemand die ze liefhadden. Een dochter, misschien? Wie doet dit met een kind?' },
       'In een hoek tegen de muur een hoopje stof, daaronder iets blekers. Een botfragment. Te klein om te identificeren. Maar het is daar.',
@@ -20201,7 +20218,8 @@ function renderDd7Klokkenmaker(loc) {
     if (!janMetAfdrukGeweest && !lolaCodeKlaar) {
       return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lola loopt langs een winkeltje dat volhangt met klokken — slingers, wijzerplaten, getik achter het glas. Achter het raam staat een man haar na te staren. Zijn loep zakt van zijn oog, zijn mond valt half open; wat hij vasthoudt lijkt hij volledig vergeten.',
+          'Lola loopt langs een winkeltje dat volhangt met klokken — slingers, wijzerplaten, getik achter het glas.',
+          'Achter het raam staat een man haar na te staren. Zijn loep zakt van zijn oog, zijn mond valt half open; wat hij vasthoudt lijkt hij volledig vergeten.',
           { tekst: 'Hij blijft kijken tot ze bijna uit zicht is, met een blik die maar één ding kan betekenen.', onShow: function() { setTimeout(function(){ toonNpcPop(klokkenmakerPop()); }, 120); } },
           { spreker: 'Lola', tekst: '*(in gedachten)* Zal wel de klokkenmaker zijn. Qué raro, die man. Helemaal betoverd — net als de rest. Claro: Lola Ramirez maakt alle mannen wild.' }
         ] });
