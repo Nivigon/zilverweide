@@ -831,6 +831,15 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .ssi-schuif::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--gold-dim);transition:left .25s,background .25s}
 .ssi-toggle input:checked + .ssi-schuif{background:rgba(201,168,76,.3);border-color:var(--gold)}
 .ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
+/* TIJDELIJK (testmodus): inklapknop voor het snelstart-blok op het
+   splash-scherm. Standaard ingeschoven; alleen het 🛠️-knopje en de
+   sessie-indicator blijven zichtbaar. De 0fr-truc laat het blok naar de
+   knop toe schuiven zonder dat er iets buiten het scherm steekt. */
+#snelstart-toggle{align-self:flex-end;flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.25);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.6;transition:opacity .2s}
+#snelstart-toggle:hover{opacity:1}
+#snelstart-wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease,opacity .3s ease}
+#snelstart-wrap.dicht{grid-template-rows:0fr;opacity:0;pointer-events:none}
+#snelstart-blok{overflow:hidden;min-height:0;display:flex;flex-direction:column;gap:.6rem}
 @keyframes roseGlow{0%,100%{text-shadow:0 0 8px rgba(155,58,74,.6)}50%{text-shadow:0 0 20px rgba(155,58,74,1),0 0 40px rgba(155,58,74,.4)}}
 @keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.85}94%{opacity:1}96%{opacity:.9}97%{opacity:1}}
 .interactie-btn{position:fixed;bottom:4.5rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.3);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -1676,34 +1685,41 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- SPLASH -->
 <div class="screen active" id="screen-splash" style="padding:0">
   <!-- TIJDELIJK (testmodus): snelstart-knoppen, rechtstreeks naar de
-       overworld als dat personage. Verwijderen vóór productie. -->
+       overworld als dat personage. Verwijderen vóór productie. Het blok
+       staat standaard ingeschoven achter het 🛠️-knopje. -->
   <div style="position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:.6rem">
-    <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
-      <span class="ssi-label">Kaart-uitleg</span>
-      <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
-      <span class="ssi-label">Beginner modus</span>
-      <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
-    <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
-         laatste herstelpunt van die speler uit de sessie en zet hem terug
-         in zijn straat, met inventaris en voortgang intact. -->
-    <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
-      style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
-      onkeydown="if(event.key==='Enter')herstelViaNaam()">
-    <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
-    <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+    <button id="snelstart-toggle" title="Testknoppen tonen of verbergen" onclick="toggleSnelstartBlok()">🛠️</button>
+    <div id="snelstart-wrap" class="dicht">
+      <div id="snelstart-blok">
+        <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
+          <span class="ssi-label">Kaart-uitleg</span>
+          <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
+          <span class="ssi-label">Beginner modus</span>
+          <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
+        <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
+             laatste herstelpunt van die speler uit de sessie en zet hem terug
+             in zijn straat, met inventaris en voortgang intact. -->
+        <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
+          style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
+          onkeydown="if(event.key==='Enter')herstelViaNaam()">
+        <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
+        <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+      </div>
+    </div>
     <!-- Actieve sessienaam. Sinds ?sessie= lokaal onthouden wordt kan een
          tablet zonder parameter in een eerdere echte sessie zitten; dat
-         moet je hier kunnen zien voordat je speelt of reset. -->
-    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8"></div>
+         moet je hier kunnen zien voordat je speelt of reset. Staat bewust
+         BUITEN het inklapbare blok: altijd zichtbaar. -->
+    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8;text-align:right"></div>
   </div>
   <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
@@ -5800,6 +5816,13 @@ function zetSnelstartIntro(aan) {
   var check = document.getElementById('snelstart-intro-check');
   if (check) check.checked = window._snelstartIntroAan;
 })();
+
+// TIJDELIJK (testmodus): klapt het snelstart-blok op het splash-scherm in
+// en uit. Standaard ingeschoven; de stand wordt bewust niet onthouden.
+function toggleSnelstartBlok() {
+  var wrap = document.getElementById('snelstart-wrap');
+  if (wrap) wrap.classList.toggle('dicht');
+}
 
 // ── Beginnersmodus (per tablet) ─────────────────────────────────────────
 // Hulp voor kinderen: in het Kraaienkwartier verschijnt naast de code-invoer
