@@ -831,6 +831,15 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .ssi-schuif::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--gold-dim);transition:left .25s,background .25s}
 .ssi-toggle input:checked + .ssi-schuif{background:rgba(201,168,76,.3);border-color:var(--gold)}
 .ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
+/* TIJDELIJK (testmodus): inklapknop voor het snelstart-blok op het
+   splash-scherm. Standaard ingeschoven; alleen het 🛠️-knopje en de
+   sessie-indicator blijven zichtbaar. De 0fr-truc laat het blok naar de
+   knop toe schuiven zonder dat er iets buiten het scherm steekt. */
+#snelstart-toggle{align-self:flex-end;flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.25);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.6;transition:opacity .2s}
+#snelstart-toggle:hover{opacity:1}
+#snelstart-wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease,opacity .3s ease}
+#snelstart-wrap.dicht{grid-template-rows:0fr;opacity:0;pointer-events:none}
+#snelstart-blok{overflow:hidden;min-height:0;display:flex;flex-direction:column;gap:.6rem}
 @keyframes roseGlow{0%,100%{text-shadow:0 0 8px rgba(155,58,74,.6)}50%{text-shadow:0 0 20px rgba(155,58,74,1),0 0 40px rgba(155,58,74,.4)}}
 @keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.85}94%{opacity:1}96%{opacity:.9}97%{opacity:1}}
 .interactie-btn{position:fixed;bottom:4.5rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.3);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -968,9 +977,20 @@ body.woudscene-actief .finale-btn{display:none !important;}
    randen in het niets oplossen zodat hij als rookflard over de scene
    hangt in plaats van als rechthoekige poster. */
 .pf-slot.pf-schim img{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* Midden-pop (Sybille in de slotscene): horizontaal gecentreerd in plaats
+   van rechts, zodat zij en de roos samen het middelpunt vormen. */
+#pf-pop.pf-midden{left:50%;right:auto;transform:translateX(-50%)}
 /* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
    en meer naar het midden, weg van de speler-pop linksonder. */
 #pf-zij.pf-schim{left:26vw;bottom:22vh}
+/* Vanaf de Monsters-beat staat de figuur (en daarna Sybille) centraal
+   achter de roos. Sybille wordt daarbij groot genoeg dat de roos, die op
+   32% hoogte hangt, voor haar bovenlijf zweeft. De schim houdt zijn eigen
+   maat en verhoogde stand; deze regels staan na pf-schim zodat left hier
+   wint zodra beide klassen op het slot staan. */
+#pf-zij.pf-zij-midden{left:50%;right:auto;transform:translateX(-50%)}
+#pf-zij.pf-zij-midden img{height:69vh;max-height:600px}
+#pf-zij.pf-zij-midden.pf-schim img{height:46vh;max-height:400px}
 /* De speler-pop linksonder hoort voor het cinema-beeld te staan, niet
    erachter (het beeld heeft z-index 250, de pop normaal 150). */
 body.pf-cinema-actief #char-pop{z-index:252}
@@ -985,6 +1005,9 @@ body.pf-cinema-actief #char-pop{z-index:252}
 #pf-roos.pf-fel .pf-gloed{inset:-70%;background:radial-gradient(circle,rgba(120,180,255,.8),transparent 65%);animation-duration:1.2s}
 #pf-roos.pf-fel .pf-deeltje{background:radial-gradient(circle,rgba(240,248,255,1) 0%,rgba(185,215,255,.9) 45%,rgba(150,190,255,0) 72%);animation-duration:1.7s}
 #pf-roos.pf-fel img{filter:drop-shadow(0 0 26px rgba(140,190,255,.95))}
+/* Laag-stand: de roos zweeft voor Sybille, net iets onder het midden van
+   haar pop (die met bottom 0 en 52vh hoogte haar midden rond 74vh heeft). */
+#pf-roos.pf-laag{top:66%}
 #pf-roos.pf-omhoog{top:14%}
 #pf-roos.pf-as{animation:none}
 #pf-roos.pf-as .pf-gloed{opacity:0}
@@ -1020,8 +1043,11 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #pf-zij.pf-duo img+img{height:51vh;max-height:300px}
   .pf-slot.pf-groot img{height:66vh;max-height:375px}
   #pf-zij.pf-groot img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden.pf-schim img{height:38vh;max-height:220px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
+  #pf-roos.pf-laag{top:72%}
   #pf-roos img{height:14vh;max-height:100px}
 }
 /* ══ WACHTSCHERM: personage-pop + floatende tips/sfeerteksten ══
@@ -1659,34 +1685,41 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- SPLASH -->
 <div class="screen active" id="screen-splash" style="padding:0">
   <!-- TIJDELIJK (testmodus): snelstart-knoppen, rechtstreeks naar de
-       overworld als dat personage. Verwijderen vóór productie. -->
+       overworld als dat personage. Verwijderen vóór productie. Het blok
+       staat standaard ingeschoven achter het 🛠️-knopje. -->
   <div style="position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:.6rem">
-    <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
-      <span class="ssi-label">Kaart-uitleg</span>
-      <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
-      <span class="ssi-label">Beginner modus</span>
-      <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
-    <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
-         laatste herstelpunt van die speler uit de sessie en zet hem terug
-         in zijn straat, met inventaris en voortgang intact. -->
-    <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
-      style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
-      onkeydown="if(event.key==='Enter')herstelViaNaam()">
-    <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
-    <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+    <button id="snelstart-toggle" title="Testknoppen tonen of verbergen" onclick="toggleSnelstartBlok()">🛠️</button>
+    <div id="snelstart-wrap" class="dicht">
+      <div id="snelstart-blok">
+        <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
+          <span class="ssi-label">Kaart-uitleg</span>
+          <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
+          <span class="ssi-label">Beginner modus</span>
+          <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
+        <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
+             laatste herstelpunt van die speler uit de sessie en zet hem terug
+             in zijn straat, met inventaris en voortgang intact. -->
+        <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
+          style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
+          onkeydown="if(event.key==='Enter')herstelViaNaam()">
+        <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
+        <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+      </div>
+    </div>
     <!-- Actieve sessienaam. Sinds ?sessie= lokaal onthouden wordt kan een
          tablet zonder parameter in een eerdere echte sessie zitten; dat
-         moet je hier kunnen zien voordat je speelt of reset. -->
-    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8"></div>
+         moet je hier kunnen zien voordat je speelt of reset. Staat bewust
+         BUITEN het inklapbare blok: altijd zichtbaar. -->
+    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8;text-align:right"></div>
   </div>
   <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
@@ -1699,6 +1732,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
         <button onclick="toonTeaser()" style="font-family:'Cinzel',serif;font-size:.95rem;padding:1rem 2.5rem;border:1px solid rgba(201,168,76,.4);color:rgba(201,168,76,.7);background:rgba(13,10,6,.4);cursor:pointer;letter-spacing:.2em;text-transform:uppercase;border-radius:2px;transition:all .2s">▶ &nbsp; Teaser</button>
       </div>
     </div>
+    <!-- Begeleider-ingang: bewust een onopvallend symbooltje in de hoek,
+         zonder tekst, zodat het in de sfeer van het spel blijft. Opent het
+         begeleiderspaneel (wachtwoord vereist). -->
+    <button onclick="begeleiderOpen()" title="Begeleider" style="position:absolute;bottom:.9rem;right:1rem;z-index:3;background:none;border:none;font-size:1.3rem;cursor:pointer;opacity:.45">🕯️</button>
   </div>
 </div>
 
@@ -2040,6 +2077,38 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <div id="debug-content"></div>
 </div>
 
+<!-- BEGELEIDERSPANEEL: overlay voor de begeleider op een eigen apparaat.
+     Bereikbaar via het kaars-symbooltje op het splash-scherm (met wachtwoord)
+     of via het testpaneel. Leeft volledig los van de spel-sessie van dit
+     apparaat: het paneel leest en schrijft rechtstreeks op de gekozen sessie
+     in Firebase en raakt de lokale spelstand nooit aan. -->
+<style>
+  #begeleider-overlay { display:none; position:fixed; inset:0; z-index:9500; background:#0d0a06; overflow-y:auto; }
+  #begeleider-overlay.open { display:block; }
+  .bgl-wrap { max-width:46rem; margin:0 auto; padding:2.2rem 1.25rem 3rem; }
+  .bgl-titel { font-family:'Cinzel',serif; font-size:clamp(1.2rem,4vw,1.7rem); color:var(--gold); letter-spacing:.07em; text-align:center; margin-bottom:.3rem; }
+  .bgl-sub { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin-bottom:1.5rem; }
+  .bgl-blok { border:1px solid rgba(201,168,76,.3); border-radius:8px; background:rgba(0,0,0,.35); padding:.9rem 1.2rem; margin-bottom:1rem; }
+  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0; border-bottom:1px solid rgba(201,168,76,.14); }
+  .bgl-regel:last-child { border-bottom:none; }
+  .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
+  .bgl-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bgl-naam.leeg { color:var(--mist); }
+  .bgl-veld { width:100%; box-sizing:border-box; font-family:'Cinzel',serif; font-size:1.05rem; text-align:center; letter-spacing:.06em; color:var(--parchment); background:rgba(13,10,6,.7); border:1px solid rgba(201,168,76,.35); border-radius:6px; padding:.85rem 1rem; }
+  .bgl-veld:focus { outline:none; border-color:var(--gold); box-shadow:0 0 16px rgba(201,168,76,.3); }
+  .bgl-fout { min-height:1.2rem; margin-top:.55rem; font-family:'Crimson Text',Georgia,serif; font-style:italic; color:#d4826e; font-size:.92rem; }
+  .bgl-info { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.95rem; text-align:center; line-height:1.6; }
+  .bgl-knopje { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); background:transparent; border:1px solid var(--gold-dim); border-radius:2px; padding:.45rem .8rem; cursor:pointer; flex:0 0 auto; }
+  .bgl-knopje:disabled { opacity:.35; cursor:default; }
+  .bgl-sessieknop { display:block; width:100%; box-sizing:border-box; text-align:left; margin-bottom:.5rem; font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.05em; color:var(--gold); background:rgba(0,0,0,.35); border:1px solid rgba(201,168,76,.35); border-radius:6px; padding:.85rem 1rem; cursor:pointer; }
+  #begeleider-sluit { position:fixed; top:.7rem; right:1rem; z-index:9501; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
+  #begeleider-overlay.open ~ #begeleider-sluit { display:block; }
+</style>
+<div id="begeleider-overlay">
+  <div class="bgl-wrap" id="begeleider-inhoud"></div>
+</div>
+<button id="begeleider-sluit" onclick="begeleiderSluit()" title="Sluiten">✕</button>
+
 <!-- Doolhof-engine (zit in losse bestanden: doolhof-engine.js + doolhof.css) -->
 <script src="technischefiles/doolhof-engine.js"></script>
 
@@ -2301,6 +2370,10 @@ const state = {
   activeKwartier: null,
   visited: new Set(),
   visitedLocations: new Set(),
+  // Foute lied-pogingen per lied (robbie/stiltevijver/herberg). Persoonlijk
+  // (alleen Fenna), en het telt door over een herstart heen: het staat in het
+  // herstelpunt. Na GRATIS_PASS_NA fouten geeft de lied-mechanic een free pass.
+  fennaLiedPogingen: {},
   zone: 'dorpsplein',
   unlockedKwartieren: ['kraaienkwartier'],
   codes: { kraai: 'KRAAIENKWARTIER' },
@@ -2530,6 +2603,18 @@ function verwerkBinnengekomenShared(data) {
     if (data.tobbe_gok_opgelost && !state.tobbeGokOpgelost) { state.tobbeGokOpgelost = true; ietsNieuws = true; }
     // Verhaal-fase gewijzigd door een ander apparaat: teller moet verversen.
     if (data.verhaal_fase) ietsNieuws = true;
+    // Beginner modus op afstand omgezet (begeleiderspaneel): geldt alleen de
+    // eigen rol. zetBeginnerModus schrijft niet terug omdat de gedeelde
+    // stand hierboven al gemerged is (geen echo-lus).
+    if (state.personage && typeof zetBeginnerModus === 'function') {
+      var bglWaarde = data['beginner_modus_' + state.personage];
+      if (typeof bglWaarde === 'boolean' && bglWaarde !== !!window._beginnerModus) {
+        zetBeginnerModus(bglWaarde);
+        if (!eersteSnapshot && typeof toonToast === 'function') {
+          toonToast('🗺️', 'Beginner modus ' + (bglWaarde ? 'aangezet' : 'uitgezet') + ' door de begeleider');
+        }
+      }
+    }
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
@@ -2857,6 +2942,12 @@ function rondTeamAf(slug, deviceIds) {
     if (typeof firebase !== 'undefined' && firebase.database) {
       firebase.database().ref('sessies/' + sid + '/meta').update({
         team: pretty, slug: slug, datum: datum, code: code, aangemaakt: gedeeldeTijdNu()
+      }).catch(function () {});
+      // Kleine index per dag voor het begeleiderspaneel: alleen id, naam en
+      // tijd, zodat dat paneel nooit de volledige sessies-tak (met logs)
+      // hoeft binnen te halen. Alle vier de tablets schrijven hetzelfde.
+      firebase.database().ref('sessies_index/' + datum + '/' + sid).set({
+        team: pretty, aangemaakt: gedeeldeTijdNu()
       }).catch(function () {});
     }
   } catch (e) {}
@@ -3315,7 +3406,10 @@ var HERSTEL_VELDEN = [
   'hdFinalePopupGetoond', 'tobbeGokOpgelost', 'hdGokCooldown',
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
   'janVastInAchterkamer', 'vhTorenTellingGetoond',
-  'locatieOnbekend', 'felixAfgepakt'
+  'locatieOnbekend', 'felixAfgepakt',
+  // Foute lied-pogingen (per lied) moeten een crash overleven, anders begint
+  // de free-pass-teller na een herstart weer op nul.
+  'fennaLiedPogingen'
   // opZolder staat hier bewust NIET: herstel landt altijd op straat, nooit
   // boven. Zou het wel meegaan en herstelt Fenna terwijl de zolderscène nog
   // loopt, dan speelt de oogleden-afsluiter over het straatscherm heen zodra
@@ -3609,6 +3703,10 @@ function pasHerstelpuntToe(hp) {
   _herstelOvergenomen = false;
   _herstelClaimTijd = gedeeldeTijdNu();
   schrijfHerstelpuntNu(true);
+  // Beginner modus gelijktrekken met de gedeelde stand (begeleiderspaneel):
+  // de rol is nu pas bekend, dus een eerder binnengekomen stand alsnog
+  // toepassen.
+  if (typeof syncBeginnerModusMetShared === 'function') syncBeginnerModusMetShared();
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'herstel', doelrol: hp.rol });
 }
 
@@ -5628,6 +5726,7 @@ function resetSpel() {
   state.activeKwartier = null;
   state.visited = new Set();
   state.visitedLocations = new Set();
+  state.fennaLiedPogingen = {};
   state.zone = 'dorpsplein';
   state.unlockedKwartieren = ['kraaienkwartier'];
   state.codes = { kraai: 'KRAAIENKWARTIER' };
@@ -5721,6 +5820,13 @@ function zetSnelstartIntro(aan) {
   var check = document.getElementById('snelstart-intro-check');
   if (check) check.checked = window._snelstartIntroAan;
 })();
+
+// TIJDELIJK (testmodus): klapt het snelstart-blok op het splash-scherm in
+// en uit. Standaard ingeschoven; de stand wordt bewust niet onthouden.
+function toggleSnelstartBlok() {
+  var wrap = document.getElementById('snelstart-wrap');
+  if (wrap) wrap.classList.toggle('dicht');
+}
 
 // ── Beginnersmodus (per tablet) ─────────────────────────────────────────
 // Hulp voor kinderen: op de straat-invoerschermen verschijnt links een kaartje
@@ -5820,6 +5926,39 @@ function zetBeginnerModus(aan) {
     if (c) c.checked = !!aan;
   });
   if (aan) updateBeginnerKaartHuidig();
+  // Stand delen zodra een rol vastligt, zodat het begeleiderspaneel live de
+  // echte stand ziet. Alleen bij echt verschil met de gedeelde stand: een
+  // wijziging die net via de listener binnenkwam (begeleider) staat daar al
+  // in, dus die schrijft hier niet nog eens terug (geen echo-lus).
+  if (state.personage && typeof setSharedState === 'function'
+      && getSharedState('beginner_modus_' + state.personage) !== !!aan) {
+    setSharedState('beginner_modus_' + state.personage, !!aan);
+  }
+}
+
+// Bij de rolkeuze de eigen beginnerstand aan de rol koppelen (net als de
+// spelersnaam), zodat de begeleider vanaf dat moment de echte stand ziet,
+// ook als die uit staat.
+function registreerBeginnerModus(rol) {
+  setSharedState('beginner_modus_' + rol, !!window._beginnerModus);
+}
+
+// Randgeval na herstel of laat instappen: de gedeelde stand kan al binnen
+// zijn voordat de rol bekend was. Nu de rol vastligt: een afwijkende
+// gedeelde stand (bijvoorbeeld door de begeleider gezet) wint van de
+// lokale; is er nog geen gedeelde stand, dan delen we de lokale. Dat
+// laatste alleen als de eerste snapshot al binnen is, anders zou dit een
+// net gezette stand van de begeleider kunnen overschrijven voordat die
+// hier binnenkwam.
+function syncBeginnerModusMetShared() {
+  var p = state.personage;
+  if (!p) return;
+  var gedeeld = getSharedState('beginner_modus_' + p);
+  if (typeof gedeeld === 'boolean') {
+    if (gedeeld !== !!window._beginnerModus) zetBeginnerModus(gedeeld);
+  } else if (_sharedListenerActief || !firebaseSharedBeschikbaar()) {
+    registreerBeginnerModus(p);
+  }
 }
 
 // Eenmalig instructiemoment bij de eerste keer dat een beginner een straat
@@ -5863,6 +6002,323 @@ function beginnerKaartIntro(schermId) {
   zetBeginnerModus(bewaard === '1');
 })();
 
+// ─────────────────────────────────────────────────────────────────
+// BEGELEIDERSPANEEL
+// Voor de begeleider op een eigen (vijfde) apparaat: via het kaars-
+// symbooltje rechtsonder op het splash-scherm, met wachtwoord. Toont van
+// de lopende sessie de teamnaam, de verhaal-fase en per rol de spelersnaam
+// met een schuifje voor de beginner modus; een wijziging gaat pas naar de
+// tablet van de speler na Bevestig.
+// Het paneel leest en schrijft rechtstreeks op sessies/<sid>/... in
+// Firebase, los van de spel-sessie van dit apparaat. De sessies van
+// vandaag komen uit een kleine aparte index (sessies_index/<datum>) die
+// bij de teamkeuze gevuld wordt, zodat het paneel nooit de volledige
+// sessies-tak (met logs) hoeft binnen te halen.
+// ─────────────────────────────────────────────────────────────────
+var BEGELEIDER_WACHTWOORD = 'XXX';
+
+var BEGELEIDER_ROLLEN = [
+  { id: 'jan',   naam: 'Jan' },
+  { id: 'kelly', naam: 'Kelly' },
+  { id: 'fenna', naam: 'Fenna-Viviènne' },
+  { id: 'felix', naam: 'Felix' },
+];
+
+var _bglOpen = false;
+var _bglIngelogd = false;
+var _bglIndexRef = null;   // listener op sessies_index/<vandaag>
+var _bglSharedRef = null;  // listener op shared van de gekozen sessie
+var _bglMetaRef = null;    // listener op meta van de gekozen sessie
+var _bglSid = null;        // gekozen sessie-id, null = sessielijst/wachten
+var _bglShared = {};       // laatste shared-snapshot van de gekozen sessie
+var _bglMeta = {};         // laatste meta-snapshot van de gekozen sessie
+var _bglIndex = {};        // { sid: { team, aangemaakt } } van vandaag
+var _bglPending = {};      // rol -> gewenste beginnerstand, nog niet bevestigd
+var _bglAutoOpen = true;   // nieuwste sessie vanzelf openen, tot de
+                           // begeleider zelf terug naar de lijst gaat
+var _bglToonVerborgen = false; // verborgen (afgesloten) sessies in de lijst tonen
+
+function begeleiderFirebaseKlaar() {
+  return typeof firebase !== 'undefined' && !!firebase.database;
+}
+
+// HTML-escape voor spelersnamen (vrije invoer van spelers).
+function begeleiderVeilig(t) {
+  return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+// Tijdstempel als klok (14:32), voor de starttijd in lijst en paneel.
+function begeleiderKlok(t) {
+  if (typeof t !== 'number' || !isFinite(t)) return '';
+  var d = new Date(t);
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+function begeleiderOpen() {
+  _bglOpen = true;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.add('open');
+  if (_bglIngelogd) begeleiderStartIndex();
+  else begeleiderRenderWachtwoord();
+}
+
+// Testpaneel-ingang: zonder wachtwoord, direct op de sessie van dit
+// apparaat (ook 'test'), om de sync solo te kunnen testen.
+function begeleiderOpenVoorTest() {
+  _bglIngelogd = true;
+  _bglOpen = true;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.add('open');
+  if (!begeleiderFirebaseKlaar()) { begeleiderStartIndex(); return; }
+  begeleiderKiesSessie(herstelSessieId());
+}
+
+function begeleiderSluit() {
+  _bglOpen = false;
+  var ov = document.getElementById('begeleider-overlay');
+  if (ov) ov.classList.remove('open');
+  begeleiderStopSessieListeners();
+  if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} _bglIndexRef = null; }
+  _bglSid = null;
+  _bglPending = {};
+  _bglAutoOpen = true;
+}
+
+function begeleiderRenderWachtwoord() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  c.innerHTML =
+    '<div class="bgl-titel">Begeleider</div>' +
+    '<div class="bgl-sub">✦ &nbsp; toegang &nbsp; ✦</div>' +
+    '<div class="bgl-blok" style="max-width:24rem;margin:0 auto;text-align:center">' +
+      '<input class="bgl-veld" id="bgl-wachtwoord" type="password" autocomplete="off" placeholder="Wachtwoord..." onkeydown="if(event.key===\'Enter\')begeleiderControleerWachtwoord()">' +
+      '<div class="bgl-fout" id="bgl-wachtwoord-fout"></div>' +
+      '<button class="btn" style="margin-top:.3rem" onclick="begeleiderControleerWachtwoord()">Verder →</button>' +
+    '</div>';
+  var inv = document.getElementById('bgl-wachtwoord');
+  if (inv) inv.focus();
+}
+
+function begeleiderControleerWachtwoord() {
+  var inv = document.getElementById('bgl-wachtwoord');
+  if (!inv || inv.value !== BEGELEIDER_WACHTWOORD) {
+    var f = document.getElementById('bgl-wachtwoord-fout');
+    if (f) f.textContent = 'Dat wachtwoord klopt niet.';
+    return;
+  }
+  _bglIngelogd = true;
+  begeleiderStartIndex();
+}
+
+// Luister naar de sessies van vandaag. Nog geen sessie: het paneel wacht
+// mee en opent de nieuwste vanzelf zodra een team zijn naam gekozen heeft.
+function begeleiderStartIndex() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!begeleiderFirebaseKlaar()) {
+    if (c) c.innerHTML =
+      '<div class="bgl-titel">Begeleider</div>' +
+      '<div class="bgl-info">Geen verbinding met de database. Controleer het internet en herlaad de pagina.</div>';
+    return;
+  }
+  if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} }
+  _bglIndexRef = firebase.database().ref('sessies_index/' + teamDatumSleutel());
+  _bglIndexRef.on('value', function (snap) {
+    _bglIndex = (snap && snap.val()) || {};
+    if (!_bglSid && _bglAutoOpen) {
+      // Verborgen (afgesloten) sessies nooit vanzelf openen.
+      var sids = begeleiderSessiesGesorteerd().filter(function (sid) { return !begeleiderIsVerborgen(sid); });
+      if (sids.length) { begeleiderKiesSessie(sids[0]); return; }
+    }
+    if (!_bglSid) begeleiderRenderSessieLijst();
+  });
+  begeleiderRenderSessieLijst();
+}
+
+function begeleiderSessiesGesorteerd() {
+  var sids = Object.keys(_bglIndex);
+  sids.sort(function (a, b) {
+    return ((_bglIndex[b] && _bglIndex[b].aangemaakt) || 0) - ((_bglIndex[a] && _bglIndex[a].aangemaakt) || 0);
+  });
+  return sids;
+}
+
+function begeleiderIsVerborgen(sid) {
+  return !!(_bglIndex[sid] && _bglIndex[sid].afgesloten);
+}
+
+// Eén regel in de sessielijst: sessieknop met teamnaam en starttijd, plus
+// een Verberg-knop (of Herstel voor een al verborgen sessie).
+function begeleiderSessieRij(sid, verborgen) {
+  var e = _bglIndex[sid] || {};
+  var tijd = begeleiderKlok(e.aangemaakt);
+  return '<div style="display:flex;gap:.5rem;align-items:stretch;margin-bottom:.5rem">' +
+    '<button class="bgl-sessieknop" style="flex:1;margin-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:.8rem' + (verborgen ? ';opacity:.55' : '') + '" onclick="begeleiderKiesSessie(\'' + sid + '\')">' +
+      '<span>' + begeleiderVeilig(e.team || sid) + '</span>' +
+      (tijd ? '<span style="color:var(--gold-dim);font-size:.7rem;letter-spacing:.08em">gestart ' + tijd + '</span>' : '') +
+    '</button>' +
+    (verborgen
+      ? '<button class="bgl-knopje" onclick="begeleiderHerstelSessie(\'' + sid + '\')">Herstel</button>'
+      : '<button class="bgl-knopje" onclick="begeleiderVerbergSessie(\'' + sid + '\')">Verberg</button>') +
+  '</div>';
+}
+
+function begeleiderRenderSessieLijst() {
+  if (!_bglOpen || _bglSid) return;
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  var sids = begeleiderSessiesGesorteerd();
+  var zichtbaar = sids.filter(function (sid) { return !begeleiderIsVerborgen(sid); });
+  var verborgen = sids.filter(function (sid) { return begeleiderIsVerborgen(sid); });
+  var html =
+    '<div class="bgl-titel">Begeleider</div>' +
+    '<div class="bgl-sub">✦ &nbsp; sessies van vandaag &nbsp; ✦</div>';
+  if (!zichtbaar.length && !verborgen.length) {
+    html += '<div class="bgl-info">Nog geen team gestart vandaag.<br>Dit scherm wacht mee: zodra de vier tablets samen een teamnaam kiezen, verschijnt de sessie hier vanzelf.</div>';
+  } else {
+    zichtbaar.forEach(function (sid) { html += begeleiderSessieRij(sid, false); });
+    if (!zichtbaar.length) {
+      html += '<div class="bgl-info">Alle sessies van vandaag zijn verborgen.</div>';
+    }
+    if (verborgen.length) {
+      html += '<div style="text-align:center;margin-top:1rem"><button class="bgl-knopje" onclick="_bglToonVerborgen=!_bglToonVerborgen;begeleiderRenderSessieLijst()">' +
+        (_bglToonVerborgen ? 'Verborgen sessies weer inklappen' : 'Verborgen sessies tonen (' + verborgen.length + ')') + '</button></div>';
+      if (_bglToonVerborgen) {
+        html += '<div style="margin-top:.6rem">';
+        verborgen.forEach(function (sid) { html += begeleiderSessieRij(sid, true); });
+        html += '</div>';
+      }
+    }
+  }
+  html += '<div style="text-align:center;margin-top:1.6rem"><button class="bgl-knopje" onclick="begeleiderKiesSessie(\'test\')">Testsessie openen</button></div>';
+  c.innerHTML = html;
+}
+
+// Verbergen is alleen opruimen van de lijst: de spelgegevens en het logboek
+// van de sessie blijven gewoon bestaan.
+function begeleiderVerbergSessie(sid) {
+  var e = _bglIndex[sid] || {};
+  if (!confirm('Sessie "' + (e.team || sid) + '" verbergen uit de lijst?\nDe spelgegevens blijven bestaan; alleen deze lijst wordt opgeruimd.')) return;
+  if (_bglIndex[sid]) _bglIndex[sid].afgesloten = true;
+  try {
+    firebase.database().ref('sessies_index/' + teamDatumSleutel() + '/' + sid + '/afgesloten')
+      .set(true).catch(function () {});
+  } catch (er) {}
+  begeleiderRenderSessieLijst();
+}
+
+function begeleiderHerstelSessie(sid) {
+  if (_bglIndex[sid]) delete _bglIndex[sid].afgesloten;
+  try {
+    firebase.database().ref('sessies_index/' + teamDatumSleutel() + '/' + sid + '/afgesloten')
+      .remove().catch(function () {});
+  } catch (er) {}
+  begeleiderRenderSessieLijst();
+}
+
+function begeleiderKiesSessie(sid) {
+  begeleiderStopSessieListeners();
+  _bglSid = sid;
+  _bglShared = {};
+  _bglMeta = {};
+  _bglPending = {};
+  try {
+    _bglSharedRef = firebase.database().ref('sessies/' + sid + '/shared');
+    _bglMetaRef = firebase.database().ref('sessies/' + sid + '/meta');
+    _bglSharedRef.on('value', function (snap) { _bglShared = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
+    _bglMetaRef.on('value', function (snap) { _bglMeta = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
+  } catch (e) { console.warn('begeleider: sessie-listener mislukt:', e); }
+  begeleiderRenderPaneel();
+}
+
+function begeleiderStopSessieListeners() {
+  if (_bglSharedRef) { try { _bglSharedRef.off(); } catch (e) {} _bglSharedRef = null; }
+  if (_bglMetaRef) { try { _bglMetaRef.off(); } catch (e) {} _bglMetaRef = null; }
+}
+
+function begeleiderTerugNaarLijst() {
+  begeleiderStopSessieListeners();
+  _bglSid = null;
+  _bglPending = {};
+  _bglAutoOpen = false;   // niet meteen weer dezelfde sessie in springen
+  begeleiderRenderSessieLijst();
+}
+
+// Zelfde fase voor het hele team: de gedeelde verhaal_fase. Zolang die er
+// nog niet is (voor het openen van het Kraaienkwartier) zit het team in de
+// intro (dorpsplein, filmpje, rolkeuze).
+function begeleiderFaseTekst() {
+  return {
+    kraaienkwartier: 'Kraaienkwartier',
+    dorendael:       'Dorendael',
+    sintdonatuslaan: 'Heer Donatuslaan',
+  }[_bglShared.verhaal_fase] || 'Intro';
+}
+
+function begeleiderRenderPaneel() {
+  if (!_bglOpen || !_bglSid) return;
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  var team = (_bglMeta && _bglMeta.team) || _bglSid;
+  // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
+  // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
+  var startTijd = begeleiderKlok(_bglShared.team_start || (_bglMeta && _bglMeta.aangemaakt));
+  var html =
+    '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() +
+      (startTijd ? ' &nbsp;·&nbsp; gestart om ' + startTijd : '') + ' &nbsp; ✦</div>' +
+    '<div class="bgl-blok">';
+  BEGELEIDER_ROLLEN.forEach(function (r) {
+    var naam = _bglShared['speler_naam_' + r.id] ||
+      (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || '';
+    var bezet = !!_bglShared['rol_bezet_' + r.id];
+    var pending = _bglPending.hasOwnProperty(r.id);
+    var checked = pending ? _bglPending[r.id] : (_bglShared['beginner_modus_' + r.id] === true);
+    var naamHtml = naam
+      ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>'
+      : '<span class="bgl-naam leeg">' + (bezet ? '(naam onbekend)' : 'nog niet gekozen') + '</span>';
+    html += '<div class="bgl-regel">' +
+      '<span class="bgl-rol">' + r.naam + '</span>' +
+      naamHtml +
+      '<label class="ssi-toggle" title="Beginner modus voor deze speler">' +
+        '<span class="ssi-label">Beginner</span>' +
+        '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', this.checked)">' +
+        '<span class="ssi-schuif"></span>' +
+      '</label>' +
+      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="visibility:' + (pending ? 'visible' : 'hidden') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+    '</div>';
+  });
+  html += '</div>' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig.</div>' +
+    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+  c.innerHTML = html;
+}
+
+// Schuifje omgezet: nog niets schrijven, alleen onthouden en de
+// Bevestig-knop van die regel tonen. Terug naar de echte stand schuiven
+// maakt de wijziging weer ongedaan.
+function begeleiderZetPending(rol, aan) {
+  var huidig = _bglShared['beginner_modus_' + rol] === true;
+  if (aan === huidig) delete _bglPending[rol];
+  else _bglPending[rol] = aan;
+  var knop = document.getElementById('bgl-bevestig-' + rol);
+  if (knop) knop.style.visibility = _bglPending.hasOwnProperty(rol) ? 'visible' : 'hidden';
+}
+
+function begeleiderBevestig(rol) {
+  if (!_bglPending.hasOwnProperty(rol) || !_bglSid) return;
+  var waarde = !!_bglPending[rol];
+  delete _bglPending[rol];
+  // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt hem zo.
+  _bglShared['beginner_modus_' + rol] = waarde;
+  try {
+    firebase.database().ref('sessies/' + _bglSid + '/shared/beginner_modus_' + rol)
+      .set(waarde).catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+  begeleiderRenderPaneel();
+}
+
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
 // achtergrondmuziek, die normaal pas bij "Begin" aangaat.
 function debugSnelstart(p) {
@@ -5894,6 +6350,7 @@ function debugSnelstart(p) {
   state.personage = p;
   zetRolBezet(p, true);
   registreerSpelerNaam(p);
+  registreerBeginnerModus(p);
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
   startSpelNaKeuze();
@@ -5933,6 +6390,7 @@ function kiesPersonage(p) {
   state.personage = p;
   zetRolBezet(p, true);
   registreerSpelerNaam(p);
+  registreerBeginnerModus(p);
   rolTestFase = true;
   showAvatarBadge(p);
   // Nog niet het spel in: eerst wachten tot alle vier de rollen bezet zijn.
@@ -5947,6 +6405,8 @@ function startSpelNaKeuze() {
   if (typeof getSharedState === 'function' && !getSharedState('team_start')) {
     setSharedState('team_start', gedeeldeTijdNu());
   }
+  // Beginner modus gelijktrekken met de gedeelde stand (begeleiderspaneel).
+  syncBeginnerModusMetShared();
   // Debug-knop nu beschikbaar.
   var dbg = document.getElementById('debug-btn');
   if (dbg) dbg.style.display = '';
@@ -9782,8 +10242,13 @@ function renderDd4Herberg(loc) {
   }
   const timerStart   = getSharedState('herberg_timer_start');
   const resultaat    = getSharedState('herberg_resultaat');
-  const naZolder     = !!resultaat;
-  const tijdensTimer = timerStart && !resultaat;
+  // De scène is voorbij zodra dat als wereld-feit vastligt (herberg_scene_voltooid
+  // is gedeeld en staat in het herstelpunt), ook als het vluchtige herberg_resultaat
+  // na een herstart nog niet terug-gesynct is. Zonder deze regel stuurt de herberg
+  // Fenna opnieuw de trap op voor een al afgeronde scène.
+  const sceneVoorbij = !!resultaat || hasVisited('herberg_scene_voltooid');
+  const naZolder     = sceneVoorbij;
+  const tijdensTimer = timerStart && !sceneVoorbij;
 
   // ── DEEL 3 — NÁ de zolder-scène ──
   if (naZolder) return renderDd4NaZolder(loc, p);
@@ -9877,6 +10342,7 @@ function renderDd4Menigte(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Op het podium',
         geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+        geenTerug: true,          // op het podium geen terug-knop: de puzzel houdt haar hier tot lied of free pass
         dialog: [
           { tekst: 'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.', onShow: function() { verbergNpcPop(); } },
           { spreker: 'Fenna-Viviènne', tekst: 'Eén lied. Het juiste lied. Dan heb ik ze.' }
@@ -9884,7 +10350,7 @@ function renderDd4Menigte(loc, p) {
         extra: function (mount) {
           FennaLied.mount(mount, 'herberg', function () {
             mga(2);
-          });
+          }, fennaLiedOpts('herberg'));
         }
       });
     }
@@ -10209,8 +10675,11 @@ function klikZolder() {
   // mee: pop opruimen, anders blijft hij op de zolder in beeld hangen.
   verbergNpcPop();
 
-  // Scène is al voorbij — toon eind-staat op de zolder
-  if (resultaat) {
+  // Scène is al voorbij, toon eind-staat op de zolder. We kijken ook naar het
+  // wereld-feit herberg_scene_voltooid (gedeeld en in het herstelpunt), zodat een
+  // nog-niet-gesynct herberg_resultaat na een herstart Fenna niet terug de trap op
+  // stuurt of in de knoploze wachtstand dumpt.
+  if (resultaat || hasVisited('herberg_scene_voltooid')) {
     renderZolderEindStaat(resultaat);
     return;
   }
@@ -10368,6 +10837,12 @@ function spelerGaatNaarBoven() {
 }
 
 function renderHerbergZolder(p) {
+  // Veiligheidsslot: is de scène al voltooid, dan nooit de knoploze wachtstand
+  // openen (ZolderFx.showWaiting heeft geen uitgang). Toon de eind-staat.
+  if (hasVisited('herberg_scene_voltooid')) {
+    renderZolderEindStaat(getSharedState('herberg_resultaat'));
+    return;
+  }
   // Terugkeer op de zolder terwijl de scène nog loopt: de levende zolder
   // (overlay) met teller + timer. Wie hier is, staat erbij → inchecken.
   state.opZolder = true;
@@ -10947,6 +11422,7 @@ function fennaZingt() {
     titel: loc ? loc.naam : 'De Stiltevijver',
     sub:   loc ? loc.sub : 'Een vijver waar het wateroppervlak nooit beweegt',
     geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+    geenTerug: true,          // tijdens het kiezen geen terug-knop: de puzzel houdt haar hier tot lied of free pass
     dialog: [
       { spreker: 'Fenna-Viviènne', tekst: 'Ze staan daar maar, met hun stille gezichten. Wat heeft deze avond nodig?' }
     ],
@@ -10955,7 +11431,7 @@ function fennaZingt() {
         markVisited('fenna_vijver_vast');
         const l = locatiesDorendael.find(x => x.id === 'dd8_stiltevijver');
         if (l) renderDd8Stiltevijver(l);
-      });
+      }, fennaLiedOpts('stiltevijver'));
     }
   });
 }
@@ -12280,6 +12756,20 @@ function verzamelItem(locId, emoji, naam, beschrijving, stilPopup) {
   }
 }
 
+// Bouwt de mount-opties voor Fenna's lied-mechanic: de opgeslagen foute-pogingen
+// meegeven en elke nieuwe fout persistent wegschrijven, zodat de free-pass-teller
+// doortelt over een herstart (crash). liedKey: 'robbie' | 'stiltevijver' | 'herberg'.
+function fennaLiedOpts(liedKey) {
+  return {
+    pogingenStart: (state.fennaLiedPogingen && state.fennaLiedPogingen[liedKey]) || 0,
+    opFoutePoging: function (n) {
+      if (!state.fennaLiedPogingen) state.fennaLiedPogingen = {};
+      state.fennaLiedPogingen[liedKey] = n;
+      bewaarHerstelpunt();
+    }
+  };
+}
+
 function fennaZingtVoorRobbie() {
   // Mastermind-mechaniek, ingebed in de locatie-UI (kop, sfeer, inventaris
   // blijven staan). Pas bij alle drie goed volgt het token en de afsluiting.
@@ -12289,6 +12779,7 @@ function fennaZingtVoorRobbie() {
     titel: loc ? loc.naam : 'Nummer 5',
     sub:   loc ? loc.sub : 'Een woonhuis midden in de straat',
     geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
+    geenTerug: true,          // tijdens het kiezen geen terug-knop: de puzzel houdt haar hier tot lied of free pass
     dialog: [
       { spreker: 'Robbie Kweekel', tekst: '"Zing je iets voor mij? Alsjeblieft? Eén liedje maar!"' },
       { spreker: 'Fenna-Viviènne', tekst: 'Hij straalt helemaal. Nu alleen nog het juiste lied kiezen.' }
@@ -12306,7 +12797,7 @@ function fennaZingtVoorRobbie() {
           // Dat is de tekst van een volgend bezoek. Ze neemt afscheid en gaat.
           goBackFromLocatie
         );
-      });
+      }, fennaLiedOpts('robbie'));
     }
   });
 }
@@ -12889,7 +13380,7 @@ function goBackFromLocatie() {
     // gerend, mond dichtgenaaid. Eénmalig per speler, en alleen voor wie de
     // scène zelf op de zolder heeft meegemaakt. Wie beneden stond, ziet hem
     // niet langsrennen: die vindt hem gewoon in de hoek als hij naar boven gaat.
-    if (getSharedState('herberg_resultaat')
+    if ((getSharedState('herberg_resultaat') || hasVisited('herberg_scene_voltooid'))
         && hasVisited('zolder_scene_beleefd')
         && !hasVisited('herbergier_trap_gezien')) {
       renderHerbergierOpTrap();
@@ -17244,10 +17735,15 @@ var PF_POPS = {
   aleida:     { src: 'karakters/dorpsplein/aleida-pop.png',       label: 'ALEIDA', klasse: 'pf-groot' },
   hilketrude: { src: 'karakters/dorpsplein/hilketrude-pop.png',   label: 'HILKETRUDE' },
   // De gebogen figuur is bewust de anonieme molen-schim, zodat niet te
-  // zien is wie er op het podium sluipt tot de onthulling. Het is een
-  // jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
+  // zien is wie er in deel 1 op het podium sluipt tot de onthulling. Het is
+  // een jpeg zonder transparantie; pf-schim maskeert de randen tot rookflard.
   gebogen:    { src: 'karakters/dorendael/schim.jpeg', label: 'GEBOGEN FIGUUR', klasse: 'pf-schim' },
   sybille:    { src: 'karakters/heerdonatuslaan/sybilledreigend-pop.png', label: 'SYBILLE' },
+  // Sybille in deel 2, centraal in beeld (pf-midden): eerst met het hoofd
+  // naar de grond en de roos zwevend voor haar, daarna de spreuk-houding
+  // zodra de roos omhoog gaat.
+  sybillegrond: { src: 'karakters/dorpsplein/sybillekijktgrond.png', label: 'SYBILLE', klasse: 'pf-midden' },
+  sybillecast:  { src: 'karakters/dorpsplein/sybillecast1.png',      label: 'SYBILLE', klasse: 'pf-midden' },
   jan:        { src: 'karakters/spelers/jan-pop.png',   label: 'JAN' },
   kelly:      { src: 'karakters/spelers/kelly-pop.png', label: 'KELLY' },
   fenna:      { src: 'karakters/spelers/fenna-pop.png', label: 'FENNA' },
@@ -17374,6 +17870,23 @@ function pfToon(id, naam) {
 }
 function pfToonPop(naam) { pfToon('pf-pop', naam); }
 function pfToonZij(naam) { pfToon('pf-zij', naam); }
+// Het zij-slot centraal achter de roos zetten (vanaf de Monsters-beat)
+// of terug naar zijn gewone plek. Een zichtbare pop gaat even kort dicht
+// zodat hij niet zichtbaar over het scherm verspringt.
+function pfZijMidden(aan) {
+  var el = pfSlotEl('pf-zij');
+  aan = !!aan;
+  if (el.classList.contains('pf-zij-midden') === aan) return;
+  if (el.style.opacity === '1') {
+    el.style.opacity = '0';
+    setTimeout(function () {
+      el.classList.toggle('pf-zij-midden', aan);
+      el.style.opacity = '1';
+    }, 460);
+  } else {
+    el.classList.toggle('pf-zij-midden', aan);
+  }
+}
 // Een pop laat in as uiteenvallen: vergrijzen, vervagen, zakken.
 function pfVerval(id) {
   var el = document.getElementById(id);
@@ -17416,11 +17929,26 @@ function pfToonRoos(aan) {
   }
 }
 function pfRoosFel() { pfRoosEl().classList.add('pf-fel'); }
-function pfRoosOmhoog() { pfRoosEl().classList.add('pf-omhoog'); }
+function pfRoosOmhoog() {
+  var el = pfRoosEl();
+  el.classList.remove('pf-laag');
+  el.classList.add('pf-omhoog');
+}
+// Laag-stand: de roos voor Sybille, net onder het midden van haar pop.
+// Zonder overgang erin, zodat hij daar meteen staat in plaats van vanaf
+// de oude positie omlaag te glijden (de top-transition duurt 2.2s).
+function pfRoosLaag() {
+  var el = pfRoosEl();
+  el.style.transition = 'none';
+  el.classList.add('pf-laag');
+  void el.offsetHeight;
+  el.style.transition = '';
+}
 // Alle standen wissen (voor een schone start, ook via het debug-paneel).
 function pfRoosReset() {
   var el = pfRoosEl();
   el.classList.remove('pf-fel');
+  el.classList.remove('pf-laag');
   el.classList.remove('pf-omhoog');
   el.classList.remove('pf-as');
 }
@@ -17521,7 +18049,7 @@ function pleinFinaleIntro() {
       { spreker: 'Aleida', tekst: '*(wijst naar Jan)* Jouw handen van papier maken, Slotenmaker?', onShow: function () { pfToonPop('aleida'); } },
       { spreker: 'Hilketrude', tekst: '*(wijst naar Kelly)* Met blindheid is het lastig lezen, hè frutje?', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Aleida', tekst: '*(wijst naar Fenna)* En jij, zielig ding, zingen gaat straks ook voor jou over zijn.', onShow: function () { pfToonPop('aleida'); } },
-      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); } },
+      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); pfZijMidden(true); } },
       { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); pfWisselTrack('plein-omslag.mp3', PF_BG_VOLUME); } },
       { spreker: 'Hilketrude', tekst: 'Sybille! Kind! Je bent er... Fijn, nu kun...', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Sybille', tekst: '*(roept naar jullie)* Pak ze vast!', onShow: function () { pfToonPop(null); } }
@@ -17532,6 +18060,7 @@ function pleinFinaleIntro() {
         // armen-selectie; de muziek loopt door. Deel 2 zet ze weer neer.
         pfToonPop(null);
         pfToonZij(null);
+        pfZijMidden(false);
         pfToonRoos(false);
         pfZetCinema(false);
         podiumVerhaalKlaarGedrukt();
@@ -17552,6 +18081,10 @@ function pleinFinaleNaArmen() {
   }
   dempMuziek();
   pfRoosReset();
+  // Het zij-slot toont hier de heksen weer op zijn gewone plek links; de
+  // midden-stand uit deel 1 mag dan niet meer aanstaan (ook bij een losse
+  // start via het debug-paneel).
+  pfZijMidden(false);
   pfZetCinema(true);
   // Normaal loopt de omslag-track hier al sinds Sybilles onthulling; bij
   // een losse start (debug) staat er nog niets aan, dan alsnog starten.
@@ -17561,13 +18094,13 @@ function pleinFinaleNaArmen() {
   var flesjeGedronken = hasVisited('h7_gedronken');
 
   var dialog = [
-    { tekst: 'Vier armen, vier spelers. De heksen krijsen en trekken, maar er is geen kant meer op. Voor ze staat Sybille, haar hoofd voorovergebogen, de roos voor zich.', onShow: function () { pfToonRoos(true); pfToonZij('heksen'); pfToonPop('gebogen'); } },
+    { tekst: 'Vier armen, vier spelers. De heksen krijsen en trekken, maar er is geen kant meer op. Voor ze staat Sybille, haar hoofd voorovergebogen, de roos voor zich.', onShow: function () { pfRoosLaag(); pfToonRoos(true); pfToonZij('heksen'); pfToonPop('sybillegrond'); } },
     { spreker: 'Sybille', tekst: 'De dingen die ik met en voor jullie gedaan heb... Al die rampen, al die doden, en...', onShow: function () { kkFadeNaar('_pfTrack', 0.08, 1200); } },
     { tekst: 'Het wordt stil. Zo stil dat je je eigen hartslag hoort.' },
     { spreker: 'Sybille', tekst: '...Claes.' },
     { tekst: 'De heksen verstijven. Voor het eerst zie je angst in hun ogen.' },
     { spreker: 'Sybille', tekst: '*(fel, hakkend)* Dit... houdt... nu... op!', onShow: function () { kkFadeNaar('_pfTrack', PF_BG_VOLUME, 900); } },
-    { tekst: 'Sybilles hoofd komt omhoog. De roos stijgt boven haar handen uit, blauw licht golft eromheen.', onShow: function () { pfToonPop('sybille'); pfRoosOmhoog(); pfRoosFel(); } },
+    { tekst: 'Sybilles hoofd komt omhoog. De roos stijgt boven haar handen uit, blauw licht golft eromheen.', onShow: function () { pfToonPop('sybillecast'); pfRoosOmhoog(); pfRoosFel(); } },
     { spreker: 'Sybille', tekst: 'Mana impuira, Mana finita, Mana culta, Mana finita, Mana ultima, Mana...' },
     { tekst: 'Eén tel stilte. Alles op het plein houdt de adem in.', onShow: function () { kkFadeNaar('_pfTrack', 0.06, 500); } },
     { spreker: 'Sybille', tekst: 'Finita!', onShow: function () { pfRoosBurst(); kkFadeNaar('_pfTrack', PF_BG_VOLUME, 600); } },
@@ -17694,6 +18227,7 @@ function buildDebugPanel() {
       // kennismakingsscene bij Robbie, terwijl je in de test al verder bent.
       ['🎤 + Microfoon',              function(){ markVisited('fenna_robbie_bezoek'); debugItem('🎙️','Microfoon'); }, p === 'fenna' && !heeftMicro, 'Robbie & het lied'],
       ['✦ Robbie akkoord (skip lied)', function(){ kkSleutelVerkregen('robbie'); document.getElementById('debug-panel').style.display='none'; }, !robbieKlaar, 'Robbie & het lied'],
+      ['🎵 Lied: alles goed', function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); document.getElementById('debug-panel').style.display='none'; }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Robbie & het lied'],
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
@@ -17760,6 +18294,7 @@ function buildDebugPanel() {
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🚪 Reset ingang-geheugen',   function(){ debugResetIngangen(); close(); }, true, 'Algemeen'],
+      ['🎵 Lied: alles goed',        function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); close(); }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Algemeen'],
       // ── Herberg
       ['🍺 Forceer herberg-succes',  function(){ debugHerbergSucces(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🌑 Forceer herberg-faal',    function(){ debugHerbergFaal(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
@@ -17924,6 +18459,9 @@ function buildDebugPanel() {
     // of zet het loggen aan/uit (staat standaard aan).
     ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
     ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
+    // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
+    // apparaat, om de begeleider-sync solo te kunnen testen.
+    ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
@@ -21843,6 +22381,12 @@ function firebaseVolleReset() {
       updateFirebaseBolletje();
     })
     .catch(function (e) { alert('Fout: ' + e.message); });
+  // Begeleiderspaneel: de index-vermelding van deze sessie mee opruimen,
+  // anders blijft een geresette sessie als spook in de sessielijst staan.
+  // De datum zit in de sessie-id (teamnaam-YYYY-MM-DD-code); een id zonder
+  // datum (zoals 'test') staat hooguit onder vandaag.
+  var idxDatum = (sessieId.match(/\d{4}-\d{2}-\d{2}/) || [teamDatumSleutel()])[0];
+  firebase.database().ref('sessies_index/' + idxDatum + '/' + sessieId).remove().catch(function () {});
   // Herstelpunten: de spelers-tak gaat met de sessie mee weg; de lokale
   // kopieen ook wissen zodat een oud punt niet als vangnet terugkomt.
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
