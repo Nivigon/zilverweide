@@ -974,6 +974,14 @@ body.woudscene-actief .finale-btn{display:none !important;}
 /* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
    en meer naar het midden, weg van de speler-pop linksonder. */
 #pf-zij.pf-schim{left:26vw;bottom:22vh}
+/* Vanaf de Monsters-beat staat de figuur (en daarna Sybille) centraal
+   achter de roos. Sybille wordt daarbij groot genoeg dat de roos, die op
+   32% hoogte hangt, voor haar bovenlijf zweeft. De schim houdt zijn eigen
+   maat en verhoogde stand; deze regels staan na pf-schim zodat left hier
+   wint zodra beide klassen op het slot staan. */
+#pf-zij.pf-zij-midden{left:50%;right:auto;transform:translateX(-50%)}
+#pf-zij.pf-zij-midden img{height:69vh;max-height:600px}
+#pf-zij.pf-zij-midden.pf-schim img{height:46vh;max-height:400px}
 /* De speler-pop linksonder hoort voor het cinema-beeld te staan, niet
    erachter (het beeld heeft z-index 250, de pop normaal 150). */
 body.pf-cinema-actief #char-pop{z-index:252}
@@ -1026,6 +1034,8 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #pf-zij.pf-duo img+img{height:51vh;max-height:300px}
   .pf-slot.pf-groot img{height:66vh;max-height:375px}
   #pf-zij.pf-groot img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden.pf-schim img{height:38vh;max-height:220px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
   #pf-roos.pf-laag{top:72%}
@@ -17781,6 +17791,23 @@ function pfToon(id, naam) {
 }
 function pfToonPop(naam) { pfToon('pf-pop', naam); }
 function pfToonZij(naam) { pfToon('pf-zij', naam); }
+// Het zij-slot centraal achter de roos zetten (vanaf de Monsters-beat)
+// of terug naar zijn gewone plek. Een zichtbare pop gaat even kort dicht
+// zodat hij niet zichtbaar over het scherm verspringt.
+function pfZijMidden(aan) {
+  var el = pfSlotEl('pf-zij');
+  aan = !!aan;
+  if (el.classList.contains('pf-zij-midden') === aan) return;
+  if (el.style.opacity === '1') {
+    el.style.opacity = '0';
+    setTimeout(function () {
+      el.classList.toggle('pf-zij-midden', aan);
+      el.style.opacity = '1';
+    }, 460);
+  } else {
+    el.classList.toggle('pf-zij-midden', aan);
+  }
+}
 // Een pop laat in as uiteenvallen: vergrijzen, vervagen, zakken.
 function pfVerval(id) {
   var el = document.getElementById(id);
@@ -17943,7 +17970,7 @@ function pleinFinaleIntro() {
       { spreker: 'Aleida', tekst: '*(wijst naar Jan)* Jouw handen van papier maken, Slotenmaker?', onShow: function () { pfToonPop('aleida'); } },
       { spreker: 'Hilketrude', tekst: '*(wijst naar Kelly)* Met blindheid is het lastig lezen, hè frutje?', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Aleida', tekst: '*(wijst naar Fenna)* En jij, zielig ding, zingen gaat straks ook voor jou over zijn.', onShow: function () { pfToonPop('aleida'); } },
-      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); } },
+      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); pfZijMidden(true); } },
       { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); pfWisselTrack('plein-omslag.mp3', PF_BG_VOLUME); } },
       { spreker: 'Hilketrude', tekst: 'Sybille! Kind! Je bent er... Fijn, nu kun...', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Sybille', tekst: '*(roept naar jullie)* Pak ze vast!', onShow: function () { pfToonPop(null); } }
@@ -17954,6 +17981,7 @@ function pleinFinaleIntro() {
         // armen-selectie; de muziek loopt door. Deel 2 zet ze weer neer.
         pfToonPop(null);
         pfToonZij(null);
+        pfZijMidden(false);
         pfToonRoos(false);
         pfZetCinema(false);
         podiumVerhaalKlaarGedrukt();
@@ -17974,6 +18002,10 @@ function pleinFinaleNaArmen() {
   }
   dempMuziek();
   pfRoosReset();
+  // Het zij-slot toont hier de heksen weer op zijn gewone plek links; de
+  // midden-stand uit deel 1 mag dan niet meer aanstaan (ook bij een losse
+  // start via het debug-paneel).
+  pfZijMidden(false);
   pfZetCinema(true);
   // Normaal loopt de omslag-track hier al sinds Sybilles onthulling; bij
   // een losse start (debug) staat er nog niets aan, dan alsnog starten.
