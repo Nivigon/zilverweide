@@ -11567,10 +11567,11 @@ function speelVijverReunie() {
       // meteen in de terugkeer-scene belanden (Van Wallingen) terwijl ze
       // nooit is weggeweest.
       toonLade(
-        ITEMS.meisje.emoji + ' Het meisje gaat met je mee',
+        'Het meisje gaat met je mee',
         'Het meisje draait haar hoofd, kijkt je voor het eerst écht aan, en steekt dan haar hand uit. Ze pakt jouw hand. Eindelijk.<br><br>Goed dan: je brengt haar naar dat huis verderop. Die kikker laat je zitten waar hij zit.<br><br><span style="font-size:.9rem;color:var(--mist)">Breng het meisje naar het huis verderop. Zodra je haar daar afgeeft, gaat ze weer uit je inventaris.</span>',
         'Begrepen →',
-        function () { showScreen('screen-dorendael'); }
+        function () { showScreen('screen-dorendael'); },
+        ITEM_AFBEELDINGEN[ITEMS.meisje.naam]
       );
     } else {
       goBackFromLocatie();
@@ -12323,12 +12324,13 @@ function kellyKiestRouwstof() {
   const gelukt = pakIngredient('ing_rouwstof', ITEMS.rouwstof, function() { openLocatie('k1_naaldmasker'); });
   if (!gelukt) return;
   toonLade(
-    '🖤  Rouwstof',
+    'Rouwstof',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Madeleine kijkt je even aan, dan knipt ze zonder verder vragen een klein lapje af van een donkere jurk. Fluweel, versleten aan de randen.</p>' +
     '<div class="npc-line" style="margin-top:.75rem;border-left-color:var(--rose)"><div class="npc-avatar">🧵</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Ach, ook goed. Van een weduwejurk. Oud verdriet knipt makkelijk."</em> *(geeft het lapje af alsof het niets is, maar haar blik blijft nog even op je handen rusten)*</div></div></div>' +
     '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.5rem">Breng dit naar de apotheker in Heer Donatuslaan.</p>',
     'Verder',
-    function() { openLocatie('k1_naaldmasker'); }
+    function() { openLocatie('k1_naaldmasker'); },
+    ITEM_AFBEELDINGEN['Rouwstof']
   );
 }
 
@@ -12893,7 +12895,7 @@ function fennaZingtVoorRobbie() {
       FennaLied.mount(mount, 'robbie', function () {
         kkSleutelVerkregen('robbie');
         toonLade(
-          'Robbie staat klaar voor je',
+          '✦  Robbie staat klaar voor je',
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Als de laatste regel wegsterft, blijft het even helemaal stil.</p>' +
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Licht ontroerd zegt Robbie: <em>"Ik sta klaar als jij of je vrienden mij nodig hebben."</em></p>',
           'Verder →',
@@ -13224,7 +13226,7 @@ function kellyVoorbodeNaRitueel() {
 
 function kellyWeigertHand() {
   toonLade(
-    '🧵 Madeleine',
+    '✦  Madeleine',
     '<div class="npc-line" style="border-left-color:var(--rose)"><div class="npc-avatar">🧵</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Och, jammer."</em> *(glimlacht, trekt langzaam terug)* <em>"Ik bedoelde het lief. Een ander keertje misschien."</em></div></div></div>' +
     '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.75rem">Ze pakt haar naaiwerk weer op. Maar haar ogen volgen Kelly tot ze buiten staat.</p>',
     'Verder →',
@@ -13714,7 +13716,7 @@ function ontvangRoddels() {
   kkSleutelVerkregen('wallingen');
   setTimeout(checkAllTokens, 1500);
   toonLade(
-    'Het plan voor Nummer 7',
+    '✦  Het plan voor Nummer 7',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Je hebt bruikbare informatie ontvangen over Nummer 7. Wie het nog eens wil horen, kan altijd terug naar Mevr. van Wallingen.</p>',
     'Verder →',
     () => openLocatie('k1_nachtenwens')
@@ -13762,7 +13764,7 @@ function restaureerDagboek() {
   }
   setTimeout(checkAllTokens, 3000);
   toonLade(
-    'Dagboek hersteld',
+    '✦  Dagboek hersteld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De archivaris heeft de bladzijden voorzichtig gedroogd en leesbaar gemaakt.</p>',
     'Bekijk het dagboek →',
     kellyBekijktDagboekEerste
@@ -15241,10 +15243,10 @@ function vindMicrofoon() {
   addInventory('🎙️', 'Microfoon', false);
   toonLade(
     'Microfoon gevonden!',
-    '<div style="font-size:2rem;margin-bottom:.6rem">🎙️</div>' +
     '<p style="font-size:1rem;color:var(--parchment);font-style:italic">Een klassieke oude microfoon, achtergebleven na de chaos van vanavond. Robbie zal dit zeker waarderen.</p>',
     'Verder →',
-    () => openToneel()
+    () => openToneel(),
+    ITEM_AFBEELDINGEN['Microfoon']
   );
 }
 
@@ -16833,7 +16835,7 @@ function checkDorendaelTokens() {
       window.ZilverweideSchaduw.kalmeer();
     }
     toonLade(
-    '🌲  Het verhaal van Dorendael compleet',
+    '✦  Verhaalscore compleet',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alle stukken bij elkaar. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
       '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
     'Verder →',
@@ -16844,7 +16846,7 @@ function checkDorendaelTokens() {
 
 function startFinale() {
   toonLade(
-    '🗳️  Alle tokens verzameld',
+    '✦  Verhaalscore compleet',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Jullie hebben alle hints verzameld. Wijs één speler aan om de keuze te maken — waar woont de heks? Die speler loopt naar het bord op het dorpsplein.</p>',
     'Verder →',
     null
@@ -16884,7 +16886,7 @@ function checkHeerDonatusTokens() {
       window.ZilverweideSchaduw.kalmeer();
     }
     toonLade(
-      'Klaar in Heer Donatuslaan',
+      '✦  Verhaalscore compleet',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie zijn klaar in Heer Donatuslaan. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks in deze straat is.</p>' +
         '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
       'Verder →',
@@ -20360,7 +20362,7 @@ function renderDd7Klokkenmaker(loc) {
               // krijgt ze meteen de terugkomst-scene ("U bent terug!") terwijl
               // ze nog naast hem staat.
               toonLade(
-                'Afleiding volbracht',
+                '✦  Afleiding volbracht',
                 '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Lola werpt een blik over haar schouder, ziet dat Jan binnen is, en draait zich weer om naar de klokkenmaker.<br><br>"Caramba! Kijk naar de tijd. Vamos, ik ben weg!"</p>',
                 'Verder →',
                 goBackFromLocatie
@@ -20534,7 +20536,7 @@ function renderDd7LolaFlirtScene(loc) {
 function dd7LolaFlirt() {
   markVisited('lola_klokkenmaker_geflirt');
   toonLade(
-    'Afleiding geslaagd',
+    '✦  Afleiding geslaagd',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Geef deze code mondeling door aan Jan, zodat hij de werkplaats in kan:</p>' +
     '<p style="font-size:2rem;color:var(--gold);text-align:center;letter-spacing:.3em;margin:.5rem 0;font-weight:700">XXX</p>',
     'Verder →',
@@ -20549,7 +20551,7 @@ function dd7LolaFlirt() {
 function dd7LolaLeidAf() {
   markVisited('klokkenmaker_afgeleid');
   toonLade(
-    'Klokkenmaker afgeleid',
+    '✦  Klokkenmaker afgeleid',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je houdt hem buiten met je verhalen. Jan kan nu binnen sluipen.]</p>',
     'Verder →',
     function() {
@@ -22114,7 +22116,7 @@ function openHeerDonatuslaanVanuitWoud() {
     }
     // Niet-Felix: wakker worden zonder Felix, dan de ontgrendeling.
     toonLade(
-      '🌘 Jullie worden wakker',
+      '✦  Jullie worden wakker',
       '<p style="font-size:1.05rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie worden wakker... Maar zonder Felix.</p>' +
       '<p style="font-size:1.05rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.5rem">Ze hebben Felix meegenomen...</p>',
       'Verder →',
