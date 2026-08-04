@@ -311,6 +311,8 @@
 @media (min-height: 701px) {
   .sc-dialog-tekst { font-size: 1.35rem; line-height: 1.5; }
   .sc-dialog-spreker { font-size: .8rem; }
+  /* Stazia's inline reactieregel onder het districten-grid groeit mee. */
+  .waarzegster-reactie { font-size: 1.2rem; }
 }
 @keyframes sc-dialogTextIn {
   from { opacity: 0; }

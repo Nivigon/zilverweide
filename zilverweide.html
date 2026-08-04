@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=La+Belle+Aurore&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="technischefiles/doolhof.css">
 <link rel="stylesheet" href="technischefiles/lockpick.css">
-<link rel="stylesheet" href="technischefiles/scene.css?v=4">
+<link rel="stylesheet" href="technischefiles/scene.css?v=5">
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <link rel="stylesheet" href="technischefiles/woudscene.css">
@@ -23035,7 +23035,10 @@ function toonStemmenStil(stil) {
 }
 .magisch-tekst{
   font-family:'Crimson Text',Georgia,serif; font-style:italic;
-  font-size:clamp(.9rem,2.2vh,1.15rem); line-height:1.5;
+  /* Vergroot voor leesbaarheid op de tablets (ijkscherm 11 inch Galaxy Tab,
+     ~745px hoog: 2.6vh is daar ~19px). De clamp-ondergrens beschermt
+     telefoons, de bovengrens brede desktops. */
+  font-size:clamp(1rem,2.6vh,1.35rem); line-height:1.5;
   color:var(--parchment); margin:0 0 clamp(.4rem,1.2vh,.8rem);
 }
 .magisch-getal{
@@ -23049,7 +23052,10 @@ function toonStemmenStil(stil) {
 .magisch-regel{
   display:flex; align-items:flex-start; gap:.7rem; text-align:left;
   font-family:'Crimson Text',Georgia,serif;
-  font-size:clamp(.82rem,2vh,1.05rem); line-height:1.4;
+  /* Zelfde vergroting als .magisch-tekst hierboven; de box heeft
+     overflow:hidden, dus bij twijfel het district met de meeste regels
+     nakijken op afgekapte tekst. */
+  font-size:clamp(.9rem,2.5vh,1.3rem); line-height:1.4;
   color:var(--parchment);
   animation:magischRegelIn .8s ease backwards;
 }
