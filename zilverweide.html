@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=La+Belle+Aurore&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="technischefiles/doolhof.css">
 <link rel="stylesheet" href="technischefiles/lockpick.css">
-<link rel="stylesheet" href="technischefiles/scene.css?v=5">
+<link rel="stylesheet" href="technischefiles/scene.css?v=6">
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <link rel="stylesheet" href="technischefiles/woudscene.css">
@@ -1548,9 +1548,17 @@ body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #scr
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
   margin-right: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
 }
-body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-tekst {
-  font-size: .85rem !important;
-  line-height: 1.28 !important;
+/* De compactere tekst hieronder is gemeten op KORTE schermen (rond 600px
+   hoog); daar blijft hij nodig. Op tablethoogte (vanaf 701px) is er ruimte
+   genoeg en zou deze krimp de dialoogtekst per scene van formaat laten
+   wisselen (13.6px met twee poppen tegenover 18.4px zonder), precies de
+   wisselvalligheid die we kwijt willen. Daarom alleen nog onder de 701px;
+   de marge-regels hierboven blijven wel op elke hoogte gelden. */
+@media (max-height: 700px) {
+  body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-tekst {
+    font-size: .85rem !important;
+    line-height: 1.28 !important;
+  }
 }
 /* Jans pop had hier vroeger drie eigen uitzonderingsregels omdat hij in CSS
    groter werd gerenderd (78vh/680px). Zijn PNG is inmiddels bijgesneden en
@@ -18182,25 +18190,17 @@ function buildDebugPanel() {
       ['🤝 Kelly is gered door Jan',  function(){
         markVisited('kelly_gered');
         close();
+        // Zelfde reünie als in het echte spel (speelPutReunie: tweezijdige
+        // pop-dialoog met Kelly en Jan links en rechts). Hier stond nog een
+        // oude toonLade-versie die uit de pas liep met de echte flow. De
+        // reünie heeft een open locatiescherm nodig (hij ruimt de scene-
+        // dialoog op en keert daarna terug); elders alleen de vlag zetten.
         var p = state.personage;
-        if (p === 'kelly') {
-          // Kelly ziet de redding vanuit haar perspectief
-          var nogGegniffel = !tobbeIsWeg();
-          var uitleg = nogGegniffel
-            ? 'Jan buigt zich over de rand en trekt je eruit. Je bent doorweekt en vies, maar blij. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em> Jan kijkt om zich heen. <em>"He maar Kel, hoor je dat gegniffel ook?"</em>'
-            : 'Jan buigt zich over de rand en trekt je eruit. Je bent doorweekt en vies, maar blij. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em>';
-          toonNpcPop('karakters/spelers/jan-pop.png');
-          toonLade('🤝  Kelly is gered', '<p style="font-size:1rem;color:var(--parchment);line-height:1.7">' + uitleg + '</p>', 'Verder \u2192', goBackFromLocatie);
-        } else if (p === 'jan') {
-          // Jan trekt Kelly eruit
-          var nogGegniffel2 = !tobbeIsWeg();
-          var uitleg2 = nogGegniffel2
-            ? '*(buigt over de rand)* <em>"Kelly?! Hou vol, ik ben er."</em> Je trekt haar omhoog. Kelly is vies en bespringt je van blijdschap. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em> Je kijkt om je heen. <em>"He maar Kel, hoor je dat gegniffel ook?"</em>'
-            : '*(buigt over de rand)* <em>"Kelly?! Hou vol, ik ben er."</em> Je trekt haar omhoog. Kelly is vies en bespringt je van blijdschap. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em>';
-          toonNpcPop('karakters/spelers/kelly-pop.png');
-          toonLade('🤝  Kelly is gered', '<p style="font-size:1rem;color:var(--parchment);line-height:1.7">' + uitleg2 + '</p>', 'Verder \u2192', goBackFromLocatie);
-        } else {
-          if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
+        var opLocatie = document.getElementById('screen-locatie').classList.contains('active');
+        if ((p === 'kelly' || p === 'jan') && opLocatie && typeof speelPutReunie === 'function') {
+          speelPutReunie();
+        } else if (opLocatie) {
+          refresh();
         }
       }, true, 'Kelly & de put'],
       // ── Beginnersmodus (kaartje)
