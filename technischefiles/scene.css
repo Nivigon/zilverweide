@@ -302,11 +302,15 @@
   animation: sc-dialogTextIn .25s ease;
 }
 /* Leesbaarheid op tablets: op schermen met ruime hoogte mag de dialoogtekst
-   groter. Bewust alleen vanaf 701px hoogte: de band 521-700px is gevoelig
-   voor overflow (zie de dialoog-notities in zilverweide.html) en houdt de
-   basisgrootte, en onder 521px geldt de aparte verkleining daar al. */
+   groter (1.35rem is ~22px; de eerste poging met 1.14rem was op de 11 inch
+   Galaxy Tab, het ijkscherm, nog steeds te klein). Iets strakkere regelhoogte
+   zodat de box niet onnodig meegroeit. Bewust alleen vanaf 701px hoogte: de
+   band 521-700px is gevoelig voor overflow (zie de dialoog-notities in
+   zilverweide.html) en houdt de basisgrootte, en onder 521px geldt de aparte
+   verkleining daar al. */
 @media (min-height: 701px) {
-  .sc-dialog-tekst { font-size: 1.14rem; }
+  .sc-dialog-tekst { font-size: 1.35rem; line-height: 1.5; }
+  .sc-dialog-spreker { font-size: .8rem; }
 }
 @keyframes sc-dialogTextIn {
   from { opacity: 0; }
