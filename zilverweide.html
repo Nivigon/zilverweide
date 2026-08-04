@@ -3748,7 +3748,7 @@ function wisHerstelpunt(rol) {
 // spiegel-flag mee die addInventory zet zodra iemand de sleutel krijgt.
 const KRAAIEN_MISSIE_KEYS = [
   { id: 'dagboek',  label: 'Het dagboek leesbaar',       check: function(){ return !!state.inventory.find(function(i){return i.naam==='Leesbaar Dagboek 🔑';}) || !!getSharedState('kk_sleutel_dagboek'); } },
-  { id: 'wallingen',label: 'Sleutel Wallingen verkregen',check: function(){ return !!state.inventory.find(function(i){return i.naam==='Sleutel Wallingen 🔑';}) || !!getSharedState('kk_sleutel_wallingen'); } },
+  { id: 'wallingen',label: 'Plan voor Nummer 7 bekend',check: function(){ return !!state.inventory.find(function(i){return i.naam==='Sleutel Wallingen 🔑';}) || !!getSharedState('kk_sleutel_wallingen'); } },
   { id: 'robbie',   label: 'Robbie staat klaar',         check: function(){ return !!state.inventory.find(function(i){return i.naam==='Robbie staat klaar 🔑';}) || !!getSharedState('kk_sleutel_robbie'); } },
   { id: 'speld',    label: 'Jan kan sommige deuren kraken', check: function(){ return !!state.inventory.find(function(i){return i.naam==='Kromme Speld';}) || !!getSharedState('kk_sleutel_speld'); } },
 ];
@@ -7721,10 +7721,11 @@ function janKoopVermommingVoorFelix() {
   geefItem(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam);
   markVisited('jan_outfit_gekocht');
   toonLade(
-    '👘 Vermomming gekocht',
+    'Vermomming gekocht',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Madeleine pakt zonder zoeken een outfit van de plank en schuift hem over de toonbank. Nu terug naar Felix, en de vermomming door het gat.</p>',
     'Verder',
-    function () { openLocatie('k1_naaldmasker'); }
+    function () { openLocatie('k1_naaldmasker'); },
+    ITEM_AFBEELDINGEN['Vermomming voor Felix']
   );
 }
 
@@ -7755,13 +7756,14 @@ function janNeemMuntenAan() {
   // was de patstelling: in de bedoelde volgorde stond de vlag dan al aan
   // voordat Jans aanneem-knop kon verschijnen, en die knop verdween daardoor.
   toonLade(
-    '🪙 Munten aangenomen',
+    'Munten aangenomen',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je vist het zakje door het gat naar je toe. Nu een outfit halen bij de kledingwinkel in Kraaienkwartier.]</p>',
     'Verder',
     function () {
       var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
       if (loc) renderH2FelixKamer(loc);
-    }
+    },
+    ITEM_AFBEELDINGEN['Zakje Munten']
   );
 }
 
@@ -12891,7 +12893,7 @@ function fennaZingtVoorRobbie() {
       FennaLied.mount(mount, 'robbie', function () {
         kkSleutelVerkregen('robbie');
         toonLade(
-          '🎙️  Robbie is verkocht',
+          'Robbie staat klaar voor je',
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Als de laatste regel wegsterft, blijft het even helemaal stil.</p>' +
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Licht ontroerd zegt Robbie: <em>"Ik sta klaar als jij of je vrienden mij nodig hebben."</em></p>',
           'Verder →',
@@ -13354,10 +13356,11 @@ function koopLucindeOutfit() {
   addInventory('🧶','Breiwerkje', false);
   updateInventoryBar();
   toonLade(
-    '👗 Outfit verkregen',
+    'Vermomming verkregen',
     '<p style="font-size:.95rem;color:var(--parchment);line-height:1.6;font-style:italic">Vanaf nu kun je je verkleden als Mevr. Lucinde — een oude kletstante. Maar om niet betrapt te worden is het omkleden in het pashokje van deze winkel wellicht verstandig...</p>',
     'Verder →',
-    () => openLocatie('k1_naaldmasker')
+    () => openLocatie('k1_naaldmasker'),
+    ITEM_AFBEELDINGEN['Breiwerkje']
   );
 }
 
@@ -13366,10 +13369,11 @@ function koopLolaOutfit() {
   addInventory('💃','Latin Jurk', false);
   updateInventoryBar();
   toonLade(
-    '💃  Outfit verkregen',
+    'Vermomming verkregen',
     '<p style="font-size:.95rem;color:var(--parchment);line-height:1.6;font-style:italic">Vanaf nu kun je je ook verkleden als Lola — een vurige Latin danseres. Trek hem aan in het pashokje wanneer je hem nodig hebt.</p>',
     'Verder →',
-    () => openLocatie('k1_naaldmasker')
+    () => openLocatie('k1_naaldmasker'),
+    ITEM_AFBEELDINGEN['Latin Jurk']
   );
 }
 
@@ -13697,10 +13701,11 @@ function ontvangMunten() {
   addInventory('💰', 'Munten van Stoop', false);
   updateInventoryBar();
   toonLade(
-    '💰  Beloning ontvangen',
+    'Beloning ontvangen',
     '<p style="font-size:1rem;color:var(--parchment);font-style:italic">Stoop drukt je dankbaar een paar munten in de hand.</p>',
     'Verder →',
-    () => openLocatie('k1_groenteboer')
+    () => openLocatie('k1_groenteboer'),
+    ITEM_AFBEELDINGEN['Munten van Stoop']
   );
 }
 
@@ -13709,8 +13714,8 @@ function ontvangRoddels() {
   kkSleutelVerkregen('wallingen');
   setTimeout(checkAllTokens, 1500);
   toonLade(
-    '🔑  Sleutel Wallingen verkregen',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Je hebt met je team samen een belangrijke stap gezet en informatie ontvangen. Iedereen ontvangt een eindsleutel.</p>',
+    'Het plan voor Nummer 7',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Je hebt bruikbare informatie ontvangen over Nummer 7. Wie het nog eens wil horen, kan altijd terug naar Mevr. van Wallingen.</p>',
     'Verder →',
     () => openLocatie('k1_nachtenwens')
   );
@@ -13757,7 +13762,7 @@ function restaureerDagboek() {
   }
   setTimeout(checkAllTokens, 3000);
   toonLade(
-    '📖  Dagboek hersteld',
+    'Dagboek hersteld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De archivaris heeft de bladzijden voorzichtig gedroogd en leesbaar gemaakt.</p>',
     'Bekijk het dagboek →',
     kellyBekijktDagboekEerste
@@ -20355,7 +20360,7 @@ function renderDd7Klokkenmaker(loc) {
               // krijgt ze meteen de terugkomst-scene ("U bent terug!") terwijl
               // ze nog naast hem staat.
               toonLade(
-                '💃  Afleiding volbracht',
+                'Afleiding volbracht',
                 '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Lola werpt een blik over haar schouder, ziet dat Jan binnen is, en draait zich weer om naar de klokkenmaker.<br><br>"Caramba! Kijk naar de tijd. Vamos, ik ben weg!"</p>',
                 'Verder →',
                 goBackFromLocatie
@@ -20529,7 +20534,7 @@ function renderDd7LolaFlirtScene(loc) {
 function dd7LolaFlirt() {
   markVisited('lola_klokkenmaker_geflirt');
   toonLade(
-    '💃  Afleiding geslaagd',
+    'Afleiding geslaagd',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Geef deze code mondeling door aan Jan, zodat hij de werkplaats in kan:</p>' +
     '<p style="font-size:2rem;color:var(--gold);text-align:center;letter-spacing:.3em;margin:.5rem 0;font-weight:700">XXX</p>',
     'Verder →',
@@ -20544,7 +20549,7 @@ function dd7LolaFlirt() {
 function dd7LolaLeidAf() {
   markVisited('klokkenmaker_afgeleid');
   toonLade(
-    '💃  Klokkenmaker afgeleid',
+    'Klokkenmaker afgeleid',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je houdt hem buiten met je verhalen. Jan kan nu binnen sluipen.]</p>',
     'Verder →',
     function() {
@@ -20712,12 +20717,13 @@ function dd7JanMaaktSleutel() {
   updateInventoryBar();
   // Tobbe-arrogant pop verdwijnt vanaf nu (npcPopVoorLocatie checkt vlag).
   toonLade(
-    '🗝️  De sleutel is gemaakt',
+    'De sleutel is gemaakt',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Een perfecte sleutel voor het woudpoort-slot. Klaar.</p>',
     'Verder →',
     // Niet herrenderen: dan kreeg Jan meteen de flavour van een láter bezoek
     // ("hij kijkt niet op"). Hij is hier klaar, dus hij vertrekt.
-    goBackFromLocatie
+    goBackFromLocatie,
+    ITEM_AFBEELDINGEN['Sleutel Woudpoort']
   );
 }
 
