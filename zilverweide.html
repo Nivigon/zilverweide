@@ -18347,6 +18347,8 @@ function buildDebugPanel() {
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
       ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
+      ['🏚️ DD2 straat + vloek (maar plots...)', function(){ showScreen('screen-locatie'); dd2StraatMunten(true); close(); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
+      ['🏚️ DD2 straat (eerlijk, geen vloek)',   function(){ showScreen('screen-locatie'); dd2StraatMunten(false); close(); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
       // ── De twee poppen met naalden
       ['🪡 Pak de naalden van Nummer 2', function(){ pakNaaldenUitPop('dd2_naalden_gepakt', null); close(); }, !getSharedState('dd2_naalden_gepakt'), 'Naalden'],
       ['🪡 Pak de naalden van de molen', function(){ pakNaaldenUitPop('molen_naalden_gepakt', null); close(); }, !getSharedState('molen_naalden_gepakt'), 'Naalden'],
