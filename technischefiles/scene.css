@@ -301,6 +301,20 @@
   color: var(--parchment);
   animation: sc-dialogTextIn .25s ease;
 }
+/* Leesbaarheid op tablets: op schermen met ruime hoogte een vaste, uniforme
+   dialoogmaat van 1.15rem (~18.4px op het ijkscherm, de 11 inch Galaxy Tab).
+   De eerdere 1.35rem bleek in de bulk te groot; 1.15rem is de maat die goed
+   beviel. Dezelfde maat geldt ook als er twee poppen staan (zie de dual-pop
+   notitie in zilverweide.html), zodat de tekst nergens meer van formaat
+   wisselt per scene. Bewust alleen vanaf 701px hoogte: de band 521-700px is
+   gevoelig voor overflow en houdt de basisgrootte, en onder 521px geldt de
+   aparte verkleining daar al. */
+@media (min-height: 701px) {
+  .sc-dialog-tekst { font-size: 1.15rem; line-height: 1.5; }
+  .sc-dialog-spreker { font-size: .8rem; }
+  /* Stazia's inline reactieregel onder het districten-grid: zelfde maat. */
+  .waarzegster-reactie { font-size: 1.15rem; }
+}
 @keyframes sc-dialogTextIn {
   from { opacity: 0; }
   to   { opacity: 1; }

@@ -18,7 +18,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=La+Belle+Aurore&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="technischefiles/doolhof.css">
 <link rel="stylesheet" href="technischefiles/lockpick.css">
-<link rel="stylesheet" href="technischefiles/scene.css?v=2">
+<link rel="stylesheet" href="technischefiles/scene.css?v=6">
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <link rel="stylesheet" href="technischefiles/woudscene.css">
@@ -831,6 +831,15 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .ssi-schuif::after{content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;background:var(--gold-dim);transition:left .25s,background .25s}
 .ssi-toggle input:checked + .ssi-schuif{background:rgba(201,168,76,.3);border-color:var(--gold)}
 .ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
+/* TIJDELIJK (testmodus): inklapknop voor het snelstart-blok op het
+   splash-scherm. Standaard ingeschoven; alleen het 🛠️-knopje en de
+   sessie-indicator blijven zichtbaar. De 0fr-truc laat het blok naar de
+   knop toe schuiven zonder dat er iets buiten het scherm steekt. */
+#snelstart-toggle{align-self:flex-end;flex:0 0 auto;width:36px;height:36px;border-radius:50%;background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.25);font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.6;transition:opacity .2s}
+#snelstart-toggle:hover{opacity:1}
+#snelstart-wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .3s ease,opacity .3s ease}
+#snelstart-wrap.dicht{grid-template-rows:0fr;opacity:0;pointer-events:none}
+#snelstart-blok{overflow:hidden;min-height:0;display:flex;flex-direction:column;gap:.6rem}
 @keyframes roseGlow{0%,100%{text-shadow:0 0 8px rgba(155,58,74,.6)}50%{text-shadow:0 0 20px rgba(155,58,74,1),0 0 40px rgba(155,58,74,.4)}}
 @keyframes flicker{0%,100%{opacity:1}92%{opacity:1}93%{opacity:.85}94%{opacity:1}96%{opacity:.9}97%{opacity:1}}
 .interactie-btn{position:fixed;bottom:4.5rem;right:1.2rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.3);border-radius:50%;width:40px;height:40px;font-size:1.1rem;cursor:pointer;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
@@ -895,10 +904,8 @@ body.woudscene-actief .finale-btn{display:none !important;}
    beeld zodat de NPC linksom naar het midden kijkt. */
 #npc-pop{position:fixed;bottom:0;right:0;z-index:150;pointer-events:none;opacity:0;transition:opacity .5s ease}
 #npc-pop img{display:block;height:55vh;max-height:480px;width:auto;filter:drop-shadow(-4px 4px 16px rgba(0,0,0,.7));transform:scaleX(-1)}
-/* Jan's PNG is wijder ingekaderd dan de andere personages — we vergroten
-   'm hier in CSS zodat hij ongeveer dezelfde lichaamsmaat in beeld toont.
-   Hij wordt iets uit beeld geschoven aan de onderkant, net als Kelly. */
-#char-pop img.pop-jan{height:78vh;max-height:680px;margin-bottom:-8vh}
+/* Jans PNG is inmiddels net zo strak ingekaderd als de andere personages
+   (bijgesneden), dus hij gebruikt gewoon de standaardmaat hierboven. */
 #char-bubble{position:absolute;left:75%;bottom:65%;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
 #char-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-left:0;transform:skewX(-15deg)}
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
@@ -974,6 +981,14 @@ body.woudscene-actief .finale-btn{display:none !important;}
 /* In het zij-slot glijdt de schim het podium op, richting de roos: hoger
    en meer naar het midden, weg van de speler-pop linksonder. */
 #pf-zij.pf-schim{left:26vw;bottom:22vh}
+/* Vanaf de Monsters-beat staat de figuur (en daarna Sybille) centraal
+   achter de roos. Sybille wordt daarbij groot genoeg dat de roos, die op
+   32% hoogte hangt, voor haar bovenlijf zweeft. De schim houdt zijn eigen
+   maat en verhoogde stand; deze regels staan na pf-schim zodat left hier
+   wint zodra beide klassen op het slot staan. */
+#pf-zij.pf-zij-midden{left:50%;right:auto;transform:translateX(-50%)}
+#pf-zij.pf-zij-midden img{height:69vh;max-height:600px}
+#pf-zij.pf-zij-midden.pf-schim img{height:46vh;max-height:400px}
 /* De speler-pop linksonder hoort voor het cinema-beeld te staan, niet
    erachter (het beeld heeft z-index 250, de pop normaal 150). */
 body.pf-cinema-actief #char-pop{z-index:252}
@@ -1026,6 +1041,8 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #pf-zij.pf-duo img+img{height:51vh;max-height:300px}
   .pf-slot.pf-groot img{height:66vh;max-height:375px}
   #pf-zij.pf-groot img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden img{height:57vh;max-height:330px}
+  #pf-zij.pf-zij-midden.pf-schim img{height:38vh;max-height:220px}
   .pf-slot .pf-vlak{height:40vh;max-height:220px;width:130px}
   #pf-roos{top:34%}
   #pf-roos.pf-laag{top:72%}
@@ -1048,15 +1065,12 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   pointer-events:none;
 }
 #wt-pop-img.wt-zichtbaar{opacity:1}
-/* Jans PNG is wijder ingekaderd, zelfde correctie als bij char-pop. */
-#wt-pop-img.pop-jan{height:50vh;max-height:420px}
 /* Korte schermen (telefoon liggend): zelfde grens als de rest van het
    spel (zie de andere @media (max-height:520px)-blokken). De wacht-
    inhoud eronder is niet schaalbaar qua tekstgrootte, dus de pop moet
    hier extra plaats afstaan. */
 @media (max-height:520px){
   #wt-pop-img{height:26vh;max-height:220px;top:1.5vh}
-  #wt-pop-img.pop-jan{height:32vh;max-height:260px}
 }
 /* Extreem kort (telefoon liggend op de kleinste modellen): de vaste
    rollijst/spinner alleen al vult zo'n scherm bijna volledig. Geen
@@ -1425,7 +1439,6 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #screen-locatie .sc-dialog-body { padding: .5rem .8rem !important; }
   #screen-locatie .sc-dialog-tekst { font-size: .9rem !important; line-height: 1.4 !important; }
   #char-pop img { height: 46vh !important; max-height: 240px !important; }
-  #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
   /* NPC-pop krijgt dezelfde verkleining als de speler-pop hierboven. */
   #npc-pop img { height: 46vh !important; max-height: 240px !important; }
   /* toonPopDialoog (bv. de put-reünie): eigen los overlay-systeem, dus een
@@ -1535,37 +1548,22 @@ body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #scr
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
   margin-right: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
 }
-body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-tekst {
-  font-size: .85rem !important;
-  line-height: 1.28 !important;
+/* De compactere tekst hieronder is gemeten op KORTE schermen (rond 600px
+   hoog); daar blijft hij nodig. Op tablethoogte (vanaf 701px) is er ruimte
+   genoeg en zou deze krimp de dialoogtekst per scene van formaat laten
+   wisselen (13.6px met twee poppen tegenover 18.4px zonder), precies de
+   wisselvalligheid die we kwijt willen. Daarom alleen nog onder de 701px;
+   de marge-regels hierboven blijven wel op elke hoogte gelden. */
+@media (max-height: 700px) {
+  body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-tekst {
+    font-size: .85rem !important;
+    line-height: 1.28 !important;
+  }
 }
-/* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
-   van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
-   afmetingen) was te krap: op brede schermen (laptop, tablet-liggend) viel
-   de dialoogtekst onder zijn schouder. Gemeten (niet aangenomen): Jans pop
-   heeft een breedte/hoogte-verhouding van exact 2/3, dus bij zijn plafond
-   van 680px is de reserve 453px (680 * 2/3), en die schaalt mee met 0.78vh
-   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
-}
-/* Deze Jan-regel en de dual-pop-regel hierboven hebben toevallig exact
-   dezelfde specificiteit (allebei één :has()-clausule met een ID erin,
-   respectievelijk twee simpelere :has()-clausules). Bij zo'n gelijke stand
-   wint de regel die later in het bestand staat, en dat was tot nu toe
-   steeds deze Jan-regel: zodra Jan met een NPC-pop tegelijk in beeld was,
-   werd de dual-pop-veilige reserve stilzwijgend genegeerd (gevonden bij
-   het Dorendael-onderzoek, Jan + Tobbe bij de woudpoort). Deze aparte
-   Jan-plus-dual-pop-regel heeft drie :has()-achtige onderdelen in plaats
-   van twee, dus altijd hogere specificiteit dan beide regels hierboven, en
-   wint dus gegarandeerd zodra Jan én een NPC-pop tegelijk actief zijn. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, min(34vw, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px))) !important;
-}
-/* Zelfde Jan-uitzondering voor de Verborgen Hand-districtenstrip. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .vh-strip {
-  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
-}
+/* Jans pop had hier vroeger drie eigen uitzonderingsregels omdat hij in CSS
+   groter werd gerenderd (78vh/680px). Zijn PNG is inmiddels bijgesneden en
+   hij gebruikt de standaardmaat, dus de generieke regels hierboven dekken
+   hem nu ook. */
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
 /* De speler-pop (links onder) valt over de eerste verdachte-tegel op het
@@ -1666,34 +1664,41 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- SPLASH -->
 <div class="screen active" id="screen-splash" style="padding:0">
   <!-- TIJDELIJK (testmodus): snelstart-knoppen, rechtstreeks naar de
-       overworld als dat personage. Verwijderen vóór productie. -->
+       overworld als dat personage. Verwijderen vóór productie. Het blok
+       staat standaard ingeschoven achter het 🛠️-knopje. -->
   <div style="position:fixed;right:1.5rem;top:50%;transform:translateY(-50%);z-index:200;display:flex;flex-direction:column;gap:.6rem">
-    <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
-      <span class="ssi-label">Kaart-uitleg</span>
-      <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
-      <span class="ssi-label">Beginner modus</span>
-      <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
-      <span class="ssi-schuif"></span>
-    </label>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
-    <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
-    <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
-         laatste herstelpunt van die speler uit de sessie en zet hem terug
-         in zijn straat, met inventaris en voortgang intact. -->
-    <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
-      style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
-      onkeydown="if(event.key==='Enter')herstelViaNaam()">
-    <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
-    <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+    <button id="snelstart-toggle" title="Testknoppen tonen of verbergen" onclick="toggleSnelstartBlok()">🛠️</button>
+    <div id="snelstart-wrap" class="dicht">
+      <div id="snelstart-blok">
+        <label class="ssi-toggle" title="Kaart-introductie (oplichtende knoppen) tonen bij een snelstart">
+          <span class="ssi-label">Kaart-uitleg</span>
+          <input type="checkbox" id="snelstart-intro-check" onchange="zetSnelstartIntro(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <label class="ssi-toggle" title="Beginner modus (kaartje in het Kraaienkwartier) aanzetten voor het testen">
+          <span class="ssi-label">Beginner modus</span>
+          <input type="checkbox" id="beginner-modus-check-splash" onchange="zetBeginnerModus(this.checked)">
+          <span class="ssi-schuif"></span>
+        </label>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('jan')">Jan</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('kelly')">Kelly</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('fenna')">Fenna</button>
+        <button class="crawl-skip" style="position:static" onclick="debugSnelstart('felix')">Felix</button>
+        <!-- Herstel na een crash: typ de naam van de rol; het spel laadt het
+             laatste herstelpunt van die speler uit de sessie en zet hem terug
+             in zijn straat, met inventaris en voortgang intact. -->
+        <input id="herstel-naam" type="text" placeholder="naam..." maxlength="20" autocomplete="off"
+          style="width:100%;box-sizing:border-box;margin-top:.6rem;padding:.4rem .5rem;font-family:monospace;font-size:.7rem;color:var(--parchment);background:rgba(13,10,6,.85);border:1px solid rgba(201,168,76,.35);border-radius:4px"
+          onkeydown="if(event.key==='Enter')herstelViaNaam()">
+        <button class="crawl-skip" style="position:static" onclick="herstelViaNaam()">Herstel</button>
+        <div id="herstel-msg" style="max-width:8.5rem;font-family:monospace;font-size:.55rem;line-height:1.4;color:var(--gold-dim)"></div>
+      </div>
+    </div>
     <!-- Actieve sessienaam. Sinds ?sessie= lokaal onthouden wordt kan een
          tablet zonder parameter in een eerdere echte sessie zitten; dat
-         moet je hier kunnen zien voordat je speelt of reset. -->
-    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8"></div>
+         moet je hier kunnen zien voordat je speelt of reset. Staat bewust
+         BUITEN het inklapbare blok: altijd zichtbaar. -->
+    <div id="sessie-indicator" style="margin-top:.4rem;font-family:monospace;font-size:.55rem;color:var(--gold-dim);opacity:.8;text-align:right"></div>
   </div>
   <div style="position:relative;width:calc(100% + 3rem);margin-left:-1.5rem;height:var(--vh100);min-height:560px;overflow:hidden">
     <img src="splash.jpg" style="width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block">
@@ -1934,31 +1939,32 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
      links van de smalle spelkolom (#app is 680px breed, gecentreerd). Daarom
      hangt de kaart aan het venster (position:fixed, op body-niveau), niet aan
      de kolom: zo raakt hij de gecentreerde invoer en afbeeldingen nooit en
-     verschuift hij niets. Alleen zichtbaar op het Kraaienkwartier-scherm
-     (body.kraai-actief) in beginnersmodus, en alleen als het scherm breed
-     genoeg is dat de linkerband de kaart kan dragen. Voorlopig alleen
-     Kraaienkwartier. */
-  #kraai-kaart { display: none; }
+     verschuift hij niets. Zichtbaar op de straat-invoerschermen
+     (body.beginner-actief) in beginnersmodus, en alleen als het scherm breed
+     genoeg is dat de linkerband de kaart kan dragen. Het aantal kolommen
+     wordt per straat gezet (updateBeginnerKaart): 3 voor Kraaienkwartier,
+     4 voor de bredere 3-1-3 vorm van Dorendael en Heer Donatuslaan. */
+  #beginner-kaart { display: none; }
   @media (min-width: 1080px) {
-    body.beginner-modus.kraai-actief #kraai-kaart {
-      display: grid; position: fixed; left: calc(25% - 170px); top: 50%;
-      transform: translate(-50%, -50%); grid-template-columns: repeat(3, auto);
-      gap: .4rem clamp(.8rem, 2.6vw, 1.7rem); justify-items: center; align-items: start; z-index: 120;
+    body.beginner-modus.beginner-actief #beginner-kaart {
+      display: grid; position: fixed; right: calc(50% + 340px + 1rem); top: 50%;
+      transform: translateY(-50%); grid-template-columns: repeat(3, auto);
+      gap: .4rem clamp(.6rem, 2vw, 1.2rem); justify-items: center; align-items: start; z-index: 120;
     }
   }
-  #kraai-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .26rem; width: clamp(44px, 5vw, 60px); }
-  #kraai-kaart .kt-vak {
-    width: clamp(32px, 3.6vw, 44px); height: clamp(32px, 3.6vw, 44px); border-radius: 4px;
+  #beginner-kaart .kt { display: flex; flex-direction: column; align-items: center; gap: .24rem; width: clamp(42px, 4.4vw, 54px); }
+  #beginner-kaart .kt-vak {
+    width: clamp(30px, 3.3vw, 42px); height: clamp(30px, 3.3vw, 42px); border-radius: 4px;
     border: 1px solid rgba(201, 168, 76, .28); background: transparent;
     transition: background .3s, border-color .3s;
   }
-  #kraai-kaart .kt.bezocht .kt-vak { background: var(--gold); border-color: var(--gold); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
-  #kraai-kaart .kt-naam {
-    font-family: 'Cinzel', serif; font-size: clamp(.44rem, .95vw, .56rem); line-height: 1.15;
-    letter-spacing: .03em; color: var(--gold-dim); text-align: center; min-height: 2.4em;
-    opacity: 0; transition: opacity .3s;
+  #beginner-kaart .kt.bezocht .kt-vak { background: var(--gold); border-color: var(--gold); box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+  #beginner-kaart .kt-naam {
+    font-family: 'Cinzel', serif; font-size: clamp(.42rem, .9vw, .52rem); line-height: 1.15;
+    letter-spacing: .02em; color: var(--gold-dim); text-align: center; min-height: 2.5em;
+    overflow-wrap: anywhere; opacity: 0; transition: opacity .3s;
   }
-  #kraai-kaart .kt.bezocht .kt-naam { opacity: 1; color: var(--parchment); }
+  #beginner-kaart .kt.bezocht .kt-naam { opacity: 1; color: var(--parchment); }
 </style>
 <div class="screen" id="screen-kwartier1" style="position:relative;overflow:hidden">
   <button class="back-btn" onclick="showScreen('screen-overworld')">← Kaart</button>
@@ -2006,9 +2012,9 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 </div>
 
 <!-- Beginnersmodus-kaartje: losse vensterlaag, staat bewust buiten #app zodat
-     het in de lege band links van de smalle spelkolom kan liggen. Alleen
-     zichtbaar op het Kraaienkwartier-scherm in beginnersmodus (zie CSS). -->
-<div class="kw-kaart" id="kraai-kaart" aria-hidden="true"></div>
+     het in de lege band links van de smalle spelkolom kan liggen. Zichtbaar op
+     de straat-invoerschermen in beginnersmodus (zie CSS en BEGINNER_KAARTEN). -->
+<div class="kw-kaart" id="beginner-kaart" aria-hidden="true"></div>
 
 <div id="char-pop"><img id="char-pop-img" src="" alt=""><div id="char-bubble"></div></div>
 <div id="npc-pop"><img id="npc-pop-img" src="" alt=""><div id="npc-bubble"></div></div>
@@ -4972,13 +4978,14 @@ function showScreen(id) {
   }
   if (id === 'screen-locatie' && state.lastZone === 'kraaienkwartier') setTimeout(checkAllTokens, 600);
   if (id === 'screen-kwartier1' || id === 'screen-dorpsplein') setTimeout(checkAllTokens, 500);
-  // Beginnersmodus: de kaart-vensterlaag hoort alleen bij het Kraaienkwartier.
-  if (document.body) document.body.classList.toggle('kraai-actief', id === 'screen-kwartier1');
-  if (id === 'screen-kwartier1') {
-    updateKraaiKaart();
+  // Beginnersmodus: de kaart-vensterlaag hoort bij de straat-invoerschermen.
+  var beginnerCfg = (typeof BEGINNER_KAARTEN !== 'undefined' && BEGINNER_KAARTEN) ? BEGINNER_KAARTEN[id] : null;
+  if (document.body) document.body.classList.toggle('beginner-actief', !!beginnerCfg);
+  if (beginnerCfg) {
+    updateBeginnerKaart(id);
     if (window._beginnerModus && state.personage && !state.debugSkipBezig &&
-        !hasVisited('kraai_kaart_intro_gezien')) {
-      setTimeout(kraaiKaartIntro, 500);
+        beginnerCfg.introFlag && !hasVisited(beginnerCfg.introFlag)) {
+      (function (sid) { setTimeout(function () { beginnerKaartIntro(sid); }, 500); })(id);
     }
   }
   // Binnenkomst in een district start daar de stille hulpklok van de
@@ -5814,34 +5821,88 @@ function zetSnelstartIntro(aan) {
   if (check) check.checked = window._snelstartIntroAan;
 })();
 
-// ── Beginnersmodus (per tablet) ─────────────────────────────────────────
-// Hulp voor kinderen: in het Kraaienkwartier verschijnt naast de code-invoer
-// een kaartje met de zeven plekken van de straat. Een plek kleurt en toont
-// zijn naam pas zodra je er zelf geweest bent (lokaal, uit
-// state.visitedLocations, dus geen gedeelde stand). De code op de bordjes
-// blijft de enige echte ingang. De keuze staat per apparaat in localStorage,
-// net als de snelstart-instelling hierboven.
-// Vorm (top = K5, K2 en K8 onderaan bij de ingang, oplopend naar boven):
-//            K5
-//     K4          K6
-//     K3          K7
-//     K2          K8
-var KRAAI_KAART_TEGELS = [
-  { id: 'k1_dorpsput',     naam: 'De Dorpsput',          col: 2, row: 1 },
-  { id: 'k1_nachtenwens',  naam: 'De Nachtenwens',       col: 1, row: 2 },
-  { id: 'k1_nummer7',      naam: 'Nummer 7',             col: 3, row: 2 },
-  { id: 'k1_uitkijktoren', naam: 'De Uitkijktoren',      col: 1, row: 3 },
-  { id: 'k1_nummer5',      naam: 'Nummer 5',             col: 3, row: 3 },
-  { id: 'k1_groenteboer',  naam: 'Stoop de Groenteboer', col: 1, row: 4 },
-  { id: 'k1_naaldmasker',  naam: 'Naald en Masker',      col: 3, row: 4 },
-];
+// TIJDELIJK (testmodus): klapt het snelstart-blok op het splash-scherm in
+// en uit. Standaard ingeschoven; de stand wordt bewust niet onthouden.
+function toggleSnelstartBlok() {
+  var wrap = document.getElementById('snelstart-wrap');
+  if (wrap) wrap.classList.toggle('dicht');
+}
 
-function updateKraaiKaart() {
-  var kaart = document.getElementById('kraai-kaart');
+// ── Beginnersmodus (per tablet) ─────────────────────────────────────────
+// Hulp voor kinderen: op de straat-invoerschermen verschijnt links een kaartje
+// met de plekken van die straat. Een plek kleurt en toont zijn naam pas zodra
+// je er zelf geweest bent (lokaal, uit state.visitedLocations, dus geen
+// gedeelde stand). De code op de bordjes blijft de enige echte ingang. De
+// keuze staat per apparaat in localStorage, net als de snelstart-instelling.
+//
+// Vorm per straat (kop = middelste nummer; 2 en 8 tegenover elkaar aan de
+// ingang-kant, oplopend naar de kop):
+//   Kraaienkwartier:            Dorendael (kop = Het Woud, links):
+//            K5                     DD4 DD3 DD2
+//     K4          K6            DD5
+//     K3          K7                 DD6 DD7 DD8
+//     K2          K8
+//   Heer Donatuslaan (kop = Het Gemeentehuis, rechts):
+//     H2 H3 H4
+//               H5
+//     H8 H7 H6
+var BEGINNER_KAARTEN = {
+  'screen-kwartier1': {
+    kolommen: 3,
+    introFlag: 'kraai_kaart_intro_gezien',
+    tegels: [
+      { id: 'k1_dorpsput',     naam: 'De Dorpsput',          col: 2, row: 1 },
+      { id: 'k1_nachtenwens',  naam: 'De Nachtenwens',       col: 1, row: 2 },
+      { id: 'k1_nummer7',      naam: 'Nummer 7',             col: 3, row: 2 },
+      { id: 'k1_uitkijktoren', naam: 'De Uitkijktoren',      col: 1, row: 3 },
+      { id: 'k1_nummer5',      naam: 'Nummer 5',             col: 3, row: 3 },
+      { id: 'k1_groenteboer',  naam: 'Stoop de Groenteboer', col: 1, row: 4 },
+      { id: 'k1_naaldmasker',  naam: 'Naald en Masker',      col: 3, row: 4 },
+    ],
+  },
+  'screen-dorendael': {
+    kolommen: 3,
+    // Verticaal, net als Kraaienkwartier: kop (Het Woud) bovenaan in het
+    // midden, daaronder twee kolommen van drie. Zelfde volgorde als de andere
+    // straten: linkerkolom van onder naar boven 2-3-4 (DD2 linksonder), rechter-
+    // kolom 6-7-8. DD2 en DD8 staan onderaan tegenover elkaar bij de ingang.
+    tegels: [
+      { id: 'dd5_woud',         naam: 'Het Woud',        col: 2, row: 1 },
+      { id: 'dd4_herberg',      naam: 'De Herberg',      col: 1, row: 2 },
+      { id: 'dd6_molen',        naam: 'De Oude Molen',   col: 3, row: 2 },
+      { id: 'dd3_nummer10',     naam: 'Nummer 10',       col: 1, row: 3 },
+      { id: 'dd7_klokkenmaker', naam: 'De Klokkenmaker', col: 3, row: 3 },
+      { id: 'dd2_nummer2',      naam: 'Nummer 2',        col: 1, row: 4 },
+      { id: 'dd8_stiltevijver', naam: 'De Stiltevijver', col: 3, row: 4 },
+    ],
+  },
+  'screen-sintdonatuslaan': {
+    kolommen: 3,
+    // Verticaal, net als Kraaienkwartier: kop (Het Gemeentehuis) bovenaan in
+    // het midden, daaronder twee kolommen van drie. Linkerkolom 4-3-2,
+    // rechterkolom 6-7-8; Nummer 1 (H2) en Het Steegje (H8) staan onderaan
+    // tegenover elkaar aan de ingang-kant, het verst van het gemeentehuis.
+    tegels: [
+      { id: 'h5_gemeentehuis', naam: 'Het Gemeentehuis',  col: 2, row: 1 },
+      { id: 'h4_kerk',         naam: 'De Kerk',           col: 1, row: 2 },
+      { id: 'h6_bandieten',    naam: 'Het Hol',           col: 3, row: 2 },
+      { id: 'h3_slagerij',     naam: 'Slagerij Verstilt', col: 1, row: 3 },
+      { id: 'h7_apotheker',    naam: 'De Apotheker',      col: 3, row: 3 },
+      { id: 'h2_felixkamer',   naam: 'Nummer 1',          col: 1, row: 4 },
+      { id: 'h8_steegje',      naam: 'Het Steegje',       col: 3, row: 4 },
+    ],
+  },
+};
+
+function updateBeginnerKaart(schermId) {
+  var kaart = document.getElementById('beginner-kaart');
   if (!kaart) return;
+  var cfg = BEGINNER_KAARTEN[schermId];
+  if (!cfg) { kaart.innerHTML = ''; return; }
+  kaart.style.gridTemplateColumns = 'repeat(' + cfg.kolommen + ', auto)';
   var html = '';
-  for (var i = 0; i < KRAAI_KAART_TEGELS.length; i++) {
-    var t = KRAAI_KAART_TEGELS[i];
+  for (var i = 0; i < cfg.tegels.length; i++) {
+    var t = cfg.tegels[i];
     var bezocht = state.visitedLocations.has(t.id);
     html += '<div class="kt' + (bezocht ? ' bezocht' : '') +
               '" style="grid-column:' + t.col + ';grid-row:' + t.row + '">' +
@@ -5850,6 +5911,15 @@ function updateKraaiKaart() {
             '</div>';
   }
   kaart.innerHTML = html;
+}
+
+// Werk de kaart bij voor de straat waar we nu zijn (als er een straat-invoer-
+// scherm actief is). Zo heeft de debug-toggle direct effect.
+function updateBeginnerKaartHuidig() {
+  for (var sid in BEGINNER_KAARTEN) {
+    var el = document.getElementById(sid);
+    if (el && el.classList.contains('active')) { updateBeginnerKaart(sid); return; }
+  }
 }
 
 function zetBeginnerModus(aan) {
@@ -5861,7 +5931,7 @@ function zetBeginnerModus(aan) {
     var c = document.getElementById(cid);
     if (c) c.checked = !!aan;
   });
-  if (aan) updateKraaiKaart();
+  if (aan) updateBeginnerKaartHuidig();
   // Stand delen zodra een rol vastligt, zodat het begeleiderspaneel live de
   // echte stand ziet. Alleen bij echt verschil met de gedeelde stand: een
   // wijziging die net via de listener binnenkwam (begeleider) staat daar al
@@ -5897,15 +5967,17 @@ function syncBeginnerModusMetShared() {
   }
 }
 
-// Eenmalig instructiemoment bij de eerste keer dat een beginner het
-// Kraaienkwartier binnenkomt: het scherm dimt, de kaart licht op, korte
-// uitleg. Hergebruikt de bestaande kaart-introductie-stijl (ow-intro-*).
-var _kraaiKaartIntroBezig = false;
-function kraaiKaartIntro() {
-  if (_kraaiKaartIntroBezig || hasVisited('kraai_kaart_intro_gezien')) return;
-  var kaart = document.getElementById('kraai-kaart');
+// Eenmalig instructiemoment bij de eerste keer dat een beginner een straat
+// binnenkomt: het scherm dimt, de kaart licht op, korte uitleg. Hergebruikt de
+// bestaande kaart-introductie-stijl (ow-intro-*). Per straat een eigen flag.
+var _beginnerKaartIntroBezig = false;
+function beginnerKaartIntro(schermId) {
+  var cfg = BEGINNER_KAARTEN[schermId];
+  if (!cfg) return;
+  if (_beginnerKaartIntroBezig || hasVisited(cfg.introFlag)) return;
+  var kaart = document.getElementById('beginner-kaart');
   if (!kaart) return;
-  _kraaiKaartIntroBezig = true;
+  _beginnerKaartIntroBezig = true;
   var overlay = document.createElement('div');
   overlay.id = 'ow-intro-overlay';
   document.body.appendChild(overlay);
@@ -5919,13 +5991,13 @@ function kraaiKaartIntro() {
     '<button class="ow-intro-knop">Verder →</button>';
   document.body.appendChild(paneel);
   paneel.querySelector('.ow-intro-knop').addEventListener('click', function () {
-    markVisited('kraai_kaart_intro_gezien');
+    markVisited(cfg.introFlag);
     kaart.classList.remove('ow-intro-lift', 'ow-intro-spot');
     [overlay, paneel].forEach(function (el) { el.style.transition = 'opacity .5s'; el.style.opacity = '0'; });
     setTimeout(function () {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       if (paneel.parentNode) paneel.parentNode.removeChild(paneel);
-      _kraaiKaartIntroBezig = false;
+      _beginnerKaartIntroBezig = false;
     }, 500);
   });
 }
@@ -7372,7 +7444,8 @@ function renderH2FelixKamer(loc) {
           'Een schaduw voor het gat in de muur. Groot genoeg om erbij te kunnen. Eindelijk iemand aan de goede kant van de muur, en met de juiste lengte.',
           { spreker: 'Felix', tekst: '"Jan? Goddank. Waar ben ik eigenlijk, man?"' },
           { spreker: 'Jan', tekst: '"Je zit in een huis in de Heer Donatuslaan. Wacht, hoe krijgen we jou hieruit?"' },
-          { spreker: 'Felix', tekst: '"Ik heb een plan. Maar ik heb jou nodig, want ik pas niet door dit gat en jij komt er wel bij. Ik heb hier een zakje munten. Haal daarmee een outfit voor me bij Naald en Masker in Kraaienkwartier. Dan klets ik mezelf hier wel uit."' }
+          { spreker: 'Felix', tekst: '"Ik heb een plan. Maar ik heb jou nodig, want ik pas niet door dit gat en jij komt er wel bij."' },
+          { spreker: 'Felix', tekst: '"Ik heb hier een zakje munten. Haal daarmee een outfit voor me bij Naald en Masker in Kraaienkwartier. Dan klets ik mezelf hier wel uit."' }
         ],
         acties: [{ label: '\ud83e\ude99 Geef het muntenzakje door het gat', onclick: felixGeefMuntenAanJan }]
       });
@@ -7417,7 +7490,8 @@ function renderH2FelixKamer(loc) {
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
-          'Door het sleutelgat kijk je de kamer in waar het geluid vandaan komt. Op een stoel liggen je vermommingen, op een stapel, net buiten je bereik. En er beweegt iemand, gebukt, driftig, tussen de rest van je spullen. Je hoort kleren over de grond schuiven.',
+          'Door het sleutelgat kijk je de kamer in waar het geluid vandaan komt. Op een stoel liggen je vermommingen, op een stapel, net buiten je bereik.',
+          'En er beweegt iemand, gebukt, driftig, tussen de rest van je spullen. Je hoort kleren over de grond schuiven.',
           'Wie het ook is, die heeft alles van je afgepakt.'
         ],
         acties: [{ label: '\ud83d\udd0d Doorzoek de kamer', onclick: felixDoorzoekKamer }]
@@ -8347,10 +8421,13 @@ function renderH3Slagerij(loc) {
         container: cont, titel: loc.naam, sub: 'De achterkamer', image: 'locaties/heerdonatuslaan/slagerijachter.jpeg',
         dialog: [
           'Je loopt de achterkamer in. Achter je valt de deur naar de winkel dicht. Je hoort de klink, en als je eraan voelt, geeft hij niet mee. Klem.',
-          'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer. Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
+          'Het is koud hier. Kouder dan het zou moeten zijn. Aan een balk hangen vleeshaken op een rij, eentje leeg, zachtjes heen en weer.',
+          'Maar tussen het vlees hangt van alles wat hier niet hoort: bundels gedroogde kruiden, potjes met iets wat je liever niet van dichtbij bekijkt.',
+          'En op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
           'Ergens, je kunt niet zeggen waar, wordt een mes geslepen. Traag. Steeds opnieuw.',
           'Je wilt terug. De deur naar de winkel zit klem. Je rukt eraan, niks. De achterdeur naar de steeg dan. Op slot.',
-          'Je hart bonst tegen je ribben. Denk na, denk na. Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
+          'Je hart bonst tegen je ribben. Denk na, denk na.',
+          'Dan valt je oog op een vleespen aan de muur, echt zo\'n slagersgereedschap. Dun, scherp, net het soort ding waarmee je een slot kunt forceren. Je bent tenslotte niet voor niets slotenmaker.'
         ],
         acties: [{ label: 'Forceer het slot met de vleespen', onclick: function () { startLockpick(loc); } }]
       });
@@ -8390,7 +8467,8 @@ function renderH3Slagerij(loc) {
         });
       }
       return sfeer([
-        'Binnen slaat de kou je tegemoet. IJskoud, veel te koud voor een winkel. Aan de balk hangen de vleeshaken, eentje leeg. Tussen het vlees de gedroogde kruiden, de potjes, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
+        'Binnen slaat de kou je tegemoet. IJskoud, veel te koud voor een winkel. Aan de balk hangen de vleeshaken, eentje leeg.',
+        'Tussen het vlees de gedroogde kruiden, de potjes, en op de vloer, half onder het zaagsel, krijtstrepen in een vorm die je niet kunt plaatsen. Dit is geen gewone opslag.',
         'De slager is weg. Op het hakblok ligt niets. Het is schoongeveegd, veel te schoon.'
       ]);
     }
@@ -8406,7 +8484,8 @@ function renderH3Slagerij(loc) {
       });
     }
     return sfeer([
-      'Je glipt naar binnen terwijl de slager achterin bezig is. Op de toonbank liggen stukken vlees, strak gebonden met dun garen. Je kijkt er langer naar dan je zou moeten. Dat garen. Precies zulk garen als waarmee je een mond zou dichtnaaien.',
+      'Je glipt naar binnen terwijl de slager achterin bezig is. Op de toonbank liggen stukken vlees, strak gebonden met dun garen.',
+      'Je kijkt er langer naar dan je zou moeten. Dat garen. Precies zulk garen als waarmee je een mond zou dichtnaaien.',
       'Uit de achterkamer komt het geneurie dichterbij. Wegwezen, voor hij terugkomt.'
     ]);
   }
@@ -9107,7 +9186,8 @@ function renderH5Gemeentehuis(loc) {
         dialog: [
           { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, gespannen, met zijn blik strak op de ingang. Hé, is dat niet die fan van Fenna?', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
           'Je kijkt nog eens. Hij wacht duidelijk op iemand, en hij is bang dat die niet op tijd komt. Je onthoudt hem.',
-          { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan. Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.', onShow: function() { verbergNpcPop(); } }
+          { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan.', onShow: function() { verbergNpcPop(); } },
+          'Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
         ]
       });
     }
@@ -11101,8 +11181,11 @@ function renderDd8Stiltevijver(loc) {
   const popWeg        = function () { verbergNpcPop(); };
 
   // ── Sfeer & flarden ───────────────────────────────────────────
-  const SFEER1 =
-    'Bij de Stiltevijver staat een groepje mensen bijeen. Dit is de plek waar men heen gaat om iets te verwerken. Sinds het voorval eerder op de avond staan er meer dan anders: stille gezichten, een enkele die zacht praat, een paar die alleen maar naar het water staren.';
+  // In twee dialoogregels geknipt voor de leesbaarheid; overal samen gebruiken.
+  const SFEER1A =
+    'Bij de Stiltevijver staat een groepje mensen bijeen. Dit is de plek waar men heen gaat om iets te verwerken.';
+  const SFEER1B =
+    'Sinds het voorval eerder op de avond staan er meer dan anders: stille gezichten, een enkele die zacht praat, een paar die alleen maar naar het water staren.';
   const FLARDEN1 = [
     '"Ik wist niet waar ik anders heen moest vanavond."',
     '"Het is hier tenminste stil. Even niet nadenken."',
@@ -11163,7 +11246,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 2a — Fenna komt aan (vóór het zingen)
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Fenna-Viviènne', tekst: 'Al die droeve gezichten... Dít is precies waarvoor ik besta. Even geen drama, geen onderzoek, gewoon een lied. Dit is wat ik te geven heb.' }
       ],
@@ -11217,7 +11300,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 1 — vóór Fenna's optreden
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Kelly', tekst: 'Stille mensen, stil water. Niemand zegt veel. Wat deze mensen nodig hebben, kan ik niet geven, in elk geval niet met woorden. Hier hoort iemand te zíjn die dat wél kan.' }
       ]
@@ -11254,7 +11337,7 @@ function renderDd8Stiltevijver(loc) {
     // FASE 1
     return renderLocatieScene(Object.assign({}, base, {
       dialog: [
-        SFEER1,
+        SFEER1A, SFEER1B,
         pakFlard(FLARDEN1),
         { spreker: 'Jan', tekst: 'Veel bezorgde gezichten. Dit is geen plek om iets op te lossen. Dit is een plek waar mensen op adem komen. Iemand zou ze wat licht moeten brengen. Daar ben ik de man niet voor.' }
       ]
@@ -11326,7 +11409,7 @@ function renderDd8Stiltevijver(loc) {
     } else if (isLucinde) {
       return renderLocatieScene(Object.assign({}, base, {
         dialog: [
-          SFEER1,
+          SFEER1A, SFEER1B,
           'Naast Lucinde komt een oude vrouw staan. Ze staart over het water en begint te praten zonder haar aan te kijken, zoals oude mensen doen tegen wie ze vertrouwen.',
           { spreker: 'Oude vrouw', tekst: 'De man van Nummer 10 stond hier vroeger elke avond. Roken, staren, net als wij nu. Al een heel seizoen niet meer gezien. Werk elders, zeggen ze.' },
           'Een stilte. Dan, zachter:',
@@ -11338,12 +11421,12 @@ function renderDd8Stiltevijver(loc) {
       f1 = { spreker: 'Felix', tekst: 'Een treurende menigte. Mooie dekmantel om ongezien rond te lopen. Maar dit volk heeft geen ondervraging nodig. Het heeft afleiding nodig. Iemand met een podiumstem.' };
     }
     return renderLocatieScene(Object.assign({}, base, {
-      dialog: [ SFEER1, pakFlard(FLARDEN1), f1 ]
+      dialog: [ SFEER1A, SFEER1B, pakFlard(FLARDEN1), f1 ]
     }));
   }
 
   // Onbekend personage — alleen sfeer
-  renderLocatieScene(Object.assign({}, base, { dialog: [ SFEER1 ] }));
+  renderLocatieScene(Object.assign({}, base, { dialog: [ SFEER1A, SFEER1B ] }));
 }
 
 // Fenna kiest "Vrolijk op en zing!" — ze zit nu vast.
@@ -12069,7 +12152,8 @@ function renderK1Naaldmasker(loc) {
     if (!skipDialog) {
       if (!hasVisited('jan_naaldmasker_bezoek')) {
         markVisited('jan_naaldmasker_bezoek');
-        dialog.push({ spreker: 'Madeleine', tekst: '*(kijkt op, bekijkt hem traag van schoenen tot kruin, glimlacht zonder warmte)* "Lang. Heel lang. Dat valt op in een straat, hè." *(zet de naald in de stof)* "Vooral \'s nachts. De daken, de lantaarns... en dan jij." *(kijkt hem recht aan)* "Ik onthoud lange mannen."' });
+        dialog.push({ spreker: 'Madeleine', tekst: '*(kijkt op, bekijkt hem traag van schoenen tot kruin, glimlacht zonder warmte)* "Lang. Heel lang. Dat valt op in een straat, hè."' });
+        dialog.push({ spreker: 'Madeleine', tekst: '*(zet de naald in de stof)* "Vooral \'s nachts. De daken, de lantaarns... en dan jij." *(kijkt hem recht aan)* "Ik onthoud lange mannen."' });
         dialog.push({ spreker: 'Jan', tekst: '*(ongemakkelijk)* "...ik kom hier voor het eerst, hoor."' });
         dialog.push({ spreker: 'Madeleine', tekst: '"Dat weet ik."' });
       } else {
@@ -14660,10 +14744,10 @@ function toonPopDialoog(stappen, callback) {
   overlay.id = 'pop-dialoog-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:550;pointer-events:none';
 
-  // Grootte per personage — zelfde als de echte pop-CSS
-  var POP_GROOTTES = {
-    'karakters/spelers/jan-pop.png':   { height: '78vh', maxHeight: '680px', marginBottom: '-8vh' },
-  };
+  // Grootte per personage, zelfde als de echte pop-CSS. Sinds Jans PNG is
+  // bijgesneden heeft niemand meer een afwijkende maat; de map blijft staan
+  // voor het geval een toekomstige pop er wel een nodig heeft.
+  var POP_GROOTTES = {};
   var POP_STANDAARD = { height: '55vh', maxHeight: '480px', marginBottom: '0' };
 
   function maakPop(zijde) {
@@ -15226,7 +15310,9 @@ function openVerborgenHand() {
     sub:      'Dorpsplein, een woonwagen met een mystiek symbool',
     image:    'locaties/dorpsplein/verborgenhandbinnen.jpeg',
     dialog: [
-      { spreker: 'Stazia', tekst: '"Welkom, kind. Kom bij mij als je vastloopt in een van de wijken, of als je op zoek bent naar voorwerpen van... bijzondere waarde. Soms kan ik daarbij helpen. Maar let wel: een fout antwoord op mijn verzoeken heeft altijd een vervelende prijs..."' },
+      { spreker: 'Stazia', tekst: '"Welkom, kind. Kom bij mij als je vastloopt in een van de wijken, of als je op zoek bent naar voorwerpen van... bijzondere waarde. Soms kan ik daarbij helpen."' },
+      { spreker: 'Stazia', tekst: '"Maar let wel: een fout antwoord op mijn verzoeken heeft altijd een vervelende prijs..."' },
+      { spreker: '⚠', tekst: 'Stazia\'s verzoeken zijn een zijspoor: ze kunnen je helpen als je vastzit, maar ook vertragen. Houd haar met een schuin oog in de gaten en begin er pas aan als je er echt klaar voor bent.' },
       { spreker: 'Stazia', tekst: '"Klik hierboven waar je hulp bij nodig hebt."', onShow: function() {
         // Strip omhoog laten schuiven zodra Stazia de instructie geeft
         var s = document.querySelector('.vh-strip');
@@ -15297,7 +15383,8 @@ function kiesDistrictWaarzegster(district, unlocked, afgerond) {
   if (district === 'schaduw') {
     const dialog = [
       { spreker: 'Stazia', tekst: '*(haar ogen worden donkerder, alsof het licht in de wagen zelf terugdeinst)* "Ah. Dus jij draagt hem ook."' },
-      { spreker: 'Stazia', tekst: '"De rozen dragen meer dan schoonheid. Wie zwicht, wie zich laat verleiden tot iets kleins en donkers, wordt er net zo makkelijk door geraakt als wie oog in oog staat met een heks. Zij geven de vloek, ja... maar niet altijd bewust. Niet altijd willens."' }
+      { spreker: 'Stazia', tekst: '"De rozen dragen meer dan schoonheid. Wie zwicht, wie zich laat verleiden tot iets kleins en donkers, wordt er net zo makkelijk door geraakt als wie oog in oog staat met een heks."' },
+      { spreker: 'Stazia', tekst: '"Zij geven de vloek, ja... maar niet altijd bewust. Niet altijd willens."' }
     ];
     // Als de apotheker-quest actief is: hint naar de Kraal van Beengiht.
     // Het zien van deze hint maakt Mevr. van Wallingen "thuis" (shared).
@@ -17844,6 +17931,23 @@ function pfToon(id, naam) {
 }
 function pfToonPop(naam) { pfToon('pf-pop', naam); }
 function pfToonZij(naam) { pfToon('pf-zij', naam); }
+// Het zij-slot centraal achter de roos zetten (vanaf de Monsters-beat)
+// of terug naar zijn gewone plek. Een zichtbare pop gaat even kort dicht
+// zodat hij niet zichtbaar over het scherm verspringt.
+function pfZijMidden(aan) {
+  var el = pfSlotEl('pf-zij');
+  aan = !!aan;
+  if (el.classList.contains('pf-zij-midden') === aan) return;
+  if (el.style.opacity === '1') {
+    el.style.opacity = '0';
+    setTimeout(function () {
+      el.classList.toggle('pf-zij-midden', aan);
+      el.style.opacity = '1';
+    }, 460);
+  } else {
+    el.classList.toggle('pf-zij-midden', aan);
+  }
+}
 // Een pop laat in as uiteenvallen: vergrijzen, vervagen, zakken.
 function pfVerval(id) {
   var el = document.getElementById(id);
@@ -18006,7 +18110,7 @@ function pleinFinaleIntro() {
       { spreker: 'Aleida', tekst: '*(wijst naar Jan)* Jouw handen van papier maken, Slotenmaker?', onShow: function () { pfToonPop('aleida'); } },
       { spreker: 'Hilketrude', tekst: '*(wijst naar Kelly)* Met blindheid is het lastig lezen, hè frutje?', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Aleida', tekst: '*(wijst naar Fenna)* En jij, zielig ding, zingen gaat straks ook voor jou over zijn.', onShow: function () { pfToonPop('aleida'); } },
-      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); } },
+      { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); pfZijMidden(true); } },
       { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); pfWisselTrack('plein-omslag.mp3', PF_BG_VOLUME); } },
       { spreker: 'Hilketrude', tekst: 'Sybille! Kind! Je bent er... Fijn, nu kun...', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Sybille', tekst: '*(roept naar jullie)* Pak ze vast!', onShow: function () { pfToonPop(null); } }
@@ -18017,6 +18121,7 @@ function pleinFinaleIntro() {
         // armen-selectie; de muziek loopt door. Deel 2 zet ze weer neer.
         pfToonPop(null);
         pfToonZij(null);
+        pfZijMidden(false);
         pfToonRoos(false);
         pfZetCinema(false);
         podiumVerhaalKlaarGedrukt();
@@ -18037,6 +18142,10 @@ function pleinFinaleNaArmen() {
   }
   dempMuziek();
   pfRoosReset();
+  // Het zij-slot toont hier de heksen weer op zijn gewone plek links; de
+  // midden-stand uit deel 1 mag dan niet meer aanstaan (ook bij een losse
+  // start via het debug-paneel).
+  pfZijMidden(false);
   pfZetCinema(true);
   // Normaal loopt de omslag-track hier al sinds Sybilles onthulling; bij
   // een losse start (debug) staat er nog niets aan, dan alsnog starten.
@@ -18144,20 +18253,22 @@ function buildDebugPanel() {
       ['🤝 Kelly is gered door Jan',  function(){
         markVisited('kelly_gered');
         close();
-        // Zelfde reunie-dialoog als de echte flow (speelPutReunie). Hier
-        // stonden losse lade-teksten die de redding navertelden: een tweede,
-        // verouderde versie van dezelfde scene.
+        // Zelfde reünie als in het echte spel (speelPutReunie: tweezijdige
+        // pop-dialoog met Kelly en Jan links en rechts). Hier stond nog een
+        // oude toonLade-versie die uit de pas liep met de echte flow. De
+        // reünie heeft de open put-scene nodig (hij ruimt de scene-dialoog
+        // op en keert daarna terug); elders alleen de vlag zetten.
         var p = state.personage;
-        var bijPut = state.lastOpenedLocatie === 'k1_dorpsput' &&
-          document.getElementById('screen-locatie').classList.contains('active');
-        if (bijPut && (p === 'kelly' || p === 'jan')) {
+        var opLocatie = document.getElementById('screen-locatie').classList.contains('active');
+        var bijPut = opLocatie && state.lastOpenedLocatie === 'k1_dorpsput';
+        if ((p === 'kelly' || p === 'jan') && bijPut && typeof speelPutReunie === 'function') {
           speelPutReunie();
-        } else if (document.getElementById('screen-locatie').classList.contains('active')) {
+        } else if (opLocatie) {
           refresh();
         }
       }, true, 'Kelly & de put'],
       // ── Beginnersmodus (kaartje)
-      ['🗺️ Beginnersmodus aan/uit', function(){ zetBeginnerModus(!window._beginnerModus); close(); var s=document.getElementById('screen-kwartier1'); if (s && s.classList.contains('active')) showScreen('screen-kwartier1'); }, true, 'Beginnersmodus'],
+      ['🗺️ Beginnersmodus aan/uit', function(){ zetBeginnerModus(!window._beginnerModus); close(); ['screen-kwartier1','screen-dorendael','screen-sintdonatuslaan'].forEach(function(sid){ var s=document.getElementById(sid); if (s && s.classList.contains('active')) showScreen(sid); }); }, true, 'Beginnersmodus'],
       ['↺ Kaart-uitleg opnieuw tonen', function(){ state.visited.delete('kraai_kaart_intro_gezien'); close(); var s=document.getElementById('screen-kwartier1'); if (s && s.classList.contains('active')) showScreen('screen-kwartier1'); }, true, 'Beginnersmodus'],
       // ── Kelly & de hand (Naald en Masker)
       ['✋ Kelly: start hand-mini-game', function(){ close(); window._kellyHandGevolg = true; if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.startHandRitueel) { window.ZilverweideSchaduw.startHandRitueel({ eyebrow: 'Een schim en stemmen in je hoofd dringen zich op', onKlaar: kellyVoorbodeNaRitueel }); } }, p === 'kelly', 'Kelly & de hand'],
@@ -19619,7 +19730,8 @@ function renderDd6Bord(loc) {
   if (p === 'jan') {
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Een houten bord op een paaltje, letters in het hout gebrand: VERBODEN TOEGANG — DE OUDE MOLEN. Daarachter een onverhard pad dat verdwijnt tussen kromme bomen. In de verte de molen: één wiek scheef, het dak half ingestort, zwarte vlekken waar ooit vuur was.',
+        'Een houten bord op een paaltje, letters in het hout gebrand: VERBODEN TOEGANG — DE OUDE MOLEN. Daarachter een onverhard pad dat verdwijnt tussen kromme bomen.',
+        'In de verte de molen: één wiek scheef, het dak half ingestort, zwarte vlekken waar ooit vuur was.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Verboden toegang. Altijd een goede reden om juist te gaan.' },
         'Er hangt iets in de lucht. Niet alleen de geur — iets in de stilte. Geen vogels. Geen krekels. Niets.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Het is hier te stil. Veel te stil voor een bos.' }
@@ -19831,7 +19943,8 @@ function renderMolenKellyDeel2(loc) {
     dialog: [
       { spreker: 'Kelly', tekst: '*(in gedachten)* Voor wie was dit ooit? Zo klein. Zo lief gemaakt. Iets wat een vader voor zijn dochter zou maken. Voor haar eerste schooldag, misschien.' },
       'Achter haar een schrapend geluid. Dichterbij nu. Maar haar oog valt op iets anders.',
-      'Aan de muur, half tegen een verkoolde balk, hangt een pop. Van stof, met de hand genaaid. In de borst steken twaalf naalden in een keurige cirkel. Eronder een streng donker haar, lang, gevlochten alsof iemand er zorg aan besteedde.',
+      'Aan de muur, half tegen een verkoolde balk, hangt een pop. Van stof, met de hand genaaid.',
+      'In de borst steken twaalf naalden in een keurige cirkel. Eronder een streng donker haar, lang, gevlochten alsof iemand er zorg aan besteedde.',
       'Op een verkoolde balk verderop is iets gekrast, onhandige letters, alsof iemand met een spijker werkte: "voor jou".',
       { spreker: 'Kelly', tekst: '*(in gedachten)* Iemand heeft hier iets verschrikkelijks gedaan. Met iemand die ze liefhadden. Een dochter, misschien? Wie doet dit met een kind?' },
       'In een hoek tegen de muur een hoopje stof, daaronder iets blekers. Een botfragment. Te klein om te identificeren. Maar het is daar.',
@@ -20154,7 +20267,8 @@ function renderDd7Klokkenmaker(loc) {
     if (!janMetAfdrukGeweest && !lolaCodeKlaar) {
       return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lola loopt langs een winkeltje dat volhangt met klokken — slingers, wijzerplaten, getik achter het glas. Achter het raam staat een man haar na te staren. Zijn loep zakt van zijn oog, zijn mond valt half open; wat hij vasthoudt lijkt hij volledig vergeten.',
+          'Lola loopt langs een winkeltje dat volhangt met klokken — slingers, wijzerplaten, getik achter het glas.',
+          'Achter het raam staat een man haar na te staren. Zijn loep zakt van zijn oog, zijn mond valt half open; wat hij vasthoudt lijkt hij volledig vergeten.',
           { tekst: 'Hij blijft kijken tot ze bijna uit zicht is, met een blik die maar één ding kan betekenen.', onShow: function() { setTimeout(function(){ toonNpcPop(klokkenmakerPop()); }, 120); } },
           { spreker: 'Lola', tekst: '*(in gedachten)* Zal wel de klokkenmaker zijn. Qué raro, die man. Helemaal betoverd — net als de rest. Claro: Lola Ramirez maakt alle mannen wild.' }
         ] });
@@ -22365,9 +22479,19 @@ function updateFirebaseBolletje() {
   // Zelfde sessie-bron als de resets hierboven (getSessieId bestaat niet).
   var sessieId = _sharedSessieId || 'test';
   if (!sessieId) { btn.textContent = '⚪'; return; }
-  firebase.database().ref('sessies/' + sessieId).once('value').then(function (snap) {
-    btn.textContent = snap.exists() ? '🔴' : '🟢';
-    btn.title = snap.exists() ? 'Firebase bevat data (klik om te resetten)' : 'Firebase is leeg (schone sessie)';
+  // Bewust NIET de hele sessie-node lezen: de /log-tak (telemetrie) wordt al
+  // bij elke paginaload geschreven, waardoor het bolletje anders meteen na een
+  // reset + reload weer rood is terwijl er geen speler en geen gedeelde stand
+  // is. Alleen echte sessie-data telt: /shared (gedeelde stand, rol_bezet) en
+  // /spelers (herstelpunten).
+  var _db = firebase.database();
+  Promise.all([
+    _db.ref('sessies/' + sessieId + '/shared').once('value'),
+    _db.ref('sessies/' + sessieId + '/spelers').once('value')
+  ]).then(function (snaps) {
+    var heeftData = snaps[0].exists() || snaps[1].exists();
+    btn.textContent = heeftData ? '🔴' : '🟢';
+    btn.title = heeftData ? 'Firebase bevat data (klik om te resetten)' : 'Firebase is leeg (schone sessie)';
   }).catch(function () { btn.textContent = '⚪'; });
 }
 // Testknop: rechtstreeks naar het kerkarchief, de scène die normaal pas komt
@@ -22960,7 +23084,10 @@ function toonStemmenStil(stil) {
 }
 .magisch-tekst{
   font-family:'Crimson Text',Georgia,serif; font-style:italic;
-  font-size:clamp(.9rem,2.2vh,1.15rem); line-height:1.5;
+  /* Vergroot voor leesbaarheid op de tablets (ijkscherm 11 inch Galaxy Tab,
+     ~745px hoog: 2.6vh is daar ~19px). De clamp-ondergrens beschermt
+     telefoons, de bovengrens brede desktops. */
+  font-size:clamp(1rem,2.6vh,1.35rem); line-height:1.5;
   color:var(--parchment); margin:0 0 clamp(.4rem,1.2vh,.8rem);
 }
 .magisch-getal{
@@ -22974,7 +23101,10 @@ function toonStemmenStil(stil) {
 .magisch-regel{
   display:flex; align-items:flex-start; gap:.7rem; text-align:left;
   font-family:'Crimson Text',Georgia,serif;
-  font-size:clamp(.82rem,2vh,1.05rem); line-height:1.4;
+  /* Zelfde vergroting als .magisch-tekst hierboven; de box heeft
+     overflow:hidden, dus bij twijfel het district met de meeste regels
+     nakijken op afgekapte tekst. */
+  font-size:clamp(.9rem,2.5vh,1.3rem); line-height:1.4;
   color:var(--parchment);
   animation:magischRegelIn .8s ease backwards;
 }
