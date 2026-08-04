@@ -582,3 +582,50 @@ De heks-gok zelf speelt op het podium op het Dorpsplein, niet hier.
 4. De heks-gok (wie is de heks van het Kraaienkwartier) speelt op het podium
    op het Dorpsplein en staat daarom niet in dit overzicht; de finale bij
    Nummer 7 (gate, overleg, Ava, filmpje) wel.
+
+---
+
+## Stappenplan per speler
+
+Het Kraaienkwartier is klaar zodra het team vier eindsleutels heeft verzameld:
+het dagboek leesbaar (Kelly), Sleutel Wallingen (Felix), Robbie staat klaar
+(Fenna) en de kromme speld (Jan). Elke speler heeft zijn eigen keten, maar de
+spelers hebben elkaar op twee plekken nodig (de put en de finale).
+
+### Jan (slotenmaker)
+
+1. Ga naar de Uitkijktoren (K3). De deur zit op slot; naast de drempel ligt een kromme speld. Pak hem op en open het slot met de lockpick-minigame. Je houdt de Kromme Speld: dit is de eindsleutel "Jan kan sommige deuren kraken".
+2. Klim de toren op voor het uitzicht. Boven krijg je observaties (hints over het archief, het podium en, na de hint van de Verborgen Hand, de kraaientelling).
+3. Ga naar de Dorpsput (K5) zodra Kelly erin is gevallen: je hoort haar om hulp roepen. Klik "Help Kelly uit de put"; de code verschijnt op jouw scherm. Roep hem hardop naar Kelly, zodat zij hem op haar tablet kan invullen.
+
+### Kelly (onderzoeker)
+
+1. Ga naar de Dorpsput (K5) en loop dichterbij. Je valt erin en vindt op de bodem het Nat Dagboek. Pak het op.
+2. Je zit vast en komt er niet alleen uit: roep je team. Jan geeft je de code door; vul die in om eruit te komen.
+3. Draag het Nat Dagboek naar het Dorpsarchief (Dorpsplein). De archivaris restaureert het. Dit levert de eindsleutel "Het dagboek leesbaar" op.
+4. Bekijk in het archief het dagboek-filmpje. Dat is de voorwaarde die de heks-gok op het podium vrijgeeft. Vertel je team dat het dagboek nu voor iedereen leesbaar is.
+5. Let op bij Naald en Masker (K8): Madeleine's hand-moment leidt tot de schaduw-voorbode. Voor de voortgang van het Kraaienkwartier hoef je daar niet naar binnen.
+
+### Fenna-Viviènne (zangeres)
+
+1. Ga naar Nummer 5 (K7) en klop aan bij Robbie. Hij wil dolgraag dat je voor hem zingt, maar zonder microfoon lukt dat niet.
+2. Ga naar het Dorpsplein, achter het podium, en pak daar de microfoon op.
+3. Ga terug naar Robbie en zing het lied (lied-doolhof). Bij succes krijg je de eindsleutel "Robbie staat klaar": hij belooft de groep te helpen.
+
+### Felix / De Vos (spion)
+
+1. Ga naar de Dorpsput (K5). Daar staat Tobbe, de weggelopen knecht. Neem hem mee.
+2. Breng Tobbe terug naar Stoop de Groenteboer (K2) en neem de beloning aan: de Munten van Stoop.
+3. Ga naar Naald en Masker (K8) en koop met die munten de Lucinde-outfit bij Madeleine.
+4. Verkleed je (bij voorkeur in het pashokje van de winkel) als Mevr. Lucinde.
+5. Ga als Lucinde naar De Nachtenwens (K4), naar Mevr. van Wallingen. Ontvang haar informatie: dit levert de eindsleutel "Sleutel Wallingen" op, die het hele team krijgt.
+
+### Samen: de finale
+
+Zodra de vier eindsleutels binnen zijn en ten minste één speler het
+dagboek-filmpje in het archief heeft bekeken:
+
+1. Ga naar het podium op het Dorpsplein. Eén speler claimt het stemrecht en wijst de heks aan. Het juiste antwoord is de Man van Nummer 7.
+2. Ga met z'n vieren naar Nummer 7 (K6) en wacht tot alle vier aanwezig zijn (de aanwezigheids-gate).
+3. Doorloop het overleg (het plan van Wallingen), waarna Fenna Robbie ophaalt als afleiding, jullie achterom naar Ava sluipen en het filmpje bekijken.
+4. Na het filmpje wijst Ava richting Dorendael. Dorendael wordt ontgrendeld op de kaart.
