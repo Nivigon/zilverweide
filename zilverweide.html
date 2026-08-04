@@ -18144,25 +18144,16 @@ function buildDebugPanel() {
       ['🤝 Kelly is gered door Jan',  function(){
         markVisited('kelly_gered');
         close();
+        // Zelfde reunie-dialoog als de echte flow (speelPutReunie). Hier
+        // stonden losse lade-teksten die de redding navertelden: een tweede,
+        // verouderde versie van dezelfde scene.
         var p = state.personage;
-        if (p === 'kelly') {
-          // Kelly ziet de redding vanuit haar perspectief
-          var nogGegniffel = !tobbeIsWeg();
-          var uitleg = nogGegniffel
-            ? 'Jan buigt zich over de rand en trekt je eruit. Je bent doorweekt en vies, maar blij. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em> Jan kijkt om zich heen. <em>"He maar Kel, hoor je dat gegniffel ook?"</em>'
-            : 'Jan buigt zich over de rand en trekt je eruit. Je bent doorweekt en vies, maar blij. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em>';
-          toonNpcPop('karakters/spelers/jan-pop.png');
-          toonLade('🤝  Kelly is gered', '<p style="font-size:1rem;color:var(--parchment);line-height:1.7">' + uitleg + '</p>', 'Verder \u2192', goBackFromLocatie);
-        } else if (p === 'jan') {
-          // Jan trekt Kelly eruit
-          var nogGegniffel2 = !tobbeIsWeg();
-          var uitleg2 = nogGegniffel2
-            ? '*(buigt over de rand)* <em>"Kelly?! Hou vol, ik ben er."</em> Je trekt haar omhoog. Kelly is vies en bespringt je van blijdschap. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em> Je kijkt om je heen. <em>"He maar Kel, hoor je dat gegniffel ook?"</em>'
-            : '*(buigt over de rand)* <em>"Kelly?! Hou vol, ik ben er."</em> Je trekt haar omhoog. Kelly is vies en bespringt je van blijdschap. <em>"Hohoho graag gedaan, maar misschien moet je je eerst even afborstelen boekenwurm."</em>';
-          toonNpcPop('karakters/spelers/kelly-pop.png');
-          toonLade('🤝  Kelly is gered', '<p style="font-size:1rem;color:var(--parchment);line-height:1.7">' + uitleg2 + '</p>', 'Verder \u2192', goBackFromLocatie);
-        } else {
-          if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
+        var bijPut = state.lastOpenedLocatie === 'k1_dorpsput' &&
+          document.getElementById('screen-locatie').classList.contains('active');
+        if (bijPut && (p === 'kelly' || p === 'jan')) {
+          speelPutReunie();
+        } else if (document.getElementById('screen-locatie').classList.contains('active')) {
+          refresh();
         }
       }, true, 'Kelly & de put'],
       // ── Beginnersmodus (kaartje)
@@ -18260,6 +18251,20 @@ function buildDebugPanel() {
       ['💧 Fenna zit bij vijver',    function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && p === 'fenna' && !inWoudWinScreen, 'Vijver & Meisje'],
       ['💧 Fenna wacht op code (meisje er)', function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && !inWoudWinScreen, 'Vijver & Meisje'],
       ['💧 Fenna bevrijd + meisje',  function(){ debugFennaVijverBevrijd(); close(); }, !fennaVrij && !inWoudWinScreen, 'Vijver & Meisje'],
+      ['🤝 Fenna geholpen (reünie)', function(){
+        debugFennaVijverBevrijd();
+        close();
+        // Speelt de echte reunie-dialoog af, zoals wanneer Fenna de code
+        // van Kelly invoert. Buiten de vijver alleen de flags zetten.
+        var bijVijver = state.lastOpenedLocatie === 'dd8_stiltevijver' &&
+          document.getElementById('screen-locatie').classList.contains('active');
+        if (bijVijver && (p === 'fenna' || p === 'kelly')) {
+          speelVijverReunie();
+        } else if (bijVijver) {
+          var l = locatiesDorendael.find(function(x){ return x.id === 'dd8_stiltevijver'; });
+          if (l) renderDd8Stiltevijver(l);
+        }
+      }, !fennaVrij && !inWoudWinScreen, 'Vijver & Meisje'],
       ['👧 Meisje afgeleverd',       function(){ debugMeisjeAfgeleverd(); close(); }, !meisjeBinnen && !inWoudWinScreen, 'Vijver & Meisje'],
       // ── Muziekdoos / Archief
       ['🎵 Kelly krijgt muziekdoos', function(){ debugKellyMuziekdoos(); close(); }, !muziekHeeft && !muziekKlaar && p === 'kelly' && !inWoudWinScreen, 'Muziekdoos & Archief'],
