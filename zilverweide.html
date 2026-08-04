@@ -10026,8 +10026,8 @@ function renderDd2Nummer2(loc) {
         { spreker: '⚠ Waarschuwing', tekst: 'Denk goed na over wat je kiest.' }
       ],
       acties: [
-        { label: 'Ik wacht wel even of er iemand komt', onclick: dd2WachtOpBewoner },
-        { label: 'Pak de zak en ga',                     onclick: dd2SteelDeZak, stijl: 'blood' }
+        { label: 'Pak de zak op en blijf staan', onclick: dd2WachtOpBewoner },
+        { label: 'Grijp de zak en ren',          onclick: dd2SteelDeZak }
       ]
     });
     return;
@@ -10135,8 +10135,8 @@ function dd2WachtOpBewoner() {
   const c = document.getElementById('locatie-content');
   let secs = 15;
   let html = '<h3>🏚️ Nummer 2</h3>';
-  html += '<div class="sub">Je wacht in de stilte van het verlaten huis</div>';
-  html += '<p style="margin-top:1.5rem;color:var(--mist);font-style:italic">Felix wacht...</p>';
+  html += '<div class="sub">Je staat doodstil, de zak munten in je handen</div>';
+  html += '<p style="margin-top:1.5rem;color:var(--mist);font-style:italic">Je kijkt naar de zak in je handen. Had ik toch moeten rennen?</p>';
   html += '<div id="dd2-timer" style="margin-top:1.5rem;font-family:Cinzel,serif;font-size:2.5rem;color:var(--gold);text-align:center;text-shadow:0 0 20px rgba(201,168,76,.6)">' + secs + '</div>';
   c.innerHTML = html;
 
@@ -10186,26 +10186,67 @@ function dd2BewonerVerschijnt() {
 
   if (alsLucinde) {
     // Bewoner ziet een oud vrouwtje en denkt aan een vergissing
-    html += '<div class="npc-line" style="margin-top:1.5rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Ach mevrouw... bent u de weg kwijt? Maakt u zich geen zorgen — zo&#39;n vriendelijke dame zou nooit opzettelijk met mijn centen aan de haal gaan."</em></div></div></div>';
-    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij drukt je vriendelijk de zak in je handen en wuift je weg.</p>';
+    html += '<div class="npc-line" style="margin-top:1.5rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Ach mevrouw... bent u de weg kwijt? Maakt u zich geen zorgen, zo&#39;n vriendelijke dame zou nooit opzettelijk met mijn centen aan de haal gaan."</em></div></div></div>';
+    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij wuift je vriendelijk weg, de zak nog in je handen.</p>';
     html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Maar blijf na donker bij de molen vandaan, mevrouw. Er zit iets. Een beest, zeggen sommigen. Een zwerver, zeggen anderen. En mijn buurvrouw fluistert dat het helemaal geen mens is. Ik weet het niet. Niemand weet het. Alleen dat je er \'s nachts beter niet gaat kijken."</em></div></div></div>';
   } else {
     // De Vos: blufpoker, snel weer weg
-    html += '<p style="margin-top:1.5rem">De voetstappen komen dichterbij. De Vos haalt diep adem, recht zijn rug, en stapt naar voren — voor de bewoner hem kan aanspreken.</p>';
-    html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">🕵️</div><div><div class="npc-name">De Vos</div><div class="npc-text"><em>"Goedenavond. Ik kom namens de heer *(mompelt iets onverstaanbaars)*. U had nog huur openstaan."</em></div></div></div>';
-    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Zonder op een antwoord te wachten draait hij zich om, pakt de zak op, en is weg voor de bewoner een woord kan uitbrengen. Spionnentactiek.</p>';
+    html += '<p style="margin-top:1.5rem">De voetstappen komen dichterbij. De Vos verroert zich niet, de zak munten nog gewoon in zijn handen. Hij recht zijn rug en stapt de bewoner tegemoet, voor die iets kan zeggen.</p>';
+    html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">🕵️</div><div><div class="npc-name">De Vos</div><div class="npc-text"><em>"Goedenavond. Ik kom namens de heer *(mompelt iets onverstaanbaars)*. U had nog huur openstaan. Ik neem het meteen even mee."</em></div></div></div>';
+    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Zonder op een antwoord te wachten draait hij zich om en wandelt naar buiten, de zak nog in zijn handen, voor de bewoner een woord kan uitbrengen. Spionnentactiek.</p>';
   }
 
-  html += '<button class="btn btn-full" style="margin-top:1.5rem" onclick="showScreen(\'screen-dorendael\')">← Terug naar Dorendael</button>';
+  html += '<button class="btn btn-full" style="margin-top:1.5rem" onclick="dd2StraatMunten(false)">Verder →</button>';
   c.innerHTML = html;
 }
 
 function dd2SteelDeZak() {
   markVisited('felix_dd2_gestolen');
   geefItem('💰', 'Munten van de Bewoner');
+  // Ook bij grissen komt Bart binnen: Felix ziet hem (dezelfde pop, zodat hij
+  // hem later herkent), maar nu met lichte paniek en iets onheilspellends aan
+  // Bart. De vloek slaat pas buiten toe (dd2VloekBuiten), zodat de bewoner
+  // altijd in beeld is geweest.
+  toonCharPop(null);
+  toonNpcPop('karakters/dorendael/bartintens-pop.png');
+  const c = document.getElementById('locatie-content');
+  let html = '<h3>🏚️ Nummer 2</h3>';
+  html += '<div class="sub">Er komt iemand binnen...</div>';
+  html += '<p style="margin-top:1.5rem">De voetstappen. Te snel. De bewoner staat ineens in de deuropening, en er is iets aan hem. Iets kouds, iets dat niet klopt.</p>';
+  html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">🕵️</div><div><div class="npc-name">De Vos</div><div class="npc-text"><em>"Goedenavond! Ik kom namens de heer *(mompelt iets onverstaanbaars)*. Huur, openstaand, ik neem het mee."</em></div></div></div>';
+  html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij wacht niet op antwoord. De deur uit, de straat op, de zak tegen zijn borst geklemd, hart bonkend. Dat ging net goed. Of net niet.</p>';
+  html += '<button class="btn btn-full" style="margin-top:1.5rem" onclick="dd2StraatMunten(true)">Verder →</button>';
+  c.innerHTML = html;
+}
+
+// Straat vóór Nummer 2, na de keuze. Beide takken eindigen hier met dezelfde
+// muntenvraag. Bij diefstal (vervloekt=true) volgt de "maar plots..."-knop die
+// De Schaduw laat toeslaan; de terugknop is dan bewust weg (geenTerug), zodat
+// de speler niet terug het huis in kan glippen.
+function dd2StraatMunten(vervloekt) {
+  verbergNpcPop();
+  verbergCharPop();
+  const cont = document.getElementById('locatie-content');
+  renderLocatieScene({
+    container: cont,
+    titel:    'Nummer 2',
+    sub:      'Buiten op straat',
+    image:    'locaties/dorendael/Nummer2.jpeg',
+    geenTerug: true,
+    dialog: [
+      'Je staat weer buiten, de zak munten in je handen.',
+      { spreker: 'Felix', tekst: 'Wat kan ik ook alweer met die munten...?' }
+    ],
+    acties: vervloekt
+      ? [ { label: 'maar plots...', onclick: dd2VloekBuiten } ]
+      : [ { label: '← Terug naar Dorendael', onclick: function () { showScreen('screen-dorendael'); } } ]
+  });
+}
+
+// De vloek slaat buiten toe. De Schaduw-onboarding speelt bovenop; daaronder
+// zetten we Dorendael vast zodat de speler na de uitleg daar uitkomt.
+function dd2VloekBuiten() {
   geefItem('🌑', 'De Schaduw');   // → vloek-onboarding (zwart intro + uitleg-popup)
-  // De onboarding speelt bovenop; daaronder zetten we vast de bestemming,
-  // zodat de speler na het sluiten van de uitleg op Dorendael uitkomt.
   showScreen('screen-dorendael');
 }
 
@@ -12146,7 +12187,7 @@ function renderK1Naaldmasker(loc) {
     } else {
       acties = [
         { label: '✋ Geef je hand',          onclick: kellyGeeftHand },
-        { label: '🚫 Trek je hand terug',    onclick: kellyWeigertHand, stijl: 'blood' }
+        { label: '🚫 Trek je hand terug',    onclick: kellyWeigertHand }
       ];
     }
   }
@@ -18399,6 +18440,8 @@ function buildDebugPanel() {
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
       ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
+      ['🏚️ DD2 straat + vloek (maar plots...)', function(){ showScreen('screen-locatie'); dd2StraatMunten(true); close(); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
+      ['🏚️ DD2 straat (eerlijk, geen vloek)',   function(){ showScreen('screen-locatie'); dd2StraatMunten(false); close(); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
       // ── De twee poppen met naalden
       ['🪡 Pak de naalden van Nummer 2', function(){ pakNaaldenUitPop('dd2_naalden_gepakt', null); close(); }, !getSharedState('dd2_naalden_gepakt'), 'Naalden'],
       ['🪡 Pak de naalden van de molen', function(){ pakNaaldenUitPop('molen_naalden_gepakt', null); close(); }, !getSharedState('molen_naalden_gepakt'), 'Naalden'],
