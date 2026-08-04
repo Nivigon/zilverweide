@@ -904,10 +904,8 @@ body.woudscene-actief .finale-btn{display:none !important;}
    beeld zodat de NPC linksom naar het midden kijkt. */
 #npc-pop{position:fixed;bottom:0;right:0;z-index:150;pointer-events:none;opacity:0;transition:opacity .5s ease}
 #npc-pop img{display:block;height:55vh;max-height:480px;width:auto;filter:drop-shadow(-4px 4px 16px rgba(0,0,0,.7));transform:scaleX(-1)}
-/* Jan's PNG is wijder ingekaderd dan de andere personages — we vergroten
-   'm hier in CSS zodat hij ongeveer dezelfde lichaamsmaat in beeld toont.
-   Hij wordt iets uit beeld geschoven aan de onderkant, net als Kelly. */
-#char-pop img.pop-jan{height:78vh;max-height:680px;margin-bottom:-8vh}
+/* Jans PNG is inmiddels net zo strak ingekaderd als de andere personages
+   (bijgesneden), dus hij gebruikt gewoon de standaardmaat hierboven. */
 #char-bubble{position:absolute;left:75%;bottom:65%;max-width:280px;background:#f5ead6;color:#1a1208;font-family:'Crimson Text',Georgia,serif;font-size:1rem;line-height:1.4;padding:.85rem 1.1rem;border-radius:18px;box-shadow:0 6px 20px rgba(0,0,0,.5);display:none;animation:bubblePopIn .4s cubic-bezier(.34,1.56,.64,1) .35s both;font-style:normal}
 #char-bubble::after{content:'';position:absolute;bottom:-12px;left:24px;width:0;height:0;border:12px solid transparent;border-top-color:#f5ead6;border-bottom:0;border-left:0;transform:skewX(-15deg)}
 @keyframes bubblePopIn{0%{opacity:0;transform:scale(.7) translateY(10px)}100%{opacity:1;transform:scale(1) translateY(0)}}
@@ -1067,15 +1065,12 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   pointer-events:none;
 }
 #wt-pop-img.wt-zichtbaar{opacity:1}
-/* Jans PNG is wijder ingekaderd, zelfde correctie als bij char-pop. */
-#wt-pop-img.pop-jan{height:50vh;max-height:420px}
 /* Korte schermen (telefoon liggend): zelfde grens als de rest van het
    spel (zie de andere @media (max-height:520px)-blokken). De wacht-
    inhoud eronder is niet schaalbaar qua tekstgrootte, dus de pop moet
    hier extra plaats afstaan. */
 @media (max-height:520px){
   #wt-pop-img{height:26vh;max-height:220px;top:1.5vh}
-  #wt-pop-img.pop-jan{height:32vh;max-height:260px}
 }
 /* Extreem kort (telefoon liggend op de kleinste modellen): de vaste
    rollijst/spinner alleen al vult zo'n scherm bijna volledig. Geen
@@ -1444,7 +1439,6 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   #screen-locatie .sc-dialog-body { padding: .5rem .8rem !important; }
   #screen-locatie .sc-dialog-tekst { font-size: .9rem !important; line-height: 1.4 !important; }
   #char-pop img { height: 46vh !important; max-height: 240px !important; }
-  #char-pop img.pop-jan { height: 60vh !important; max-height: 300px !important; margin-bottom: -3vh !important; }
   /* NPC-pop krijgt dezelfde verkleining als de speler-pop hierboven. */
   #npc-pop img { height: 46vh !important; max-height: 240px !important; }
   /* toonPopDialoog (bv. de put-reünie): eigen los overlay-systeem, dus een
@@ -1558,33 +1552,10 @@ body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #scr
   font-size: .85rem !important;
   line-height: 1.28 !important;
 }
-/* Jan is beduidend groter dan de andere pops (pop-jan: 78vh/680px in plaats
-   van 55vh/480px), dus de reserve hierboven (geschaald op de standaard-
-   afmetingen) was te krap: op brede schermen (laptop, tablet-liggend) viel
-   de dialoogtekst onder zijn schouder. Gemeten (niet aangenomen): Jans pop
-   heeft een breedte/hoogte-verhouding van exact 2/3, dus bij zijn plafond
-   van 680px is de reserve 453px (680 * 2/3), en die schaalt mee met 0.78vh
-   * 2/3 = 0.52vh zolang de pop nog niet tegen het plafond zit. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
-}
-/* Deze Jan-regel en de dual-pop-regel hierboven hebben toevallig exact
-   dezelfde specificiteit (allebei één :has()-clausule met een ID erin,
-   respectievelijk twee simpelere :has()-clausules). Bij zo'n gelijke stand
-   wint de regel die later in het bestand staat, en dat was tot nu toe
-   steeds deze Jan-regel: zodra Jan met een NPC-pop tegelijk in beeld was,
-   werd de dual-pop-veilige reserve stilzwijgend genegeerd (gevonden bij
-   het Dorendael-onderzoek, Jan + Tobbe bij de woudpoort). Deze aparte
-   Jan-plus-dual-pop-regel heeft drie :has()-achtige onderdelen in plaats
-   van twee, dus altijd hogere specificiteit dan beide regels hierboven, en
-   wint dus gegarandeerd zodra Jan én een NPC-pop tegelijk actief zijn. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, min(34vw, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px))) !important;
-}
-/* Zelfde Jan-uitzondering voor de Verborgen Hand-districtenstrip. */
-body:has(#char-pop[style*="opacity: 1"] #char-pop-img.pop-jan) #screen-locatie.active .vh-strip {
-  padding-left: max(0px, calc(min(453px, var(--vh100) * 0.52) - 50vw + 410px)) !important;
-}
+/* Jans pop had hier vroeger drie eigen uitzonderingsregels omdat hij in CSS
+   groter werd gerenderd (78vh/680px). Zijn PNG is inmiddels bijgesneden en
+   hij gebruikt de standaardmaat, dus de generieke regels hierboven dekken
+   hem nu ook. */
 .heks-keuze-locked:hover { box-shadow: none; }
 .heks-keuze-locked:hover::before { opacity: .18 !important; }
 /* De speler-pop (links onder) valt over de eerste verdachte-tegel op het
@@ -14702,10 +14673,10 @@ function toonPopDialoog(stappen, callback) {
   overlay.id = 'pop-dialoog-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;z-index:550;pointer-events:none';
 
-  // Grootte per personage — zelfde als de echte pop-CSS
-  var POP_GROOTTES = {
-    'karakters/spelers/jan-pop.png':   { height: '78vh', maxHeight: '680px', marginBottom: '-8vh' },
-  };
+  // Grootte per personage, zelfde als de echte pop-CSS. Sinds Jans PNG is
+  // bijgesneden heeft niemand meer een afwijkende maat; de map blijft staan
+  // voor het geval een toekomstige pop er wel een nodig heeft.
+  var POP_GROOTTES = {};
   var POP_STANDAARD = { height: '55vh', maxHeight: '480px', marginBottom: '0' };
 
   function maakPop(zijde) {
