@@ -197,7 +197,7 @@ var startscherm = document.getElementById('ws-startscherm');
 startBtn.onclick = function () {
   startscherm.style.display = 'none';
   scene.start(function () {
-    console.log('Woudscène klaar, deel 4 (dialoog) volgt hierna in het echte spel.');
+    console.log('Woudscène klaar (in het echte spel volgt hier de eindpoort en het vervolg).');
   });
 };
 
@@ -247,6 +247,10 @@ var SLIDER_RIJEN = [
   { kop: 'Deel 4: de dialoog' },
   { label: 'Breedte dialoogbox (%)', pad: 'deel4.boxBreedte', min: 18, max: 60, step: 1 },
   { label: 'Fade per regel (ms)', pad: 'deel4.regelFadeDuur', min: 0, max: 1500, step: 50 },
+  { label: 'Leesduur: basis per regel (ms)', pad: 'deel4.leesBasis', min: 0, max: 4000, step: 100 },
+  { label: 'Leesduur: per teken (ms)', pad: 'deel4.leesPerTeken', min: 0, max: 150, step: 5 },
+  { label: 'Leesduur: minimum (ms)', pad: 'deel4.leesMin', min: 1000, max: 8000, step: 100 },
+  { label: 'Leesduur: maximum (ms)', pad: 'deel4.leesMax', min: 2000, max: 12000, step: 100 },
   { label: 'Dimming zwijgers', pad: 'deel4.dimSterkte', min: 0, max: 1, step: 0.05 },
   { label: 'Dim-ovaal breedte (%)', pad: 'deel4.dimBreedte', min: 5, max: 60, step: 1 },
   { label: 'Dim-ovaal hoogte (%)', pad: 'deel4.dimHoogte', min: 5, max: 90, step: 1 },
@@ -586,8 +590,9 @@ function padWaarde(obj, pad) {
     verversPlaatsMarkers();
   });
 
-  // Zonemodus vangt de klik in de capture-fase af, zodat een klik tijdens
-  // deel 4 wel een zone vastlegt maar niet ook de dialoog doorzet.
+  // Zonemodus vangt de klik in de capture-fase af. De dialoog loopt
+  // tegenwoordig vanzelf door (klikken doet daar niets meer), maar de
+  // capture blijft: zo kan geen enkel ander element de zone-klik opeisen.
   stageEl.addEventListener('click', function (ev) {
     if (!zonemodusAan) return;
     if (ev.target.closest('#ws-startscherm')) return;

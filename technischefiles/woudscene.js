@@ -18,10 +18,14 @@
                standaardwaarden.
 
    Deel 4 (de dialoog) speelt op het stilstaande a3: gloed en deeltjes
-   lopen door, elke klik zet één regel door, en na de laatste gesproken
-   regel volgt het wegvallen (geluid weg, beeld onscherp naar zwart, drie
-   korte app-teksten, stilte) en pas daarna onKlaar. Alle dialoogregels
-   staan als één lijst in DEFAULTS.dialoog.
+   lopen door. De dialoog loopt vanzelf door, zonder klikken, als een
+   film: elke regel blijft staan op basis van zijn lengte (deel4.leesBasis
+   plus leesPerTeken per teken, geklemd tussen leesMin en leesMax; een
+   regel kan met een eigen `duur` afwijken). Regels met alleen `pauze`
+   zijn stiltemomenten zonder tekst. Na de laatste gesproken regel volgt
+   het wegvallen (geluid weg, beeld onscherp naar zwart, korte
+   app-teksten, stilte) en pas daarna onKlaar. Alle dialoogregels staan
+   als één lijst in DEFAULTS.dialoog.
 
    opts.wachtVoorFinale (optioneel, functie): wordt aangeroepen vlak vóór
    het wegvallen, met (ga, meldStand). De scène wacht tot ga() geroepen
@@ -92,7 +96,12 @@
     },
     // Deel 1: aanloop door het donkere bos.
     deel1: {
-      duurMin: 18000, duurMax: 25000,     // richtduur van heel deel 1
+      // Vaste duur (min en max gelijk): de vier tablets starten de scène
+      // al tot ~1,5s na elkaar (poll-interval van het Klaar-poortje), en
+      // omdat de dialoog doorlopend is opgebouwd moet de rest van de
+      // scène overal even lang duren, anders groeit dat verschil en wordt
+      // het wachten bij de eindpoort onnodig lang.
+      duurMin: 21000, duurMax: 21000,     // duur van heel deel 1
       crossfadeDuur: 2200,                // overvloeiing tussen de 3 bosbeelden
       driftSchaal: 1.06,                  // minieme continue in/uit-drift per beeld
       driftDuur: 9000,
@@ -205,6 +214,13 @@
     deel4: {
       boxBreedte: 34,         // % van de schermbreedte, dus niet schermvullend
       regelFadeDuur: 400,     // ms in-/uitfaden van een regel
+      // Leesduur per regel: basis + (aantal tekens x leesPerTeken),
+      // geklemd tussen leesMin en leesMax. Richtlijn uit het scenario:
+      // ruim drie seconden voor een korte regel, vijf voor een lange.
+      leesBasis: 1600,        // ms vaste voet per regel
+      leesPerTeken: 45,       // ms extra per teken
+      leesMin: 3200,          // ms ondergrens (korte snauwen blijven leesbaar)
+      leesMax: 5200,          // ms bovengrens (lange regels blijven vlot)
       dimSterkte: 0.5,        // 0..1, hoe donker de twee zwijgende figuren worden
       dimBreedte: 26,         // % van de beeldbreedte, doorsnee van de dim-ovaal
       dimHoogte: 38,          // % van de beeldhoogte
@@ -222,43 +238,61 @@
     // wie: 'links' | 'midden' | 'rechts' (bepaalt waar de box staat en wie
     // er niet gedimd wordt) of 'app' (gecentreerde spelerstekst zonder box).
     // Er staan bewust geen namen in beeld: de speler leidt zelf af wie wie
-    // is. Beat 1 tot en met 8 klikken door; beat 9 loopt vanzelf af.
+    // is. Beat 1 tot en met 7 lopen vanzelf door (leesduur per regel, zie
+    // deel4); een regel met alleen `pauze` is een stiltemoment zonder
+    // tekst. Beat 9 is het wegvallen en heeft zijn eigen timing.
+    //
+    // Toon: `rechts` is warm tegen Sybille en koud tegen de spelers,
+    // nooit gemengd in één regel. `links` is vlak en zakelijk. `midden`
+    // is Sybille.
     //
     // Twee regels liggen vast en mogen niet zomaar herschreven worden:
-    //   * "avonden wegblijft" in beat 5 (hier hangt de eindfinale aan)
-    //   * "kind" in beat 6 (spelers herkennen dat woord later terug)
+    //   * "avonden wegblijft" in beat 4 (hier hangt de eindfinale aan)
+    //   * "kind" in beat 5 (spelers herkennen dat woord later terug)
     dialoog: [
-      { beat: 1, wie: 'rechts', tekst: 'Jullie zijn ver gekomen.' },
-      { beat: 1, wie: 'rechts', tekst: 'Maar dit is geen einde.' },
+      // A. Koud beginnen: ze praten eerst over de spelers, niet tegen ze.
+      { beat: 1, wie: 'rechts', tekst: 'Dit zijn ze dus.' },
+      { beat: 1, wie: 'links',  tekst: 'Dit zijn ze.' },
+      { beat: 1, wie: 'rechts', tekst: 'Jullie hebben ons gevonden.' },
 
-      { beat: 2, wie: 'rechts', tekst: 'Eén van ons hebben jullie in het Kraaienkwartier gezien.' },
-      { beat: 2, wie: 'links',  tekst: 'En één hier.' },
-      { beat: 2, wie: 'rechts', tekst: 'Nu ken je ons alle drie.' },
+      // B. Het plan.
+      { beat: 2, wie: 'links',  tekst: 'Dan wachten we niet meer.' },
+      { beat: 2, wie: 'rechts', tekst: 'Eén straat in Dorendael is vanavond al stil. De monden dicht, de draad erdoorheen.' },
+      { beat: 2, wie: 'links',  tekst: 'Vannacht de rest van het dorp.' },
+      { beat: 2, wie: 'rechts', tekst: 'En daarna verder.' },
 
-      { beat: 3, wie: 'rechts', tekst: 'Terwijl jullie liepen te zoeken, hebben wij gewerkt.' },
-      { beat: 3, wie: 'links',  tekst: 'Eén straat is vanavond al stil. De monden dicht, de draad erdoorheen.' },
-      { beat: 3, wie: 'rechts', tekst: 'Het hele dorp was aan de beurt. En daarna de rest.' },
+      // C. Stilte. Dit gat is Sybille's aanleiding: zij houdt het niet uit.
+      { beat: 3, pauze: 4000 },
 
-      { beat: 4, wie: 'links',  tekst: 'Maar jullie hebben ons gevonden. Dus wachten we niet meer.' },
-      { beat: 4, wie: 'links',  tekst: 'Het gebeurt vanavond. Alles.' },
+      // D. Sybille barst.
+      { beat: 4, wie: 'midden', tekst: 'Jullie zijn nog jong.' },
+      { beat: 4, wie: 'midden', tekst: 'Let maar eens op wanneer hij avonden wegblijft. En niet zegt waar hij was.' },
+      { beat: 4, wie: 'midden', tekst: 'Mannen. Vreemdgangers. Vies.' },
+      { beat: 4, wie: 'midden', tekst: 'IK HAAT JULLIE.' },
 
-      { beat: 5, wie: 'midden', tekst: 'Jullie zijn nog jong.' },
-      { beat: 5, wie: 'midden', tekst: 'Let maar eens op wanneer hij avonden wegblijft. En niet zegt waar hij was.' },
-      { beat: 5, wie: 'midden', tekst: 'Mannen.' },
-      { beat: 5, wie: 'midden', tekst: 'Vreemdgangers. Vies.' },
-      { beat: 5, wie: 'midden', tekst: 'IK HAAT JULLIE.' },
+      // E. Gesust, en het bos. Sybille meent het; de koele bevestigt vlak,
+      // zonder warmte. Niets hiervan wordt uitgelegd.
+      { beat: 5, wie: 'links',  tekst: 'Sybille.' },
+      { beat: 5, wie: 'rechts', tekst: 'Rustig, kind.' },
+      { beat: 5, pauze: 2000 },
+      { beat: 5, wie: 'rechts', tekst: 'Zo vonden we Sybille ook. Onze derde Roos.' },
+      { beat: 5, wie: 'rechts', tekst: 'Huilend tussen de bomen, midden in de nacht. Niemand die haar zocht.' },
+      { beat: 5, wie: 'links',  tekst: 'Wij vroegen alleen wat er scheelde. De rest vertelde ze zelf.' },
+      { beat: 5, wie: 'midden', tekst: 'Jullie waren goed voor mij.' },
+      { beat: 5, wie: 'links',  tekst: 'Dat waren we.' },
 
-      { beat: 6, wie: 'links',  tekst: 'Sybille.' },
-      { beat: 6, wie: 'rechts', tekst: 'Rustig, kind.' },
+      // F. De roos.
+      { beat: 6, wie: 'app',    tekst: 'Ze bukt zich en plukt een van de rozen.', effect: 'rozenpluk' },
+      { beat: 6, wie: 'app',    tekst: 'Het veld is donkerder dan een tel geleden.' },
 
-      { beat: 7, wie: 'app',    tekst: 'Ze bukt zich en plukt een van de rozen.', effect: 'rozenpluk' },
-      { beat: 7, wie: 'rechts', tekst: 'Jullie mogen toekijken hoe het misgaat.' },
+      // G. Ze nemen er één. Geen naam, geen bestemming, geen reden: de
+      // spelers ontdekken pas bij het wakker worden wie er ontbreekt.
+      { beat: 7, wie: 'rechts', tekst: 'Jullie mogen wakker worden.' },
+      { beat: 7, wie: 'links',  tekst: 'Eén van jullie niet.' },
+      { beat: 7, wie: 'rechts', tekst: 'Zolang jullie ons met rust laten, blijft dat zo.' },
 
-      { beat: 8, wie: 'rechts', tekst: 'En om zeker te weten dat jullie niet te veel in de weg lopen, nemen we er één mee.' },
-
-      // Beat 9 klikt niet door: deze drie regels lopen vanzelf af terwijl
-      // het geluid wegvalt en het beeld naar zwart zakt.
-      { beat: 9, wie: 'app',    tekst: 'Het licht in haar hand dooft.' },
+      // Beat 9, het wegvallen: deze regels lopen op hun eigen timing af
+      // terwijl het geluid wegvalt en het beeld naar zwart zakt.
       { beat: 9, wie: 'app',    tekst: 'Je voelt het in je borst voordat je begrijpt wat het is.' },
       { beat: 9, wie: 'app',    tekst: 'Je knieën geven mee.' }
     ]
@@ -375,8 +409,7 @@
     this._deeltjesPauzeStart = null;
     this._onKlaar = null;
     this._dialoogLaag = null;     // overlay met dim-ovalen, box en app-tekst
-    this._dialoogIndex = 0;       // positie in de klikbare regels (beat 1 t/m 8)
-    this._dialoogKlikHandler = null;
+    this._dialoogIndex = 0;       // positie in de doorlopende regels (tot beat 9)
     this._zwartLaag = null;
   }
 
@@ -1106,10 +1139,6 @@
     this._deeltjesCanvassen = [];
     if (this._gammaSvg && this._gammaSvg.parentNode) this._gammaSvg.parentNode.removeChild(this._gammaSvg);
     this._gammaSvg = null;
-    if (this._dialoogLaag && this._dialoogKlikHandler) {
-      this._dialoogLaag.removeEventListener('click', this._dialoogKlikHandler);
-    }
-    this._dialoogKlikHandler = null;
     this._dialoogLaag = null;
     this._zwartLaag = null;
     if (this.el && this.el.parentNode) this.el.parentNode.removeChild(this.el);
@@ -1541,15 +1570,14 @@
     this._toonHuidigeRegel();
   };
 
-  // De klikbare regels: alles tot en met beat 8. Beat 9 loopt vanzelf af
-  // en wordt apart afgehandeld in _wegvallen().
-  WoudScene.prototype._klikbareRegels = function () {
+  // De doorlopende regels: alles tot beat 9. Beat 9 loopt op zijn eigen
+  // timing af en wordt apart afgehandeld in _wegvallen().
+  WoudScene.prototype._doorloopRegels = function () {
     return this.config.dialoog.filter(function (r) { return r.beat < 9; });
   };
 
   WoudScene.prototype._bouwDialoogLaag = function () {
     if (!this.el || this._dialoogLaag) return;
-    var self = this;
     var laag = document.createElement('div');
     laag.className = 'ws-dialoog-laag';
     laag.innerHTML =
@@ -1559,10 +1587,6 @@
       '<div class="ws-wachtmelding"></div>';
     this.el.appendChild(laag);
     this._dialoogLaag = laag;
-
-    // Eén klikvanger over het hele scherm: elke tik zet de dialoog door.
-    this._dialoogKlikHandler = function () { self._volgendeRegel(); };
-    laag.addEventListener('click', this._dialoogKlikHandler);
   };
 
   // Zet de dim-ovalen zo dat de spreker helder blijft en de twee anderen
@@ -1635,20 +1659,46 @@
     this._zetPortret(isApp ? null : regel.wie);
   };
 
-  WoudScene.prototype._toonHuidigeRegel = function () {
-    var regels = this._klikbareRegels();
-    var regel = regels[this._dialoogIndex];
-    if (!regel) return;
-    this._huidigeSpreker = (regel.wie === 'app') ? null : regel.wie;
-    this._toonRegel(regel);
-    if (regel.effect === 'rozenpluk') this._plukRoos();
+  // Hoe lang één regel in beeld blijft. Een pauze-regel bepaalt zijn
+  // eigen duur; een regel met een expliciete `duur` ook. De rest krijgt
+  // een leesduur op basis van zijn lengte, geklemd tussen leesMin/leesMax.
+  WoudScene.prototype._regelDuur = function (regel) {
+    var cfg = this.config.deel4;
+    if (regel.pauze != null) return regel.pauze;
+    if (regel.duur != null) return regel.duur;
+    return clamp(cfg.leesBasis + regel.tekst.length * cfg.leesPerTeken, cfg.leesMin, cfg.leesMax);
   };
 
-  // Klik: volgende regel, of, als de laatste gesproken regel geweest is,
-  // eerst wachten tot de andere spelers zover zijn en dan het wegvallen.
+  WoudScene.prototype._toonHuidigeRegel = function () {
+    var self = this;
+    var regels = this._doorloopRegels();
+    var regel = regels[this._dialoogIndex];
+    if (!regel) return;
+    if (regel.pauze != null) {
+      // Stiltemoment: geen tekst, niemand gedimd (dus ook niet de
+      // app-tekst-stand, die dimt alle drie), alleen het stilstaande
+      // beeld met de gloed en de deeltjes.
+      this._huidigeSpreker = null;
+      if (this._dialoogLaag) {
+        this._dialoogLaag.querySelector('.ws-tekstlaag').innerHTML = '';
+        this._dialoogLaag.querySelector('.ws-dimlaag').innerHTML = '';
+      }
+      this._zetPortret(null);
+    } else {
+      this._huidigeSpreker = (regel.wie === 'app') ? null : regel.wie;
+      this._toonRegel(regel);
+      if (regel.effect === 'rozenpluk') this._plukRoos();
+    }
+    // Doorlopend, geen klikken: de volgende regel komt vanzelf. Via de
+    // pauzeerbare timer, zodat pause() de dialoog netjes stilzet.
+    this._setTimeout(function () { self._volgendeRegel(); }, this._regelDuur(regel));
+  };
+
+  // Volgende regel, of, als de laatste gesproken regel geweest is, eerst
+  // wachten tot de andere spelers zover zijn en dan het wegvallen.
   WoudScene.prototype._volgendeRegel = function () {
-    if (this._gestopt || this._gepauzeerd) return;
-    var regels = this._klikbareRegels();
+    if (this._gestopt) return;
+    var regels = this._doorloopRegels();
     this._dialoogIndex++;
     if (this._dialoogIndex < regels.length) {
       this._toonHuidigeRegel();
@@ -1658,15 +1708,10 @@
   };
 
   // De poort vlak vóór het wegvallen: iedereen valt tegelijk weg, ook al
-  // heeft de een sneller doorgeklikt dan de ander. Zonder wachtfunctie
-  // (testpagina) gaat het meteen door.
+  // is de scène op de ene tablet iets eerder klaar dan op de andere.
+  // Zonder wachtfunctie (testpagina) gaat het meteen door.
   WoudScene.prototype._wachtDanWegvallen = function () {
     var self = this;
-    // Klikken doet vanaf hier niets meer: de scène loopt zelf af.
-    if (this._dialoogLaag && this._dialoogKlikHandler) {
-      this._dialoogLaag.removeEventListener('click', this._dialoogKlikHandler);
-      this._dialoogKlikHandler = null;
-    }
     if (!this._wachtVoorFinale) { this._wegvallen(); return; }
     this._wachtVoorFinale(function () {
       if (self._gestopt) return;
@@ -1723,7 +1768,7 @@
     }, gloedCfg.flakkerDuur + 80);
   };
 
-  // Beat 9: geluid weg, beeld onscherp en naar zwart, drie korte
+  // Beat 9: geluid weg, beeld onscherp en naar zwart, de korte
   // app-teksten eroverheen, dan stilte en pas daarna de callback.
   WoudScene.prototype._wegvallen = function () {
     var self = this;
@@ -1751,7 +1796,8 @@
       beelden[i].style.filter = 'blur(' + cfg.blurZwart + 'px)';
     }
 
-    // 3. De drie app-teksten, verspreid over het wegzakken.
+    // 3. De app-teksten, verspreid over het wegzakken: de eerste terwijl
+    //    het geluid wegvalt, de tweede zodra het beeld naar zwart zakt.
     if (regels[0]) this._toonRegel(regels[0]);
     this._setTimeout(function () {
       if (self._gestopt) return;

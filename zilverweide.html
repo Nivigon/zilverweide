@@ -16647,7 +16647,7 @@ function kkDialoogScene() {
   var spelerNaam = schaduwNaamVoorRol(state.personage, state.vermomming);
   KK_POPS.speler = { src: popImgVoorSpeler(state.personage), label: spelerNaam.toUpperCase() };
   var spelerGedachte = (state.personage === 'kelly')
-    ? '*(in gedachten)* Aaltje.. Wat doe je hier..?'
+    ? '*(in gedachten)* Aaltje. Wat doe jij hier?'
     : '*(in gedachten)* Is dat niet het muziekdoosje van Kelly, gevonden bij de molen? Heeft ze het aan deze oude vrouw gegeven?';
   renderLocatieScene({
     container: cont,
@@ -16655,14 +16655,17 @@ function kkDialoogScene() {
     geenTerug: true,
     sprekerPops: {},
     dialog: [
-      { spreker: 'Sybille', tekst: 'Aan mij om jullie te volgen en kijk hier dan.. staan we wéér tegenover elkaar.' },
-      { spreker: 'Sybille', tekst: 'En voordat jullie denken helden te kunnen spelen, weten jullie wel wat deze kan..', onShow: function () { kkToonRoos(true); } },
+      { spreker: 'Sybille', tekst: 'Aan mij om jullie te volgen, en kijk hier dan. Staan we wéér tegenover elkaar.' },
+      { spreker: 'Sybille', tekst: 'En voordat jullie denken helden te kunnen spelen: weten jullie wel wat deze kan?', onShow: function () { kkToonRoos(true); } },
       { spreker: 'Sybille', tekst: 'Blijf maar staan, kakkerlakken.' },
+      { spreker: 'Sybille', tekst: 'Ik moest jullie alleen volgen. Tegenhouden als het nodig was, meer niet.' },
       { spreker: 'Sybille', tekst: 'Jullie stervelingen zijn allemaal hetzelfde, weet je. Zeuren, hebben, klagen. Nietig.' },
-      { spreker: 'Sybille', tekst: 'En als het jullie niet bevalt? Nou, dan ga je toch gewoon weg. Of naar een ander?!?' },
-      { spreker: 'Sybille', tekst: 'Weet je, ik had een man, vroeger. Hij was zóóóó blij met me.. Maar ik betrapte hem in zijn molen. Met een ander.' },
+      { spreker: 'Sybille', tekst: 'En als het jullie niet bevalt? Nou, dan ga je toch gewoon weg. Of naar een ander?' },
+      { spreker: 'Sybille', tekst: 'Weet je, ik had een man, vroeger. Hij was zóóó blij met me.' },
+      { spreker: 'Sybille', tekst: 'Avond na avond weg. En op een avond ben ik hem gevolgd.' },
+      { spreker: 'Sybille', tekst: 'Ik betrapte hem in zijn molen. Met een ander.' },
       { spreker: 'Sybille', tekst: 'Dus ik zette die molen met één simpel spreukje in de hens!', onShow: function () { kkSfx('kk-lach.mp3', 0.7); } },
-      { spreker: 'Sybille', tekst: 'Arme Sybille nám haar wraak...' },
+      { spreker: 'Sybille', tekst: 'Arme Sybille nám haar wraak.' },
       // De deur: Aaltje komt binnen, Sybille draait zich om.
       { spreker: 'Sybille', tekst: 'Wat moet dat hier. En welke simpele oude ziel ben jij dan?', onShow: function () { kkSfx('aaltjedeur.mp3'); kkToonPop('aaltje'); } },
       // Een gedachte bij de eigen pop voordat Aaltje begint te praten.
@@ -16680,19 +16683,27 @@ function kkDialoogScene() {
       { spreker: 'Aaltje', tekst: 'Mijn moeder maakte muziekdoosjes. Dat was haar ambacht.' },
       { spreker: 'Aaltje', tekst: 'De molenaar was al menig avond bezig er zelf één te maken. Voor zijn vrouw. Die avond had hij mijn moeder om raad gevraagd.' },
       // De muziek zakt vlak voor de onthulling.
-      { spreker: 'Aaltje', tekst: 'De kwaliteit. De liefde die die man voor zijn vrouw had... het raakte mijn moeder. En het raakte mij.', onShow: function () { kkFadeNaar('_kkDoosje', 0.15, 900); } },
-      { spreker: 'Aaltje', tekst: 'Dit doosje, Sybille. Dit doosje. Het was voor jou...' },
-      // De breuk: pop-wissel naar Sybille knielend (de roos blijft bij
-      // haar), het muziekdoosje stopt en de gewone spelmuziek komt zacht terug.
-      { spreker: 'Sybille', tekst: 'Nee. Dat kan niet. Ze hebben me... mijn zusters hebben me...', onShow: function () {
+      { spreker: 'Aaltje', tekst: 'De kwaliteit. De liefde die die man voor zijn vrouw had. Het raakte mijn moeder. En het raakte mij.', onShow: function () { kkFadeNaar('_kkDoosje', 0.15, 900); } },
+      { spreker: 'Aaltje', tekst: 'Dit doosje, Sybille. Dit doosje.' },
+      { spreker: 'Aaltje', tekst: 'Het was voor jou.' },
+      // Het kantelt: de greep van de vloek verslapt, en Sybille begint te
+      // rekenen. De vraag stelt ze aan niemand in het bijzonder.
+      'Je merkt dat je je hand weer kunt bewegen.',
+      { spreker: 'Sybille', tekst: 'Welke avond.', onShow: function () { kkToonPop('sybille'); } },
+      { spreker: 'Aaltje', tekst: 'De avond voor de brand, kind.', onShow: function () { kkToonPop('aaltje'); } },
+      { spreker: 'Sybille', tekst: 'Ze had een tas bij zich.', onShow: function () { kkToonPop('sybille'); } },
+      // De breuk: pop-wissel naar Sybille knielend, het muziekdoosje stopt
+      // en de gewone spelmuziek komt zacht terug.
+      { spreker: 'Sybille', tekst: 'Nee.', onShow: function () {
         kkToonPop('knielend');
         kkStopAudio('_kkDoosje');
         kkStopAudio('_kkAchtergrond');
         fadeMuziekIn();
       } },
-      { spreker: 'Sybille', tekst: 'Ga. Naar het podium. Daar gaat het gebeuren. Ik moest jullie volgen en tegenhouden als het nodig was, meer niet.' },
+      // De roos valt uit haar hand: het blauw op de muren dooft.
+      { spreker: 'Sybille', tekst: 'Nee, dat kan niet. Ze hebben me... mijn zusters hebben me...', onShow: function () { kkToonRoos(false); } },
       { spreker: 'Aaltje', tekst: 'Ik liep jullie achterna om jullie te bedanken voor het doosje. Dat ik dit aantrof...', onShow: function () { kkToonPop('aaltje'); } },
-      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier.' }
+      { spreker: 'Aaltje', tekst: 'Ga maar, vrienden. Ik blijf hier bij haar.' }
     ],
     acties: [
       { label: 'Verder \u2192', onclick: kkSlot }
@@ -16721,7 +16732,7 @@ function kkSlot() {
   el.classList.add('kk-traag');
   el.classList.add('kk-aan');
   setTimeout(function () {
-    tekstEl.textContent = 'Ga naar het podium.';
+    tekstEl.innerHTML = 'Ga naar het podium.<br><br>Aaltje blijft achter bij Sybille. Jij weet waar je heen moet.';
     tekstEl.classList.remove('kk-fade');
     void tekstEl.offsetWidth;
     tekstEl.classList.add('kk-fade');
