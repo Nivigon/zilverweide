@@ -18587,6 +18587,7 @@ function buildDebugPanel() {
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
+      ['📖 Eigen dagboek-leesbeurt (+1)', function(){ markeerBoekGelezen('dagboek'); close(); }, !getSharedState('dagboek_gelezen_' + state.personage), 'Dagboek'],
       ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }, !boekDoorIedereenGelezen('dagboek'), 'Dagboek'],
       ['🔄 Reset leestaak dagboek (0/4)', function(){ debugResetLeestaak('dagboek'); close(); }, telBoekLezers('dagboek') > 0, 'Dagboek'],
       // ── Felix & vermommingen
@@ -18688,6 +18689,7 @@ function buildDebugPanel() {
       ['🏚️ Kelly bij molen geweest', function(){ markVisited('molen_doorgelopen'); markVisited('kelly_muziekdoosje_gevonden'); close(); }, p === 'kelly' && !hasVisited('kelly_muziekdoosje_gevonden') && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['🎵 Muziekdoos ingeleverd',   function(){ debugMuziekdoosIngeleverd(); close(); }, !muziekKlaar && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
+      ['📖 Eigen molen-kijkbeurt (+1)', function(){ setSharedState('oude_kranten_ontdekt', true); markeerBoekGelezen('molen'); close(); }, !getSharedState('molen_gezien_' + state.personage), 'Muziekdoos & Archief'],
       ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, !boekDoorIedereenGelezen('molen'), 'Muziekdoos & Archief'],
       ['🔄 Reset leestaak molen-legende (0/4)', function(){ debugResetLeestaak('molen'); close(); }, telBoekLezers('molen') > 0, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
@@ -18747,6 +18749,7 @@ function buildDebugPanel() {
         if (typeof toonToast === 'function') toonToast('\ud83d\udcd6', 'Archief beschikbaar: Over de Rozen. Laat je teamgenoten dit ook weten.');
         close();
       }, true, 'H4 Kerk'],
+      ['\ud83d\udcd6 Eigen rozen-leesbeurt (+1)', function(){ setSharedState('over_de_rozen_beschikbaar', true); markeerBoekGelezen('rozen'); close(); }, !getSharedState('rozen_gelezen_' + state.personage), 'H4 Kerk'],
       ['\ud83d\udcd6 Alle 4 rozen gelezen (4/4)', function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }, !boekDoorIedereenGelezen('rozen'), 'H4 Kerk'],
       ['\ud83d\udd04 Reset leestaak rozen (0/4)', function(){ debugResetLeestaak('rozen'); close(); }, telBoekLezers('rozen') > 0, 'H4 Kerk'],
       ['🏛️ Fenna bij gemeentehuis geweest', function(){ markVisited('fenna_gemeentehuis'); setSharedState('fenna_gemeentehuis', true); close(); }, true, 'H5 Gemeentehuis'],
