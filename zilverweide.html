@@ -22890,16 +22890,16 @@ function firebaseVolleReset() {
   // Het wismoment eerst zelf vastleggen, dan pas wissen: zo is in logboek.html
   // terug te vinden dat en wanneer deze ronde is weggegooid.
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_firebase' });
-  // Bewust NIET de hele sessietak wissen: de /log-tak (telemetrie) en de
-  // teamnaam in /meta blijven staan, anders is een gespeelde ronde na een
-  // reset nergens meer terug te lezen (zo ging de speeldata van 6 augustus
-  // verloren). De spelersnamen onder /meta/spelers horen wel bij de ronde
-  // zelf en gaan mee weg, net als /shared en /spelers (herstelpunten).
+  // Bewust NIET de hele sessietak wissen. De scheidslijn: alles wat het
+  // spel LEEST gaat weg (/shared en /spelers, anders lekt oude stand een
+  // nieuwe ronde in), alles wat alleen de analyse achteraf leest blijft
+  // staan (/log plus /meta met teamnaam en spelersnamen, anders is een
+  // gespeelde ronde nergens meer terug te lezen; zo ging de speeldata
+  // van 6 augustus verloren).
   var basis = firebase.database().ref('sessies/' + sessieId);
   Promise.all([
     basis.child('shared').remove(),
-    basis.child('spelers').remove(),
-    basis.child('meta/spelers').remove()
+    basis.child('spelers').remove()
   ])
     .then(function () {
       alert('Firebase gereset voor sessie: ' + sessieId + '\n(logboek bewaard)');
