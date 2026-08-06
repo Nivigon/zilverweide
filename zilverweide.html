@@ -2577,10 +2577,15 @@ function verwerkBinnengekomenShared(data) {
     // Leesvlaggen van andere tablets: teller en (open) missie-paneel meteen
     // bijwerken zodat de leestaak-teller live oploopt.
     for (var lvKey in data) {
-      if ((lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('molen_gezien_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0)
-          && data[lvKey] && !_leesvlagGemeld[lvKey]) {
-        _leesvlagGemeld[lvKey] = true;
-        ietsNieuws = true;
+      if (lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('molen_gezien_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0) {
+        if (data[lvKey] && !_leesvlagGemeld[lvKey]) {
+          _leesvlagGemeld[lvKey] = true;
+          ietsNieuws = true;
+        } else if (!data[lvKey] && _leesvlagGemeld[lvKey]) {
+          // Reset via het testpaneel op een ander tablet: teller terug omlaag.
+          delete _leesvlagGemeld[lvKey];
+          ietsNieuws = true;
+        }
       }
     }
     for (var kkKey in data) {
@@ -3907,7 +3912,10 @@ function debugAlleGelezen(boek) {
 function debugResetLeestaak(boek) {
   var taak = LEESTAKEN[boek];
   if (!taak) return;
-  SHARED_ROLLEN.forEach(function (r) { setSharedState(taak.prefix + r, null); });
+  // Bewust false en geen null: null verwijdert de sleutel alleen uit
+  // Firebase, en dan houden andere tablets hun lokale true (de merge wist
+  // niets). Met false krijgt elke tablet de reset echt binnen.
+  SHARED_ROLLEN.forEach(function (r) { setSharedState(taak.prefix + r, false); });
   if (boek === 'dagboek') setSharedState('filmpje_gezien', false);
   updateMissieTeller();
   if (typeof toonToast === 'function') {
@@ -18610,7 +18618,7 @@ function buildDebugPanel() {
         setSharedState('kk_sleutel_speld', false);
         setSharedState('dagboek_gerestaureerd', false);
         setSharedState('filmpje_gezien', false);
-        SHARED_ROLLEN.forEach(function(r){ setSharedState('dagboek_gelezen_' + r, null); });
+        SHARED_ROLLEN.forEach(function(r){ setSharedState('dagboek_gelezen_' + r, false); });
         setSharedState('heks_opgelost', false);
         setSharedState('heks_beslisser', null);
         setSharedState('heks_fout_tot', null);
