@@ -3194,6 +3194,9 @@ const VISITED_FLAGS = {
   dorpsplein_incident:        'Speler heeft de opening op het dorpsplein gezien',
   dorendael_unlocked:         'Dorendael is ontgrendeld',
   dorendael_intro_gezien:     'De welkomst-pop-up bij Dorendael is getoond',
+  recap_dorendael_gezien:     'De samenvatting bij het openen van Dorendael is getoond',
+  recap_woud_gezien:          'De samenvatting na de woudscene (voor de vloek) is getoond',
+  recap_kerk_gezien:          'De samenvatting aan het einde van de kerkkelder-scene is getoond',
   sintdonatuslaan_unlocked:   'Heer Donatuslaan is ontgrendeld',
   intro_filmpje_gezien:       'Het intro-filmpje op het podium is bekeken',
   overworld_intro_gezien:     'De kaart-introductie (eerste aankomst op de overworld) is getoond',
@@ -16217,7 +16220,7 @@ function visitZone(zone, inputVal) {
     if (inputVal === 'DD1') {
       showScreen('screen-dorendael');
       updateIndicator('dorendael', '🌲', 'Dorendael');
-      dorendaelIntroPopup();   // welkomst-pop-up, alleen de eerste keer
+      dorendaelEntreePopups();   // samenvatting + welkomst-pop-up, alleen de eerste keer
     } else if (dorendaelCodeToId[inputVal]) {
       // Direct naar sublocatie (sublocatie-codes invoeren vanaf de kaart)
       showScreen('screen-dorendael');
@@ -16226,7 +16229,7 @@ function visitZone(zone, inputVal) {
     } else {
       showScreen('screen-dorendael');
       updateIndicator('dorendael', '🌲', 'Dorendael');
-      dorendaelIntroPopup();   // welkomst-pop-up, alleen de eerste keer
+      dorendaelEntreePopups();   // samenvatting + welkomst-pop-up, alleen de eerste keer
     }
   } else if (zone === 'sintdonatuslaan') {
     // Heer Donatuslaan
@@ -17656,7 +17659,12 @@ function kkSlot() {
     b.textContent = 'Verder \u2192';
     b.onclick = function () {
       kkCleanup();
-      kerkVerhaalKlaarGedrukt();
+      // Samenvatting vóór de afronding: daarna pas het 4/4-poortje.
+      if (!hasVisited('recap_kerk_gezien')) {
+        toonRecap('kerk', kerkVerhaalKlaarGedrukt);
+      } else {
+        kerkVerhaalKlaarGedrukt();
+      }
     };
     knop.appendChild(b);
   }, 4600);
@@ -18812,6 +18820,9 @@ function buildDebugPanel() {
     label = 'Algemeen';
     btns = [
       ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
+      ['📜 Samenvatting Dorendael (voorbeeld)', function(){ close(); toonRecap('dorendael', null, false); }],
+      ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }],
+      ['📜 Samenvatting kerk (voorbeeld)',      function(){ close(); toonRecap('kerk', null, false); }],
       ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }],
       ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
       ['🧑‍🤝‍🧑 Vul namen andere spelers (test)', function(){ debugVulAndereSpelers(); close(); }],
@@ -18981,6 +18992,8 @@ function debugSkipNaarDorendael() {
   markVisited('wallingen_informatie_ontvangen');
   markVisited('nummer7_filmpje_gezien');
   markVisited('dorendael_unlocked');
+  // De skip landt ná het samenvattingsmoment: niet opnieuw tonen.
+  markVisited('recap_dorendael_gezien');
 
   // Archief-stukken die de speler in de echte route al ontgrendeld zou
   // hebben. Zonder dit staat het dagboek in het archief nog op slot terwijl
@@ -19163,6 +19176,8 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   });
   markVisited('woud_doolhof_voltooid');
   markVisited('woud_filmpje_gezien');
+  // Deze skip landt ná het samenvattingsmoment van het woud.
+  markVisited('recap_woud_gezien');
   markVisited('sintdonatuslaan_unlocked');
   // De slagerij gaat bewust OPEN. Deze skip zet je aan het begin van Heer
   // Donatuslaan, en op dat moment is Jan nog niet in de achterkamer geweest.
@@ -19387,6 +19402,8 @@ function debugWoudAlleVoltooid() {
 function debugUnlockHeerDonatuslaan() {
   markVisited('woud_doolhof_voltooid');
   markVisited('woud_filmpje_gezien');
+  // Deze skip landt ná het samenvattingsmoment van het woud.
+  markVisited('recap_woud_gezien');
   markVisited('sintdonatuslaan_unlocked');
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function(rol) {
     woudZetVoltooid(rol);
@@ -22327,6 +22344,13 @@ function beeindigWoudScene() {
     woudSceneContainer = null;
   }
   document.body.classList.remove('woudscene-actief');
+  // Samenvatting vóór de vloek: pas na de Verder-knop valt de vloek en
+  // opent Heer Donatuslaan. Draaide het vervolg al (debug-skip of tweede
+  // doorloop), dan meteen door; openHeerDonatuslaanVanuitWoud vangt dat af.
+  if (!hasVisited('woud_filmpje_gezien') && !hasVisited('recap_woud_gezien')) {
+    toonRecap('woud', openHeerDonatuslaanVanuitWoud);
+    return;
+  }
   openHeerDonatuslaanVanuitWoud();
 }
 
@@ -22516,6 +22540,73 @@ function schaduwMeterVol() {
 // destroy() van de instantie in, zodat de schaduw bij ELKE manier van
 // afsluiten (winnen, verlaten, wegnavigeren, reset) weer hervat — zonder
 // dat we alle losse destroy-aanroepen hoeven aan te passen.
+// ── "Wat vooraf ging"-samenvattingen ───────────────────────────────
+// Korte terugblikken op drie vaste momenten: Dorendael opent, na de
+// woudscene (voor de vloek valt) en aan het einde van de kerkkelder-
+// scene. Elke speler leest ze op zijn eigen tablet, in eigen tempo;
+// de vlaggen zijn bewust lokaal, niet gedeeld.
+var RECAPS = {
+  dorendael: {
+    flag: 'recap_dorendael_gezien',
+    paragrafen: [
+      'Na het voorval bij het podium, waar een heks de monden van de acteurs dichtnaaide, volgden jullie een spoor naar het Kraaienkwartier. Daar bleek op nummer 7 een heks te wonen. Met Robbie als afleiding slopen jullie de tuin in en stonden jullie oog in oog met de vrouw. Maar na de confrontatie wachtte een nieuwe schok: Robbie, trouwe fan van Fenna-Viviènne, zat met dichtgenaaide mond in de tuin.',
+      'Nu gaan jullie Dorendael in. Wie, wat of waar is een heks? Dé heks, of een heks...'
+    ]
+  },
+  woud: {
+    flag: 'recap_woud_gezien',
+    paragrafen: [
+      'Wat jullie voor één heks hielden, bleken er drie te zijn. In een veld vol magische rozen, diep in het woud, kwamen jullie erachter dat Sybille, één van de heksen, achter de brand in de molen zat. Haar man ging vreemd, en na haar aansluiting bij de heksenkring van Aleida en Hilketrude stak ze hem en zijn molen in brand.',
+      'Toen plukte Sybille een roos, en werden jullie allemaal in slaap gebracht. Maar één van jullie zal ergens anders wakker worden... De nieuwe straat biedt vast nieuwe inzichten.'
+    ]
+  },
+  kerk: {
+    flag: 'recap_kerk_gezien',
+    paragrafen: [
+      'In de Heer Donatuslaan kwamen jullie erachter dat Tobbe in werkelijkheid Sybille was. Tijdens de confrontatie hield ze eerst nog vast aan haar verhaal, maar het verschijnen van Aaltje, de oude vrouw uit het steegje, met het muziekdoosje dat Kelly haar gaf, gaf het verhaal een nieuwe wending. Claes, de man van Sybille, ging niet vreemd. Hij maakte in het geheim een muziekdoosje, voor zijn geliefde.',
+      'Gebroken zakte Sybille naar de grond. En jullie worden verwezen naar de plek waar het dorp vanavond, als jullie niet op tijd zijn, zal merken dat stilte binnenkort geen keuze meer is...'
+    ]
+  }
+};
+
+// Toont een samenvatting als overlay (zelfde familie als de Dorendael-
+// welkomst-pop-up). onKlaar draait na de Verder-knop. markeer=false is
+// voor de voorbeeldknoppen in het debugpaneel: alleen kijken, geen vlag.
+function toonRecap(sleutel, onKlaar, markeer) {
+  var r = RECAPS[sleutel];
+  if (!r) { if (typeof onKlaar === 'function') onKlaar(); return; }
+  if (markeer !== false) markVisited(r.flag);
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9000;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;padding:1.5rem;box-sizing:border-box;background:radial-gradient(ellipse at center,rgba(13,10,6,.96),rgba(4,2,6,.99));animation:fadeIn .4s ease';
+  var html =
+    '<div style="margin:auto;max-width:640px;width:100%;text-align:center;' +
+         'background:linear-gradient(180deg,rgba(18,13,7,.96),rgba(10,7,4,.98));border:1px solid rgba(201,168,76,.3);' +
+         'border-radius:12px;padding:1.3rem 1.6rem 1.4rem;box-shadow:0 16px 50px rgba(0,0,0,.6)">' +
+      '<div style="font-family:Cinzel,serif;font-size:1.25rem;color:var(--gold);letter-spacing:.08em;margin-bottom:.9rem">Wat vooraf ging</div>';
+  r.paragrafen.forEach(function (p) {
+    html += '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1.02rem;color:var(--parchment);line-height:1.55;text-align:left;margin:0 0 .8rem">' + p + '</p>';
+  });
+  html += '<button class="btn recap-verder" style="margin-top:.4rem">Verder →</button></div>';
+  overlay.innerHTML = html;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.recap-verder').addEventListener('click', function () {
+    overlay.style.transition = 'opacity .4s';
+    overlay.style.opacity = '0';
+    setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 400);
+    if (typeof onKlaar === 'function') onKlaar();
+  });
+}
+
+// Eerste keer Dorendael: eerst de samenvatting van het Kraaienkwartier,
+// daarna de bestaande welkomst-pop-up.
+function dorendaelEntreePopups() {
+  if (!hasVisited('recap_dorendael_gezien')) {
+    toonRecap('dorendael', dorendaelIntroPopup);
+    return;
+  }
+  dorendaelIntroPopup();
+}
+
 // ── Welkomst-pop-up bij de eerste keer Dorendael betreden ───────────
 function dorendaelIntroPopup() {
   if (hasVisited('dorendael_intro_gezien')) return;
