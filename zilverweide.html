@@ -565,6 +565,9 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   box-shadow:0 0 26px rgba(240,205,80,.85);
   transform:scale(1.1);
 }
+/* Missie-teller: blijft knipperen na een nieuwe verhaalstap tot de speler
+   het paneel opent, zelfde ritme en kleuren als het inventaris-rondje. */
+#missie-teller.knippert{animation:invTellerKnipper 1.05s ease-in-out infinite}
 /* Missie-paneel: het uitvouwmenu onder de verhaal-teller. Toont per zone de
    verhaalregels die de spelers samen al onthuld hebben. Alleen voltooide
    regels verschijnen, elk met een korte fade-in, zodat het aanvoelt als een
@@ -3852,6 +3855,7 @@ function updateMissieTeller() {
   const wrap = document.getElementById('missie-teller');
   const tekst = document.getElementById('missie-teller-tekst');
   if (!wrap || !tekst) return;
+  updateMissieKnipper();
   const zone = verhaalFaseZone();
   if (!zone) {
     // Nog geen verhaal-fase (voor het Kraaienkwartier): toon de teller alvast
@@ -3955,6 +3959,16 @@ function bouwMissiePaneel() {
   paneel.innerHTML = html;
 }
 
+// Knipperstand van de verhaal-teller: aan zolang er op dit tablet een
+// nieuwe verhaalstap is die nog niet bekeken is (window._missieNieuw), uit
+// zodra het paneel geopend wordt. Zelfde principe als het inventaris-rondje.
+function updateMissieKnipper() {
+  var wrap = document.getElementById('missie-teller');
+  if (!wrap) return;
+  if (window._missieNieuw) wrap.classList.add('knippert');
+  else wrap.classList.remove('knippert');
+}
+
 function toggleMissiePaneel(e) {
   if (e) e.stopPropagation();
   var paneel = document.getElementById('missie-paneel');
@@ -3962,6 +3976,9 @@ function toggleMissiePaneel(e) {
   if (paneel.classList.contains('open')) { sluitMissiePaneel(); return; }
   bouwMissiePaneel();
   paneel.classList.add('open');
+  // Paneel bekeken: teller stopt met knipperen.
+  window._missieNieuw = false;
+  updateMissieKnipper();
   // Buitenklik pas na deze klik registreren, anders sluit hij meteen weer.
   setTimeout(function(){ document.addEventListener('click', _missieBuitenklik); }, 0);
 }
@@ -4145,6 +4162,10 @@ function onMissieKeyVoltooid(label) {
   // een reeks flashes/geluiden afvuren voor stappen die al af waren; alleen
   // bij een echte nieuwe stap tijdens het spelen.
   if (_verhaalInitieleSnapshotBezig) return;
+  // Nieuwe verhaalstap: de teller blijft knipperen tot de speler het paneel
+  // opent, net als het inventaris-rondje bij een nieuw voorwerp.
+  window._missieNieuw = true;
+  updateMissieKnipper();
   // Korte gele flash op de teller, voor het visuele "hé, er gebeurde iets".
   const wrap = document.getElementById('missie-teller');
   if (wrap) {
@@ -19999,6 +20020,24 @@ function renderMolenContent(loc, p) {
   }
 
   if (p === 'kelly') {
+    // Herbezoek: het doosje is al gevonden (of via een skip als gevonden
+    // gemarkeerd). De plek is dan leeg en er komt geen pakknop meer; de
+    // Donderbloesem-knop en de naalden-hotspot blijven wel gewoon staan.
+    if (hasVisited('kelly_muziekdoosje_gevonden')) {
+      const doosjeInTas = !!state.inventory.find(function(i) {
+        return i.naam === ITEMS.muziekdoosje.naam || i.naam === ITEMS.muziekdoosjeKlaar.naam;
+      });
+      return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
+        dialog: molenDialog([
+          { spreker: 'Kelly', tekst: '*(in gedachten)* Hier lag het. Onder dat verkoolde kastje.' },
+          'Het kastje ligt nog opzij geschoven, precies zoals ze het achterliet. De plek eronder is leeg.',
+          { spreker: 'Kelly', tekst: doosjeInTas
+              ? '*(in gedachten)* Het doosje zit veilig in mijn tas. Er is hier niets meer te halen.'
+              : '*(in gedachten)* Het doosje is hier al lang weg. Er is hier niets meer te halen.' },
+          'Voetstappen, dichterbij. Iets ademt.',
+          { spreker: 'Kelly', tekst: '*(in gedachten)* Wegwezen.' }
+        ]), acties: molenActies(null) });
+    }
     return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
         { spreker: 'Kelly', tekst: '*(in gedachten)* Er loopt iets. Maar er is ook iets om te vinden hier. Ik voel het.' },
@@ -20056,10 +20095,19 @@ function renderMolenKellyDeel2(loc) {
 
 // App-tekst bij ontwaken (per personage), getoond ná de fade-naar-licht.
 function toonMolenOntwaak(p) {
+  // Kelly's tekst hangt af van waar het doosje is: nog in haar tas, of al
+  // afgegeven (dan klopt "dat heb ik nog" niet meer).
+  var kellyTekst = 'Ik was bij de molen. Het doosje, dat heb ik nog. Dat was geen droom. En het archief, dat was ik niet vergeten.';
+  if (p === 'kelly' && hasVisited('kelly_muziekdoosje_gevonden') &&
+      !state.inventory.find(function(i) { return i.naam === ITEMS.muziekdoosje.naam || i.naam === ITEMS.muziekdoosjeKlaar.naam; })) {
+    kellyTekst = hasVisited('archief_doolhof_voltooid')
+      ? 'Ik was bij de molen. Alweer. Dat was geen droom. Het doosje is daar al lang weg.'
+      : 'Ik was bij de molen. Alweer. Dat was geen droom. Het doosje is daar al lang weg. En het archief, dat was ik niet vergeten.';
+  }
   var tekst = {
     fenna: 'Ik stond bij de molen. Of dacht ik. Hoe ben ik terug?',
     jan:   'Wacht. Wat? Ik was net... hoe sta ik hier?',
-    kelly: 'Ik was bij de molen. Het doosje, dat heb ik nog. Dat was geen droom. En het archief, dat was ik niet vergeten.',
+    kelly: kellyTekst,
     felix: 'Iets wilde niet dat ik dichterbij kwam. Iets wil niet dat ik onthoud wat ik zag.'
   }[p] || 'Hoe ben ik hier weer terechtgekomen?';
   molenOverlayTekst(tekst, 3400, function() {
