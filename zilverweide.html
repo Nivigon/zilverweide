@@ -2536,6 +2536,9 @@ function initSharedFirebase(sessieId, versGedeeld) {
 // gedeelde verhaal-flags over in de lokale visited-set (met missie-toast),
 // spiegelt de gok-statussen, en ververst de teller.
 var _kkSleutelGemeld = {};
+// Leesvlaggen (dagboek_gelezen_<rol> / rozen_gelezen_<rol>) die al verwerkt
+// zijn: voorkomt dat elke Firebase-snapshot de teller opnieuw laat verversen.
+var _leesvlagGemeld = {};
 // Bij de allereerste gedeelde snapshot (bv. iemand herlaadt tijdens het spel)
 // mag de teller niet een reeks flashes/geluiden afvuren voor stappen die al
 // af waren. Deze vlaggen onderdrukken de effecten tijdens die eerste sync.
@@ -2566,6 +2569,15 @@ function verwerkBinnengekomenShared(data) {
             onMissieKeyVoltooid(HEER_DONATUSLAAN_MISSIE_LABELS[f] || 'Stap voltooid');
           }
         }
+      }
+    }
+    // Leesvlaggen van andere tablets: teller en (open) missie-paneel meteen
+    // bijwerken zodat de leestaak-teller live oploopt.
+    for (var lvKey in data) {
+      if ((lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0)
+          && data[lvKey] && !_leesvlagGemeld[lvKey]) {
+        _leesvlagGemeld[lvKey] = true;
+        ietsNieuws = true;
       }
     }
     for (var kkKey in data) {
@@ -3806,6 +3818,88 @@ const HEER_DONATUSLAAN_MISSIE_LABELS = {
   muziekdoosje_bij_aaltje:   'Het muziekdoosje bij Aaltje afgeleverd',
 };
 
+// ─────────────────────────────────────────────────────────────────
+// Leestaken: het dagboek (Kraaienkwartier) en "Over de Rozen"
+// (Heer Donatuslaan) moeten door alle vier de spelers gelezen zijn
+// voordat de gok van die fase gemaakt mag worden. Elke tablet schrijft
+// alleen zijn EIGEN leesvlag (prefix + rol), zodat gelijktijdig
+// uitlezen geen verloren updates kan geven (zelfde les als de
+// per-rol subkeys bij het intro-wachtscherm).
+// ─────────────────────────────────────────────────────────────────
+var LEESTAKEN = {
+  dagboek: {
+    prefix:     'dagboek_gelezen_',
+    label:      'Iedereen moet het dagboek lezen',
+    labelKlaar: 'Iedereen heeft het dagboek gelezen',
+    beschikbaar: function () { return !!getSharedState('dagboek_gerestaureerd'); }
+  },
+  rozen: {
+    prefix:     'rozen_gelezen_',
+    label:      'Iedereen moet Over de Rozen lezen',
+    labelKlaar: 'Iedereen heeft Over de Rozen gelezen',
+    beschikbaar: function () { return !!getSharedState('over_de_rozen_beschikbaar'); }
+  }
+};
+
+function telBoekLezers(boek) {
+  var taak = LEESTAKEN[boek];
+  if (!taak) return 0;
+  return SHARED_ROLLEN.filter(function (r) { return !!getSharedState(taak.prefix + r); }).length;
+}
+
+function boekDoorIedereenGelezen(boek) {
+  return telBoekLezers(boek) >= SHARED_ROLLEN.length;
+}
+
+// Eigen leesbeurt vastleggen. Wordt aangeroepen bij het UITLEZEN van het
+// boek (onKlaar van de bladerviewer), niet al bij het openen.
+function markeerBoekGelezen(boek) {
+  var taak = LEESTAKEN[boek];
+  if (!taak || !state.personage) return;
+  if (getSharedState(taak.prefix + state.personage)) return;   // al geteld
+  setSharedState(taak.prefix + state.personage, true);
+  if (typeof toonToast === 'function') {
+    toonToast('📖', 'Gelezen! (' + telBoekLezers(boek) + '/' + SHARED_ROLLEN.length + ')');
+  }
+  updateMissieTeller();
+}
+
+// Regel voor het missie-paneel: open taak met teller, of voltooid met vink.
+function leestaakRegel(boek) {
+  var taak = LEESTAKEN[boek];
+  var n = telBoekLezers(boek);
+  var klaar = n >= SHARED_ROLLEN.length;
+  return {
+    voltooid: klaar,
+    leestaak: true,
+    tekst: klaar ? taak.labelKlaar : taak.label + ' (' + n + '/' + SHARED_ROLLEN.length + ')'
+  };
+}
+
+// Testmodus: de leestaak van een boek in een keer op 4/4 zetten, zodat Tom
+// tijdens een sessie kan testen of de poort kan omzeilen.
+function debugAlleGelezen(boek) {
+  var taak = LEESTAKEN[boek];
+  if (!taak) return;
+  SHARED_ROLLEN.forEach(function (r) { setSharedState(taak.prefix + r, true); });
+  if (boek === 'dagboek') setSharedState('filmpje_gezien', true);
+  updateMissieTeller();
+  if (typeof toonToast === 'function') {
+    toonToast('📖', 'Testmodus: leestaak ' + (boek === 'dagboek' ? 'dagboek' : 'Over de Rozen') + ' staat op 4/4.');
+  }
+}
+
+function debugResetLeestaak(boek) {
+  var taak = LEESTAKEN[boek];
+  if (!taak) return;
+  SHARED_ROLLEN.forEach(function (r) { setSharedState(taak.prefix + r, null); });
+  if (boek === 'dagboek') setSharedState('filmpje_gezien', false);
+  updateMissieTeller();
+  if (typeof toonToast === 'function') {
+    toonToast('🔄', 'Leestaak ' + (boek === 'dagboek' ? 'dagboek' : 'Over de Rozen') + ' gereset naar 0/4.');
+  }
+}
+
 // Welke zone bepaalt de teller op dit moment?
 // Heer Donatuslaan wint van Dorendael, Dorendael van Kraaienkwartier.
 // De teller verschijnt pas zodra Kraaienkwartier echt unlocked is —
@@ -3916,6 +4010,9 @@ function missieRegelsVoorZone(zone) {
     KRAAIEN_MISSIE_KEYS.forEach(function(k) {
       regels.push({ voltooid: state.heksOpgelost || k.check(), tekst: KRAAIEN_MISSIE_VERHAAL[k.id] || k.label });
     });
+    // Leestaak: zodra het dagboek in het archief ligt moet iedereen het
+    // lezen voordat de heksengok gemaakt mag worden.
+    if (LEESTAKEN.dagboek.beschikbaar()) regels.push(leestaakRegel('dagboek'));
   } else if (zone === 'dorendael') {
     DORENDAEL_MISSIE_KEYS.forEach(function(f) {
       regels.push({ voltooid: hasVisited(f), tekst: DORENDAEL_MISSIE_LABELS[f] || f });
@@ -3924,6 +4021,9 @@ function missieRegelsVoorZone(zone) {
     HEER_DONATUSLAAN_MISSIE_KEYS.forEach(function(f) {
       regels.push({ voltooid: hasVisited(f), tekst: HEER_DONATUSLAAN_MISSIE_LABELS[f] || f });
     });
+    // Leestaak: zodra Kelly "Over de Rozen" geplaatst heeft moet iedereen
+    // het lezen voordat de Tobbe-gok gemaakt mag worden.
+    if (LEESTAKEN.rozen.beschikbaar()) regels.push(leestaakRegel('rozen'));
   }
   return regels;
 }
@@ -3933,7 +4033,10 @@ function bouwMissiePaneel() {
   if (!paneel) return;
   var zone = verhaalFaseZone();
   var regels = zone ? missieRegelsVoorZone(zone) : [];
-  var voltooid = regels.filter(function(r){ return r.voltooid; });
+  // Voltooide stappen plus open leestaken: het paneel toont normaal alleen
+  // wat al gebeurd is, maar een leestaak is de enige uitzondering, die
+  // staat er met teller in zolang nog niet iedereen gelezen heeft.
+  var zichtbaar = regels.filter(function(r){ return r.voltooid || r.leestaak; });
   var html = '<div class="missie-paneel-titel">Wat jullie ontdekten</div>';
   // Weet de speler niet waar hij is (Felix opgesloten in H2), dan mag de naam
   // van de wijk hier niet staan. Anders leest hij in dit paneel af waar hij
@@ -3943,12 +4046,13 @@ function bouwMissiePaneel() {
             (state.locatieOnbekend ? '???' : faseWeergaveNaam(zone)) +
             '</div>';
   }
-  if (!voltooid.length) {
+  if (!zichtbaar.length) {
     html += '<div class="missie-paneel-leeg">Het verhaal moet zich nog onthullen…</div>';
   } else {
-    voltooid.forEach(function(r, i) {
+    zichtbaar.forEach(function(r, i) {
+      var vink = (r.leestaak && !r.voltooid) ? '📖' : '✦';
       html += '<div class="missie-paneel-lijn" style="animation-delay:' + (i * 0.06).toFixed(2) + 's">' +
-              '<span class="missie-paneel-vink">✦</span>' +
+              '<span class="missie-paneel-vink">' + vink + '</span>' +
               '<span class="missie-paneel-tekst">' + r.tekst + '</span></div>';
     });
   }
@@ -6387,7 +6491,9 @@ function debugSnelstart(p) {
   if (magResetten) {
     ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
      'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
-     'dorendael_finale_gestart'
+     'dorendael_finale_gestart',
+     'dagboek_gelezen_jan','dagboek_gelezen_kelly','dagboek_gelezen_fenna','dagboek_gelezen_felix',
+     'rozen_gelezen_jan','rozen_gelezen_kelly','rozen_gelezen_fenna','rozen_gelezen_felix'
     ].forEach(function(k){ setSharedState(k, false); });
   }
   state.personage = p;
@@ -6945,8 +7051,12 @@ function checkCodeToegankelijk(val) {
       return null;
     }
     // HD finale klaar (5 keys) maar gok niet gemaakt: alleen D2 + ingangen.
+    // Het dorpsarchief (D3) blijft open zolang nog niet iedereen "Over de
+    // Rozen" gelezen heeft: die leestaak is voorwaarde voor de Tobbe-gok,
+    // en zonder deze uitzondering zou het spel muurvast lopen.
     if (heerDonatusFinaleKlaar() && !state.tobbeGokOpgelost) {
       var toegestaanHD = ['D1', 'D2', 'H1'];
+      if (typeof boekDoorIedereenGelezen === 'function' && !boekDoorIedereenGelezen('rozen')) toegestaanHD.push('D3');
       if (!toegestaanHD.includes(val)) return 'Het verhaal is compleet. Ga naar het podium op het dorpsplein.';
       return null;
     }
@@ -13825,7 +13935,7 @@ function kellyBekijktDagboekEerste() {
         geenTerugBladeren: true,   // alleen vooruit, niet terugbladeren
         onTonen: startDagboekMuziek,
         onOpen:  function(){ setSharedState('filmpje_gezien', true); },
-        onKlaar: function(){ stopDagboekMuziek(); naarArchivarisRuimte(); }
+        onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('dagboek'); naarArchivarisRuimte(); }
       });
     },
     dialog: []
@@ -14002,7 +14112,9 @@ function mountOverDeRozenBoekje(el, onKlaar) {
     openLabel:  'Open het boekje',
     onTonen: startDagboekMuziek,
     onOpen:  function(){ markVisited('over_de_rozen_gelezen'); },
-    onKlaar: function(){ stopDagboekMuziek(); onKlaar(); }
+    // Telt ook Kelly's leesbeurt in het kerkarchief mee: daardoor start de
+    // leestaak op 1/4 zodra het boekje voor iedereen beschikbaar komt.
+    onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('rozen'); onKlaar(); }
   });
 }
 
@@ -14037,7 +14149,7 @@ function openDagboekFilmpje() {
         openLabel:  'Bekijk dagboek',
         onTonen: startDagboekMuziek,
         onOpen:  function(){ setSharedState('filmpje_gezien', true); },
-        onKlaar: function(){ stopDagboekMuziek(); openDorpsarchiefArchieven(); }
+        onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('dagboek'); openDorpsarchiefArchieven(); }
       });
     },
     dialog: [],
@@ -14384,15 +14496,16 @@ function openBeslispunt() {
     });
     return;
   }
-  // Gate: filmpje moet ergens in het team bekeken zijn voor de gok mogelijk is.
-  if (!getSharedState('filmpje_gezien')) {
+  // Gate: iedereen moet het dagboek in het archief uitgelezen hebben
+  // voordat de gok mogelijk is (leestaak 4/4).
+  if (!boekDoorIedereenGelezen('dagboek')) {
     renderLocatieScene({
       container: document.getElementById('locatie-content'),
       titel:    'De gok is nog niet mogelijk',
       sub:      'Dorpsplein — het podium',
       image:    podiumAfbeelding(),
       dialog: [
-        'Voor je de heks aanwijst, moet ten minste één teamgenoot het dagboek-filmpje in het archief hebben bekeken.',
+        'Voordat jullie de heks aanwijzen, moet iedereen het dagboek in het dorpsarchief gelezen hebben. (' + telBoekLezers('dagboek') + '/4)',
         { spreker: 'Verteller', tekst: 'Kom terug zodra dat is gebeurd.' }
       ]
     });
@@ -16851,7 +16964,7 @@ function checkAllTokens() {
     toonLade(
     'Alles verzameld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alles verzameld. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
-      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Voor die tijd: zorg dat je in ieder geval het dagboek bekeken hebt.</p>',
+      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Maar de gok kan pas gemaakt worden als iedereen het dagboek in het dorpsarchief gelezen heeft.</p>',
     'Verder →',
     null
   );
@@ -16923,7 +17036,7 @@ function checkHeerDonatusTokens() {
     toonLade(
       '✦  Verhaalscore compleet',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie zijn klaar in Heer Donatuslaan. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks in deze straat is.</p>' +
-        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
+        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen "Over de Rozen" gelezen heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.</p>',
       'Verder →',
       null
     );
@@ -16940,6 +17053,24 @@ function openHeerDonatusGok() {
       image: podiumAfbeelding(),
       dialog: [
         { spreker: 'Verteller', tekst: 'De gok is al gemaakt. Ga naar de kerk in Heer Donatuslaan.' }
+      ]
+    });
+    showScreen('screen-locatie');
+    state.lastZone = 'dorpsplein';
+    return;
+  }
+  // Gate: iedereen moet "Over de Rozen" in het dorpsarchief uitgelezen
+  // hebben voordat de gok mogelijk is (leestaak 4/4). Het dorpsarchief
+  // (D3) blijft hiervoor open, zie checkCodeToegankelijk.
+  if (!boekDoorIedereenGelezen('rozen')) {
+    renderLocatieScene({
+      container: document.getElementById('locatie-content'),
+      titel:    'De gok is nog niet mogelijk',
+      sub:      'Dorpsplein, het podium',
+      image:    podiumAfbeelding(),
+      dialog: [
+        'Voordat jullie de heks aanwijzen, moet iedereen "Over de Rozen" in het dorpsarchief gelezen hebben. (' + telBoekLezers('rozen') + '/4)',
+        { spreker: 'Verteller', tekst: 'Het dorpsarchief is open. Kom terug zodra iedereen het boekje uit heeft.' }
       ]
     });
     showScreen('screen-locatie');
@@ -17885,6 +18016,10 @@ function podiumEinde() {
 
 var PF_GELUID_PAD = 'geluid/plein/';
 var PF_BG_VOLUME = 0.35;
+// De muziek van de podium-finale: start bij "Begin de finale", loopt op
+// loop door de gate en de armen-selectie heen, en stopt zodra de spelers
+// weer als pop verschijnen (dan komt de gewone achtergrondmuziek terug).
+var PF_FINALE_TRACK = 'geluid/finale/finalemuziek.mp3';
 var PF_POPS = {
   // De heksen samen: geen los samen-bestand, maar de twee individuele pops
   // net naast elkaar in een slot (Hilketrude links, Aleida rechts).
@@ -17917,7 +18052,9 @@ var PF_ROOSAS_SRC = 'karakters/dorpsplein/roosas-pop.png';   // as-variant, mag 
 function pfStartLoop(bestand, volume) {
   kkStopAudio('_pfTrack');
   try {
-    var a = new Audio(PF_GELUID_PAD + bestand);
+    // Een bestandsnaam met een slash is al een volledig pad (zoals de
+    // finalemuziek); kale namen komen uit de plein-map.
+    var a = new Audio(bestand.indexOf('/') !== -1 ? bestand : PF_GELUID_PAD + bestand);
     a.loop = true;
     a.volume = volume;
     a.play().catch(function () {});
@@ -18185,7 +18322,7 @@ function pleinFinaleIntro() {
   dempMuziek();
   pfRoosReset();
   pfZetCinema(true);
-  pfStartLoop('plein-dreiging.mp3', PF_BG_VOLUME);
+  pfStartLoop(PF_FINALE_TRACK, PF_BG_VOLUME);
   renderLocatieScene({
     container: cont,
     titel: 'Het Podium',
@@ -18209,7 +18346,7 @@ function pleinFinaleIntro() {
       { spreker: 'Hilketrude', tekst: '*(wijst naar Kelly)* Met blindheid is het lastig lezen, hè frutje?', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Aleida', tekst: '*(wijst naar Fenna)* En jij, zielig ding, zingen gaat straks ook voor jou over zijn.', onShow: function () { pfToonPop('aleida'); } },
       { spreker: 'De figuur', tekst: 'Monsters...', onShow: function () { pfToonPop(null); pfZijMidden(true); } },
-      { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); pfWisselTrack('plein-omslag.mp3', PF_BG_VOLUME); } },
+      { tekst: 'De heksen schrikken en draaien zich om. Geen twijfel mogelijk: het is Sybille. Ze staat dichter bij de roos dan de heksen, en ze heeft de roos al in haar handen.', onShow: function () { pfToonZij('sybille'); } },
       { spreker: 'Hilketrude', tekst: 'Sybille! Kind! Je bent er... Fijn, nu kun...', onShow: function () { pfToonPop('hilketrude'); } },
       { spreker: 'Sybille', tekst: '*(roept naar jullie)* Pak ze vast!', onShow: function () { pfToonPop(null); } }
     ],
@@ -18245,9 +18382,9 @@ function pleinFinaleNaArmen() {
   // start via het debug-paneel).
   pfZijMidden(false);
   pfZetCinema(true);
-  // Normaal loopt de omslag-track hier al sinds Sybilles onthulling; bij
+  // Normaal loopt de finalemuziek hier al sinds "Begin de finale"; bij
   // een losse start (debug) staat er nog niets aan, dan alsnog starten.
-  if (!window._pfTrack) pfStartLoop('plein-omslag.mp3', PF_BG_VOLUME);
+  if (!window._pfTrack) pfStartLoop(PF_FINALE_TRACK, PF_BG_VOLUME);
   // Variant A of B: heeft deze speler het flesje van de apotheker
   // gedronken? Per tablet, zodat de je-vorm van variant B klopt.
   var flesjeGedronken = hasVisited('h7_gedronken');
@@ -18265,14 +18402,14 @@ function pleinFinaleNaArmen() {
     { spreker: 'Sybille', tekst: 'Finita!', onShow: function () { pfRoosBurst(); kkFadeNaar('_pfTrack', PF_BG_VOLUME, 600); } },
     { tekst: 'De roos vlamt op, blauw, dan wit, dan grijs. Voor je ogen verbrandt hij en valt uiteen in as.', onShow: function () { pfRoosAs(); } },
     { tekst: 'Dan de heksen. Eén schreeuw, twee stemmen tegelijk. Ook zij vallen uiteen in as. Daarna is het stil.', onShow: function () { pfVerval('pf-zij'); pfSfx(PF_GELUID_PAD + 'plein-schreeuw.mp3', 0.9); kkFadeNaar('_pfTrack', 0, 2600); } },
-    { spreker: 'Fenna-Viviènne', tekst: 'Be... be... betekent dit dat...', onShow: function () { pfToonPop('fenna'); } },
+    // De spelers verschijnen weer als pop: finalemuziek stopt (hij stond na
+    // de as-scene al op volume 0) en de gewone achtergrondmuziek komt terug.
+    { spreker: 'Fenna-Viviènne', tekst: 'Be... be... betekent dit dat...', onShow: function () { pfToonPop('fenna'); kkStopAudio('_pfTrack'); fadeMuziekIn(); } },
     { spreker: 'Felix', tekst: 'Ik denk het, Fen.', onShow: function () { pfToonPop('felix'); } },
     { spreker: 'Jan', tekst: 'De rozen zijn uitgebloeid, denk ik.', onShow: function () { pfToonPop('jan'); } },
     { spreker: 'Verteller', tekst: 'De inwoners van Zilverweide komen aan op het plein. Sommigen hebben het tafereel zien gebeuren. De monden van de ongelukkigen zijn niet langer dicht. Vanavond zou de stilte breken. Dit is het moment dat de stilte brak...', onShow: function () {
       pfToonPop(null);
       pfToonZij(null);
-      kkStopAudio('_pfTrack');
-      pfStartLoop('plein-uitklinker.mp3', PF_BG_VOLUME);
       pfProbeerAchtergrond('locaties/dorpsplein/pleindorpelingen.jpeg');
     } },
     { tekst: 'Kelly komt als laatste aanlopen, langzamer dan de rest.', onShow: function () { setTimeout(function () { pfToonPop('kelly'); }, 900); } }
@@ -18383,6 +18520,8 @@ function buildDebugPanel() {
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
       ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
+      ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }, !boekDoorIedereenGelezen('dagboek'), 'Dagboek'],
+      ['🔄 Reset leestaak dagboek (0/4)', function(){ debugResetLeestaak('dagboek'); close(); }, telBoekLezers('dagboek') > 0, 'Dagboek'],
       // ── Felix & vermommingen
       ['💰 + Munten van Stoop',       function(){ debugItem('💰','Munten van Stoop'); }, p === 'felix', 'Felix & vermommingen'],
       ['🧶 + Lucinde-outfit',         function(){ addInventory('🧶','Breiwerkje',false); document.getElementById('debug-panel').style.display='none'; }, true, 'Felix & vermommingen'],
@@ -18411,6 +18550,8 @@ function buildDebugPanel() {
         setSharedState('kk_sleutel_robbie', false);
         setSharedState('kk_sleutel_speld', false);
         setSharedState('dagboek_gerestaureerd', false);
+        setSharedState('filmpje_gezien', false);
+        SHARED_ROLLEN.forEach(function(r){ setSharedState('dagboek_gelezen_' + r, null); });
         setSharedState('heks_opgelost', false);
         setSharedState('heks_beslisser', null);
         setSharedState('heks_fout_tot', null);
@@ -18537,6 +18678,8 @@ function buildDebugPanel() {
         if (typeof toonToast === 'function') toonToast('\ud83d\udcd6', 'Archief beschikbaar: Over de Rozen. Laat je teamgenoten dit ook weten.');
         close();
       }, true, 'H4 Kerk'],
+      ['\ud83d\udcd6 Alle 4 rozen gelezen (4/4)', function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }, !boekDoorIedereenGelezen('rozen'), 'H4 Kerk'],
+      ['\ud83d\udd04 Reset leestaak rozen (0/4)', function(){ debugResetLeestaak('rozen'); close(); }, telBoekLezers('rozen') > 0, 'H4 Kerk'],
       ['🏛️ Fenna bij gemeentehuis geweest', function(){ markVisited('fenna_gemeentehuis'); setSharedState('fenna_gemeentehuis', true); close(); }, true, 'H5 Gemeentehuis'],
       // Het kerkarchief is normaal alleen te bereiken door het kerkdoolhof uit
       // te spelen. Deze knop zet je op de scène erna, zodat je die los kunt
@@ -18606,7 +18749,8 @@ function buildDebugPanel() {
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
       ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }],
-      ['🎬 Filmpje gezien',         function(){ setSharedState('filmpje_gezien', true); close(); }],
+      ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }],
+      ['📖 Alle 4 rozen gelezen (4/4)',   function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }],
     ];
   }
 
