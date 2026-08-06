@@ -2574,7 +2574,7 @@ function verwerkBinnengekomenShared(data) {
     // Leesvlaggen van andere tablets: teller en (open) missie-paneel meteen
     // bijwerken zodat de leestaak-teller live oploopt.
     for (var lvKey in data) {
-      if ((lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0)
+      if ((lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('molen_gezien_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0)
           && data[lvKey] && !_leesvlagGemeld[lvKey]) {
         _leesvlagGemeld[lvKey] = true;
         ietsNieuws = true;
@@ -3829,12 +3829,24 @@ const HEER_DONATUSLAAN_MISSIE_LABELS = {
 var LEESTAKEN = {
   dagboek: {
     prefix:     'dagboek_gelezen_',
+    naam:       'dagboek',
+    voltooidWoord: 'Gelezen!',
     label:      'Iedereen moet het dagboek lezen',
     labelKlaar: 'Iedereen heeft het dagboek gelezen',
     beschikbaar: function () { return !!getSharedState('dagboek_gerestaureerd'); }
   },
+  molen: {
+    prefix:     'molen_gezien_',
+    naam:       'molen-legende',
+    voltooidWoord: 'Gezien!',
+    label:      'Iedereen moet de molen-legende zien',
+    labelKlaar: 'Iedereen heeft de molen-legende gezien',
+    beschikbaar: function () { return !!getSharedState('oude_kranten_ontdekt'); }
+  },
   rozen: {
     prefix:     'rozen_gelezen_',
+    naam:       'Over de Rozen',
+    voltooidWoord: 'Gelezen!',
     label:      'Iedereen moet Over de Rozen lezen',
     labelKlaar: 'Iedereen heeft Over de Rozen gelezen',
     beschikbaar: function () { return !!getSharedState('over_de_rozen_beschikbaar'); }
@@ -3859,7 +3871,7 @@ function markeerBoekGelezen(boek) {
   if (getSharedState(taak.prefix + state.personage)) return;   // al geteld
   setSharedState(taak.prefix + state.personage, true);
   if (typeof toonToast === 'function') {
-    toonToast('📖', 'Gelezen! (' + telBoekLezers(boek) + '/' + SHARED_ROLLEN.length + ')');
+    toonToast('📖', taak.voltooidWoord + ' (' + telBoekLezers(boek) + '/' + SHARED_ROLLEN.length + ')');
   }
   updateMissieTeller();
 }
@@ -3885,7 +3897,7 @@ function debugAlleGelezen(boek) {
   if (boek === 'dagboek') setSharedState('filmpje_gezien', true);
   updateMissieTeller();
   if (typeof toonToast === 'function') {
-    toonToast('📖', 'Testmodus: leestaak ' + (boek === 'dagboek' ? 'dagboek' : 'Over de Rozen') + ' staat op 4/4.');
+    toonToast('📖', 'Testmodus: leestaak ' + taak.naam + ' staat op 4/4.');
   }
 }
 
@@ -3896,7 +3908,7 @@ function debugResetLeestaak(boek) {
   if (boek === 'dagboek') setSharedState('filmpje_gezien', false);
   updateMissieTeller();
   if (typeof toonToast === 'function') {
-    toonToast('🔄', 'Leestaak ' + (boek === 'dagboek' ? 'dagboek' : 'Over de Rozen') + ' gereset naar 0/4.');
+    toonToast('🔄', 'Leestaak ' + taak.naam + ' gereset naar 0/4.');
   }
 }
 
@@ -4017,6 +4029,9 @@ function missieRegelsVoorZone(zone) {
     DORENDAEL_MISSIE_KEYS.forEach(function(f) {
       regels.push({ voltooid: hasVisited(f), tekst: DORENDAEL_MISSIE_LABELS[f] || f });
     });
+    // Leestaak: zodra de oude kranten ontsloten zijn moet iedereen de
+    // molen-legende (het filmpje) zien voordat de Dorendael-gok mag.
+    if (LEESTAKEN.molen.beschikbaar()) regels.push(leestaakRegel('molen'));
   } else if (zone === 'sintdonatuslaan') {
     HEER_DONATUSLAAN_MISSIE_KEYS.forEach(function(f) {
       regels.push({ voltooid: hasVisited(f), tekst: HEER_DONATUSLAAN_MISSIE_LABELS[f] || f });
@@ -6493,6 +6508,7 @@ function debugSnelstart(p) {
      'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
      'dorendael_finale_gestart',
      'dagboek_gelezen_jan','dagboek_gelezen_kelly','dagboek_gelezen_fenna','dagboek_gelezen_felix',
+     'molen_gezien_jan','molen_gezien_kelly','molen_gezien_fenna','molen_gezien_felix',
      'rozen_gelezen_jan','rozen_gelezen_kelly','rozen_gelezen_fenna','rozen_gelezen_felix'
     ].forEach(function(k){ setSharedState(k, false); });
   }
@@ -7020,8 +7036,12 @@ function checkCodeToegankelijk(val) {
     return null;
   }
   // Dorendael-finale klaar (5/5) maar gok niet gemaakt: alleen ingangen + D2 podium open.
+  // Het dorpsarchief (D3) blijft open zolang nog niet iedereen de
+  // molen-legende gezien heeft: die leestaak is voorwaarde voor de gok,
+  // en zonder deze uitzondering zou het spel muurvast lopen.
   if (dorendaelFinaleKlaar() && !state.dorendaelGokOpgelost) {
     const toegestaan = ['D1', 'D2', 'DD1'];
+    if (typeof boekDoorIedereenGelezen === 'function' && !boekDoorIedereenGelezen('molen')) toegestaan.push('D3');
     if (!toegestaan.includes(val)) return 'Het verhaal is compleet. Ga naar het podium op het dorpsplein.';
     return null;
   }
@@ -14654,6 +14674,24 @@ function openDorendaelGok() {
     state.lastZone = 'dorpsplein';
     return;
   }
+  // Gate: iedereen moet de molen-legende (het filmpje bij de oude kranten)
+  // gezien hebben voordat de gok mogelijk is (leestaak 4/4). Het
+  // dorpsarchief (D3) blijft hiervoor open, zie checkCodeToegankelijk.
+  if (!boekDoorIedereenGelezen('molen')) {
+    renderLocatieScene({
+      container: document.getElementById('locatie-content'),
+      titel:    'De gok is nog niet mogelijk',
+      sub:      'Dorpsplein, het podium',
+      image:    podiumAfbeelding(),
+      dialog: [
+        'Voordat jullie de heks aanwijzen, moet iedereen de molen-legende in het dorpsarchief gezien hebben. (' + telBoekLezers('molen') + '/4)',
+        { spreker: 'Verteller', tekst: 'Het dorpsarchief is open. Kom terug zodra iedereen het filmpje uit heeft.' }
+      ]
+    });
+    showScreen('screen-locatie');
+    state.lastZone = 'dorpsplein';
+    return;
+  }
   const opties = [
     { code: 'bart',      naam: 'Bart',                sub: 'Nummer 2',             portret: 'karakters/dorendael/bartintens-pop.png' },
     { code: 'trijn10',   naam: 'Trijn',               sub: 'De moeder, Nummer 10', portret: 'karakters/dorendael/trijn-pop.png' },
@@ -16985,7 +17023,7 @@ function checkDorendaelTokens() {
     toonLade(
     '✦  Verhaalscore compleet',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alle stukken bij elkaar. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
-      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Andere plekken zijn nu gesloten tot de gok gemaakt is.</p>',
+      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen de molen-legende gezien heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.</p>',
     'Verder →',
     null
   );
@@ -18019,7 +18057,7 @@ var PF_BG_VOLUME = 0.35;
 // De muziek van de podium-finale: start bij "Begin de finale", loopt op
 // loop door de gate en de armen-selectie heen, en stopt zodra de spelers
 // weer als pop verschijnen (dan komt de gewone achtergrondmuziek terug).
-var PF_FINALE_TRACK = 'geluid/finale/finalemuziek.mp3';
+var PF_FINALE_TRACK = 'geluid/finale/muziekfinale.mp3';
 var PF_POPS = {
   // De heksen samen: geen los samen-bestand, maar de twee individuele pops
   // net naast elkaar in een slot (Hilketrude links, Aleida rechts).
@@ -18621,6 +18659,8 @@ function buildDebugPanel() {
       ['🏚️ Kelly bij molen geweest', function(){ markVisited('molen_doorgelopen'); markVisited('kelly_muziekdoosje_gevonden'); close(); }, p === 'kelly' && !hasVisited('kelly_muziekdoosje_gevonden') && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['🎵 Muziekdoos ingeleverd',   function(){ debugMuziekdoosIngeleverd(); close(); }, !muziekKlaar && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
+      ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, !boekDoorIedereenGelezen('molen'), 'Muziekdoos & Archief'],
+      ['🔄 Reset leestaak molen-legende (0/4)', function(){ debugResetLeestaak('molen'); close(); }, telBoekLezers('molen') > 0, 'Muziekdoos & Archief'],
       // ── Felix (DD2)
       ['💰 + Munten van Bewoner',    function(){ debugItem('💰','Munten van de Bewoner'); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
       ['🏚️ DD2 straat + vloek (maar plots...)', function(){ showScreen('screen-locatie'); dd2StraatMunten(true); close(); }, p === 'felix' && !inWoudWinScreen, 'Felix (DD2)'],
@@ -18750,6 +18790,7 @@ function buildDebugPanel() {
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
       ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }],
       ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }],
+      ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }],
       ['📖 Alle 4 rozen gelezen (4/4)',   function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }],
     ];
   }
@@ -21459,11 +21500,17 @@ function openMolenLegende() {
 
   btn.onclick = function () {
     if (zwBackBtn) zwBackBtn.onclick = goBackFromLocatie;   // handler herstellen
+    // Ook hier de kijkbeurt tellen: de knop verschijnt normaal pas als de
+    // film uit is, maar via de noodrem hieronder kan hij eerder komen en
+    // dan mag de speler niet vast blijven zitten op de leestaak.
+    markeerBoekGelezen('molen');
     terug();
   };
 
   const toonKnop = function () { btn.classList.add('zichtbaar'); };
   vid.addEventListener('ended', toonKnop);
+  // Film uitgekeken: kijkbeurt voor de leestaak vastleggen.
+  vid.addEventListener('ended', function () { markeerBoekGelezen('molen'); });
 
   // Noodrem: hapert de video of kijkt iemand hem niet uit, dan mag hij na
   // een ruime marge alsnog door. Vastzitten is erger dan te vroeg kunnen.
