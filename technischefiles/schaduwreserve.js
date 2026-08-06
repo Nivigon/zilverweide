@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   SCHADUW-MODULE — engine  (hoort bij schaduw.css + fog.png)
+   SCHADUW-MODULE, engine  (hoort bij schaduw.css + fog.png)
 
    Eén zelfstandige laag die overal in het spel actief kan zijn. De
    hoofdgame (zilverweide.html) stuurt 'm aan met een handvol regels:
@@ -27,17 +27,29 @@ window.ZilverweideSchaduw = (function () {
   const CFG = {
     fogSrc: 'fog.png',
     spelerId: 'speler',           // wie deze tablet is (voor de server)
-    sessieId: null,                // gedeelde sessie-ID (alle tablets dezelfde)
-    huidigeLocatie: null,          // locatie-ID waar deze speler nu is
-    meterPerSec: 1.1,             // % per seconde dat de meter vult
+    meterPerSec: 0.4167,          // % per seconde: 100 / 240 = vol in 4 minuten
     mistVis: 1.0,                 // bovengrens fog-zichtbaarheid (banken vol opaak bij 90%)
     mistDensity: 0.6,             // hoeveel mistlagen meedoen
     geluidPaden: [
-      'geluid/schaduwmechanic/schaduwfluister.mp3',
+      'geluid/Schaduwmechanic/schaduwfluister.mp3',
+      './geluid/Schaduwmechanic/schaduwfluister.mp3',
+      'Schaduwmechanic/schaduwfluister.mp3',
       'schaduwfluister.mp3'
     ],
+    // Mag deze speler nu vergrendeld worden? De host beslist dat, want het
+    // hangt af van gedeelde stand (zit er al iemand anders vast?) en van het
+    // verhaal (Felix opgesloten in H2 kan door niemand bereikt worden).
+    // Geeft null terug als vergrendelen mag, of een object als het NIET mag:
+    //   { reden: 'ander_vast', tekst: '...', meterNa: 70 }
+    // meterNa is de stand waarop de meter verder gaat na het loslaten.
+    blokkeerVergrendeling: null,
     onVergrendel: null,           // callback(code) als deze speler vastraakt
     onBevrijd: null,              // callback() als deze speler vrijkomt
+    onDropLocatie: null,          // callback(klaar) als je vastraakt buiten een locatie:
+                                  // de host brengt je naar een locatie, roept klaar(locId) aan
+    getVastzitTekst: null,        // callback() → zin voor het wachtscherm ("Je zakt op de grond bij ...")
+    onTerugNaarStraat: null,      // callback() als de schaduw wijkt na een gedwongen drop: terug naar de straat
+    huidigeLocatie: null,         // id van de locatie waar je nu bent (host houdt dit bij)
     persist: true,                // vergrendeling onthouden bij verversen
     debug: false                  // toont een solo-ontgrendelknop op het vergrendel-scherm
   };
@@ -45,112 +57,87 @@ window.ZilverweideSchaduw = (function () {
   const BANK_BASE = [0.95, 0.9, 1.0, 0.92, 0.88, 0.97]; // basis-opacity per fogbank
   const MIST_BODEM = 0.14;             // fog-aanwezigheid bij meter 0 (heel licht begin)
   const RUNES = ['ᛟ', 'ᚦ', 'ᛉ'];
+  const MEM_EYEBROW_STANDAARD = 'Een schim en de stemmen dringen zich op';
   const FLUISTERS = [
     'zij komt…', 'stil nu…', 'je hoort het ook…', 'niemand luistert…',
     'blijf…', 'dichterbij…', 'het wordt donker…', 'nog even…'
   ];
   const LS_KEY = 'zilverweide_schaduw_lock';
+  // Cadans van het gefluister. MAX geldt bij een lege meter, MIN bij een volle.
+  const FLUISTER_MAX_MS = 45000;
+  const FLUISTER_MIN_MS = 22000;
+  // De snelheid waarop de meter hoort te lopen (vol in 4 minuten). Dient als
+  // ijkpunt voor de testfactor van het gefluister.
+  const NORMAAL_PER_SEC = 0.4167;
 
   // ── Toestand ─────────────────────────────────────────────────────
   let el = {};                    // DOM-verwijzingen
   let cursed = false, meter = 0;
-  let busy = false;               // host speelt eigen geluid → schaduw zwijgt
-  let opLocatie = false;           // meter loopt alleen als speler op een locatie-scherm is
+  // Pauze: de host kan de schaduw stilzetten (eigen geluid, mini-game, film).
+  // Meerdere dingen kunnen dat tegelijk willen, dus houden we bij WIE er
+  // pauze vraagt in plaats van één schakelaar. Anders zet de eerste die klaar
+  // is de pauze van de ander ook uit. busy is de afgeleide: pauze zolang er
+  // nog iemand in de set staat.
+  let busyRedenen = new Set();
+  let busy = false;               // afgeleid uit busyRedenen, niet los zetten
   let vergrendeld = false;
+  let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
+  let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
+  // Losstaand hand-ritueel (Kelly bij Naald en Masker): dezelfde rune-puzzel,
+  // maar zonder meter, zonder vergrendeling en zonder code. Oneindig herhalen
+  // tot ze het zegel goed naspeelt; dan wijkt de schim. Losgekoppeld van de
+  // echte vloek (cursed/meter/lock blijven ongemoeid).
+  let handModus = false, handActief = false, handWhisperTimer = null, handKlaarCb = null;
+  let fluisterSnelTest = false;   // testknop: fluisteringen snel achter elkaar
+  let andereVastTest = false;     // testknop: doe alsof een teamgenoot vastzit
   let whisperReadyAt = 0;         // niet vóór dit moment opnieuw fluisteren
   let fluisterEl = null, mp3Ok = false, pathIdx = 0;
   let actieveCode = null;         // de code die deze speler nu toont (gever)
 
   /* ═══════════════════════════════════════════════════════════════
-     FIREBASE SERVER — vervangt de oude lokale stub.
-     Twee functies: vraagCode (speler zit vast, schrijft code naar DB)
-     en controleerCode (redder controleert, maakt beiden vrij).
-
-     Valt automatisch terug op lokale modus als Firebase niet geladen is.
-     Pad in de database:  sessies/{sessieId}/schaduw/{spelerId}
+     SERVER-STUB  ▼▼▼  HIER PLUG JE STRAKS FIREBASE IN  ▼▼▼
+     Twee haakjes naar buiten. Nu lokaal nagebootst; de stub "onthoudt"
+     één actieve code zodat je de hele flow op één tablet kunt testen.
+     In productie bezit de SERVER de code en geeft die BEIDE spelers vrij.
   ═══════════════════════════════════════════════════════════════ */
-  function firebaseActief() {
-    return typeof firebase !== 'undefined' && firebase.database && _sessieId;
-  }
-  function dbRef(pad) {
-    return firebase.database().ref('sessies/' + _sessieId + '/schaduw/' + pad);
-  }
-
-  let _sessieId = null;      // wordt gezet via init({ sessieId: '...' })
-  let _luisterRef = null;    // Firebase listener voor bevrijding
-
   const Server = {
-    _code: null,   // fallback voor lokale modus (geen Firebase)
+    _code: null,   // (alleen voor de stub) de onthouden code
 
+    // (1) Bij vastraken: vraag de server om een code voor deze speler+locatie.
+    //     ECHTE SERVER: laat Firebase een willekeurige code aanmaken, sla 'm op
+    //     onder deze spelerId + locatie, en geef 'm terug.
     async vraagCode(spelerId) {
-      const code = willekeurigeCode();
-      const locatie = CFG.huidigeLocatie || null;
-
-      if (firebaseActief()) {
-        try {
-          await dbRef(spelerId).set({ code: code, vergrendeld: true, locatie: locatie });
-        } catch (e) {
-          console.warn('Firebase schrijven mislukt, lokale fallback:', e);
-        }
-        // Luister naar bevrijding: als een redder 'vergrendeld' op false zet
-        startBevrijdLuisteraar(spelerId);
-      } else {
-        this._code = code;    // lokale fallback (testen op één browser)
+      // Als de host (zilverweide) een gedeelde-staat-brug aanbiedt, gaat
+      // de code via die brug: het lock-record wordt dan gedeeld met de
+      // andere tablets zodat een redder op de locatie de invoer krijgt.
+      if (window.ZilverweideSchaduwServer && window.ZilverweideSchaduwServer.vraagCode) {
+        const code = await window.ZilverweideSchaduwServer.vraagCode(spelerId);
+        this._code = code;                       // lokale kopie als vangnet
+        return code;
       }
+      const code = willekeurigeCode();           // ← stub: solo-test op één tablet
+      this._code = code;
       return code;
     },
 
+    // (2) Redder biedt een ingevoerde code aan ter controle.
+    //     ECHTE SERVER: stuur de code naar Firebase; de server controleert en
+    //     zet BEIDE spelers (gever + redder) op "vrij". Geef true/false terug.
     async controleerCode(spelerId, ingevoerd) {
-      if (firebaseActief()) {
-        // Lees alle openstaande vergrendelingen in deze sessie
-        try {
-          const snapshot = await dbRef('').once('value');
-          const alleSpelers = snapshot.val();
-          if (!alleSpelers) return false;
-
-          // Zoek welke speler deze code heeft
-          for (const id in alleSpelers) {
-            const data = alleSpelers[id];
-            if (data && data.vergrendeld && data.code === ingevoerd.toUpperCase()) {
-              // Gevonden: zet die speler vrij in Firebase
-              await dbRef(id).set({ code: null, vergrendeld: false });
-              return true;
-            }
-          }
-          return false;
-        } catch (e) {
-          console.warn('Firebase lezen mislukt:', e);
-          return false;
-        }
-      } else {
-        // Lokale fallback
-        const goed = !!this._code && ingevoerd.toUpperCase() === this._code;
-        if (goed) this._code = null;
-        return goed;
+      // Via de host-brug: vergelijk tegen ALLE open locks in de gedeelde
+      // staat (de redder staat op een ander tablet dan de vergrendelde).
+      if (window.ZilverweideSchaduwServer && window.ZilverweideSchaduwServer.controleerCode) {
+        return await window.ZilverweideSchaduwServer.controleerCode(spelerId, ingevoerd);
       }
+      const goed = !!this._code && ingevoerd.toUpperCase() === this._code;
+      if (goed) this._code = null;
+      return goed;
     }
   };
-
-  // Luistert of een andere browser deze speler heeft bevrijd
-  function startBevrijdLuisteraar(spelerId) {
-    stopBevrijdLuisteraar();
-    if (!firebaseActief()) return;
-    _luisterRef = dbRef(spelerId);
-    _luisterRef.on('value', function (snap) {
-      const data = snap.val();
-      // Als vergrendeld op false gezet is door de redder, bevrijd deze speler
-      if (data && data.vergrendeld === false && vergrendeld) {
-        bevrijd();
-      }
-    });
-  }
-  function stopBevrijdLuisteraar() {
-    if (_luisterRef) { _luisterRef.off(); _luisterRef = null; }
-  }
   /* ═══════════════════════════════════════════════════════════════
-     EINDE FIREBASE SERVER
+     SERVER-STUB  ▲▲▲  EINDE FIREBASE-HAAKJES  ▲▲▲
   ═══════════════════════════════════════════════════════════════ */
 
   function willekeurigeCode() {
@@ -166,6 +153,8 @@ window.ZilverweideSchaduw = (function () {
     root.id = 'zv-schaduw';
     root.setAttribute('aria-hidden', 'true');
     root.innerHTML = `
+      <img id="zv-vloekmerk" src="karakters/special/schaduwvloek.png" alt="" aria-hidden="true"
+           style="position:fixed;right:0;bottom:0;width:46vw;height:auto;max-width:none;opacity:0;pointer-events:none;z-index:700;transition:opacity .8s ease;filter:drop-shadow(0 0 14px rgba(0,0,0,.55))">
       <div id="zv-rook">
         <div class="zv-rand zv-l"></div><div class="zv-rand zv-r"></div>
         <div class="zv-rand zv-t"></div><div class="zv-rand zv-b"></div>
@@ -180,22 +169,14 @@ window.ZilverweideSchaduw = (function () {
       </div>
 
       <div id="zv-memory" class="zv-overlay">
-        <div class="zv-eyebrow">De schaduw sluit zich</div>
+        <div class="zv-eyebrow">Een schim en de stemmen dringen zich op</div>
         <div id="zv-mem-intro">
-          <svg class="zv-schim" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <defs><radialGradient id="zvsg" cx="50%" cy="34%" r="68%">
-              <stop offset="0%" stop-color="#241420"/><stop offset="100%" stop-color="#070409"/>
-            </radialGradient></defs>
-            <path d="M100 14 C72 14 60 40 62 66 C42 76 32 110 34 150 C26 176 22 208 26 220 L174 220 C178 208 174 176 166 150 C168 110 158 76 138 66 C140 40 128 14 100 14 Z" fill="url(#zvsg)"/>
-            <ellipse cx="86" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-            <ellipse cx="114" cy="58" rx="7" ry="10" fill="#d9b3c8" opacity=".55"/>
-          </svg>
           <div class="zv-title">Chaos</div>
           <div class="zv-line">Je hoofd loopt vol. Stemmen buitelen over elkaar, de grond kantelt.
             Uit de nevel kijkt een schim je recht aan.</div>
           <div class="zv-sub">"Wijs de juiste volgorde van tekens aan… of de schaduw houdt je."</div>
         </div>
-        <div class="zv-title" id="zv-mem-title" style="display:none">Herinner het zegel</div>
+        <div class="zv-title" id="zv-mem-title" style="display:none">Orden je gedachten</div>
         <div class="zv-line" id="zv-mem-instr" style="display:none">Let goed op…</div>
         <div class="zv-progress" id="zv-mem-progress"></div>
         <div class="zv-runes" id="zv-mem-runes"></div>
@@ -203,15 +184,14 @@ window.ZilverweideSchaduw = (function () {
       </div>
 
       <div id="zv-lock" class="zv-overlay">
-        <div class="zv-eyebrow">Vervloekt</div>
-        <div class="zv-line">Het zegel brandt. De fluisteringen kruipen over elkaar heen
-          tot je je eigen gedachten niet meer hoort. De grond kantelt onder je.</div>
-        <div class="zv-line">Je kunt geen kant op. Niet alleen.</div>
-        <div class="zv-sub">Dit is het teken dat de schaduw op je heeft achtergelaten.
-          Laat het zien aan wie je komt halen.</div>
+        <div class="zv-eyebrow">De druk in je hoofd wordt te veel</div>
+        <div class="zv-line" id="zv-lock-loc" style="display:none;color:#ffd27a;font-style:normal;font-weight:600"></div>
+        <div class="zv-line">Je voelt je vervloekt. De fluisteringen kruipen over elkaar heen
+          tot je je eigen gedachten niet meer hoort. Een duistere schim verschijnt heel vaag
+          achter in je hoofd. Je zakt naar de grond en kunt geen kant op. Iemand moet je helpen.</div>
+        <div class="zv-sub">Laat een medespeler op jouw locatie deze code invoeren om je te helpen.</div>
         <div class="zv-code" id="zv-lock-code">····</div>
-        <div class="zv-sub">Pas als zij het teken kennen, laat de schaduw je los.</div>
-        <div class="zv-wacht">Roep een medespeler — hardop, hier waar je staat</div>
+        <div class="zv-wacht">Roep een medespeler. Hardop, hier waar je staat.</div>
         <button id="zv-lock-test" class="zv-test" style="display:none">● ontgrendel (test)</button>
       </div>
 
@@ -223,6 +203,7 @@ window.ZilverweideSchaduw = (function () {
                autocapitalize="characters" spellcheck="false" placeholder="····">
         <div class="zv-err" id="zv-redder-err"></div>
         <button class="zv-btn" id="zv-redder-btn">Spreek het teken uit</button>
+        <button class="zv-btn-sec" id="zv-redder-terug">Stap terug</button>
       </div>
 
       <div id="zv-vloekintro"><div id="zv-vloekintro-tekst"></div></div>
@@ -230,11 +211,13 @@ window.ZilverweideSchaduw = (function () {
     document.body.appendChild(root);
 
     el.root = root;
+    el.vloekmerk = root.querySelector('#zv-vloekmerk');
     el.rook = root.querySelector('#zv-rook');
     el.fluister = root.querySelector('#zv-fluister');
     el.meter = root.querySelector('#zv-meter');
     el.meterFill = root.querySelector('#zv-meter-fill');
     el.memory = root.querySelector('#zv-memory');
+    el.memEyebrow = root.querySelector('#zv-memory .zv-eyebrow');
     el.memIntro = root.querySelector('#zv-mem-intro');
     el.memTitle = root.querySelector('#zv-mem-title');
     el.memInstr = root.querySelector('#zv-mem-instr');
@@ -246,10 +229,12 @@ window.ZilverweideSchaduw = (function () {
     el.flits = root.querySelector('#zv-flits');
     el.lock = root.querySelector('#zv-lock');
     el.lockCode = root.querySelector('#zv-lock-code');
+    el.lockLoc = root.querySelector('#zv-lock-loc');
     el.redder = root.querySelector('#zv-redder');
     el.redderInput = root.querySelector('#zv-redder-input');
     el.redderErr = root.querySelector('#zv-redder-err');
     el.redderBtn = root.querySelector('#zv-redder-btn');
+    el.redderTerug = root.querySelector('#zv-redder-terug');
     el.lockTest = root.querySelector('#zv-lock-test');
 
     // fog-textuur op de banken zetten (configureerbaar pad)
@@ -258,6 +243,7 @@ window.ZilverweideSchaduw = (function () {
     });
 
     el.redderBtn.addEventListener('click', redderVerstuur);
+    if (el.redderTerug) el.redderTerug.addEventListener('click', sluitRedderInvoer);
     el.redderInput.addEventListener('keydown', e => { if (e.key === 'Enter') redderVerstuur(); });
     el.memStart.addEventListener('click', startMemReeks);   // intro → reeks
     // Solo-ontgrendelknop: alleen in debug-modus, om zonder medespeler los te komen.
@@ -291,14 +277,26 @@ window.ZilverweideSchaduw = (function () {
   }
 
   // ── Gefluister (tekst + geluid), volgt de meter ──────────────────
+  // Testfactor: alleen VERSNELLEN. Zet iemand de meter sneller (testpaneel),
+  // dan komt het gefluister evenredig sneller. Zet iemand hem langzamer, dan
+  // blijft de cadans staan, zodat de bovengrens van 45s een echte bovengrens
+  // is en het niet stil wordt.
+  function fluisterFactor() {
+    if (fluisterSnelTest) return 0.15;           // testknop: snel achter elkaar
+    var f = NORMAAL_PER_SEC / Math.max(0.01, CFG.meterPerSec);
+    return Math.min(1, f);
+  }
+  // Cadans loopt op met de meter: 45s bij een lege meter, 22s bij een volle.
+  // Bewust niet de oude formule maal een snelheidsfactor: bij 4 minuten kwam
+  // die op 105s uit, en dan drukte een plafond van 45s het oplopen helemaal weg.
   function whisperIntervalMs() {
     const t = Math.min(meter, 100) / 100;        // 0..1 over de hele meter
-    const basis = 40000 - t * 20000;             // 40s (laag) → 20s (vol)
-    const variatie = 0.75 + Math.random() * 0.5; // ±25% willekeur
-    // Schaalt mee met de meter-snelheid: sneller testen = sneller gefluister,
-    // maar de verhouding op normale snelheid (1,1) blijft gelijk.
-    const snelheidFactor = 1.1 / Math.max(0.1, CFG.meterPerSec);
-    return Math.max(20000 * snelheidFactor, basis * variatie * snelheidFactor);
+    const basis = FLUISTER_MAX_MS - t * (FLUISTER_MAX_MS - FLUISTER_MIN_MS);
+    const variatie = 0.9 + Math.random() * 0.2;  // ±10% willekeur
+    const ms = basis * variatie * fluisterFactor();
+    // Nooit langer dan de bovengrens, en nooit zo kort dat twee fluisteringen
+    // over elkaar heen vallen.
+    return Math.max(2000, Math.min(FLUISTER_MAX_MS * fluisterFactor(), ms));
   }
   function whisperVolume() { return 0.45 + 0.55 * (meter / 100); } // hoorbaar boven de muziek
 
@@ -328,10 +326,10 @@ window.ZilverweideSchaduw = (function () {
     clearTimeout(fluisterTimer);
     let wait;
     if (eersteKeer) {
-      // De vloek kondigt zich direct aan: eerste fluistering al na 3-5s,
-      // meeschalend met de testsnelheid zodat je 'm ook bij snel testen hoort.
-      const snelheidFactor = 1.1 / Math.max(0.1, CFG.meterPerSec);
-      wait = (3000 + Math.random() * 2000) * snelheidFactor;
+      // De vloek kondigt zich direct aan: eerste fluistering na 3-5s, altijd
+      // binnen tien seconden. De factor kan alleen versnellen, dus die grens
+      // blijft ook bij snel testen staan.
+      wait = (3000 + Math.random() * 2000) * fluisterFactor();
     } else {
       wait = Math.max(whisperIntervalMs(), whisperReadyAt - Date.now());
     }
@@ -367,12 +365,34 @@ window.ZilverweideSchaduw = (function () {
       || el.lock.classList.contains('zv-open')
       || el.redder.classList.contains('zv-open');
   }
+  // Vloekmerk alleen tonen tijdens de puzzel of het vergrendelscherm.
+  function updateVloekmerk() {
+    if (!el.vloekmerk) return;
+    var toon = (el.memory && el.memory.classList.contains('zv-open'))
+            || (el.lock && el.lock.classList.contains('zv-open'));
+    el.vloekmerk.style.opacity = toon ? '0.3' : '0';
+  }
   function startMemory() {
     if (overlayOpen()) return;
     meter = 100; updateSmoke();
     stopFluisterGeluid();                       // geen 2 geluiden door elkaar
     whisperReadyAt = Date.now() + 9e8;          // blokkeer gefluister tijdens puzzel
+    // Sta je niet op een locatie (overworld/straat)? De schaduw trekt je eerst
+    // naar een lege huls, zodat de puzzel over die locatie-achtergrond speelt.
+    if (!opLocatie && typeof CFG.onDropLocatie === 'function') {
+      gedroptVoorPuzzel = true;
+      CFG.onDropLocatie(function (locId) {
+        if (locId) { opLocatie = true; CFG.huidigeLocatie = locId; }
+        startMemoryUI();
+      });
+      return;
+    }
+    startMemoryUI();
+  }
+  function startMemoryUI() {
     el.memory.classList.add('zv-open');
+    if (el.memEyebrow) el.memEyebrow.textContent = MEM_EYEBROW_STANDAARD;  // echte vloek: standaardtekst
+    updateVloekmerk();
     // Symbolen alvast tonen (zichtbaar maar nog niet aanklikbaar).
     el.memRunes.innerHTML = RUNES.map((r, i) =>
       `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
@@ -393,7 +413,7 @@ window.ZilverweideSchaduw = (function () {
     el.memTitle.style.display = '';
     el.memInstr.style.display = '';
     renderMemProgress(0);
-    el.memInstr.textContent = 'Let goed op…';
+    el.memInstr.textContent = 'let goed op';
     setTimeout(playMemSeq, 500);
   }
   function renderMemProgress(filled) {
@@ -427,30 +447,159 @@ window.ZilverweideSchaduw = (function () {
   function memGoed() {
     el.memInstr.textContent = 'De schaduw trekt zich terug…';
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    // Hand-ritueel: geen meter/vloek-afhandeling, alleen de schim laten wijken
+    // en de host terugroepen.
+    if (handModus) {
+      setTimeout(handRitueelAfsluiten, 1100);
+      return;
+    }
     setTimeout(() => {
       el.memory.classList.remove('zv-open');
+      updateVloekmerk();
       meter = 0; updateSmoke();
       whisperReadyAt = Date.now() + 2000;
+      // Was je hierheen getrokken (lege huls)? Dan wandel je nu terug naar de
+      // straat. Was je al écht op een locatie, dan blijf je daar (verhaal gaat door).
+      if (gedroptVoorPuzzel) {
+        gedroptVoorPuzzel = false;
+        opLocatie = false;
+        if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+      }
     }, 1100);
   }
   function memFout() {
     el.memInstr.textContent = 'Verkeerd. Het zegel verbreekt.';
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    // Hand-ritueel: geen vergrendeling. Ze mag het oneindig opnieuw proberen.
+    if (handModus) { setTimeout(handHerstart, 900); return; }
     setTimeout(() => { el.memory.classList.remove('zv-open'); vergrendel(); }, 900);
   }
 
+  // ── Losstaand hand-ritueel ───────────────────────────────────────
+  // Alleen de fluister (geen tekst, enkel het geluid): 1x bij de start en
+  // daarna elke 10s tot het zegel goed is. Losgekoppeld van de meter-lus.
+  function handFluister() { speelFluisterGeluid(0.8); }
+  function handStopFluister() {
+    handActief = false;
+    clearInterval(handWhisperTimer);
+    handWhisperTimer = null;
+    stopFluisterGeluid();
+    if (el.fluister) el.fluister.style.opacity = '0';
+  }
+  // Nieuw zegel opzetten binnen de bestaande overlay (na een fout of bij start).
+  function handNieuwZegel() {
+    memSeq = Array.from({ length: 5 }, () => Math.floor(Math.random() * RUNES.length));
+    memInput = []; memAccept = false;
+  }
+  function handHerstart() {
+    handNieuwZegel();
+    el.memInstr.textContent = 'Opnieuw. Let goed op.';
+    renderMemProgress(0);
+    el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
+    setTimeout(playMemSeq, 600);
+  }
+  function handRitueelAfsluiten() {
+    el.memory.classList.remove('zv-open');
+    handModus = false;
+    updateVloekmerk();
+    handStopFluister();
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0';
+    var cb = handKlaarCb; handKlaarCb = null;
+    if (typeof cb === 'function') cb();
+  }
+  // Publiek: start het hand-ritueel. onKlaar() draait zodra het zegel klopt.
+  function startHandRitueel(opts) {
+    opts = opts || {};
+    handKlaarCb = (typeof opts.onKlaar === 'function') ? opts.onKlaar : null;
+    handModus = true;
+    handActief = true;
+    // De schim + het zegel: dezelfde puzzel-overlay, maar zonder meter/lock.
+    el.memory.classList.add('zv-open');
+    // Eigen aanhef voor het hand-ritueel (Kelly bij Naald en Masker); valt
+    // terug op de standaardtekst als de host niets meegeeft.
+    if (el.memEyebrow) el.memEyebrow.textContent = opts.eyebrow || MEM_EYEBROW_STANDAARD;
+    updateVloekmerk();                                   // toont het vloekmerk (de schim)
+    el.memRunes.innerHTML = RUNES.map((r, i) =>
+      `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
+    el.memRunes.querySelectorAll('.zv-rune').forEach(r =>
+      r.addEventListener('click', () => memTap(+r.dataset.i)));
+    handNieuwZegel();
+    el.memIntro.style.display = '';
+    el.memStart.style.display = '';
+    el.memTitle.style.display = 'none';
+    el.memInstr.style.display = 'none';
+    el.memProgress.innerHTML = '';
+    // Fluister: nu meteen 1x, daarna elke 10 seconden tot ze klaar is.
+    handFluister();
+    clearInterval(handWhisperTimer);
+    handWhisperTimer = setInterval(function () { if (handActief) handFluister(); }, 10000);
+  }
+
   // ── Vergrendeling: speler zit vast op locatie tot redder de code geeft ──
+  // De schaduw reikt naar je uit, maar laat je gaan. Gebruikt wanneer
+  // vergrendelen niet mag: er zit al iemand anders vast (dan kan niemand jou
+  // komen halen), of je bent Felix opgesloten in H2. Je krijgt hetzelfde
+  // schrikmoment, maar geen slot.
+  function laatLos(blokkade) {
+    var meterNa = (blokkade && typeof blokkade.meterNa === 'number') ? blokkade.meterNa : 70;
+    var tekst = (blokkade && blokkade.tekst)
+      || 'De schaduw reikt naar je uit... en laat je gaan.';
+    vergrendeld = false;
+    actieveCode = null;
+    meter = Math.max(0, Math.min(99, meterNa));
+    updateSmoke();
+    // Even geen gefluister, zodat het schrikmoment niet overspoeld wordt.
+    whisperReadyAt = Date.now() + 4000;
+    stopFluisterGeluid();
+    toonVloekFlits(tekst, function () {
+      // Was je hierheen getrokken naar een lege huls? Dan loop je terug naar
+      // de straat, net als na een goed nagespeeld zegel.
+      if (gedroptVoorPuzzel) {
+        gedroptVoorPuzzel = false;
+        opLocatie = false;
+        if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+      }
+      scheduleFluister(false);
+    });
+  }
+
+  // Korte flits met één regel tekst over het zwarte introscherm. Werd al door
+  // de host aangeroepen (de vloek-herinnering na het woud) maar bestond niet,
+  // dus die melding bleef achterwege.
+  async function toonVloekFlits(tekst, onDone) {
+    const o = el.vloekIntro;
+    if (!o) { if (typeof onDone === 'function') onDone(); return; }
+    o.style.display = 'flex';
+    o.style.transition = 'opacity .35s ease';
+    o.style.opacity = '1';
+    await toonTekstFade(tekst, 700, 1400, 700);
+    if (typeof onDone === 'function') onDone();
+    o.style.transition = 'opacity .7s ease';
+    o.style.opacity = '0';
+    setTimeout(() => { o.style.display = 'none'; o.style.transition = 'none'; }, 750);
+  }
+
   async function vergrendel() {
+    // Mag ik nu wel vergrendeld worden? Zit er al iemand anders vast, dan zou
+    // niemand mij kunnen bevrijden en zit het hele team klem. Dan laat de
+    // schaduw me gaan in plaats van me op te sluiten.
+    var blokkade = null;
+    if (typeof CFG.blokkeerVergrendeling === 'function') {
+      try { blokkade = CFG.blokkeerVergrendeling(); } catch (e) { console.warn('blokkeerVergrendeling:', e); }
+    }
+    if (!blokkade && andereVastTest) {
+      blokkade = { reden: 'test_ander_vast', meterNa: 70,
+                   tekst: 'De schaduw reikt naar je uit... maar houdt al iemand anders vast.' };
+    }
+    if (blokkade) { laatLos(blokkade); return; }
     vergrendeld = true;
     meter = 100; updateSmoke();                 // rook blijft vol
     stopFluisterGeluid();
     whisperReadyAt = Date.now() + 9e8;          // geen gefluister tijdens vergrendeling
-
-    // Als de speler niet op een locatie is (overworld/invoerscherm), drop
-    // hem eerst op een willekeurige locatie via de host-callback.
+    // Zit je niet op een locatie (overworld/invoerscherm)? Laat de host je
+    // eerst naar een locatie brengen, zodat je altijd ziet waar je vastzit.
     if (!opLocatie && typeof CFG.onDropLocatie === 'function') {
       CFG.onDropLocatie(function (locId) {
-        // Callback van de host: speler is genavigeerd naar locId
         if (locId) { opLocatie = true; CFG.huidigeLocatie = locId; }
         vergrendelAfmaken();
       });
@@ -463,7 +612,14 @@ window.ZilverweideSchaduw = (function () {
     actieveCode = await Server.vraagCode(CFG.spelerId);   // ← code uit de server
     bewaarLock(actieveCode);
     el.lockCode.textContent = actieveCode;
+    // Textuele "waar zit ik vast"-regel op het wachtscherm.
+    var waar = (typeof CFG.getVastzitTekst === 'function') ? (CFG.getVastzitTekst() || '') : '';
+    if (el.lockLoc) {
+      el.lockLoc.textContent = waar;
+      el.lockLoc.style.display = waar ? '' : 'none';
+    }
     el.lock.classList.add('zv-open');
+    updateVloekmerk();
     if (typeof CFG.onVergrendel === 'function') CFG.onVergrendel(actieveCode);
   }
 
@@ -472,23 +628,22 @@ window.ZilverweideSchaduw = (function () {
     el.redderErr.textContent = '';
     el.redderInput.value = '';
     el.redder.classList.add('zv-open');
-    busy = true;   // meter van de redder staat stil tijdens het helpen
     setTimeout(() => el.redderInput.focus(), 100);
+  }
+  // De redder loopt weg zonder te helpen, of het invoerscherm heeft geen doel
+  // meer omdat een ander eerder was met de code. Alleen dit scherm gaat dicht:
+  // de vergrendeling van de ander blijft staan. De host merkt het sluiten op
+  // en brengt de redder terug naar de straat.
+  function sluitRedderInvoer() {
+    el.redderErr.textContent = '';
+    el.redderInput.value = '';
+    el.redder.classList.remove('zv-open');
   }
   async function redderVerstuur() {
     const code = el.redderInput.value.trim().toUpperCase();
     if (code.length < 4) { return schud('Vul het volledige teken in.'); }
     const goed = await Server.controleerCode(CFG.spelerId, code);   // ← server geeft beiden vrij
-    if (goed) {
-      el.redder.classList.remove('zv-open');
-      busy = false;
-      // Beloning voor de redder: 10% van eigen meter eraf
-      if (cursed && !vergrendeld) {
-        meter = Math.max(0, meter - 10);
-        updateSmoke();
-      }
-      bevrijd();
-    }
+    if (goed) { el.redder.classList.remove('zv-open'); bevrijd(); }
     else { schud('Dit teken klopt niet.'); }
   }
   function schud(msg) {
@@ -497,29 +652,21 @@ window.ZilverweideSchaduw = (function () {
     el.redderInput.classList.add('zv-shake');
   }
 
-  // Bevrijding — geldt voor beide spelers (server heeft beiden vrijgegeven).
+  // Bevrijding, geldt voor beide spelers (server heeft beiden vrijgegeven).
   function bevrijd() {
     vergrendeld = false;
     actieveCode = null;
-    stopBevrijdLuisteraar();
+    gedroptVoorPuzzel = false;   // terugkeer naar de straat regelt de host
     wisLock();
-    // Firebase opruimen
-    if (firebaseActief()) {
-      try { dbRef(CFG.spelerId).remove(); } catch (e) {}
-    }
     el.lock.classList.remove('zv-open');
-    // Als het redder-scherm open stond (bijv. iemand anders heeft al geholpen), sluit het
-    if (el.redder.classList.contains('zv-open')) {
-      el.redder.classList.remove('zv-open');
-      busy = false;
-    }
+    updateVloekmerk();
     // korte bevrijdings-flits via het lock-scherm? Houd het simpel: rook trekt op.
     meter = 0; updateSmoke();
     whisperReadyAt = Date.now() + 2500;
     if (typeof CFG.onBevrijd === 'function') CFG.onBevrijd();
   }
 
-  // ── Persistentie (stub) — vergrendeling onthouden bij verversen ──
+  // ── Persistentie (stub), vergrendeling onthouden bij verversen ──
   // Lokaal via localStorage zodat een per ongeluk verversen je niet bevrijdt.
   // In productie is de SERVER de waarheid; dit is enkel een lokale vangnet.
   function bewaarLock(code) {
@@ -536,12 +683,7 @@ window.ZilverweideSchaduw = (function () {
       if (!d || !d.code) return false;
       // herstel de vergrendelde toestand
       cursed = true; vergrendeld = true; meter = 100;
-      Server._code = d.code; actieveCode = d.code;     // lokale fallback code
-      // Bij Firebase: code opnieuw naar de DB schrijven zodat redder 'm kan vinden
-      if (firebaseActief()) {
-        try { dbRef(CFG.spelerId).set({ code: d.code, vergrendeld: true, locatie: CFG.huidigeLocatie }); } catch (e) {}
-        startBevrijdLuisteraar(CFG.spelerId);
-      }
+      Server._code = d.code; actieveCode = d.code;     // stub: code weer "bij de server"
       el.rook.classList.add('zv-actief'); updateSmoke();
       el.lockCode.textContent = d.code; el.lock.classList.add('zv-open');
       return true;
@@ -551,7 +693,6 @@ window.ZilverweideSchaduw = (function () {
   // ── Publieke API ─────────────────────────────────────────────────
   function init(opts) {
     Object.assign(CFG, opts || {});
-    _sessieId = CFG.sessieId || null;
     bouwDom();
     initMp3();
     updateSmoke();
@@ -560,9 +701,15 @@ window.ZilverweideSchaduw = (function () {
     else wisLock();                             // geen persistentie → ruim oude lock op
     return api;
   }
-  function vervloek() {
+  // opts.startMeter: stand waarop de meter begint (0-100). De host geeft per
+  // rol een andere waarde mee zodat de vier spelers niet gelijktijdig vollopen
+  // en dus niet tegelijk vast kunnen raken. Werd eerder genegeerd omdat deze
+  // functie geen parameter had; alle vier begonnen daardoor op 0.
+  function vervloek(opts) {
     if (vergrendeld) return;                    // niet opnieuw vervloeken tijdens lock
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
+    var start = opts && typeof opts.startMeter === 'number' ? opts.startMeter : 0;
+    meter = Math.max(0, Math.min(99, start));   // 99 als plafond: nooit meteen vol
     cursed = true;
     el.rook.classList.add('zv-actief');
     updateSmoke();
@@ -584,9 +731,11 @@ window.ZilverweideSchaduw = (function () {
       }, inMs + holdMs);
     });
   }
-  async function toonVloekIntro(onDone) {
+  // onEersteTekst (optioneel): vuurt precies wanneer de eerste intro-regel
+  // in beeld komt, zodat de host daar zijn geluid op kan laten aansluiten.
+  async function toonVloekIntro(onDone, onEersteTekst) {
     const o = el.vloekIntro, t = el.vloekIntroTekst, fl = el.flits;
-    // Witte flits — de schok op het moment dat de vloek toeslaat.
+    // Witte flits, de schok op het moment dat de vloek toeslaat.
     fl.style.transition = 'none';
     fl.style.display = 'block';
     fl.style.opacity = '1';                       // vol wit
@@ -604,7 +753,8 @@ window.ZilverweideSchaduw = (function () {
     o.style.opacity = '1';                        // zwart al onder de flits
     t.style.opacity = '0';
     await wacht(1150);                            // flits (vol wit → uitfaden) → zwart
-    await toonTekstFade('Schreeuw filler', 2000, 800, 1000);   // langzaam in (2s)
+    if (typeof onEersteTekst === 'function') { try { onEersteTekst(); } catch (e) {} }
+    await toonTekstFade('Een hoofd vol stemmen ontwakend...', 2000, 800, 1000);   // langzaam in (2s)
     await wacht(300);
     await toonTekstFade('Alles voelt zwaar, je hoofd doet pijn, wa- wat is dit?', 1600, 1500, 1100);
     await wacht(200);
@@ -616,205 +766,62 @@ window.ZilverweideSchaduw = (function () {
     }, 950);
   }
   function kalmeer() {
-    cursed = false; meter = 0;
-    stopBevrijdLuisteraar();
+    cursed = false; meter = 0; gedroptVoorPuzzel = false;
     if (vergrendeld) {                          // ook een lopende vergrendeling opheffen
       vergrendeld = false; actieveCode = null;
       el.lock.classList.remove('zv-open');
       el.redder.classList.remove('zv-open');
-      // Firebase opruimen
-      if (firebaseActief()) {
-        try { dbRef(CFG.spelerId).remove(); } catch (e) {}
-      }
     }
     el.memory.classList.remove('zv-open');
+    if (handModus) { handModus = false; handStopFluister(); }  // hand-ritueel netjes afbreken
+    wisPauzes();                                // geen enkele pauze mag de volgende vloek bevriezen
     wisLock();                                  // opgeslagen vergrendeling weg
     el.rook.classList.remove('zv-actief');
+    if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
     clearTimeout(fluisterTimer);
     updateSmoke();
   }
-  function setBusy(b) {
-    busy = !!b;
+  // Pauze aan- of uitzetten namens één reden. Twee keer dezelfde reden
+  // aanzetten telt als één (idempotent), zodat een defensieve dubbele aanroep
+  // geen pauze achterlaat die nooit meer opgeheven wordt. Zonder reden loopt
+  // alles via 'algemeen', precies zoals de oude schakelaar deed.
+  function setBusy(b, reden) {
+    const sleutel = reden || 'algemeen';
+    if (b) busyRedenen.add(sleutel); else busyRedenen.delete(sleutel);
+    busy = busyRedenen.size > 0;
     if (busy) { stopFluisterGeluid(); }         // host-geluid → schaduw zwijgt + meter bevriest
   }
-
-  // ── Teaser: korte schaduw-aanraking (Kelly Kraaienkwartier) ─────────
-  // Zelfde memory-puzzel, maar GEEN vergrendeling bij fout. Bij fout:
-  // korte mist-flikkering + opnieuw. Bij goed: schaduw trekt zich terug,
-  // geen blijvende vloek. Puur foreshadowing.
-  // Optioneel: teksten voor het blackout-intro (array van strings).
-  let teaserActief = false;
-  let teaserCallback = null;
-
-  function teaser(opties) {
-    if (teaserActief || overlayOpen()) return;
-    teaserActief = true;
-    // opties mag een functie zijn (oude API) of een object
-    if (typeof opties === 'function') opties = { onDone: opties };
-    opties = opties || {};
-    teaserCallback = typeof opties.onDone === 'function' ? opties.onDone : null;
-    const introTeksten = opties.teksten || [];
-
-    // Bewaar originele state om te herstellen
-    teaser._wasCursed = cursed;
-    teaser._oudeMeter = meter;
-
-    if (introTeksten.length > 0) {
-      // Blackout-intro (zelfde stijl als toonVloekIntro, zonder witte flits)
-      teaserBlackoutIntro(introTeksten, function() {
-        teaserStartPuzzel();
-      });
-    } else {
-      teaserStartPuzzel();
-    }
-  }
-
-  async function teaserBlackoutIntro(teksten, onKlaar) {
-    const o = el.vloekIntro, t = el.vloekIntroTekst;
-    o.style.transition = 'none';
-    o.style.display = 'flex';
-    o.style.opacity = '1';
-    t.style.opacity = '0';
-    await wacht(600);
-    for (let i = 0; i < teksten.length; i++) {
-      await toonTekstFade(teksten[i], 1800, 1400, 1000);
-      if (i < teksten.length - 1) await wacht(300);
-    }
-    // Zwart blijft staan, puzzel verschijnt eronder
-    if (typeof onKlaar === 'function') onKlaar();
-    await wacht(200);
-    o.style.transition = 'opacity .9s ease';
-    o.style.opacity = '0';
-    setTimeout(() => { o.style.display = 'none'; o.style.transition = 'none'; }, 950);
-  }
-
-  function teaserStartPuzzel() {
-    // Korte rook-puls voor sfeer (verdwijnt weer na de puzzel)
-    cursed = true; meter = 60; updateSmoke();
-
-    stopFluisterGeluid();
-    whisperReadyAt = Date.now() + 9e8;
-
-    // Speel het fluistergeluid eenmalig bij het tonen van de symbolen
-    try {
-      var fluisterIntro = new Audio(CFG.geluidPaden[0]);
-      fluisterIntro.volume = 0.6;
-      fluisterIntro.play().catch(function () {});
-    } catch (e) {}
-
-    el.memory.classList.add('zv-open');
-
-    // Zelfde rune-set, 5 symbolen
-    el.memRunes.innerHTML = RUNES.map((r, i) =>
-      `<div class="zv-rune zv-disabled" data-i="${i}">${r}</div>`).join('');
-    el.memRunes.querySelectorAll('.zv-rune').forEach(r =>
-      r.addEventListener('click', () => teaserTap(+r.dataset.i)));
-    memSeq = Array.from({ length: 5 }, () => Math.floor(Math.random() * RUNES.length));
-    memInput = []; memAccept = false;
-
-    // Intro-tussenmoment
-    el.memIntro.style.display = '';
-    el.memStart.style.display = '';
-    el.memTitle.style.display = 'none';
-    el.memInstr.style.display = 'none';
-    el.memProgress.innerHTML = '';
-  }
-
-  function teaserTap(i) {
-    if (!memAccept) return;
-    const r = rune(i); r.classList.add('zv-lit'); setTimeout(() => r.classList.remove('zv-lit'), 200);
-    memInput.push(i);
-    renderMemProgress(memInput.length);
-    const idx = memInput.length - 1;
-    if (memInput[idx] !== memSeq[idx]) { memAccept = false; setTimeout(teaserFout, 350); return; }
-    if (memInput.length === memSeq.length) { memAccept = false; setTimeout(teaserGoed, 350); }
-  }
-
-  function teaserFout() {
-    el.memInstr.textContent = 'Verkeerd. Het zegel flikkert...';
-    el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
-
-    // Korte mist-flikkering
-    meter = 85; updateSmoke();
-    setTimeout(() => {
-      meter = 60; updateSmoke();
-      // Nieuwe reeks, opnieuw proberen
-      memSeq = Array.from({ length: 5 }, () => Math.floor(Math.random() * RUNES.length));
-      memInput = []; memAccept = false;
-      renderMemProgress(0);
-      el.memInstr.textContent = 'Let goed op...';
-      el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.remove('zv-disabled'));
-      setTimeout(() => {
-        el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
-        playMemSeq();
-      }, 400);
-    }, 1200);
-  }
-
-  function teaserGoed() {
-    el.memInstr.textContent = 'De schaduw trekt zich terug...';
-    el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
-    setTimeout(() => {
-      el.memory.classList.remove('zv-open');
-      // Herstel originele staat: geen blijvende vloek
-      cursed = teaser._wasCursed;
-      meter = teaser._oudeMeter;
-      updateSmoke();
-      whisperReadyAt = Date.now() + 2000;
-      teaserActief = false;
-      if (teaserCallback) teaserCallback();
-      teaserCallback = null;
-    }, 1100);
-  }
-
+  function wisPauzes() { busyRedenen.clear(); busy = false; }
+  // De host meldt of we op een locatie-scherm staan (locId) of niet (null).
+  // Bepaalt of je bij vergrendeling eerst naar een locatie gebracht wordt.
   function setOpLocatie(locId) {
-    if (locId) {
-      opLocatie = true;
-      CFG.huidigeLocatie = locId;
-    } else {
-      opLocatie = false;
-      CFG.huidigeLocatie = null;
-      if (cursed && !vergrendeld) stopFluisterGeluid();
-    }
-  }
-
-  // Check of er iemand vastzit op een bepaalde locatie (via Firebase).
-  // Callback ontvangt: null (niemand) of { spelerId, code }.
-  function checkVergrendeldOpLocatie(locId, callback) {
-    if (!firebaseActief()) { callback(null); return; }
-    dbRef('').once('value').then(function (snap) {
-      const alleSpelers = snap.val();
-      if (!alleSpelers) { callback(null); return; }
-      for (const id in alleSpelers) {
-        const data = alleSpelers[id];
-        if (data && data.vergrendeld && data.locatie === locId && id !== CFG.spelerId) {
-          callback({ spelerId: id, code: data.code });
-          return;
-        }
-      }
-      callback(null);
-    }).catch(function () { callback(null); });
+    opLocatie = !!locId;
+    CFG.huidigeLocatie = locId || null;
   }
 
   const api = {
-    init, vervloek, kalmeer, setBusy, teaser,
+    init, vervloek, kalmeer, setBusy, setOpLocatie,
+    startHandRitueel,                           // losstaand hand-ritueel (Kelly, K8)
     isVergrendeld: () => vergrendeld,
     isVervloekt: () => cursed,
+    isBezig: () => busy,                        // staat de schaduw nu op pauze?
+    pauzeRedenen: () => Array.from(busyRedenen),// wie houdt hem tegen (testpaneel)
+    isHandRitueelBezig: () => handActief,
     toonVloekIntro,                             // zwart intro-scherm met de twee teksten
+    toonVloekFlits,                             // korte flits met één regel (vloek-herinnering)
     toonRedderInvoer,                           // in productie: op het tablet van de redder
+    sluitRedderInvoer,                          // redder loopt weg, of de lock is al door een ander opgelost
     wisVergrendeling: () => { wisLock(); },     // opgeslagen lock wissen (bijv. bij reset)
-    // ── Firebase sessie ──
-    getSessieId: () => _sessieId,
-    setSessieId: (id) => { _sessieId = id; CFG.sessieId = id; },
-    setSpelerId: (id) => { CFG.spelerId = id; },
-    isFirebaseActief: () => firebaseActief(),
-    setOpLocatie,                               // locatieId of null (overworld)
-    checkVergrendeldOpLocatie,                   // check of iemand vastzit op locatie
     // ── debug / test (mag in productie blijven, hindert niet) ──
     _ontgrendel: () => bevrijd(),               // solo eruit zonder code
     _setMeter: n => { meter = Math.max(0, Math.min(100, n)); updateSmoke(); },
     _setSpeed: v => { CFG.meterPerSec = +v; },
     _forceMemory: () => { if (cursed) startMemory(); },
+    _setFluisterSnel: aan => { fluisterSnelTest = !!aan; scheduleFluister(false); },
+    // Testknoppen voor de vergrendel-blokkade: doen alsof er een teamgenoot
+    // vastzit, zonder een echt tweede tablet.
+    setAndereVast: b => { andereVastTest = !!b; },
+    isAndereVast: () => andereVastTest,
     _getCode: () => actieveCode
   };
   return api;
