@@ -21545,7 +21545,7 @@ function openMolenLegende() {
   cont.innerHTML =
     '<div class="ml-scherm">' +
       '<div class="ml-video-wrap">' +
-        '<video id="ml-video" class="ml-video" src="videos/Molenlegende.mp4" autoplay playsinline controls></video>' +
+        '<video id="ml-video" class="ml-video" src="videos/molenlegende.mp4" autoplay playsinline controls></video>' +
         '<button id="ml-verder" class="ml-verder">Verder →</button>' +
       '</div>' +
     '</div>';
@@ -21570,7 +21570,9 @@ function openMolenLegende() {
 
   // Noodrem: hapert de video of kijkt iemand hem niet uit, dan mag hij na
   // een ruime marge alsnog door. Vastzitten is erger dan te vroeg kunnen.
-  const noodMs = 90000;
+  // De film duurt 1:10; twee minuten geeft een echte marge, zodat de knop
+  // niet al verschijnt terwijl de film gewoon nog netjes loopt.
+  const noodMs = 120000;
   const nood = setTimeout(toonKnop, noodMs);
   vid.addEventListener('ended', function () { clearTimeout(nood); });
 }
