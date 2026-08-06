@@ -49,6 +49,13 @@
   .sessie-item.actief { background: rgba(201,168,76,.14); border-color: var(--rand); }
   .sessie-item .naam { color: var(--goud); font-weight: 600; }
   .sessie-item .meta { color: var(--mist); font-size: .72rem; }
+  .sessie-item.dim .naam { color: var(--goud-dim); font-weight: 400; }
+  .groep-kop {
+    color: var(--goud-dim); font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .12em; padding: .6rem .6rem .25rem; border-top: 1px solid rgba(201,168,76,.12);
+    margin-top: .5rem;
+  }
+  .groep-kop:first-child { border-top: none; margin-top: 0; padding-top: .1rem; }
   .detail { flex: 1; padding: 1.25rem; overflow-y: auto; }
   .kaart { background: var(--panel); border: 1px solid var(--rand); border-radius: 6px; padding: 1rem 1.1rem; margin-bottom: 1rem; }
   .kaart h2 { font-size: .78rem; text-transform: uppercase; letter-spacing: .12em; color: var(--goud-dim); margin: 0 0 .75rem; }
@@ -61,6 +68,7 @@
   td.num { font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--mist); }
   .tag { display: inline-block; padding: .05rem .4rem; border-radius: 3px; font-size: .72rem; font-weight: 600; }
   .tag.reset { background: rgba(180,85,63,.22); color: var(--bloed); }
+  .tag.team { background: rgba(201,168,76,.18); color: var(--goud); }
   .tag.snelstart { background: rgba(180,85,63,.15); color: var(--bloed); }
   .tag.herstel { background: rgba(111,159,91,.18); color: var(--groen); }
   .tag.paginaload { background: rgba(154,147,132,.15); color: var(--mist); }
@@ -189,6 +197,17 @@ function analyse(sessie) {
   res.team = (meta && meta.team) || null;
   res.slug = (meta && meta.slug) || null;
   res.aangemaakt = (meta && meta.aangemaakt) || res.start;
+  // Speelsessie of test? Een echte speelronde heeft een gekozen teamnaam
+  // (meta, of het team_gekozen-moment in de log). Al het andere, snelstarts
+  // via het testpaneel, losse paginaloads, naamscherm-snippers in oude
+  // sessie-ids, telt als test/overig en komt in de tweede groep terecht.
+  res.teamGekozen = !!res.team;
+  res.events.forEach(function (e) {
+    if (e.actie === 'team_gekozen') {
+      res.teamGekozen = true;
+      if (!res.team && e.team) res.team = e.team;
+    }
+  });
   res.teamStart = (shared && shared.team_start) || null;
   res.teamEind = (shared && shared.team_eind) || null;
   res.oplostijd = (res.teamStart && res.teamEind) ? (res.teamEind - res.teamStart) : null;
@@ -197,9 +216,10 @@ function analyse(sessie) {
 
 function eventTag(actie) {
   var soort = 'paginaload';
-  if (actie === 'reset_testmodus') soort = 'reset';
+  if (actie === 'reset_testmodus' || actie === 'reset_firebase') soort = 'reset';
   else if (actie === 'snelstart') soort = 'snelstart';
   else if (actie === 'herstel') soort = 'herstel';
+  else if (actie === 'team_gekozen') soort = 'team';
   return '<span class="tag ' + soort + '">' + esc(actie) + '</span>';
 }
 
@@ -208,6 +228,8 @@ function eventTekst(e) {
   if (e.actie === 'snelstart') t += ' (' + esc(e.doelrol) + (e.reset ? ', reset' : ', geen reset') + ')';
   if (e.actie === 'herstel') t += ' (' + esc(e.doelrol) + ')';
   if (e.actie === 'paginaload' && e.versie != null) t += ' (v' + esc(e.versie) + ')';
+  if (e.actie === 'team_gekozen' && e.team) t += ' (' + esc(e.team) + ')';
+  if (e.actie === 'reset_firebase') t += ' (gedeelde stand gewist, log bewaard)';
   return t;
 }
 
@@ -334,8 +356,7 @@ function renderLijst() {
     perSlugVolgorde[sleutel].forEach(function (item, i) { volgnr[item.sid] = i + 1; });
   });
 
-  var html = '';
-  ids.forEach(function (id) {
+  function itemHtml(id, dim) {
     var a = analyse(_sessies[id]);
     var rollen = Object.keys(a.rollen).length;
     var sleutel = a.slug || a.team || id;
@@ -343,12 +364,26 @@ function renderLijst() {
     var totaal = (perSlugVolgorde[sleutel] || []).length;
     var titel = a.team ? esc(a.team) + (totaal > 1 ? ' <span style="color:var(--mist)">(' + n + 'e)</span>' : '') : esc(id);
     var extra = a.oplostijd != null ? ' · opgelost in ' + esc(duurStr(a.oplostijd)) : '';
-    html += '<div class="sessie-item" data-id="' + esc(id) + '" onclick="kies(\'' + esc(id) + '\')">' +
+    return '<div class="sessie-item' + (dim ? ' dim' : '') + '" data-id="' + esc(id) + '" onclick="kies(\'' + esc(id) + '\')">' +
       '<div class="naam">' + titel + '</div>' +
       '<div class="meta">' + (a.start ? esc(datumStr(a.start)) : 'geen log') + '</div>' +
       '<div class="meta">' + rollen + ' rollen · ' + esc(duurStr((a.eind || 0) - (a.start || 0))) + extra + '</div>' +
       '</div>';
-  });
+  }
+  // Twee groepen: echte speelrondes (teamnaam gekozen) bovenaan, al het
+  // andere (snelstart-tests, losse paginaloads) gedimd daaronder. Niets
+  // wordt verborgen: ook snippers zijn bruikbaar bij bug-forensiek.
+  var spel = ids.filter(function (id) { return analyse(_sessies[id]).teamGekozen; });
+  var overig = ids.filter(function (id) { return !analyse(_sessies[id]).teamGekozen; });
+  var html = '';
+  if (spel.length) {
+    html += '<div class="groep-kop">Speelsessies</div>';
+    spel.forEach(function (id) { html += itemHtml(id, false); });
+  }
+  if (overig.length) {
+    html += '<div class="groep-kop">Tests en overig</div>';
+    overig.forEach(function (id) { html += itemHtml(id, true); });
+  }
   lijst.innerHTML = html;
 }
 
@@ -359,13 +394,15 @@ function laadAlles() {
     var n = Object.keys(_sessies).length;
     document.getElementById('kop-status').textContent = n + ' sessie(s) geladen';
     renderLijst();
-    // Voorkeur: de sessie uit ?sessie=, anders de nieuwste.
+    // Voorkeur: de sessie uit ?sessie=, anders de nieuwste speelsessie
+    // (teamnaam gekozen), en pas als die er niet is de nieuwste test.
     var wens = new URLSearchParams(window.location.search).get('sessie');
     var ids = Object.keys(_sessies);
     if (wens && _sessies[wens]) kies(wens);
     else if (ids.length) {
       ids.sort(function (x, y) { return (analyse(_sessies[y]).eind || 0) - (analyse(_sessies[x]).eind || 0); });
-      kies(ids[0]);
+      var eersteSpel = ids.filter(function (id) { return analyse(_sessies[id]).teamGekozen; })[0];
+      kies(eersteSpel || ids[0]);
     }
   }).catch(function (e) {
     document.getElementById('kop-status').textContent = 'fout bij laden';

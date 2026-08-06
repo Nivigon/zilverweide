@@ -22886,10 +22886,23 @@ function firebaseVolleReset() {
   // De sessienaam MOET in de vraag staan: sinds ?sessie= lokaal onthouden
   // wordt kan een tablet zonder parameter stilletjes in een echte sessie
   // zitten, en dan zou je hier denken dat je 'test' aan het schonen bent.
-  if (!confirm('Alles resetten in Firebase-sessie "' + sessieId + '"?\n(schaduw + alle gedeelde state + herstelpunten)')) return;
-  firebase.database().ref('sessies/' + sessieId).remove()
+  if (!confirm('Alles resetten in Firebase-sessie "' + sessieId + '"?\n(schaduw + alle gedeelde state + herstelpunten; het logboek blijft bewaard)')) return;
+  // Het wismoment eerst zelf vastleggen, dan pas wissen: zo is in logboek.html
+  // terug te vinden dat en wanneer deze ronde is weggegooid.
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_firebase' });
+  // Bewust NIET de hele sessietak wissen. De scheidslijn: alles wat het
+  // spel LEEST gaat weg (/shared en /spelers, anders lekt oude stand een
+  // nieuwe ronde in), alles wat alleen de analyse achteraf leest blijft
+  // staan (/log plus /meta met teamnaam en spelersnamen, anders is een
+  // gespeelde ronde nergens meer terug te lezen; zo ging de speeldata
+  // van 6 augustus verloren).
+  var basis = firebase.database().ref('sessies/' + sessieId);
+  Promise.all([
+    basis.child('shared').remove(),
+    basis.child('spelers').remove()
+  ])
     .then(function () {
-      alert('Firebase volledig gereset voor sessie: ' + sessieId);
+      alert('Firebase gereset voor sessie: ' + sessieId + '\n(logboek bewaard)');
       updateFirebaseBolletje();
     })
     .catch(function (e) { alert('Fout: ' + e.message); });
