@@ -3236,6 +3236,10 @@ const VISITED_FLAGS = {
   // Dorendael — Schaduw-vloeken (effect bouwen we later)
   schaduw_fenna:              'Fenna draagt De Schaduw door de gefaalde herberg-scène',
   schaduw_felix:              'Felix draagt De Schaduw door diefstal in DD2',
+  // De vloek zelf is een persoonlijke toestand, geen voorwerp. Deze vlag is
+  // het geheugen over herladen heen (het vloek-effect in schaduw.js leeft
+  // alleen in het werkgeheugen). Bewust NIET gedeeld: de vloek is per speler.
+  schaduw_vloek:              'Deze speler draagt de Schaduw-vloek',
 
   // Dorendael — finale
   dorendael_finale_gestart:   'De Dorendael-finale (gok bij podium) is begonnen',
@@ -3658,6 +3662,12 @@ function pasHerstelpuntToe(hp) {
     state.visited = new Set(herstelSleutels(hp.visited));
     state.visitedLocations = new Set(herstelSleutels(hp.visitedLocations));
     state.inventory = Array.isArray(hp.inventory) ? hp.inventory.slice() : Object.values(hp.inventory || {});
+    // Migratie: oudere herstelpunten hebben De Schaduw nog als voorwerp in
+    // de rugzak. Omzetten naar de vlag, het voorwerp bestaat niet meer.
+    if (state.inventory.some(function (i) { return i && i.naam === 'De Schaduw'; })) {
+      state.inventory = state.inventory.filter(function (i) { return i && i.naam !== 'De Schaduw'; });
+      state.visited.add('schaduw_vloek');
+    }
     state.vermomming = hp.vermomming || null;
     state.zone = hp.zone || 'dorpsplein';
     state.lastZone = hp.lastZone || null;
@@ -4232,13 +4242,35 @@ function geefItem(emoji, naam, toonPopup = false, onKlaar) {
   if (effect && effect.sharedFlag) {
     setSharedState(effect.sharedFlag, true);
   }
-  // De Schaduw is de vloek: zodra de speler 'm draagt, speelt de intro en
-  // start het effect. Alleen de eerste keer (niet als al vervloekt).
-  if (naam === 'De Schaduw' && window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
+  if (typeof onKlaar === 'function') onKlaar();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// De Schaduw-vloek. Geen voorwerp (dus geen rugzak-melding of 🌑-vakje),
+// maar een toestand: de vlag schaduw_vloek plus het effect in schaduw.js.
+// geefVloek is de enige ingang om de vloek in het verhaal uit te delen.
+// onKlaar draait pas na de vloek-onboarding; al vervloekt, dan direct.
+// ══════════════════════════════════════════════════════════════════
+function geefVloek(onKlaar) {
+  markVisited('schaduw_vloek');
+  // Na het anti-Schaduw middel (H7) komt het effect niet terug: "je zal er
+  // geen last meer van hebben". De vlag blijft wel staan (de vloek is niet weg).
+  if (hasVisited('h7_gedronken')) {
+    if (typeof onKlaar === 'function') onKlaar();
+    return;
+  }
+  if (window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
     vloekOnboarding(onKlaar);
     return;
   }
   if (typeof onKlaar === 'function') onKlaar();
+}
+
+// Draagt of droeg deze speler de vloek? (vlag overleeft herladen; de
+// isVervloekt-check vangt de testknoppen die zonder vlag vervloeken)
+function heeftSchaduwVloek() {
+  return hasVisited('schaduw_vloek') ||
+    !!(window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVervloekt && window.ZilverweideSchaduw.isVervloekt());
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -7273,7 +7305,7 @@ function renderH2FelixKamer(loc) {
     // niet nog eens draait en er geen dubbele vloek-pop-up ontstaat.
     markVisited('felix_hd2_wakker');
     markVisited('schaduw_felix');
-    if (!state.inventory.find(i => i.naam === 'De Schaduw')) addInventory('🌑', 'De Schaduw', false);
+    markVisited('schaduw_vloek');
     var naWakker = function () {
       var l = locatiesHeerDonatuslaan.find(x => x.id === 'h2_felixkamer');
       if (l) renderH2FelixKamer(l);
@@ -9743,6 +9775,8 @@ function h7NeemFlesje(loc) {
 // (kalmeer), het flesje verdwijnt uit de rugzak (eenmalig te gebruiken).
 function drinkFlesje() {
   markVisited('h7_gedronken');
+  // De Schaduw-filter is opruiming van oude sessies waarin de vloek nog als
+  // voorwerp in de rugzak zat; nieuwe sessies hebben alleen het Flesje.
   state.inventory = state.inventory.filter(function(i) { return i.naam !== 'Flesje' && i.naam !== 'De Schaduw'; });
   updateInventoryBar();
   bouwInventarisGrid();
@@ -10248,7 +10282,7 @@ function dd2StraatMunten(vervloekt) {
 // De vloek slaat buiten toe. De Schaduw-onboarding speelt bovenop; daaronder
 // zetten we Dorendael vast zodat de speler na de uitleg daar uitkomt.
 function dd2VloekBuiten() {
-  geefItem('🌑', 'De Schaduw');   // → vloek-onboarding (zwart intro + uitleg-popup)
+  geefVloek();   // → vloek-onboarding (zwart intro + uitleg-popup)
   showScreen('screen-dorendael');
 }
 
@@ -11120,7 +11154,7 @@ function renderZolderNaslag(resultaat) {
       // komt de speler terug op de zolder met een eigen afdaal-knop. Niet
       // automatisch afdalen: dan sla je het moment ná de vloek over.
       acties = [{ label: 'Maar...', onclick: function () {
-        geefItem('🌑', 'De Schaduw', false, renderZolderNaVloek);
+        geefVloek(renderZolderNaVloek);
       } }];
     }
   } else {
@@ -12088,11 +12122,7 @@ function renderK1Naaldmasker(loc) {
   // binnen, dus krijgt ook geen deur-knop: haar scene speelt op straat.
   // ALS Kelly al de echte Schaduw-vloek heeft (doolhof of Dorendael finale),
   // vervalt het hand-moment helemaal. Ze ziet gewoon een kledingwinkel.
-  const kellyHeeftEchteSchaduw = (p === 'kelly') && (
-    !!state.inventory.find(function(i) { return i.naam === 'De Schaduw'; }) ||
-    (window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVervloekt && window.ZilverweideSchaduw.isVervloekt()) ||
-    hasVisited('h7_gedronken')
-  );
+  const kellyHeeftEchteSchaduw = (p === 'kelly') && kellyHeeftEchteSchaduwNu();
   const kellyBlijftBuiten = (p === 'kelly' && hasVisited('kelly_hand_incident'));
   // Staat de rouwstof-quest open en heeft niemand het lapje al? Dan mag Kelly
   // nog naar binnen (voor de keuze hand / iets anders), ook als ze de echte
@@ -13057,12 +13087,10 @@ function speelPutReunie() {
   });
 }
 
-// Heeft Kelly op dit moment de ECHTE schaduw-vloek al? (doolhof, H7-drank of
-// het losse Schaduw-item). Los van de render, zodat ook de hand-flow het weet.
+// Heeft of had Kelly de ECHTE schaduw-vloek al? (vloek-vlag, lopend effect
+// of H7-drank). Los van de render, zodat ook de hand-flow het weet.
 function kellyHeeftEchteSchaduwNu() {
-  return !!state.inventory.find(function(i) { return i.naam === 'De Schaduw'; }) ||
-    (window.ZilverweideSchaduw && window.ZilverweideSchaduw.isVervloekt && window.ZilverweideSchaduw.isVervloekt()) ||
-    hasVisited('h7_gedronken');
+  return heeftSchaduwVloek() || hasVisited('h7_gedronken');
 }
 
 function kellyGeeftHand() {
@@ -18938,7 +18966,7 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   // wakker-variant slaan we dit over: de vloek valt daar pas in H2, via de
   // volledige onboarding, precies zoals na de echte woudfinale.
   if (!felixWakker && window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
-    if (!state.inventory.find(function(i){ return i.naam === 'De Schaduw'; })) addInventory('🌑', 'De Schaduw', false);
+    markVisited('schaduw_vloek');
     window.ZilverweideSchaduw.vervloek({ startMeter: schaduwStartOffset() });
   }
   if (state.personage === 'fenna') markVisited('schaduw_fenna');
@@ -19072,11 +19100,11 @@ function debugHerbergSkipFaal() {
   herbergStartKlok();
   setSharedState('herberg_resultaat', 'gefaald');
   markVisited('herberg_scene_voltooid');
-  // Fenna draagt de Schaduw — alleen geven als deze speler Fenna is.
+  // Fenna draagt de Schaduw, alleen zetten als deze speler Fenna is.
   // Voor andere spelers blijft de Schaduw op een ander apparaat.
   if (state.personage === 'fenna') {
     markVisited('schaduw_fenna');
-    addInventory('🌑', 'De Schaduw', false);
+    markVisited('schaduw_vloek');
   }
 }
 
@@ -20670,10 +20698,7 @@ function startWerkplaatsLockpick(loc) {
                 'Verder',
                 function () {
                   // Stap 3: BAM — blackout + schaduw-vloek (met geluid, uitleg, meter-highlight)
-                  if (!state.inventory.find(function(i){ return i.naam === 'De Schaduw'; })) {
-                    addInventory('\ud83c\udf11', 'De Schaduw', false);
-                  }
-                  vloekOnboarding(function () {
+                  geefVloek(function () {
                     // Terug naar de klokkenmaker (nu met werkplaats open)
                     renderDd7Klokkenmaker(loc);
                   });
@@ -21096,10 +21121,7 @@ function openArchiefDoolhof() {
         'Verder',
         function() {
           // Schaduw-vloek activeren (met geluid, uitleg, meter-highlight)
-          if (!state.inventory.find(function(i){ return i.naam === 'De Schaduw'; })) {
-            addInventory('\ud83c\udf11', 'De Schaduw', false);
-          }
-          vloekOnboarding(function() {
+          geefVloek(function() {
             // Doolhof skippen: ruim alles op en herstel achtergrondmuziek
             if (huidigDoolhof) { try { huidigDoolhof.destroy(); } catch (e) {} huidigDoolhof = null; }
             // Forceer muziek-reset: destroy-wrapper is niet betrouwbaar door
@@ -21120,10 +21142,9 @@ function openArchiefDoolhof() {
   }.bind(huidigDoolhof);
 }
 
-// Speler wordt na 4 betrappingen vervloekt. Geeft De Schaduw 🌑 in
-// inventaris en toont een rode horror-overlay (zelfde stijl als Felix'
-// diefstal-vloek bij Nummer 2). Daarna skipt ze het doolhof en krijgt
-// de documenten van de archivaris.
+// Speler wordt na 4 betrappingen vervloekt (geefVloek, zelfde flow als
+// Felix' diefstal-vloek bij Nummer 2). Daarna skipt ze het doolhof en
+// krijgt de documenten van de archivaris.
 
 // Na de 4e betrapping: de archivaris vindt Kelly, zegt niets, en
 // overhandigt de documenten. Korte interactie, dan door naar de kranten.
@@ -21147,13 +21168,6 @@ function archivarisGeeftDocumenten() {
   });
   showScreen('screen-locatie');
 }
-function archiefVervloek() {
-  geefItem('🌑', 'De Schaduw');   // → vloek-onboarding (zwart intro + uitleg-popup)
-  // De onboarding speelt bovenop; daaronder gaat de speler daarna naar de
-  // straat, niet terug in de basis-dialoog.
-  goBackFromLocatie();
-}
-
 // Win-scherm van het archief-doolhof: oude kranten gevonden, daarna
 // een knop "Lees oude kranten" → placeholder voor filmpje/afbeelding,
 // daarna "Terug" om het archief te verlaten.
@@ -22133,11 +22147,10 @@ function openHeerDonatuslaanVanuitWoud() {
   };
 
   // Eerst de vloek. Al vervloekt (individuele trigger eerder in Dorendael)?
-  // Dan een korte flits met de herinnering dat de vloek er nog is.
+  // Dan een korte flits met de herinnering dat de vloek er nog is. De vlag
+  // gaat hoe dan ook aan: na de woudfinale draagt iedereen de vloek.
+  markVisited('schaduw_vloek');
   if (window.ZilverweideSchaduw && !window.ZilverweideSchaduw.isVervloekt()) {
-    if (!state.inventory.find(function(i){ return i.naam === 'De Schaduw'; })) {
-      addInventory('🌑', 'De Schaduw', false);
-    }
     vloekOnboarding(naVloek);
   } else if (window.ZilverweideSchaduw && window.ZilverweideSchaduw.toonVloekFlits) {
     window.ZilverweideSchaduw.toonVloekFlits('De vloek is er nog steeds...', naVloek);
@@ -22189,7 +22202,7 @@ function debugDoolhofKlaar() {
 // ══════════════════════════════════════════════════════════════════
 // SCHADUW — knopje linksonder om het effect aan/uit te zetten (test).
 // Het effect zelf zit in schaduw.js (losse module). In het echte spel
-// start het via geefItem('🌑','De Schaduw'); deze knop is om los te testen.
+// start het via geefVloek(); deze knop is om los te testen.
 // ══════════════════════════════════════════════════════════════════
 function toggleSchaduwMenu() {
   var menu = document.getElementById('schaduw-menu');
@@ -22360,10 +22373,10 @@ function schaduwStartOffset() {
 }
 function vloekOnboarding(onKlaar) {
   if (!window.ZilverweideSchaduw) { if (typeof onKlaar === 'function') onKlaar(); return; }
-  // De vloek valt altijd direct nadat De Schaduw als voorwerp is toegevoegd,
-  // en die melding heeft een timer van 3 seconden staan die de muziek zelf
-  // weer aanzet. De intro duurt langer, dus zonder dit begint de muziek
-  // middenin. Eerst die hervat-timers uit, dan zelf stilzetten.
+  // Een scene kan vlak voor de vloek nog een voorwerp of melding geven, en
+  // die meldingen hebben timers staan die de muziek zelf weer aanzetten.
+  // De intro duurt langer, dus zonder dit begint de muziek middenin.
+  // Eerst die hervat-timers uit, dan zelf stilzetten.
   stopMuziekHervatTimers();
   // Pauzeer achtergrondmuziek en eventuele doolhofmuziek
   var bgMusic = document.getElementById('bg-music');
@@ -22392,17 +22405,12 @@ function vloekOnboarding(onKlaar) {
     }, 80);
   };
 
-  // Speel eerst de drop (eenmalig, synchroon met de witte flits),
-  // daarna schaduwstart op loop voor de rest van de onboarding.
+  // Speel eerst de drop (eenmalig, synchroon met de witte flits). De
+  // schaduwstart-loop begint pas op het moment dat de eerste intro-regel
+  // ("Een hoofd vol stemmen ontwakend...") in beeld komt, via de hook van
+  // toonVloekIntro. De drop (ca. 1,6s) loopt daar net overheen uit.
   var dropAudio = new Audio('geluid/schaduwmechanic/schaduwstartdrop.mp3');
   dropAudio.volume = 0.5;
-  dropAudio.addEventListener('ended', function() {
-    var loopAudio = new Audio('geluid/schaduwmechanic/schaduwstart.mp3');
-    loopAudio.loop = true;
-    loopAudio.volume = 0.5;
-    try { loopAudio.play().catch(function(){}); } catch(e) {}
-    window._schaduwStartAudio = loopAudio;
-  });
   try { dropAudio.play().catch(function(){}); } catch(e) {}
   window._schaduwStartAudio = dropAudio;
 
@@ -22410,6 +22418,12 @@ function vloekOnboarding(onKlaar) {
     window.ZilverweideSchaduw.vervloek({ startMeter: schaduwStartOffset() });
     setSchaduwStatus();
     vloekUitlegPopup(wrappedOnKlaar);
+  }, function () {
+    var loopAudio = new Audio('geluid/schaduwmechanic/schaduwstart.mp3');
+    loopAudio.loop = true;
+    loopAudio.volume = 0.5;
+    try { loopAudio.play().catch(function(){}); } catch(e) {}
+    window._schaduwStartAudio = loopAudio;
   });
 }
 function vloekUitlegPopup(onKlaar) {
@@ -22691,7 +22705,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=13"></script>
+<script src="technischefiles/schaduw.js?v=14"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,

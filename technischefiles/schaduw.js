@@ -731,7 +731,9 @@ window.ZilverweideSchaduw = (function () {
       }, inMs + holdMs);
     });
   }
-  async function toonVloekIntro(onDone) {
+  // onEersteTekst (optioneel): vuurt precies wanneer de eerste intro-regel
+  // in beeld komt, zodat de host daar zijn geluid op kan laten aansluiten.
+  async function toonVloekIntro(onDone, onEersteTekst) {
     const o = el.vloekIntro, t = el.vloekIntroTekst, fl = el.flits;
     // Witte flits, de schok op het moment dat de vloek toeslaat.
     fl.style.transition = 'none';
@@ -751,7 +753,8 @@ window.ZilverweideSchaduw = (function () {
     o.style.opacity = '1';                        // zwart al onder de flits
     t.style.opacity = '0';
     await wacht(1150);                            // flits (vol wit → uitfaden) → zwart
-    await toonTekstFade('Schreeuw filler', 2000, 800, 1000);   // langzaam in (2s)
+    if (typeof onEersteTekst === 'function') { try { onEersteTekst(); } catch (e) {} }
+    await toonTekstFade('Een hoofd vol stemmen ontwakend...', 2000, 800, 1000);   // langzaam in (2s)
     await wacht(300);
     await toonTekstFade('Alles voelt zwaar, je hoofd doet pijn, wa- wat is dit?', 1600, 1500, 1100);
     await wacht(200);
