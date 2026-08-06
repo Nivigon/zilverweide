@@ -10007,7 +10007,7 @@ function renderDd2Nummer2(loc) {
         image:    'locaties/dorendael/nummer2voorkamer.jpeg',
         dialog: [
           'Het huis is leeg en smerig. Vergeten meubels, stof, scheef hangende schilderijen.',
-          { spreker: 'Verteller', tekst: 'Op een kast staat een vreemde beer, bezet met dozijnen naalden, alsof iemand hem als speldenkussen heeft gebruikt.' },
+          { spreker: 'Verteller', tekst: 'Onder de tafel ligt een vreemde pop, bezet met dozijnen naalden, alsof iemand het als speldenkussen heeft gebruikt.' },
           { spreker: 'Felix', tekst: 'Als spion weet je dat verlaten huizen nooit echt leeg zijn. Achter elke deur, in elke lade, geheimen. Je begint rond te neuzen.' }
         ],
         acties: [
@@ -10024,12 +10024,13 @@ function renderDd2Nummer2(loc) {
       sub:      'De achterkamer',
       image:    'locaties/dorendael/nummer2achterkamer.jpeg',
       dialog: [
-        'De achterkamer. Op een wankele tafel: een zware zak. Munten, je hoort het rinkelen door de stof. Niemand te zien. Niemand te horen.',
+        'De kamer is leeg. Eng leeg. Wat stro op de grond, en een klein zakje.',
+        'Je pakt het op. Er zitten munten in.',
         { spreker: '⚠ Waarschuwing', tekst: 'Denk goed na over wat je kiest.' }
       ],
       acties: [
-        { label: 'Pak de zak op en blijf staan', onclick: dd2WachtOpBewoner },
-        { label: 'Grijp de zak en ren',          onclick: dd2SteelDeZak }
+        { label: 'Blijf staan',   onclick: dd2WachtOpBewoner },
+        { label: 'Ren ermee weg', onclick: dd2SteelDeZak }
       ]
     });
     return;
@@ -10046,7 +10047,7 @@ function renderDd2Nummer2(loc) {
       dialog: [
         { tekst: 'Het huis staat er verlaten bij, de deur op een kier. Jan duwt hem voorzichtig verder open.', onShow: function(){ verbergNpcPop(); } },
         { spreker: 'Jan', tekst: 'Voetstappen. Vlakbij. Dit is niet het moment om betrapt te worden.' },
-        { tekst: 'Hij glipt net op tijd naar buiten. Vanuit de schaduw ziet hij een schimmig figuur het huis binnenlopen — brede schouders, zware tred. Jan maakt dat hij wegkomt.', onShow: function(){ toonNpcPop('karakters/dorendael/bartintens-pop.png'); } }
+        { tekst: 'Hij glipt net op tijd naar buiten. Vanuit de schaduw ziet hij een schimmig figuur het huis binnenlopen, brede schouders, zware tred. Jan maakt dat hij wegkomt.', onShow: function(){ toonNpcPop('karakters/dorendael/bartintens-pop.png'); } }
       ]
     });
     return;
@@ -10128,7 +10129,7 @@ function renderDd2Nummer2(loc) {
     image:    null,
     dialog: [
       'Het huis is leeg en smerig. Vergeten meubels, stof, scheef hangende schilderijen.',
-      { spreker: 'Verteller', tekst: 'Op een kast staat een vreemde beer — bezet met dozijnen naalden, alsof iemand hem als speldenkussen heeft gebruikt.' }
+      { spreker: 'Verteller', tekst: 'Onder de tafel ligt een vreemde pop, bezet met dozijnen naalden, alsof iemand het als speldenkussen heeft gebruikt.' }
     ]
   });
 }
@@ -10178,28 +10179,29 @@ function dd2BewonerVerschijnt() {
   markVisited('felix_dd2_gewacht');
   geefItem('💰', 'Munten van de Bewoner');
   const alsLucinde = state.vermomming === 'Lucinde';
-  // Bart komt in beeld als NPC-pop rechts, tegenover Felix (links). Ziet hij
-  // Lucinde, dan kijkt hij verbaasd.
-  toonCharPop(null); // Felix (of Lucinde) links
-  toonNpcPop(alsLucinde ? 'karakters/dorendael/bartverbaasd-pop.png' : 'karakters/dorendael/bartintens-pop.png'); // Bart rechts
-  const c = document.getElementById('locatie-content');
-  let html = '<h3>🏚️ Nummer 2</h3>';
-  html += '<div class="sub">Er komt iemand binnen...</div>';
-
+  // Bart komt in beeld als NPC-pop; ziet hij Lucinde, dan kijkt hij verbaasd.
+  // De achterkamer-afbeelding blijft staan, onafhankelijk van de keuze.
+  const dialog = [];
   if (alsLucinde) {
     // Bewoner ziet een oud vrouwtje en denkt aan een vergissing
-    html += '<div class="npc-line" style="margin-top:1.5rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Ach mevrouw... bent u de weg kwijt? Maakt u zich geen zorgen, zo&#39;n vriendelijke dame zou nooit opzettelijk met mijn centen aan de haal gaan."</em></div></div></div>';
-    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij wuift je vriendelijk weg, de zak nog in je handen.</p>';
-    html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">👤</div><div><div class="npc-name">De Bewoner</div><div class="npc-text"><em>"Maar blijf na donker bij de molen vandaan, mevrouw. Er zit iets. Een beest, zeggen sommigen. Een zwerver, zeggen anderen. En mijn buurvrouw fluistert dat het helemaal geen mens is. Ik weet het niet. Niemand weet het. Alleen dat je er \'s nachts beter niet gaat kijken."</em></div></div></div>';
+    dialog.push({ spreker: 'De Bewoner', tekst: '"Ach mevrouw... bent u de weg kwijt? Maakt u zich geen zorgen, zo\'n vriendelijke dame zou nooit opzettelijk met mijn centen aan de haal gaan."', onShow: function () { setTimeout(function () { toonNpcPop('karakters/dorendael/bartverbaasd-pop.png'); }, 120); } });
+    dialog.push('Hij wuift je vriendelijk weg, de zak nog in je handen.');
+    dialog.push({ spreker: 'De Bewoner', tekst: '"Maar blijf na donker bij de molen vandaan, mevrouw. Er zit iets. Een beest, zeggen sommigen. Een zwerver, zeggen anderen. En mijn buurvrouw fluistert dat het helemaal geen mens is. Ik weet het niet. Niemand weet het. Alleen dat je er \'s nachts beter niet gaat kijken."' });
   } else {
     // De Vos: blufpoker, snel weer weg
-    html += '<p style="margin-top:1.5rem">De voetstappen komen dichterbij. De Vos verroert zich niet, de zak munten nog gewoon in zijn handen. Hij recht zijn rug en stapt de bewoner tegemoet, voor die iets kan zeggen.</p>';
-    html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">🕵️</div><div><div class="npc-name">De Vos</div><div class="npc-text"><em>"Goedenavond. Ik kom namens de heer *(mompelt iets onverstaanbaars)*. U had nog huur openstaan. Ik neem het meteen even mee."</em></div></div></div>';
-    html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Zonder op een antwoord te wachten draait hij zich om en wandelt naar buiten, de zak nog in zijn handen, voor de bewoner een woord kan uitbrengen. Spionnentactiek.</p>';
+    dialog.push({ tekst: 'De voetstappen komen dichterbij. De Vos verroert zich niet, de zak munten nog gewoon in zijn handen. Hij recht zijn rug en stapt de bewoner tegemoet, voor die iets kan zeggen.', onShow: function () { setTimeout(function () { toonNpcPop('karakters/dorendael/bartintens-pop.png'); }, 120); } });
+    dialog.push({ spreker: 'De Vos', tekst: '"Goedenavond. Ik kom namens de heer *(mompelt iets onverstaanbaars)*. U had nog huur openstaan. Ik neem het meteen even mee."' });
+    dialog.push('Zonder op een antwoord te wachten draait hij zich om en wandelt naar buiten, de zak nog in zijn handen, voor de bewoner een woord kan uitbrengen. Spionnentactiek.');
   }
-
-  html += '<button class="btn btn-full" style="margin-top:1.5rem" onclick="dd2StraatMunten(false)">Verder →</button>';
-  c.innerHTML = html;
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'Nummer 2',
+    sub:      'Er komt iemand binnen...',
+    image:    'locaties/dorendael/nummer2achterkamer.jpeg',
+    geenTerug: true,
+    dialog:   dialog,
+    acties: [ { label: 'Verder →', onclick: function () { dd2StraatMunten(false); } } ]
+  });
 }
 
 function dd2SteelDeZak() {
@@ -10208,17 +10210,20 @@ function dd2SteelDeZak() {
   // Ook bij grissen komt Bart binnen: Felix ziet hem (dezelfde pop, zodat hij
   // hem later herkent), maar nu met lichte paniek en iets onheilspellends aan
   // Bart. De vloek slaat pas buiten toe (dd2VloekBuiten), zodat de bewoner
-  // altijd in beeld is geweest.
-  toonCharPop(null);
-  toonNpcPop('karakters/dorendael/bartintens-pop.png');
-  const c = document.getElementById('locatie-content');
-  let html = '<h3>🏚️ Nummer 2</h3>';
-  html += '<div class="sub">Er komt iemand binnen...</div>';
-  html += '<p style="margin-top:1.5rem">De voetstappen. Te snel. De bewoner staat ineens in de deuropening, en er is iets aan hem. Iets kouds, iets dat niet klopt.</p>';
-  html += '<div class="npc-line" style="margin-top:1rem"><div class="npc-avatar">🕵️</div><div><div class="npc-name">De Vos</div><div class="npc-text"><em>"Goedenavond! Ik kom namens de heer *(mompelt iets onverstaanbaars)*. Huur, openstaand, ik neem het mee."</em></div></div></div>';
-  html += '<p style="margin-top:1rem;color:var(--mist);font-style:italic">Hij wacht niet op antwoord. De deur uit, de straat op, de zak tegen zijn borst geklemd, hart bonkend. Dat ging net goed. Of net niet.</p>';
-  html += '<button class="btn btn-full" style="margin-top:1.5rem" onclick="dd2StraatMunten(true)">Verder →</button>';
-  c.innerHTML = html;
+  // altijd in beeld is geweest. De achterkamer blijft in beeld.
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    'Nummer 2',
+    sub:      'Er komt iemand binnen...',
+    image:    'locaties/dorendael/nummer2achterkamer.jpeg',
+    geenTerug: true,
+    dialog: [
+      { tekst: 'De voetstappen. Te snel. De bewoner staat ineens in de deuropening, en er is iets aan hem. Iets kouds, iets dat niet klopt.', onShow: function () { setTimeout(function () { toonNpcPop('karakters/dorendael/bartintens-pop.png'); }, 120); } },
+      { spreker: 'De Vos', tekst: '"Goedenavond! Ik kom namens de heer *(mompelt iets onverstaanbaars)*. Huur, openstaand, ik neem het mee."' },
+      'Hij wacht niet op antwoord. De deur uit, de straat op, de zak tegen zijn borst geklemd, hart bonkend. Dat ging net goed. Of net niet.'
+    ],
+    acties: [ { label: 'Verder →', onclick: function () { dd2StraatMunten(true); } } ]
+  });
 }
 
 // Straat vóór Nummer 2, na de keuze. Beide takken eindigen hier met dezelfde
