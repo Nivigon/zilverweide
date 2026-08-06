@@ -267,6 +267,8 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .code-success{color:#7dbf7d;font-size:.9rem;margin-top:.5rem;font-style:italic}
 .item-found{display:flex;gap:1rem;align-items:center;background:rgba(155,58,74,.1);border:1px solid rgba(155,58,74,.4);border-radius:4px;padding:1rem 1.25rem;margin:1.25rem 0}
 .item-icon{font-size:2rem;flex-shrink:0}
+.item-icon.item-afbeelding{width:2.6rem;height:2.6rem}
+.npc-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
 .item-name{font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold);letter-spacing:.1em;margin-bottom:2px}
 .item-desc{font-size:.95rem;color:var(--mist);font-style:italic}
 .kwartier-header{text-align:center;margin:1.5rem 0 2rem}
@@ -7352,7 +7354,7 @@ function renderH2FelixKamer(loc) {
         { spreker: 'Felix', tekst: '"Mooi, je hebt hem. Prop hem door het gat en zeg me de code."' }
       ];
       extraHtml = codeBlok;
-      acties.push({ label: '👘 Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix });
+      acties.push({ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix });
     } else if (heeftMunten) {
       dialog = [
         { spreker: 'Felix', tekst: '"Haal met die munten een outfit voor me bij Naald en Masker in het Kraaienkwartier, en breng hem hierheen."' }
@@ -7362,7 +7364,7 @@ function renderH2FelixKamer(loc) {
         'Je hoort een geluid uit dat gat in de muur. Jij bent lang genoeg om erbij te kunnen. Je buigt je ernaartoe.',
         { spreker: 'Felix', tekst: '"Jan? Ben jij dat? Goddank. Ik heb een plan. Ik heb hier een zakje munten gevonden. Pak het aan door het gat, dan kun jij een outfit voor me halen bij Naald en Masker in Kraaienkwartier."' }
       ];
-      acties.push({ label: '🪙 Neem het zakje munten aan', onclick: janNeemMuntenAan });
+      acties.push({ label: 'Neem het zakje munten aan', onclick: janNeemMuntenAan });
     } else {
       dialog = [
         'Je hoort een geluid uit dat gat in de muur. Jij bent lang genoeg om erbij te kunnen. Je buigt je ernaartoe.',
@@ -10137,7 +10139,7 @@ function renderDd2Nummer2(loc) {
 function dd2WachtOpBewoner() {
   const c = document.getElementById('locatie-content');
   let secs = 15;
-  let html = '<h3>🏚️ Nummer 2</h3>';
+  let html = '<h3>Nummer 2</h3>';
   html += '<div class="sub">Je staat doodstil, de zak munten in je handen</div>';
   html += '<p style="margin-top:1.5rem;color:var(--mist);font-style:italic">Je kijkt naar de zak in je handen. Had ik toch moeten rennen?</p>';
   html += '<div id="dd2-timer" style="margin-top:1.5rem;font-family:Cinzel,serif;font-size:2.5rem;color:var(--gold);text-align:center;text-shadow:0 0 20px rgba(201,168,76,.6)">' + secs + '</div>';
@@ -11302,7 +11304,7 @@ function renderDd8Stiltevijver(loc) {
         pakFlard(FLARDEN1),
         { spreker: 'Fenna-Viviènne', tekst: 'Al die droeve gezichten... Dít is precies waarvoor ik besta. Even geen drama, geen onderzoek, gewoon een lied. Dit is wat ik te geven heb.' }
       ],
-      acties: [ { label: '🎤 Zing', onclick: fennaZingt } ]
+      acties: [ { label: 'Zing', onclick: fennaZingt } ]
     }));
   }
 
@@ -12190,12 +12192,12 @@ function renderK1Naaldmasker(loc) {
     if (rouwstofBeschikbaar) {
       acties = [
         { label: '✋ Bied je hand aan',        onclick: kellyGeeftHand },
-        { label: '🖤 Ik kom voor iets anders', onclick: kellyKiestRouwstof }
+        { label: 'Ik kom voor iets anders', onclick: kellyKiestRouwstof }
       ];
     } else {
       acties = [
         { label: '✋ Geef je hand',          onclick: kellyGeeftHand },
-        { label: '🚫 Trek je hand terug',    onclick: kellyWeigertHand }
+        { label: 'Trek je hand terug',    onclick: kellyWeigertHand }
       ];
     }
   }
@@ -12218,7 +12220,7 @@ function renderK1Naaldmasker(loc) {
     const janHeeftMunten = !!state.inventory.find(i => i.naam === ITEMS.zakjeMunten.naam);
     const janHeeftOutfit = !!state.inventory.find(i => i.naam === ITEMS.felixOutfit.naam);
     if (janHeeftMunten && !janHeeftOutfit) {
-      acties = [{ label: '👘 Koop vermomming voor Felix', onclick: janKoopVermommingVoorFelix }];
+      acties = [{ label: 'Koop vermomming voor Felix', onclick: janKoopVermommingVoorFelix }];
     }
   }
 
@@ -12265,13 +12267,13 @@ function renderK1Naaldmasker(loc) {
     // tegelijk verschijnen (bv. Felix heeft Breiwerkje al en wil ook Lola).
     acties = [];
     if (heeftStoopMunten && !heeftLucinde) {
-      acties.push({ label: '💰 Lucinde-outfit kopen', onclick: koopLucindeOutfit });
+      acties.push({ label: 'Lucinde-outfit kopen', onclick: koopLucindeOutfit });
     }
     if (heeftBewonerMunten && !heeftLola) {
-      acties.push({ label: '💰 Lola-outfit kopen', onclick: koopLolaOutfit });
+      acties.push({ label: 'Lola-outfit kopen', onclick: koopLolaOutfit });
     }
     if (heeftLucinde || heeftLola || heeftHoedje) {
-      acties.push({ label: '👗 Vermommen', onclick: toonVermomKeuze });
+      acties.push({ label: 'Vermommen', onclick: toonVermomKeuze });
       if (state.vermomming) {
         acties.push({ label: 'Vermomming uittrekken', onclick: uittrekkenVermomming, stijl: 'blood' });
       }
@@ -12331,7 +12333,7 @@ function kellyKiestRouwstof() {
   toonLade(
     'Rouwstof',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Madeleine kijkt je even aan, dan knipt ze zonder verder vragen een klein lapje af van een donkere jurk. Fluweel, versleten aan de randen.</p>' +
-    '<div class="npc-line" style="margin-top:.75rem;border-left-color:var(--rose)"><div class="npc-avatar">🧵</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Ach, ook goed. Van een weduwejurk. Oud verdriet knipt makkelijk."</em> *(geeft het lapje af alsof het niets is, maar haar blik blijft nog even op je handen rusten)*</div></div></div>' +
+    '<div class="npc-line" style="margin-top:.75rem;border-left-color:var(--rose)"><div class="npc-avatar"><img src="karakters/kraaienkwartier/madeleine.png" alt=""></div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Ach, ook goed. Van een weduwejurk. Oud verdriet knipt makkelijk."</em> *(geeft het lapje af alsof het niets is, maar haar blik blijft nog even op je handen rusten)*</div></div></div>' +
     '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.5rem">Breng dit naar de apotheker in Heer Donatuslaan.</p>',
     'Verder',
     function() { openLocatie('k1_naaldmasker'); },
@@ -12628,7 +12630,7 @@ function renderK1Dorpsput(loc) {
       dialog.push({ spreker: 'Verteller', tekst: 'Onderin zie je iets glinsteren...' });
       extraHtml =
         '<div class="item-found" style="cursor:pointer" onclick="verzamelItem(\'k1_dorpsput\',\'📔\',\'Nat Dagboek\',\'Doorweekt en onleesbaar.\',true)">' +
-          '<div class="item-icon">📔</div><div><div class="item-name">Nat Dagboek, tik om op te pakken</div><div class="item-desc">Doorweekt en onleesbaar. Ergens waar ze goed met papier overweg kunnen, misschien...</div></div>' +
+          itemVisueel('Nat Dagboek', '📔', 'item-icon') + '<div><div class="item-name">Nat Dagboek, tik om op te pakken</div><div class="item-desc">Doorweekt en onleesbaar. Ergens waar ze goed met papier overweg kunnen, misschien...</div></div>' +
         '</div>' +
         '<p style="margin-top:.75rem;color:var(--mist);font-size:.85rem;text-align:center;font-style:italic">Je komt hier niet alleen uit. Roep je teamgenoten om hulp.</p>';
     }
@@ -12761,11 +12763,11 @@ function renderK1Dorpsput(loc) {
         dialog.push({ spreker: 'Jan', tekst: 'Die afdruk, dat slot op de woudpoort. Daar heb ik iets voor nodig. Iets zacht, iets wat de vorm vasthoudt.' });
         dialog.push({ tekst: 'De put-rand is bemost en nat. Tussen de stenen zit zachte, vochtige klei, perfect om een afdruk mee te maken.' });
         acties = [
-          { label: '🟫 Pak klei mee', onclick: janPakKlei },
+          { label: 'Pak klei mee', onclick: janPakKlei },
           // De woudpoort is een Dorendael-locatie (DD5). Deze knop wees naar
           // openLocatie, en die kent alleen Kraaienkwartier-locaties: hij deed
           // dus niets.
-          { label: '🚪 Snel terug naar de woudpoort', onclick: function() { openDorendaelLocatie('DD5'); } }
+          { label: 'Snel terug naar de woudpoort', onclick: function() { openDorendaelLocatie('DD5'); } }
         ];
       }
     }
@@ -13232,7 +13234,7 @@ function kellyVoorbodeNaRitueel() {
 function kellyWeigertHand() {
   toonLade(
     '✦  Madeleine',
-    '<div class="npc-line" style="border-left-color:var(--rose)"><div class="npc-avatar">🧵</div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Och, jammer."</em> *(glimlacht, trekt langzaam terug)* <em>"Ik bedoelde het lief. Een ander keertje misschien."</em></div></div></div>' +
+    '<div class="npc-line" style="border-left-color:var(--rose)"><div class="npc-avatar"><img src="karakters/kraaienkwartier/madeleine.png" alt=""></div><div><div class="npc-name">Madeleine</div><div class="npc-text"><em>"Och, jammer."</em> *(glimlacht, trekt langzaam terug)* <em>"Ik bedoelde het lief. Een ander keertje misschien."</em></div></div></div>' +
     '<p style="font-size:.9rem;color:var(--mist);font-style:italic;margin-top:.75rem">Ze pakt haar naaiwerk weer op. Maar haar ogen volgen Kelly tot ze buiten staat.</p>',
     'Verder →',
     () => openLocatie('k1_naaldmasker')
@@ -13389,16 +13391,16 @@ function toonVermomKeuze() {
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   let knoppen = '';
   if (heeftItem('Breiwerkje')) {
-    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lucinde\')">👵 Word Mevr. Lucinde</button>';
+    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lucinde\')">Word Mevr. Lucinde</button>';
   }
   if (heeftItem('Latin Jurk')) {
-    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lola\')">💃 Word Lola</button>';
+    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Lola\')">Word Lola</button>';
   }
   // Liu-Yen hoort er hier ook bij: K8 is dé omkleedplek, en wie hem hier
   // uittrekt moest anders helemaal terug naar het Steegje (H8) om hem weer
   // aan te kunnen. Zelfde conditie als in toonVermomKeuzeSteegje.
   if (heeftItem(ITEMS.coneHoedje.naam) || heeftItem(ITEMS.felixOutfit.naam)) {
-    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Liu-Yen\')">🐉 Word Liu-Yen</button>';
+    knoppen += '<button class="btn btn-full" style="margin-top:.5rem" onclick="kiesVermomming(\'Liu-Yen\')">Word Liu-Yen</button>';
   }
   toonLade(
     '👗 Wie wil je zijn?',
@@ -13689,7 +13691,7 @@ function renderArchiefBinnen(dialog, acties, extraHtml) {
         'cursor:' + (actief ? 'pointer' : 'not-allowed') + ';' +
         'transition:all .2s ease;' +
         'white-space:nowrap;';
-      pill.innerHTML = '<span style="font-size:.95rem;line-height:1">📜</span><span>Openbare archieven</span>';
+      pill.innerHTML = '<span>Openbare archieven</span>';
       if (actief) {
         pill.onclick = openDorpsarchiefArchieven;
         pill.onmouseover = function() { pill.style.background = 'rgba(201,168,76,.15)'; pill.style.borderColor = 'rgba(201,168,76,.75)'; };
@@ -15782,7 +15784,7 @@ function toonVerborgenHandNaalden() {
       dialog.push({ spreker: 'Stazia', tekst: '*(ze telt ze na met een vingertop)* "' + ingeleverd + ' liggen er nu bij mij. Er ' + (tekort === 1 ? 'ontbreekt er nog een' : 'ontbreken er nog ' + tekort) + '."' });
     }
     if (inRugzak > 0) {
-      acties = [{ label: '🪡 Lever ' + (inRugzak === 1 ? 'je naald' : 'je ' + inRugzak + ' naalden') + ' in', onclick: vhLeverNaaldenIn }];
+      acties = [{ label: 'Lever ' + (inRugzak === 1 ? 'je naald' : 'je ' + inRugzak + ' naalden') + ' in', onclick: vhLeverNaaldenIn }];
     }
   }
 
@@ -15838,7 +15840,7 @@ function toonVerborgenHandCrystal() {
     renderLocatieScene(Object.assign({}, basis, {
       dialog: [ { spreker: 'Stazia', tekst: '"Heer Donatuslaan... heb je iets voor me meegebracht, kind?"' } ],
       acties: [
-        { label: '🔮 Lever crystal in', onclick: leverCrystalIn },
+        { label: 'Lever crystal in', onclick: leverCrystalIn },
         { label: '← Terug', onclick: openVerborgenHand }
       ]
     }));
@@ -15963,7 +15965,7 @@ function toonVerborgenHandVraag(vraagId, staziaTekst, numeriek) {
 function openMicrofoon() {
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   const c = document.getElementById('locatie-content');
-  let html = '<h3>🎤 Het Toneel — Microfoon</h3><div class="sub">Dorpsplein — achter het podium</div>';
+  let html = '<h3>Het Toneel — Microfoon</h3><div class="sub">Dorpsplein — achter het podium</div>';
   html += '<p style="margin-top:1rem">Achter het verlaten toneel, tussen omgevallen decorstukken, ligt de microfoon. Vergeten na de chaos van eerder vanavond.</p>';
   if (!heeftItem('Microfoon')) {
     html += '<button class="btn btn-full" style="margin-top:1rem" onclick="verzamelItem(\'M1\',\'🎤\',\'Microfoon\',\'De microfoon van het podium.\')">Microfoon oppakken</button>';
@@ -19745,7 +19747,7 @@ function renderDd6Bord(loc) {
   // stond hier nog de ruïne).
   state.locAfbeelding = 'locaties/dorendael/Molenpad.jpeg';
   const cont = document.getElementById('locatie-content');
-  const drukKnop  = { label: '🚶 Loop naar de molen', onclick: function(){ dempMuziek(); startMolenScene(loc); } };
+  const drukKnop  = { label: 'Loop naar de molen', onclick: function(){ dempMuziek(); startMolenScene(loc); } };
   const terugKnop = { label: '← Loop terug', onclick: goBackFromLocatie, stijl: 'blood' };
 
   // Anti-Schaduw quest: Donderbloesem groeit BIJ de molen (verbrande grond).
@@ -19976,7 +19978,7 @@ function renderMolenContent(loc, p) {
         'Ze hurkt en schuift het kastje opzij — het valt bijna uit elkaar. Eronder: een muziekdoosje. Beschadigd, beroet, het deksel scheef. Bovenop iets gegraveerd, te zwart om te lezen.'
       ]),
       acties: [
-        { label: '🎵 Pak het muziekdoosje', onclick: function() {
+        { label: 'Pak het muziekdoosje', onclick: function() {
             if (!hasVisited('kelly_muziekdoosje_gevonden')) {
               geefItem(ITEMS.muziekdoosje.emoji, ITEMS.muziekdoosje.naam);
               markVisited('kelly_muziekdoosje_gevonden');
@@ -20414,7 +20416,7 @@ function renderDd7Klokkenmaker(loc) {
           'Hij kijkt op.',
           { spreker: 'Klokkenmaker', tekst: 'Ik ga kijken wat ik voor u kan doen. Geen belofte. Maar ik ga kijken. Kom later terug.' }
         ],
-        acties: [{ label: '🎵 Geef het muziekdoosje af', onclick: dd7LeverMuziekdoosAf }] });
+        acties: [{ label: 'Geef het muziekdoosje af', onclick: dd7LeverMuziekdoosAf }] });
     }
     if (muziekdoosIngeleverd) {
       return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
@@ -20533,7 +20535,7 @@ function renderDd7LolaFlirtScene(loc) {
       'Ze pakt zijn arm en leidt hem zachtjes weg van de toonbank. Hij volgt als een lammetje, hij ziet niets behalve haar.',
       { spreker: 'Lola', tekst: 'U bent een schat, meneer.' }
     ],
-    acties: [{ label: '💃 Rond de afleiding af', onclick: dd7LolaFlirt }]
+    acties: [{ label: 'Rond de afleiding af', onclick: dd7LolaFlirt }]
   });
 }
 
@@ -21148,7 +21150,7 @@ function archivarisGeeftDocumenten() {
       'Dan draait hij zich om, pakt een stapel vergeelde documenten van een plank, en legt ze voor je neer.',
       'Zonder een woord loopt hij weg.',
     ],
-    acties: [{ label: '📰 Bekijk de documenten', onclick: function() { toonOudeKranten(); } }]
+    acties: [{ label: 'Bekijk de documenten', onclick: function() { toonOudeKranten(); } }]
   });
   showScreen('screen-locatie');
 }
@@ -21171,7 +21173,7 @@ function toonArchiefWinScherm() {
       '<div style="font-family:Cinzel,serif;font-size:.8rem;letter-spacing:.2em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.5rem">✦ Je bent door het archief geslopen</div>' +
       '<h2 style="font-family:Cinzel,serif;font-size:1.6rem;color:var(--gold);margin:.5rem 0 1rem">Je hebt oude kranten gevonden!</h2>' +
       '<p style="font-family:Crimson Text,Georgia,serif;font-style:italic;font-size:1rem;color:var(--parchment);line-height:1.6;margin-bottom:1.5rem">[Placeholder: een stapel vergeelde kranten over de oude molen, geheim weggestopt achter de verboden kasten.]</p>' +
-      '<button class="dh-btn" style="display:inline-block;margin:.5rem" onclick="toonOudeKranten()">📰 Lees de oude kranten</button>' +
+      '<button class="dh-btn" style="display:inline-block;margin:.5rem" onclick="toonOudeKranten()">Lees de oude kranten</button>' +
     '</div>';
 }
 
@@ -21213,8 +21215,8 @@ function toonOudeKranten() {
     image:     ARCHIEF_KRANTENKOP,
     dialog: [
       'Tussen de vergeelde jaargangen ligt een los knipsel. De kop schreeuwt over de halve pagina.',
-      { spreker: '📰 De Zilverweidse Bode', tekst: '"TRAGISCH ONGELUK BIJ MOLEN"' },
-      { spreker: '📰 De Zilverweidse Bode', tekst: '"De molenaar is bij werkzaamheden aan zijn eigen molen om het leven gekomen. Het dorp rouwt. Van verdere bijzonderheden is geen sprake. De begrafenis vindt plaats in besloten kring."' },
+      { spreker: 'De Zilverweidse Bode', tekst: '"TRAGISCH ONGELUK BIJ MOLEN"' },
+      { spreker: 'De Zilverweidse Bode', tekst: '"De molenaar is bij werkzaamheden aan zijn eigen molen om het leven gekomen. Het dorp rouwt. Van verdere bijzonderheden is geen sprake. De begrafenis vindt plaats in besloten kring."' },
       'Dat is het. Drie zinnen voor een dode man. Geen naam, geen datum, geen woord over hoe.',
       'Voor een krant die anders elke verdwaalde geit vermeldt, is dit oorverdovend kort.'
     ],
@@ -21248,7 +21250,7 @@ function toonOudeKrantenBundel() {
     image:     ARCHIEF_BUNDEL,
     dialog: [
       'Je bladert verder. Tussen de losse jaargangen staat een gebonden bundel, met de hand gezet.',
-      { spreker: '📖 Zilverweide, verhalen en meer', tekst: '"Opgetekend uit de mond van het dorp."' },
+      { spreker: 'Zilverweide, verhalen en meer', tekst: '"Opgetekend uit de mond van het dorp."' },
       'Er staat een hoofdstuk over de molen. Geen ongeluk deze keer, maar een legende.',
       'Twee verhalen over hetzelfde. Eén te kort om iets te zeggen, één doorverteld tot het een verhaal werd. Ergens daartussen ligt wat er echt gebeurd is.'
     ],
@@ -21640,7 +21642,7 @@ function renderDd5Woud(loc) {
             { spreker: 'Jan', tekst: '*(in gedachten)* Hij blijft niet kijken hoe ik het doe. Of hij hoeft niet. Hij weet al hoe het gaat.' }
           ],
           acties: [
-            { label: '🔲 Maak de afdruk', onclick: function() {
+            { label: 'Maak de afdruk', onclick: function() {
                 state.inventory = state.inventory.filter(i => i.naam !== ITEMS.klei.naam);
                 geefItem(ITEMS.kleiAfdruk.emoji, ITEMS.kleiAfdruk.naam);
                 markVisited('jan_afdruk_gemaakt');
