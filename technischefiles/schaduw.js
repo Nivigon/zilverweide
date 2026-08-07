@@ -28,6 +28,7 @@ window.ZilverweideSchaduw = (function () {
     fogSrc: 'fog.png',
     spelerId: 'speler',           // wie deze tablet is (voor de server)
     meterPerSec: 0.4167,          // % per seconde: 100 / 240 = vol in 4 minuten
+    memTempo: 1,                  // toon-tempo van de Chaos-knoppenreeks (1 = normaal, hoger = trager getoond, dus makkelijker)
     mistVis: 1.0,                 // bovengrens fog-zichtbaarheid (banken vol opaak bij 90%)
     mistDensity: 0.6,             // hoeveel mistlagen meedoen
     geluidPaden: [
@@ -423,6 +424,10 @@ window.ZilverweideSchaduw = (function () {
   function rune(i) { return el.memRunes.querySelector(`.zv-rune[data-i="${i}"]`); }
   function playMemSeq() {
     let k = 0;
+    // Toon-tempo: de begeleider (of het testpaneel) kan de reeks trager of
+    // sneller laten oplichten. Alleen het TONEN schaalt mee; het natikken
+    // door de speler blijft ongewijzigd.
+    const t = CFG.memTempo || 1;
     const stap = () => {
       if (k >= memSeq.length) {
         memAccept = true;
@@ -431,7 +436,7 @@ window.ZilverweideSchaduw = (function () {
         return;
       }
       const r = rune(memSeq[k]); r.classList.add('zv-lit');
-      setTimeout(() => { r.classList.remove('zv-lit'); k++; setTimeout(stap, 240); }, 520);
+      setTimeout(() => { r.classList.remove('zv-lit'); k++; setTimeout(stap, 240 * t); }, 520 * t);
     };
     stap();
   }
@@ -815,7 +820,13 @@ window.ZilverweideSchaduw = (function () {
     // ── debug / test (mag in productie blijven, hindert niet) ──
     _ontgrendel: () => bevrijd(),               // solo eruit zonder code
     _setMeter: n => { meter = Math.max(0, Math.min(100, n)); updateSmoke(); },
+    getMeter: () => meter,                      // metervulling 0-100 (begeleider-status)
     _setSpeed: v => { CFG.meterPerSec = +v; },
+    _getSpeed: () => CFG.meterPerSec,
+    // Toon-tempo van de Chaos-reeks: factor op de toon-tijden (1 = normaal,
+    // hoger = trager getoond dus makkelijker, lager = sneller dus moeilijker).
+    _setMemTempo: v => { CFG.memTempo = Math.max(0.2, Math.min(4, +v || 1)); },
+    _getMemTempo: () => CFG.memTempo || 1,
     _forceMemory: () => { if (cursed) startMemory(); },
     _setFluisterSnel: aan => { fluisterSnelTest = !!aan; scheduleFluister(false); },
     // Testknoppen voor de vergrendel-blokkade: doen alsof er een teamgenoot
