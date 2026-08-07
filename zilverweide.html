@@ -2079,11 +2079,14 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-titel { font-family:'Cinzel',serif; font-size:clamp(1.2rem,4vw,1.7rem); color:var(--gold); letter-spacing:.07em; text-align:center; margin-bottom:.3rem; }
   .bgl-sub { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin-bottom:1.5rem; }
   .bgl-blok { border:1px solid rgba(201,168,76,.3); border-radius:8px; background:rgba(0,0,0,.35); padding:.9rem 1.2rem; margin-bottom:1rem; }
-  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0 .2rem; }
+  .bgl-regel { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem .9rem; padding:.6rem 0 .2rem; }
   .bgl-subregel { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem .7rem; padding:.15rem 0 .7rem; border-bottom:1px solid rgba(201,168,76,.14); }
   .bgl-subregel:last-child { border-bottom:none; }
   .bgl-mini { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-dim); flex:0 0 auto; }
-  .bgl-select { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35); border-radius:4px; padding:.3rem .4rem; max-width:11.5rem; }
+  .bgl-select { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35); border-radius:4px; padding:.3rem .4rem; flex:1 1 9rem; min-width:8rem; max-width:13rem; }
+  /* Het paneel is een leeslijst en werkt prima rechtop: de draai-je-toestel
+     vensterlaag (z-index 9999) mag de begeleider dan niet blokkeren. */
+  body.bgl-open #draai-overlay { display:none !important; }
   .bgl-vloek { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; color:var(--mist); white-space:nowrap; flex:0 0 auto; }
   .bgl-vloek.aan { color:#c97b7b; }
   .bgl-vloek.vast { color:#e8a9a9; }
@@ -6318,6 +6321,7 @@ function begeleiderOpen() {
   _bglOpen = true;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.add('open');
+  if (document.body) document.body.classList.add('bgl-open');
   if (_bglIngelogd) begeleiderStartIndex();
   else begeleiderRenderWachtwoord();
 }
@@ -6329,6 +6333,7 @@ function begeleiderOpenVoorTest() {
   _bglOpen = true;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.add('open');
+  if (document.body) document.body.classList.add('bgl-open');
   if (!begeleiderFirebaseKlaar()) { begeleiderStartIndex(); return; }
   begeleiderKiesSessie(herstelSessieId());
 }
@@ -6337,6 +6342,7 @@ function begeleiderSluit() {
   _bglOpen = false;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.remove('open');
+  if (document.body) document.body.classList.remove('bgl-open');
   begeleiderStopSessieListeners();
   if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} _bglIndexRef = null; }
   _bglSid = null;
@@ -6621,7 +6627,7 @@ function begeleiderRenderPaneel() {
         '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
         '<span class="ssi-schuif"></span>' +
       '</label>' +
-      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="visibility:' + (pending ? 'visible' : 'hidden') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="display:' + (pending ? '' : 'none') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
     '</div>';
   });
   var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
@@ -6631,8 +6637,8 @@ function begeleiderRenderPaneel() {
     (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
   '</div>' +
     begeleiderMissieHtml() +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig;<br>' +
-    'alleen de team-pauzeknop werkt direct. Schaduw-wijzigingen komen stil binnen:<br>' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
+    'alleen de team-pauzeknop werkt direct. Schaduw-wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
@@ -6754,8 +6760,10 @@ function begeleiderZetPending(rol, veld, waarde) {
   else p[veld] = waarde;
   if (Object.keys(p).length) _bglPending[rol] = p;
   else delete _bglPending[rol];
+  // display in plaats van visibility: een onzichtbare knop hield anders
+  // zijn plek in de flex-regel bezet en duwde de regel een stuk hoger.
   var knop = document.getElementById('bgl-bevestig-' + rol);
-  if (knop) knop.style.visibility = _bglPending.hasOwnProperty(rol) ? 'visible' : 'hidden';
+  if (knop) knop.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
 }
 
 function begeleiderBevestig(rol) {
