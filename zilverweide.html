@@ -2051,6 +2051,9 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <label class="schaduw-range">Meter vol in <span id="schaduw-speed-val">4:00</span>
     <input type="range" id="schaduw-speed" min="0.05" max="8" step="0.05" value="0.4167" oninput="schaduwSnelheid(this.value)">
   </label>
+  <label class="schaduw-range">Chaos-knoppen <span id="schaduw-tempo-val">normaal</span>
+    <input type="range" id="schaduw-tempo" min="0.5" max="2" step="0.05" value="1" oninput="schaduwChaosTempo(this.value)">
+  </label>
   <button class="schaduw-mi" onclick="schaduwRedderTest()">Redder-invoer openen</button>
   <button class="schaduw-mi" onclick="schaduwSpooklockTest()">Nep-lock hier plaatsen</button>
   <button class="schaduw-mi" onclick="schaduwBevrijdTest()">Bevrijd-gesprek (test)</button>
@@ -2076,8 +2079,14 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-titel { font-family:'Cinzel',serif; font-size:clamp(1.2rem,4vw,1.7rem); color:var(--gold); letter-spacing:.07em; text-align:center; margin-bottom:.3rem; }
   .bgl-sub { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin-bottom:1.5rem; }
   .bgl-blok { border:1px solid rgba(201,168,76,.3); border-radius:8px; background:rgba(0,0,0,.35); padding:.9rem 1.2rem; margin-bottom:1rem; }
-  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0; border-bottom:1px solid rgba(201,168,76,.14); }
-  .bgl-regel:last-child { border-bottom:none; }
+  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0 .2rem; }
+  .bgl-subregel { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem .7rem; padding:.15rem 0 .7rem; border-bottom:1px solid rgba(201,168,76,.14); }
+  .bgl-subregel:last-child { border-bottom:none; }
+  .bgl-mini { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-dim); flex:0 0 auto; }
+  .bgl-select { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35); border-radius:4px; padding:.3rem .4rem; max-width:11.5rem; }
+  .bgl-vloek { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; color:var(--mist); white-space:nowrap; flex:0 0 auto; }
+  .bgl-vloek.aan { color:#c97b7b; }
+  .bgl-vloek.vast { color:#e8a9a9; }
   .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
   .bgl-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bgl-naam.leeg { color:var(--mist); }
@@ -2504,10 +2513,15 @@ function initSharedFirebase(sessieId, versGedeeld) {
     // ook weghalen. De merge hieronder voegt alleen aanwezige keys toe en
     // wist niets, dus zonder dit blijft een vergrendelde tablet hangen nadat
     // de redder elders de juiste code invoerde (de lock verdween wel uit
-    // Firebase, maar niet uit de lokale kopie).
+    // Firebase, maar niet uit de lokale kopie). Zelfde verhaal voor de
+    // schaduw-instellingen van de begeleider (snelheid en chaos-tempo): zet
+    // die terug op Auto, dan verdwijnt de sleutel uit Firebase en moet de
+    // lokale kopie mee verdwijnen, anders blijft de oude stand gelden.
     for (var lk in state.shared) {
       if (state.shared.hasOwnProperty(lk)
-          && (lk.indexOf('schaduw_lock_') === 0 || lk.indexOf('schaduw_bevrijd_') === 0)
+          && (lk.indexOf('schaduw_lock_') === 0 || lk.indexOf('schaduw_bevrijd_') === 0
+              || lk.indexOf('schaduw_snelheid_') === 0 || lk.indexOf('schaduw_chaos_tempo_') === 0
+              || lk.indexOf('schaduw_status_') === 0)
           && !(data && data.hasOwnProperty(lk))) {
         delete state.shared[lk];
       }
@@ -2622,6 +2636,10 @@ function verwerkBinnengekomenShared(data) {
         }
       }
     }
+    // Schaduw-instellingen van de begeleider (snelheid en chaos-tempo):
+    // bewust STIL toepassen, zonder toast of ander zichtbaar teken. De
+    // speler mag niet merken dat de begeleider bijstuurt.
+    if (typeof pasSchaduwInstellingenToe === 'function') pasSchaduwInstellingenToe();
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
@@ -6134,6 +6152,9 @@ function zetBeginnerModus(aan) {
       && getSharedState('beginner_modus_' + state.personage) !== !!aan) {
     setSharedState('beginner_modus_' + state.personage, !!aan);
   }
+  // Beginner modus stuurt ook de standaard-stand van de schaduw (milder),
+  // zolang de begeleider geen eigen stand gezet heeft.
+  if (typeof pasSchaduwInstellingenToe === 'function') pasSchaduwInstellingenToe();
 }
 
 // Bij de rolkeuze de eigen beginnerstand aan de rol koppelen (net als de
@@ -6207,8 +6228,11 @@ function beginnerKaartIntro(schermId) {
 // Voor de begeleider op een eigen (vijfde) apparaat: via het kaars-
 // symbooltje rechtsonder op het splash-scherm, met wachtwoord. Toont van
 // de lopende sessie de teamnaam, de verhaal-fase en per rol de spelersnaam
-// met een schuifje voor de beginner modus; een wijziging gaat pas naar de
-// tablet van de speler na Bevestig.
+// met een schuifje voor de beginner modus, de schaduw-status (vloek, meter,
+// vastzitten met code) en twee keuzelijsten: de meter-snelheid van de
+// schaduw en het toon-tempo van de Chaos-knoppenreeks. Een wijziging gaat
+// pas naar de tablet van de speler na Bevestig, en de schaduw-instellingen
+// komen daar STIL binnen (geen melding voor de speler).
 // Het paneel leest en schrijft rechtstreeks op sessies/<sid>/... in
 // Firebase, los van de spel-sessie van dit apparaat. De sessies van
 // vandaag komen uit een kleine aparte index (sessies_index/<datum>) die
@@ -6224,6 +6248,25 @@ var BEGELEIDER_ROLLEN = [
   { id: 'felix', naam: 'Felix' },
 ];
 
+// Keuzelijsten voor de schaduw per rol. De waarde gaat als getal naar de
+// gedeelde stand; 'auto' betekent geen eigen stand, dan volgt de tablet de
+// beginner modus (zie pasSchaduwInstellingenToe: normaal 4 minuten,
+// beginner 6 minuten en een tragere Chaos-reeks).
+var BGL_SNELHEID_OPTIES = [
+  { w: 'auto',   label: 'Auto (4 min, beginner 6 min)' },
+  { w: '0.2083', label: 'Heel rustig (8 min)' },
+  { w: '0.2778', label: 'Rustig (6 min)' },
+  { w: '0.4167', label: 'Normaal (4 min)' },
+  { w: '0.5556', label: 'Snel (3 min)' },
+  { w: '0.8333', label: 'Heel snel (2 min)' },
+];
+var BGL_TEMPO_OPTIES = [
+  { w: 'auto', label: 'Auto (beginner traag)' },
+  { w: '1.4',  label: 'Traag (makkelijker)' },
+  { w: '1',    label: 'Normaal' },
+  { w: '0.7',  label: 'Snel (moeilijker)' },
+];
+
 var _bglOpen = false;
 var _bglIngelogd = false;
 var _bglIndexRef = null;   // listener op sessies_index/<vandaag>
@@ -6233,10 +6276,12 @@ var _bglSid = null;        // gekozen sessie-id, null = sessielijst/wachten
 var _bglShared = {};       // laatste shared-snapshot van de gekozen sessie
 var _bglMeta = {};         // laatste meta-snapshot van de gekozen sessie
 var _bglIndex = {};        // { sid: { team, aangemaakt } } van vandaag
-var _bglPending = {};      // rol -> gewenste beginnerstand, nog niet bevestigd
+var _bglPending = {};      // rol -> { beginner, snelheid, tempo }: gewenste
+                           // standen die nog niet bevestigd zijn
 var _bglAutoOpen = true;   // nieuwste sessie vanzelf openen, tot de
                            // begeleider zelf terug naar de lijst gaat
 var _bglToonVerborgen = false; // verborgen (afgesloten) sessies in de lijst tonen
+var _bglRenderUitgesteld = false; // herteken overgeslagen omdat een keuzelijst focus had
 
 function begeleiderFirebaseKlaar() {
   return typeof firebase !== 'undefined' && !!firebase.database;
@@ -6460,6 +6505,18 @@ function begeleiderRenderPaneel() {
   if (!_bglOpen || !_bglSid) return;
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
+  // Hertekenen pauzeren zolang de begeleider een keuzelijst vast heeft.
+  // Elke Firebase-snapshot komt hier langs, en het paneel wordt volledig
+  // opnieuw opgebouwd; dat zou een openstaande keuzelijst dichtklappen
+  // middenin het kiezen. Zodra de keuzelijst wordt losgelaten (kiezen, of
+  // ergens anders tikken) volgt de gemiste herteken alsnog, via de
+  // focusout-listener bij begeleiderHervatRenderInit hieronder.
+  var focusEl = document.activeElement;
+  if (focusEl && focusEl.tagName === 'SELECT' && c.contains(focusEl)) {
+    _bglRenderUitgesteld = true;
+    return;
+  }
+  _bglRenderUitgesteld = false;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
   // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
   // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
@@ -6474,48 +6531,125 @@ function begeleiderRenderPaneel() {
       (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || '';
     var bezet = !!_bglShared['rol_bezet_' + r.id];
     var pending = _bglPending.hasOwnProperty(r.id);
-    var checked = pending ? _bglPending[r.id] : (_bglShared['beginner_modus_' + r.id] === true);
+    var p = _bglPending[r.id] || {};
+    var checked = p.hasOwnProperty('beginner') ? p.beginner : (_bglShared['beginner_modus_' + r.id] === true);
     var naamHtml = naam
       ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>'
       : '<span class="bgl-naam leeg">' + (bezet ? '(naam onbekend)' : 'nog niet gekozen') + '</span>';
+    // Schaduw-status van deze speler: vastzitten (met de code, zodat de
+    // begeleider desnoods kan voorzeggen) gaat boven vervloekt-met-meter.
+    var lock = _bglShared['schaduw_lock_' + r.id];
+    var st = _bglShared['schaduw_status_' + r.id];
+    var vloekHtml;
+    if (lock && lock.code) {
+      vloekHtml = '<span class="bgl-vloek vast">⛓ zit vast · code ' + begeleiderVeilig(lock.code) + '</span>';
+    } else if (st && st.vervloekt) {
+      vloekHtml = '<span class="bgl-vloek aan">🌑 vloek · meter ' +
+        (typeof st.meter === 'number' ? st.meter : 0) + '%</span>';
+    } else {
+      vloekHtml = '<span class="bgl-vloek">geen vloek</span>';
+    }
     html += '<div class="bgl-regel">' +
       '<span class="bgl-rol">' + r.naam + '</span>' +
       naamHtml +
+      vloekHtml +
       '<label class="ssi-toggle" title="Beginner modus voor deze speler">' +
         '<span class="ssi-label">Beginner</span>' +
-        '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', this.checked)">' +
+        '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'beginner\', this.checked)">' +
         '<span class="ssi-schuif"></span>' +
       '</label>' +
+    '</div>' +
+    '<div class="bgl-subregel">' +
+      '<span class="bgl-mini">Schaduw</span>' + begeleiderSelect(r.id, 'snelheid', BGL_SNELHEID_OPTIES) +
+      '<span class="bgl-mini">Chaos-knoppen</span>' + begeleiderSelect(r.id, 'tempo', BGL_TEMPO_OPTIES) +
       '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="visibility:' + (pending ? 'visible' : 'hidden') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
     '</div>';
   });
   html += '</div>' +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig.</div>' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig.<br>' +
+    'Schaduw-wijzigingen komen daar stil binnen: de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
 }
 
-// Schuifje omgezet: nog niets schrijven, alleen onthouden en de
-// Bevestig-knop van die regel tonen. Terug naar de echte stand schuiven
+// Eenmalig: zodra een keuzelijst in het paneel wordt losgelaten (focusout,
+// dus na kiezen of ergens anders tikken), de uitgestelde herteken alsnog
+// uitvoeren. De kleine timeout laat de focus eerst echt verspringen.
+(function begeleiderHervatRenderInit() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  c.addEventListener('focusout', function () {
+    setTimeout(function () {
+      if (!_bglRenderUitgesteld) return;
+      var f = document.activeElement;
+      if (f && f.tagName === 'SELECT' && c.contains(f)) return;  // volgende keuzelijst vast
+      _bglRenderUitgesteld = false;
+      begeleiderRenderPaneel();
+    }, 0);
+  });
+})();
+
+// De stand zoals die nu in de gedeelde stand staat, per veld. Voor de twee
+// keuzelijsten is dat de tekst-waarde van de optie ('auto' als er geen
+// eigen stand gezet is).
+function begeleiderHuidig(rol, veld) {
+  if (veld === 'beginner') return _bglShared['beginner_modus_' + rol] === true;
+  var key = (veld === 'snelheid' ? 'schaduw_snelheid_' : 'schaduw_chaos_tempo_') + rol;
+  var v = _bglShared[key];
+  return (typeof v === 'number' && isFinite(v)) ? String(v) : 'auto';
+}
+
+// Eén keuzelijst (snelheid of tempo) voor een rol, met de pending-stand
+// voorgeselecteerd als die er is.
+function begeleiderSelect(rol, veld, opties) {
+  var p = _bglPending[rol] || {};
+  var huidig = p.hasOwnProperty(veld) ? p[veld] : begeleiderHuidig(rol, veld);
+  var h = '<select class="bgl-select" onchange="begeleiderZetPending(\'' + rol + '\', \'' + veld + '\', this.value)">';
+  opties.forEach(function (o) {
+    h += '<option value="' + o.w + '"' + (o.w === huidig ? ' selected' : '') + '>' + o.label + '</option>';
+  });
+  return h + '</select>';
+}
+
+// Schuifje of keuzelijst omgezet: nog niets schrijven, alleen onthouden en
+// de Bevestig-knop van die rol tonen. Terug naar de echte stand zetten
 // maakt de wijziging weer ongedaan.
-function begeleiderZetPending(rol, aan) {
-  var huidig = _bglShared['beginner_modus_' + rol] === true;
-  if (aan === huidig) delete _bglPending[rol];
-  else _bglPending[rol] = aan;
+function begeleiderZetPending(rol, veld, waarde) {
+  var p = _bglPending[rol] || {};
+  if (waarde === begeleiderHuidig(rol, veld)) delete p[veld];
+  else p[veld] = waarde;
+  if (Object.keys(p).length) _bglPending[rol] = p;
+  else delete _bglPending[rol];
   var knop = document.getElementById('bgl-bevestig-' + rol);
   if (knop) knop.style.visibility = _bglPending.hasOwnProperty(rol) ? 'visible' : 'hidden';
 }
 
 function begeleiderBevestig(rol) {
-  if (!_bglPending.hasOwnProperty(rol) || !_bglSid) return;
-  var waarde = !!_bglPending[rol];
+  var p = _bglPending[rol];
+  if (!p || !_bglSid) return;
   delete _bglPending[rol];
-  // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt hem zo.
-  _bglShared['beginner_modus_' + rol] = waarde;
+  var fout = function (e) { console.warn('begeleider: schrijven mislukt:', e); };
   try {
-    firebase.database().ref('sessies/' + _bglSid + '/shared/beginner_modus_' + rol)
-      .set(waarde).catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
-  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+    var basis = firebase.database().ref('sessies/' + _bglSid + '/shared');
+    // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt zo.
+    if (p.hasOwnProperty('beginner')) {
+      _bglShared['beginner_modus_' + rol] = !!p.beginner;
+      basis.child('beginner_modus_' + rol).set(!!p.beginner).catch(fout);
+    }
+    [['snelheid', 'schaduw_snelheid_'], ['tempo', 'schaduw_chaos_tempo_']].forEach(function (veldDef) {
+      var veld = veldDef[0], key = veldDef[1] + rol;
+      if (!p.hasOwnProperty(veld)) return;
+      if (p[veld] === 'auto') {
+        // Auto is geen eigen waarde maar de afwezigheid ervan: sleutel weg,
+        // dan valt de tablet terug op de beginner-afhankelijke standaard.
+        delete _bglShared[key];
+        basis.child(key).remove().catch(fout);
+      } else {
+        _bglShared[key] = Number(p[veld]);
+        basis.child(key).set(Number(p[veld])).catch(fout);
+      }
+    });
+  } catch (e) { fout(e); }
   begeleiderRenderPaneel();
 }
 
@@ -22701,7 +22835,84 @@ function schaduwSnelheid(v) {
 function schaduwSnelheidInit() {
   var inp = document.getElementById('schaduw-speed');
   if (inp) schaduwSnelheid(inp.value);
+  var tmp = document.getElementById('schaduw-tempo');
+  if (tmp) schaduwChaosTempo(tmp.value);
 }
+
+// Toon-tempo van de Chaos-knoppenreeks (testschuif in het schaduw-menu).
+// Hoger is trager getoond, dus makkelijker te onthouden.
+function schaduwChaosTempo(v) {
+  var f = Math.max(0.2, +v || 1);
+  if (window.ZilverweideSchaduw && window.ZilverweideSchaduw._setMemTempo) {
+    window.ZilverweideSchaduw._setMemTempo(f);
+  }
+  var lbl = document.getElementById('schaduw-tempo-val');
+  if (lbl) lbl.textContent = (f === 1) ? 'normaal' : ('x' + f.toFixed(2) + (f > 1 ? ' trager' : ' sneller'));
+}
+
+// ── Schaduw-instellingen vanuit het begeleiderspaneel ───────────────
+// De begeleider kan per rol de meter-snelheid (schaduw_snelheid_<rol>) en
+// het toon-tempo van de Chaos-knoppen (schaduw_chaos_tempo_<rol>) in de
+// gedeelde stand zetten. Staat er geen eigen stand, dan bepaalt de beginner
+// modus de standaard: milder voor beginners. Alles wordt STIL toegepast,
+// de speler krijgt hier nooit een melding of ander zichtbaar teken van.
+var SCHADUW_PER_SEC_NORMAAL = 0.4167;   // meter vol in 4 minuten
+var SCHADUW_PER_SEC_BEGINNER = 0.2778;  // meter vol in 6 minuten
+var SCHADUW_TEMPO_NORMAAL = 1;
+var SCHADUW_TEMPO_BEGINNER = 1.4;       // Chaos-reeks 40% trager getoond
+var _schaduwDoelVorig = null;
+function pasSchaduwInstellingenToe() {
+  if (!window.ZilverweideSchaduw) return;
+  var rol = state.personage;
+  var snel = rol ? getSharedState('schaduw_snelheid_' + rol) : undefined;
+  var tempo = rol ? getSharedState('schaduw_chaos_tempo_' + rol) : undefined;
+  var beginner = !!window._beginnerModus;
+  var doel = {
+    perSec: (typeof snel === 'number' && isFinite(snel) && snel > 0)
+      ? snel : (beginner ? SCHADUW_PER_SEC_BEGINNER : SCHADUW_PER_SEC_NORMAAL),
+    tempo: (typeof tempo === 'number' && isFinite(tempo) && tempo > 0)
+      ? tempo : (beginner ? SCHADUW_TEMPO_BEGINNER : SCHADUW_TEMPO_NORMAAL)
+  };
+  // Alleen toepassen als het DOEL verandert. Zo blijft de testschuif in het
+  // schaduw-menu bruikbaar tussen twee begeleider-wijzigingen door: elke
+  // Firebase-snapshot komt hier langs, en zonder deze check zou iedere
+  // snapshot de handmatige testschuif weer terugdraaien.
+  if (_schaduwDoelVorig
+      && _schaduwDoelVorig.perSec === doel.perSec
+      && _schaduwDoelVorig.tempo === doel.tempo) return;
+  _schaduwDoelVorig = doel;
+  // Via de bestaande schuif-functies, zodat de testschuiven en hun labels
+  // in het schaduw-menu meteen de echte stand tonen.
+  var inp = document.getElementById('schaduw-speed');
+  if (inp) inp.value = doel.perSec;
+  schaduwSnelheid(doel.perSec);
+  var tmp = document.getElementById('schaduw-tempo');
+  if (tmp) tmp.value = doel.tempo;
+  schaduwChaosTempo(doel.tempo);
+}
+
+// ── Schaduw-status naar de gedeelde stand (voor het begeleiderspaneel) ──
+// Elke paar seconden kijken of er iets veranderd is aan de eigen vloek
+// (actief, vergrendeld, metervulling in stappen van 10%) en alleen bij een
+// echte wijziging schrijven. De spelers-tablets doen niets met deze sleutel;
+// alleen het begeleiderspaneel leest hem.
+var _schaduwStatusVorig = null;
+function schaduwStatusSync() {
+  if (!window.ZilverweideSchaduw || !state.personage) return;
+  if (typeof firebaseSharedBeschikbaar !== 'function' || !firebaseSharedBeschikbaar()) return;
+  var s = window.ZilverweideSchaduw;
+  var status = {
+    vervloekt: !!(s.isVervloekt && s.isVervloekt()),
+    vast: !!(s.isVergrendeld && s.isVergrendeld()),
+    meter: (typeof s.getMeter === 'function') ? Math.round(s.getMeter() / 10) * 10 : 0,
+    t: gedeeldeTijdNu()
+  };
+  var kern = JSON.stringify([status.vervloekt, status.vast, status.meter]);
+  if (kern === _schaduwStatusVorig) return;
+  _schaduwStatusVorig = kern;
+  setSharedState('schaduw_status_' + state.personage, status);
+}
+setInterval(schaduwStatusSync, 4000);
 
 // Test: laat de fluisteringen snel achter elkaar komen, zodat je het
 // overlap-moment met het kraken makkelijk kunt uitlokken. De meter en de
@@ -23084,7 +23295,7 @@ function toonStemmenStil(stil) {
 <!-- Schaduw-module (losse bestanden in dezelfde map: schaduw.js, schaduw.css, fog.png)
      Let op: het ?v= nummer ophogen bij elke wijziging aan schaduw.js, zodat
      browsers de nieuwe versie inladen in plaats van een oude uit hun cache. -->
-<script src="technischefiles/schaduw.js?v=14"></script>
+<script src="technischefiles/schaduw.js?v=15"></script>
 
 <!-- Zolder-cinematic (losse module: zolderfx.js). Assets in dezelfde map:
      ogen_beide.png, zolderbg.mp3, zolderlach.mp3, donder.mp3, scratch.mp3,
@@ -23270,6 +23481,10 @@ function toonStemmenStil(stil) {
     });
     if (typeof setSchaduwStatus === 'function') setSchaduwStatus();
     if (typeof schaduwSnelheidInit === 'function') schaduwSnelheidInit();
+    // Direct de effectieve stand toepassen (beginner modus is dan al uit
+    // localStorage geladen), zodat een beginner ook zonder Firebase-snapshot
+    // meteen de mildere schaduw krijgt.
+    if (typeof pasSchaduwInstellingenToe === 'function') pasSchaduwInstellingenToe();
 
     // Koppel "de stemmen zijn even stil" aan de pauze (setBusy), zodat de
     // regel verschijnt zodra de schaduw om welke reden dan ook gepauzeerd is.
