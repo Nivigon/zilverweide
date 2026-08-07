@@ -2079,14 +2079,26 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-titel { font-family:'Cinzel',serif; font-size:clamp(1.2rem,4vw,1.7rem); color:var(--gold); letter-spacing:.07em; text-align:center; margin-bottom:.3rem; }
   .bgl-sub { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.28em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin-bottom:1.5rem; }
   .bgl-blok { border:1px solid rgba(201,168,76,.3); border-radius:8px; background:rgba(0,0,0,.35); padding:.9rem 1.2rem; margin-bottom:1rem; }
-  .bgl-regel { display:flex; align-items:center; gap:.9rem; padding:.6rem 0 .2rem; }
+  .bgl-regel { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem .9rem; padding:.6rem 0 .2rem; }
   .bgl-subregel { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem .7rem; padding:.15rem 0 .7rem; border-bottom:1px solid rgba(201,168,76,.14); }
   .bgl-subregel:last-child { border-bottom:none; }
   .bgl-mini { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-dim); flex:0 0 auto; }
-  .bgl-select { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35); border-radius:4px; padding:.3rem .4rem; max-width:11.5rem; }
+  .bgl-select { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35); border-radius:4px; padding:.3rem .4rem; flex:1 1 9rem; min-width:8rem; max-width:13rem; }
+  /* Het paneel is een leeslijst en werkt prima rechtop: de draai-je-toestel
+     vensterlaag (z-index 9999) mag de begeleider dan niet blokkeren. */
+  body.bgl-open #draai-overlay { display:none !important; }
   .bgl-vloek { font-family:'Cinzel',serif; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; color:var(--mist); white-space:nowrap; flex:0 0 auto; }
   .bgl-vloek.aan { color:#c97b7b; }
   .bgl-vloek.vast { color:#e8a9a9; }
+  .bgl-conn { display:inline-block; width:.55rem; height:.55rem; border-radius:50%; background:#4a4438; flex:0 0 auto; }
+  .bgl-conn.groen { background:#4c8a4c; box-shadow:0 0 6px rgba(76,138,76,.6); }
+  .bgl-conn.oranje { background:#c9954c; }
+  .bgl-conn.rood { background:#a33b3b; box-shadow:0 0 6px rgba(163,59,59,.6); }
+  .bgl-kopje { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:.5rem; border-bottom:1px solid rgba(201,168,76,.15); padding-bottom:.35rem; }
+  .bgl-tijden { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin:-1.1rem 0 1.4rem; line-height:1.9; }
+  .bgl-tijden b { color:var(--gold); font-weight:600; }
+  .bgl-missie { font-family:'Crimson Text',Georgia,serif; font-size:.95rem; color:var(--parchment); padding:.18rem 0; }
+  .bgl-missie.af { color:var(--mist); font-style:italic; }
   .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
   .bgl-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bgl-naam.leeg { color:var(--mist); }
@@ -2521,7 +2533,7 @@ function initSharedFirebase(sessieId, versGedeeld) {
       if (state.shared.hasOwnProperty(lk)
           && (lk.indexOf('schaduw_lock_') === 0 || lk.indexOf('schaduw_bevrijd_') === 0
               || lk.indexOf('schaduw_snelheid_') === 0 || lk.indexOf('schaduw_chaos_tempo_') === 0
-              || lk.indexOf('schaduw_status_') === 0)
+              || lk.indexOf('schaduw_status_') === 0 || lk.indexOf('schaduw_pauze_') === 0)
           && !(data && data.hasOwnProperty(lk))) {
         delete state.shared[lk];
       }
@@ -2636,10 +2648,11 @@ function verwerkBinnengekomenShared(data) {
         }
       }
     }
-    // Schaduw-instellingen van de begeleider (snelheid en chaos-tempo):
-    // bewust STIL toepassen, zonder toast of ander zichtbaar teken. De
-    // speler mag niet merken dat de begeleider bijstuurt.
+    // Schaduw-instellingen van de begeleider (snelheid, chaos-tempo en
+    // pauze): bewust STIL toepassen, zonder toast of ander zichtbaar teken.
+    // De speler mag niet merken dat de begeleider bijstuurt.
     if (typeof pasSchaduwInstellingenToe === 'function') pasSchaduwInstellingenToe();
+    if (typeof pasSchaduwPauzeToe === 'function') pasSchaduwPauzeToe();
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
@@ -6227,11 +6240,14 @@ function beginnerKaartIntro(schermId) {
 // BEGELEIDERSPANEEL
 // Voor de begeleider op een eigen (vijfde) apparaat: via het kaars-
 // symbooltje rechtsonder op het splash-scherm, met wachtwoord. Toont van
-// de lopende sessie de teamnaam, de verhaal-fase en per rol de spelersnaam
-// met een schuifje voor de beginner modus, de schaduw-status (vloek, meter,
-// vastzitten met code) en twee keuzelijsten: de meter-snelheid van de
-// schaduw en het toon-tempo van de Chaos-knoppenreeks. Een wijziging gaat
-// pas naar de tablet van de speler na Bevestig, en de schaduw-instellingen
+// de lopende sessie de teamnaam, de verhaal-fase en per rol: een
+// verbinding-bolletje (tablet-hartslag), de spelersnaam, de schaduw-status
+// (vloek, meter, vastzitten met code) en een schuifje voor de beginner
+// modus. Daaronder per rol de meter-snelheid van de schaduw, het
+// toon-tempo van de Chaos-knoppenreeks en een pauze-schuifje, plus een
+// team-pauzeknop en een voortgangsblok met de stappen van de huidige
+// fase. Een wijziging gaat pas naar de tablet van de speler na Bevestig
+// (alleen de team-pauzeknop werkt direct), en de schaduw-instellingen
 // komen daar STIL binnen (geen melding voor de speler).
 // Het paneel leest en schrijft rechtstreeks op sessies/<sid>/... in
 // Firebase, los van de spel-sessie van dit apparaat. De sessies van
@@ -6305,6 +6321,7 @@ function begeleiderOpen() {
   _bglOpen = true;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.add('open');
+  if (document.body) document.body.classList.add('bgl-open');
   if (_bglIngelogd) begeleiderStartIndex();
   else begeleiderRenderWachtwoord();
 }
@@ -6316,6 +6333,7 @@ function begeleiderOpenVoorTest() {
   _bglOpen = true;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.add('open');
+  if (document.body) document.body.classList.add('bgl-open');
   if (!begeleiderFirebaseKlaar()) { begeleiderStartIndex(); return; }
   begeleiderKiesSessie(herstelSessieId());
 }
@@ -6324,6 +6342,7 @@ function begeleiderSluit() {
   _bglOpen = false;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.remove('open');
+  if (document.body) document.body.classList.remove('bgl-open');
   begeleiderStopSessieListeners();
   if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} _bglIndexRef = null; }
   _bglSid = null;
@@ -6494,11 +6513,52 @@ function begeleiderTerugNaarLijst() {
 // nog niet is (voor het openen van het Kraaienkwartier) zit het team in de
 // intro (dorpsplein, filmpje, rolkeuze).
 function begeleiderFaseTekst() {
+  if (typeof _bglShared.team_eind === 'number') return 'Spel voltooid';
   return {
     kraaienkwartier: 'Kraaienkwartier',
     dorendael:       'Dorendael',
     sintdonatuslaan: 'Heer Donatuslaan',
   }[_bglShared.verhaal_fase] || 'Intro';
+}
+
+// Richttijden in minuten vanaf de teamnaam-keuze: het spel moet in 1 uur
+// 50 klaar zijn. Startverdeling in drie blokken (Kraaienkwartier,
+// Dorendael, Heer Donatuslaan met finale); bijstellen kan hier op
+// één plek zodra echte sessies leren hoe de blokken werkelijk lopen.
+var BGL_RICHT_MIN = {
+  dorendael: 35,          // Dorendael hoort open na 35 min
+  sintdonatuslaan: 70,    // Heer Donatuslaan hoort open na 70 min
+  eind: 110               // klaar na 1 uur 50
+};
+
+// De tijden-regel onder de fase: de teamnaam-keuze als start, daarna per
+// mijlpaal de richttijd en (zodra bekend) de echte tijd met het verschil.
+// Loopt het team achter op de richttijd, dan kleurt het verschil rood.
+function begeleiderTijdenHtml() {
+  var start = _bglMeta && _bglMeta.aangemaakt;
+  if (typeof start !== 'number' || !isFinite(start)) return '';
+  function regel(label, richtMin, echt) {
+    var richt = start + richtMin * 60000;
+    var h = label + ': richt ' + begeleiderKlok(richt);
+    if (typeof echt === 'number' && isFinite(echt)) {
+      var diff = Math.round((echt - richt) / 60000);
+      var diffTekst = diff === 0 ? 'op tijd' : (diff > 0 ? '+' + diff + ' min' : diff + ' min');
+      h += ' · <b>' + begeleiderKlok(echt) + '</b> <span style="color:' +
+        (diff > 0 ? '#c97b7b' : 'var(--mist)') + '">(' + diffTekst + ')</span>';
+    }
+    return h;
+  }
+  var regels = ['Team gekozen <b>' + begeleiderKlok(start) + '</b>'];
+  regels.push(regel('Dorendael', BGL_RICHT_MIN.dorendael, _bglShared.fase_tijd_dorendael));
+  regels.push(regel('Heer Donatuslaan', BGL_RICHT_MIN.sintdonatuslaan, _bglShared.fase_tijd_sintdonatuslaan));
+  var eind = _bglShared.team_eind;
+  var eindRegel = regel('Klaar', BGL_RICHT_MIN.eind, eind);
+  if (typeof eind === 'number' && isFinite(eind) && eind > start) {
+    var m = Math.round((eind - start) / 60000);
+    eindRegel += ' · duur ' + Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + (m % 60);
+  }
+  regels.push(eindRegel);
+  return '<div class="bgl-tijden">' + regels.join('<br>') + '</div>';
 }
 
 function begeleiderRenderPaneel() {
@@ -6518,13 +6578,10 @@ function begeleiderRenderPaneel() {
   }
   _bglRenderUitgesteld = false;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
-  // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
-  // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
-  var startTijd = begeleiderKlok(_bglShared.team_start || (_bglMeta && _bglMeta.aangemaakt));
   var html =
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
-    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() +
-      (startTijd ? ' &nbsp;·&nbsp; gestart om ' + startTijd : '') + ' &nbsp; ✦</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    begeleiderTijdenHtml() +
     '<div class="bgl-blok">';
   BEGELEIDER_ROLLEN.forEach(function (r) {
     var naam = _bglShared['speler_naam_' + r.id] ||
@@ -6545,11 +6602,14 @@ function begeleiderRenderPaneel() {
       vloekHtml = '<span class="bgl-vloek vast">⛓ zit vast · code ' + begeleiderVeilig(lock.code) + '</span>';
     } else if (st && st.vervloekt) {
       vloekHtml = '<span class="bgl-vloek aan">🌑 vloek · meter ' +
-        (typeof st.meter === 'number' ? st.meter : 0) + '%</span>';
+        (typeof st.meter === 'number' ? st.meter : 0) + '%' +
+        (st.pauze ? ' · ⏸' : '') + '</span>';
     } else {
       vloekHtml = '<span class="bgl-vloek">geen vloek</span>';
     }
+    var pauzeAan = p.hasOwnProperty('pauze') ? p.pauze : (_bglShared['schaduw_pauze_' + r.id] === true);
     html += '<div class="bgl-regel">' +
+      begeleiderConnHtml(r.id) +
       '<span class="bgl-rol">' + r.naam + '</span>' +
       naamHtml +
       vloekHtml +
@@ -6562,12 +6622,24 @@ function begeleiderRenderPaneel() {
     '<div class="bgl-subregel">' +
       '<span class="bgl-mini">Schaduw</span>' + begeleiderSelect(r.id, 'snelheid', BGL_SNELHEID_OPTIES) +
       '<span class="bgl-mini">Chaos-knoppen</span>' + begeleiderSelect(r.id, 'tempo', BGL_TEMPO_OPTIES) +
-      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="visibility:' + (pending ? 'visible' : 'hidden') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+      '<label class="ssi-toggle" title="Schaduw-meter van deze speler stilzetten">' +
+        '<span class="ssi-label">Pauze</span>' +
+        '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
+        '<span class="ssi-schuif"></span>' +
+      '</label>' +
+      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="display:' + (pending ? '' : 'none') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
     '</div>';
   });
-  html += '</div>' +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig.<br>' +
-    'Schaduw-wijzigingen komen daar stil binnen: de speler krijgt geen melding.</div>' +
+  var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
+    return _bglShared['schaduw_pauze_' + r.id] === true;
+  });
+  html += '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
+    (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
+  '</div>' +
+    begeleiderMissieHtml() +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
+    'alleen de team-pauzeknop werkt direct. Schaduw-wijzigingen komen stil binnen: ' +
+    'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
 }
@@ -6594,10 +6666,78 @@ function begeleiderRenderPaneel() {
 // eigen stand gezet is).
 function begeleiderHuidig(rol, veld) {
   if (veld === 'beginner') return _bglShared['beginner_modus_' + rol] === true;
+  if (veld === 'pauze') return _bglShared['schaduw_pauze_' + rol] === true;
   var key = (veld === 'snelheid' ? 'schaduw_snelheid_' : 'schaduw_chaos_tempo_') + rol;
   var v = _bglShared[key];
   return (typeof v === 'number' && isFinite(v)) ? String(v) : 'auto';
 }
+
+// Verbinding-bolletje per rol, op basis van de tablet-hartslag in meta.
+// Een dode tablet stuurt juist NIETS meer, daarom ververst het paneel
+// zichzelf ook elke 10 seconden (interval onderaan dit blok).
+function begeleiderConnHtml(rol) {
+  var sp = _bglMeta && _bglMeta.spelers && _bglMeta.spelers[rol];
+  var hb = (sp && typeof sp.hb === 'number' && isFinite(sp.hb)) ? sp.hb : null;
+  var nu = (typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now();
+  var kleur, titel;
+  if (hb === null) { kleur = ''; titel = 'nog niets van deze tablet gehoord'; }
+  else {
+    var sec = (nu - hb) / 1000;
+    kleur = sec < 45 ? 'groen' : (sec < 150 ? 'oranje' : 'rood');
+    titel = 'laatst gezien ' + begeleiderKlok(hb);
+  }
+  return '<span class="bgl-conn ' + kleur + '" title="' + titel + '"></span>';
+}
+
+// Voortgangsblok: de stappen van de huidige fase, open stappen bovenaan
+// zodat de begeleider ziet wat het team nog moet doen. Leestaken tonen wie
+// er nog moet lezen. Puur informatie, er valt hier niets te bedienen.
+function begeleiderMissieHtml() {
+  var fase = _bglShared.verhaal_fase;
+  var stappen = [];
+  function leestaak(prefix, label, beschikbaarKey) {
+    if (beschikbaarKey && !_bglShared[beschikbaarKey]) return;   // nog niet aan de orde
+    var open = BEGELEIDER_ROLLEN.filter(function (r) { return !_bglShared[prefix + r.id]; });
+    stappen.push({
+      af: !open.length,
+      tekst: label + (open.length
+        ? ' (' + open.map(function (r) { return r.naam; }).join(', ') + ' nog niet)' : '')
+    });
+  }
+  if (fase === 'kraaienkwartier') {
+    KRAAIEN_MISSIE_KEYS.forEach(function (k) {
+      stappen.push({ af: !!_bglShared['kk_sleutel_' + k.id], tekst: k.label });
+    });
+    leestaak('dagboek_gelezen_', 'Iedereen leest het dagboek', 'dagboek_gerestaureerd');
+  } else if (fase === 'dorendael') {
+    DORENDAEL_MISSIE_KEYS.forEach(function (f) {
+      stappen.push({ af: !!_bglShared['vflag_' + f], tekst: DORENDAEL_MISSIE_LABELS[f] || f });
+    });
+    leestaak('molen_gezien_', 'Iedereen ziet de molen-legende', 'oude_kranten_ontdekt');
+  } else if (fase === 'sintdonatuslaan') {
+    HEER_DONATUSLAAN_MISSIE_KEYS.forEach(function (f) {
+      stappen.push({ af: !!_bglShared['vflag_' + f], tekst: HEER_DONATUSLAAN_MISSIE_LABELS[f] || f });
+    });
+    leestaak('rozen_gelezen_', 'Iedereen leest Over de Rozen', 'over_de_rozen_beschikbaar');
+  } else {
+    return '<div class="bgl-blok"><div class="bgl-info" style="margin:0">Nog in de intro; de stappen verschijnen zodra het Kraaienkwartier opent.</div></div>';
+  }
+  var af = stappen.filter(function (s) { return s.af; });
+  var open = stappen.filter(function (s) { return !s.af; });
+  var html = '<div class="bgl-blok"><div class="bgl-kopje">Voortgang (' + af.length + '/' + stappen.length + ' af)</div>';
+  if (!open.length) html += '<div class="bgl-missie">✓ Alle stappen van deze fase zijn af</div>';
+  open.forEach(function (s) { html += '<div class="bgl-missie">○ ' + s.tekst + '</div>'; });
+  af.forEach(function (s) { html += '<div class="bgl-missie af">✓ ' + s.tekst + '</div>'; });
+  return html + '</div>';
+}
+
+// De verbinding-bolletjes moeten ook verouderen als er GEEN data meer
+// binnenkomt (tablet uit, wifi weg), dus het open paneel ververst zichzelf
+// elke 10 seconden. De focus-check in begeleiderRenderPaneel voorkomt dat
+// dit een openstaande keuzelijst dichtklapt.
+setInterval(function () {
+  if (_bglOpen && _bglSid) begeleiderRenderPaneel();
+}, 10000);
 
 // Eén keuzelijst (snelheid of tempo) voor een rol, met de pending-stand
 // voorgeselecteerd als die er is.
@@ -6620,8 +6760,10 @@ function begeleiderZetPending(rol, veld, waarde) {
   else p[veld] = waarde;
   if (Object.keys(p).length) _bglPending[rol] = p;
   else delete _bglPending[rol];
+  // display in plaats van visibility: een onzichtbare knop hield anders
+  // zijn plek in de flex-regel bezet en duwde de regel een stuk hoger.
   var knop = document.getElementById('bgl-bevestig-' + rol);
-  if (knop) knop.style.visibility = _bglPending.hasOwnProperty(rol) ? 'visible' : 'hidden';
+  if (knop) knop.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
 }
 
 function begeleiderBevestig(rol) {
@@ -6636,6 +6778,10 @@ function begeleiderBevestig(rol) {
       _bglShared['beginner_modus_' + rol] = !!p.beginner;
       basis.child('beginner_modus_' + rol).set(!!p.beginner).catch(fout);
     }
+    if (p.hasOwnProperty('pauze')) {
+      _bglShared['schaduw_pauze_' + rol] = !!p.pauze;
+      basis.child('schaduw_pauze_' + rol).set(!!p.pauze).catch(fout);
+    }
     [['snelheid', 'schaduw_snelheid_'], ['tempo', 'schaduw_chaos_tempo_']].forEach(function (veldDef) {
       var veld = veldDef[0], key = veldDef[1] + rol;
       if (!p.hasOwnProperty(veld)) return;
@@ -6648,6 +6794,28 @@ function begeleiderBevestig(rol) {
         _bglShared[key] = Number(p[veld]);
         basis.child(key).set(Number(p[veld])).catch(fout);
       }
+    });
+  } catch (e) { fout(e); }
+  begeleiderRenderPaneel();
+}
+
+// Team-pauzeknop: alle vier de schaduw-meters in één keer stil (of weer
+// aan). Werkt bewust DIRECT, zonder Bevestig: als je hele team moet
+// pauzeren, wil je niet vier schuifjes en vier knoppen langs. Eventuele
+// nog niet bevestigde pauze-schuifjes vervallen daarmee.
+function begeleiderPauzeAlles() {
+  if (!_bglSid) return;
+  var nieuw = !BEGELEIDER_ROLLEN.every(function (r) {
+    return _bglShared['schaduw_pauze_' + r.id] === true;
+  });
+  var fout = function (e) { console.warn('begeleider: schrijven mislukt:', e); };
+  try {
+    var basis = firebase.database().ref('sessies/' + _bglSid + '/shared');
+    BEGELEIDER_ROLLEN.forEach(function (r) {
+      if (_bglPending[r.id]) delete _bglPending[r.id].pauze;
+      if (_bglPending[r.id] && !Object.keys(_bglPending[r.id]).length) delete _bglPending[r.id];
+      _bglShared['schaduw_pauze_' + r.id] = nieuw;
+      basis.child('schaduw_pauze_' + r.id).set(nieuw).catch(fout);
     });
   } catch (e) { fout(e); }
   begeleiderRenderPaneel();
@@ -16400,6 +16568,12 @@ function unlockZone(zone) {
     var huidigeFase = getSharedState('verhaal_fase');
     if (!huidigeFase || VERHAAL_FASE_ORDE[zone] > (VERHAAL_FASE_ORDE[huidigeFase] || 0)) {
       setSharedState('verhaal_fase', zone);
+      // Tijdstip van de fase-overgang, eenmalig en gedeeld, voor de
+      // tijden-regel in het begeleiderspaneel. De eerste tablet die de
+      // wijk opent wint; een paar seconden verschil doet er niet toe.
+      if (!getSharedState('fase_tijd_' + zone)) {
+        setSharedState('fase_tijd_' + zone, gedeeldeTijdNu());
+      }
     }
   }
   if (zone === 'kraaienkwartier') {
@@ -22905,14 +23079,41 @@ function schaduwStatusSync() {
     vervloekt: !!(s.isVervloekt && s.isVervloekt()),
     vast: !!(s.isVergrendeld && s.isVergrendeld()),
     meter: (typeof s.getMeter === 'function') ? Math.round(s.getMeter() / 10) * 10 : 0,
+    pauze: !!(s.isBezig && s.isBezig()),
     t: gedeeldeTijdNu()
   };
-  var kern = JSON.stringify([status.vervloekt, status.vast, status.meter]);
+  var kern = JSON.stringify([status.vervloekt, status.vast, status.meter, status.pauze]);
   if (kern === _schaduwStatusVorig) return;
   _schaduwStatusVorig = kern;
   setSharedState('schaduw_status_' + state.personage, status);
 }
 setInterval(schaduwStatusSync, 4000);
+
+// ── Pauze door de begeleider ────────────────────────────────────────
+// schaduw_pauze_<rol> in de gedeelde stand zet de eigen meter stil via het
+// bestaande pauze-mechanisme (zelfde route als doolhof en lockpick, eigen
+// reden 'begeleider'). Idempotent, dus veilig bij elke snapshot. De speler
+// ziet hooguit het bestaande "de stemmen zijn even stil" onder de meter,
+// hetzelfde als bij elke andere pauze; niets verraadt de begeleider.
+function pasSchaduwPauzeToe() {
+  if (!state.personage || typeof schaduwPauze !== 'function') return;
+  schaduwPauze(getSharedState('schaduw_pauze_' + state.personage) === true, 'begeleider');
+}
+
+// ── Tablet-hartslag (voor het begeleiderspaneel) ────────────────────
+// Elke 25 seconden een tijdstempel naar meta/spelers/<rol>/hb, zodat het
+// paneel ziet of deze tablet nog leeft. Bewust in meta en niet in shared:
+// de spelers-tablets luisteren alleen op shared, dus dit veroorzaakt daar
+// geen extra snapshots.
+function spelerHartslag() {
+  if (!state.personage) return;
+  if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
+  try {
+    firebase.database().ref('sessies/' + _sharedSessieId + '/meta/spelers/' + state.personage + '/hb')
+      .set(gedeeldeTijdNu()).catch(function () {});
+  } catch (e) {}
+}
+setInterval(spelerHartslag, 25000);
 
 // Test: laat de fluisteringen snel achter elkaar komen, zodat je het
 // overlap-moment met het kraken makkelijk kunt uitlokken. De meter en de
