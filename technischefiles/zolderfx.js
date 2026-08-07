@@ -379,6 +379,11 @@
     stopAmbient();
     clearTimers();
     activeRects.length = 0;
+    // open() verbergt beide pop-containers met display:none; dat moet hier
+    // terug naar leeg, want toonNpcPop/toonCharPop sturen alleen opacity en
+    // display:none wint daar blijvend van (pops voorgoed weg tot een refresh).
+    var pops = document.querySelectorAll('#char-pop, #npc-pop');
+    for (var pi = 0; pi < pops.length; pi++) pops[pi].style.display = '';
     if (bg) { try { bg.pause(); bg.currentTime = 0; } catch (e) {} }
     if (root && root.parentNode) root.parentNode.removeChild(root);
     root = stage = textWrap = flash = lid = reveal = blurEl = hud = actions = lock = null;
