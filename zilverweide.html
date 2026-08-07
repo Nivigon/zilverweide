@@ -5184,6 +5184,14 @@ function showScreen(id) {
   if (id === 'screen-sintdonatuslaan' || id === 'screen-dorpsplein') setTimeout(checkHeerDonatusTokens, 500);
   // Check ook vanuit locatie-detail als de speler in HD zit (vangt debug-flags op).
   if (id === 'screen-locatie' && state.lastZone === 'sintdonatuslaan') setTimeout(checkHeerDonatusTokens, 600);
+  // Vangnet: de zolderscene (ZolderFx.open) zet display:none op beide
+  // pop-containers en alleen ZolderFx.close hoort dat terug te draaien.
+  // Blijft display:none per ongeluk staan, dan wint dat blijvend van het
+  // opacity-systeem (toonNpcPop/toonCharPop) en is elke pop onzichtbaar
+  // tot een refresh. Niet resetten zolang de zolderscene echt draait.
+  if (!document.getElementById('zc-root')) {
+    document.querySelectorAll('#char-pop, #npc-pop').forEach(el => { el.style.display = ''; });
+  }
   // Character pop-up alleen op locatie-detail schermen
   if (id === 'screen-locatie') {
     toonCharPop(state.pendingBubble || null);
@@ -5192,9 +5200,7 @@ function showScreen(id) {
     const npcImg = state.lastOpenedLocatie ? npcPopVoorLocatie(state.lastOpenedLocatie) : null;
     if (npcImg) toonNpcPop(npcImg); else verbergNpcPop(true);
   } else { verbergCharPop(); verbergNpcPop(true); }
-  // Zorg dat beide pop-containers altijd in de DOM staan (opacity-systeem
-  // gebruikt geen display:none meer).
-  
+
   // Clear all pending input fields to prevent stale callbacks
   document.querySelectorAll('.code-input:not(#zone-invoer-input), .zone-code-row input, #code-k-locatie, #code-dp-locatie, #code-dd-locatie').forEach(el => { el.value = ''; });
   bewaarHerstelpunt();
