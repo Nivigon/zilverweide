@@ -2638,14 +2638,13 @@ function verwerkBinnengekomenShared(data) {
     if (data.verhaal_fase) ietsNieuws = true;
     // Beginner modus op afstand omgezet (begeleiderspaneel): geldt alleen de
     // eigen rol. zetBeginnerModus schrijft niet terug omdat de gedeelde
-    // stand hierboven al gemerged is (geen echo-lus).
+    // stand hierboven al gemerged is (geen echo-lus). Bewust STIL, net als
+    // de schaduw-instellingen: geen toast, de speler merkt alleen dat de
+    // kaart er is (met de gewone eerste-keer-uitleg via zetBeginnerModus).
     if (state.personage && typeof zetBeginnerModus === 'function') {
       var bglWaarde = data['beginner_modus_' + state.personage];
       if (typeof bglWaarde === 'boolean' && bglWaarde !== !!window._beginnerModus) {
         zetBeginnerModus(bglWaarde);
-        if (!eersteSnapshot && typeof toonToast === 'function') {
-          toonToast('🗺️', 'Beginner modus ' + (bglWaarde ? 'aangezet' : 'uitgezet') + ' door de begeleider');
-        }
       }
     }
     // Schaduw-instellingen van de begeleider (snelheid, chaos-tempo en
@@ -6156,7 +6155,24 @@ function zetBeginnerModus(aan) {
     var c = document.getElementById(cid);
     if (c) c.checked = !!aan;
   });
-  if (aan) updateBeginnerKaartHuidig();
+  if (aan) {
+    updateBeginnerKaartHuidig();
+    // Gaat de beginner modus aan terwijl de speler AL op een straat-
+    // invoerscherm staat (begeleider op afstand), dan verschijnt de kaart
+    // zonder dat showScreen nog langskomt. De eerste-keer-uitleg hoort dan
+    // alsnog te komen, met dezelfde voorwaarden als in showScreen.
+    if (typeof BEGINNER_KAARTEN !== 'undefined' && state.personage && !state.debugSkipBezig) {
+      for (var bkSid in BEGINNER_KAARTEN) {
+        var bkScherm = document.getElementById(bkSid);
+        var bkCfg = BEGINNER_KAARTEN[bkSid];
+        if (bkScherm && bkScherm.classList.contains('active') &&
+            bkCfg && bkCfg.introFlag && !hasVisited(bkCfg.introFlag)) {
+          (function (s) { setTimeout(function () { beginnerKaartIntro(s); }, 500); })(bkSid);
+          break;
+        }
+      }
+    }
+  }
   // Stand delen zodra een rol vastligt, zodat het begeleiderspaneel live de
   // echte stand ziet. Alleen bij echt verschil met de gedeelde stand: een
   // wijziging die net via de listener binnenkwam (begeleider) staat daar al
@@ -6638,7 +6654,7 @@ function begeleiderRenderPaneel() {
   '</div>' +
     begeleiderMissieHtml() +
     '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
-    'alleen de team-pauzeknop werkt direct. Schaduw-wijzigingen komen stil binnen: ' +
+    'alleen de team-pauzeknop werkt direct. Alle wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
