@@ -2092,6 +2092,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-conn.oranje { background:#c9954c; }
   .bgl-conn.rood { background:#a33b3b; box-shadow:0 0 6px rgba(163,59,59,.6); }
   .bgl-kopje { font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-dim); margin-bottom:.5rem; border-bottom:1px solid rgba(201,168,76,.15); padding-bottom:.35rem; }
+  .bgl-tijden { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold-dim); text-align:center; margin:-1.1rem 0 1.4rem; line-height:1.9; }
+  .bgl-tijden b { color:var(--gold); font-weight:600; }
   .bgl-missie { font-family:'Crimson Text',Georgia,serif; font-size:.95rem; color:var(--parchment); padding:.18rem 0; }
   .bgl-missie.af { color:var(--mist); font-style:italic; }
   .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
@@ -6505,11 +6507,52 @@ function begeleiderTerugNaarLijst() {
 // nog niet is (voor het openen van het Kraaienkwartier) zit het team in de
 // intro (dorpsplein, filmpje, rolkeuze).
 function begeleiderFaseTekst() {
+  if (typeof _bglShared.team_eind === 'number') return 'Spel voltooid';
   return {
     kraaienkwartier: 'Kraaienkwartier',
     dorendael:       'Dorendael',
     sintdonatuslaan: 'Heer Donatuslaan',
   }[_bglShared.verhaal_fase] || 'Intro';
+}
+
+// Richttijden in minuten vanaf de teamnaam-keuze: het spel moet in 1 uur
+// 50 klaar zijn. Startverdeling in drie blokken (Kraaienkwartier,
+// Dorendael, Heer Donatuslaan met finale); bijstellen kan hier op
+// één plek zodra echte sessies leren hoe de blokken werkelijk lopen.
+var BGL_RICHT_MIN = {
+  dorendael: 35,          // Dorendael hoort open na 35 min
+  sintdonatuslaan: 70,    // Heer Donatuslaan hoort open na 70 min
+  eind: 110               // klaar na 1 uur 50
+};
+
+// De tijden-regel onder de fase: de teamnaam-keuze als start, daarna per
+// mijlpaal de richttijd en (zodra bekend) de echte tijd met het verschil.
+// Loopt het team achter op de richttijd, dan kleurt het verschil rood.
+function begeleiderTijdenHtml() {
+  var start = _bglMeta && _bglMeta.aangemaakt;
+  if (typeof start !== 'number' || !isFinite(start)) return '';
+  function regel(label, richtMin, echt) {
+    var richt = start + richtMin * 60000;
+    var h = label + ': richt ' + begeleiderKlok(richt);
+    if (typeof echt === 'number' && isFinite(echt)) {
+      var diff = Math.round((echt - richt) / 60000);
+      var diffTekst = diff === 0 ? 'op tijd' : (diff > 0 ? '+' + diff + ' min' : diff + ' min');
+      h += ' · <b>' + begeleiderKlok(echt) + '</b> <span style="color:' +
+        (diff > 0 ? '#c97b7b' : 'var(--mist)') + '">(' + diffTekst + ')</span>';
+    }
+    return h;
+  }
+  var regels = ['Team gekozen <b>' + begeleiderKlok(start) + '</b>'];
+  regels.push(regel('Dorendael', BGL_RICHT_MIN.dorendael, _bglShared.fase_tijd_dorendael));
+  regels.push(regel('Heer Donatuslaan', BGL_RICHT_MIN.sintdonatuslaan, _bglShared.fase_tijd_sintdonatuslaan));
+  var eind = _bglShared.team_eind;
+  var eindRegel = regel('Klaar', BGL_RICHT_MIN.eind, eind);
+  if (typeof eind === 'number' && isFinite(eind) && eind > start) {
+    var m = Math.round((eind - start) / 60000);
+    eindRegel += ' · duur ' + Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + (m % 60);
+  }
+  regels.push(eindRegel);
+  return '<div class="bgl-tijden">' + regels.join('<br>') + '</div>';
 }
 
 function begeleiderRenderPaneel() {
@@ -6529,13 +6572,10 @@ function begeleiderRenderPaneel() {
   }
   _bglRenderUitgesteld = false;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
-  // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
-  // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
-  var startTijd = begeleiderKlok(_bglShared.team_start || (_bglMeta && _bglMeta.aangemaakt));
   var html =
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
-    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() +
-      (startTijd ? ' &nbsp;·&nbsp; gestart om ' + startTijd : '') + ' &nbsp; ✦</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    begeleiderTijdenHtml() +
     '<div class="bgl-blok">';
   BEGELEIDER_ROLLEN.forEach(function (r) {
     var naam = _bglShared['speler_naam_' + r.id] ||
@@ -16520,6 +16560,12 @@ function unlockZone(zone) {
     var huidigeFase = getSharedState('verhaal_fase');
     if (!huidigeFase || VERHAAL_FASE_ORDE[zone] > (VERHAAL_FASE_ORDE[huidigeFase] || 0)) {
       setSharedState('verhaal_fase', zone);
+      // Tijdstip van de fase-overgang, eenmalig en gedeeld, voor de
+      // tijden-regel in het begeleiderspaneel. De eerste tablet die de
+      // wijk opent wint; een paar seconden verschil doet er niet toe.
+      if (!getSharedState('fase_tijd_' + zone)) {
+        setSharedState('fase_tijd_' + zone, gedeeldeTijdNu());
+      }
     }
   }
   if (zone === 'kraaienkwartier') {
