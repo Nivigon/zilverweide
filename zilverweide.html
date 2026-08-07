@@ -6281,6 +6281,7 @@ var _bglPending = {};      // rol -> { beginner, snelheid, tempo }: gewenste
 var _bglAutoOpen = true;   // nieuwste sessie vanzelf openen, tot de
                            // begeleider zelf terug naar de lijst gaat
 var _bglToonVerborgen = false; // verborgen (afgesloten) sessies in de lijst tonen
+var _bglRenderUitgesteld = false; // herteken overgeslagen omdat een keuzelijst focus had
 
 function begeleiderFirebaseKlaar() {
   return typeof firebase !== 'undefined' && !!firebase.database;
@@ -6504,6 +6505,18 @@ function begeleiderRenderPaneel() {
   if (!_bglOpen || !_bglSid) return;
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
+  // Hertekenen pauzeren zolang de begeleider een keuzelijst vast heeft.
+  // Elke Firebase-snapshot komt hier langs, en het paneel wordt volledig
+  // opnieuw opgebouwd; dat zou een openstaande keuzelijst dichtklappen
+  // middenin het kiezen. Zodra de keuzelijst wordt losgelaten (kiezen, of
+  // ergens anders tikken) volgt de gemiste herteken alsnog, via de
+  // focusout-listener bij begeleiderHervatRenderInit hieronder.
+  var focusEl = document.activeElement;
+  if (focusEl && focusEl.tagName === 'SELECT' && c.contains(focusEl)) {
+    _bglRenderUitgesteld = true;
+    return;
+  }
+  _bglRenderUitgesteld = false;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
   // Starttijd: team_start (alle vier de rollen bezet) is de echte spelstart;
   // zolang die er nog niet is valt hij terug op het moment van de teamkeuze.
@@ -6558,6 +6571,23 @@ function begeleiderRenderPaneel() {
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
 }
+
+// Eenmalig: zodra een keuzelijst in het paneel wordt losgelaten (focusout,
+// dus na kiezen of ergens anders tikken), de uitgestelde herteken alsnog
+// uitvoeren. De kleine timeout laat de focus eerst echt verspringen.
+(function begeleiderHervatRenderInit() {
+  var c = document.getElementById('begeleider-inhoud');
+  if (!c) return;
+  c.addEventListener('focusout', function () {
+    setTimeout(function () {
+      if (!_bglRenderUitgesteld) return;
+      var f = document.activeElement;
+      if (f && f.tagName === 'SELECT' && c.contains(f)) return;  // volgende keuzelijst vast
+      _bglRenderUitgesteld = false;
+      begeleiderRenderPaneel();
+    }, 0);
+  });
+})();
 
 // De stand zoals die nu in de gedeelde stand staat, per veld. Voor de twee
 // keuzelijsten is dat de tekst-waarde van de optie ('auto' als er geen
