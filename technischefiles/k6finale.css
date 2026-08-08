@@ -1,0 +1,45 @@
+/* ══════════════════════════════════════════════════════════════════
+   K6-FINALE, stijl (fase 1)
+   Alle klassen met prefix k6-. De achtergrond is bewust zwart: geen
+   kamer, geen decor, alleen wat het licht raakt.
+   ══════════════════════════════════════════════════════════════════ */
+
+.k6-scene {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+/* Gepositioneerde laag om de figuur: left/top/height komen uit de
+   config (via _pasFiguurToe), transform uit de drift-lus. */
+.k6-figuur-wrap {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  will-change: transform;
+}
+
+.k6-figuur {
+  display: block;
+  height: 100%;
+  width: auto;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+}
+
+/* Terugval als de still ontbreekt: effen vlak met de bestandsnaam,
+   in de verhouding van een staande figuur. */
+.k6-placeholder {
+  height: 100%;
+  aspect-ratio: 2 / 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(245, 234, 214, 0.5);
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-align: center;
+  padding: 0.5rem;
+}

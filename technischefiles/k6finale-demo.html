@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K6-finale: Zilverweide</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="k6finale.css">
+<style>
+  /* Page-shell, alleen voor deze standalone demo, zelfde geest als
+     woudscene-demo.html. In Zilverweide draait de module binnen een
+     container die het echte spel opzet (pas in fase 7). */
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{ --vh100: 100vh; }
+  @supports (height: 100dvh) { :root{ --vh100: 100dvh; } }
+  html,body{
+    background:#000;
+    color:#f5ead6;
+    font-family:'Crimson Text',Georgia,serif;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+  #k6-stage{
+    position:relative;
+    width:100%;
+    height:var(--vh100);
+    overflow:hidden;
+  }
+
+  /* Startscherm: de scene speelt pas na een klik (zodat geluid mag). */
+  #k6-startscherm{
+    position:absolute; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:1.2rem;
+    background:#0d0a06;
+    text-align:center; padding:2rem;
+  }
+  #k6-startscherm h1{
+    font-family:'Cinzel',serif; font-size:1.3rem; letter-spacing:.1em;
+    color:#c9a84c; text-transform:uppercase; font-weight:600;
+  }
+  #k6-startscherm p{ max-width:32rem; color:#c8bfaf; font-style:italic; line-height:1.6; }
+  #k6-start-btn{
+    font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; text-transform:uppercase;
+    color:#0d0a06; background:#c9a84c; border:none; border-radius:3px;
+    padding:.9rem 1.8rem; cursor:pointer;
+  }
+  #k6-start-btn:hover{ background:#e0c06a; }
+
+  /* Debugpaneel, zelfde geest als woudscene-demo.html: rond knopje
+     linksonder dat een paneel met schuifregelaars opent. */
+  #k6-dbg-btn{
+    position:fixed; bottom:1.2rem; left:1.2rem; z-index:531;
+    background:rgba(13,10,6,.85); border:1px solid rgba(201,168,76,.35);
+    border-radius:50%; width:38px; height:38px; font-size:1.05rem;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    opacity:.75; transition:opacity .2s;
+  }
+  #k6-dbg-btn:hover{ opacity:1; }
+  #k6-dbg-panel{
+    display:none;
+    position:fixed; bottom:1.2rem; left:4.4rem; z-index:530;
+    background:rgba(13,10,6,.97); border:1px solid rgba(201,168,76,.3);
+    border-radius:6px; padding:.9rem 1rem; width:300px;
+    max-height:calc(var(--vh100) - 3rem); overflow-y:auto;
+    box-shadow:0 0 30px rgba(0,0,0,.7);
+    font-size:.82rem;
+  }
+  #k6-dbg-panel.open{ display:block; }
+  .k6-dbg-kop{
+    font-family:'Cinzel',serif; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
+    color:#c9a84c; margin:.9rem 0 .5rem;
+  }
+  .k6-dbg-kop:first-child{ margin-top:0; }
+  .k6-dbg-rij{ margin-bottom:.55rem; }
+  .k6-dbg-rij-label{
+    display:flex; justify-content:space-between;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#8a6f32; margin-bottom:.2rem;
+  }
+  .k6-dbg-rij-label span:last-child{ color:#c9a84c; }
+  .k6-dbg-rij input[type="range"]{ width:100%; accent-color:#c9a84c; }
+  .k6-dbg-knoppen{ display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.6rem; }
+  .k6-dbg-btn2{
+    flex:1; min-width:60px;
+    font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase;
+    color:#c9a84c; background:transparent; border:1px solid rgba(201,168,76,.4);
+    border-radius:2px; padding:.5rem .3rem; cursor:pointer;
+  }
+  .k6-dbg-btn2:hover{ background:rgba(201,168,76,.12); }
+</style>
+</head>
+<body>
+
+<div id="k6-stage">
+  <div id="k6-startscherm">
+    <h1>K6-finale: demo, fase 1</h1>
+    <p>De scene speelt pas na een klik (audio mag pas starten na een gebaar van de speler). Gebruik het tandwiel linksonder om positie, helderheid, drift en volume af te stellen.</p>
+    <button id="k6-start-btn">Start de scene</button>
+  </div>
+</div>
+
+<button id="k6-dbg-btn" title="Instellen">⚙</button>
+<div id="k6-dbg-panel"></div>
+
+<script src="k6finale.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   Config voor de demo. De paden hieronder zijn relatief aan DEZE
+   pagina (technischefiles/), dus met "../" naar locaties/ en geluid/;
+   in Zilverweide zelf (root) gebruikt de module haar eigen DEFAULTS.
+   ════════════════════════════════════════════════════════════ */
+function metPrefix(pad) { return '../' + pad; }
+
+var DEMO_CONFIG = (function () {
+  var basis = new K6Finale(document.createElement('div')).getConfig(); // alleen om DEFAULTS te lenen
+  return {
+    images: { heksRug: metPrefix(basis.images.heksRug) },
+    audio: { tik: metPrefix(basis.audio.tik) }
+  };
+})();
+
+var scene = new K6Finale(document.getElementById('k6-stage'), DEMO_CONFIG);
+
+var startBtn = document.getElementById('k6-start-btn');
+var startscherm = document.getElementById('k6-startscherm');
+startBtn.onclick = function () {
+  startscherm.style.display = 'none';
+  scene.start();
+};
+
+/* ── Debugpaneel ──────────────────────────────────────────────── */
+var dbgBtn = document.getElementById('k6-dbg-btn');
+var dbgPanel = document.getElementById('k6-dbg-panel');
+dbgBtn.onclick = function () { dbgPanel.classList.toggle('open'); };
+
+var SLIDER_RIJEN = [
+  { kop: 'De figuur' },
+  { label: 'Positie horizontaal (%)', pad: 'figuur.x', min: 0, max: 100, step: 1 },
+  { label: 'Positie verticaal (%)', pad: 'figuur.y', min: 0, max: 100, step: 1 },
+  { label: 'Schaal (hoogte-fractie)', pad: 'figuur.schaal', min: 0.3, max: 1.5, step: 0.01 },
+  { label: 'Helderheid', pad: 'figuur.helderheid', min: 0.1, max: 1.6, step: 0.05 },
+  { kop: 'De doordrift' },
+  { label: 'Afstand (px)', pad: 'drift.afstand', min: 0, max: 20, step: 0.5 },
+  { label: 'Duur van een golf (ms)', pad: 'drift.duur', min: 4000, max: 40000, step: 500 },
+  { kop: 'Geluid' },
+  { label: 'Volume tikgeluid', pad: 'volumes.tik', min: 0, max: 1, step: 0.05 }
+];
+
+function padWaarde(obj, pad) {
+  var delen = pad.split('.'), v = obj;
+  for (var i = 0; i < delen.length; i++) v = v[delen[i]];
+  return v;
+}
+
+(function bouwPaneel() {
+  var html = '';
+  var huidigeConfig = scene.getConfig();
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) {
+      html += '<div class="k6-dbg-kop">' + rij.kop + '</div>';
+      return;
+    }
+    var id = 'k6-r-' + rij.pad.replace(/\./g, '-');
+    var val = padWaarde(huidigeConfig, rij.pad);
+    html +=
+      '<div class="k6-dbg-rij">' +
+        '<div class="k6-dbg-rij-label"><span>' + rij.label + '</span><span id="' + id + '-val">' + val + '</span></div>' +
+        '<input type="range" id="' + id + '" data-pad="' + rij.pad + '" min="' + rij.min + '" max="' + rij.max + '" step="' + rij.step + '" value="' + val + '">' +
+      '</div>';
+  });
+  html +=
+    '<div class="k6-dbg-knoppen">' +
+      '<button class="k6-dbg-btn2" id="k6-dbg-replay">↻ Replay</button>' +
+      '<button class="k6-dbg-btn2" id="k6-dbg-config">Config → console</button>' +
+    '</div>';
+
+  dbgPanel.innerHTML = html;
+
+  SLIDER_RIJEN.forEach(function (rij) {
+    if (rij.kop) return;
+    var id = 'k6-r-' + rij.pad.replace(/\./g, '-');
+    var input = document.getElementById(id);
+    var label = document.getElementById(id + '-val');
+    input.oninput = function () {
+      var v = +this.value;
+      label.textContent = v;
+      scene.set(rij.pad, v);
+    };
+  });
+
+  document.getElementById('k6-dbg-replay').onclick = function () {
+    if (startscherm.style.display !== 'none') startscherm.style.display = 'none';
+    scene.replay();
+  };
+  document.getElementById('k6-dbg-config').onclick = function () {
+    console.log('K6FINALE config:\n' + JSON.stringify(scene.getConfig(), null, 2));
+  };
+})();
+</script>
+
+</body>
+</html>
