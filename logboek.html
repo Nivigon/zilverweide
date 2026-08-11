@@ -73,6 +73,8 @@
   .tag.herstel { background: rgba(111,159,91,.18); color: var(--groen); }
   .tag.paginaload { background: rgba(154,147,132,.15); color: var(--mist); }
   .tag.gat { background: rgba(180,85,63,.22); color: var(--bloed); }
+  .tag.goed { background: rgba(111,159,91,.18); color: var(--groen); }
+  .tag.fout { background: rgba(180,85,63,.22); color: var(--bloed); }
   .balk-rij { display: flex; align-items: center; gap: .5rem; padding: .12rem 0; }
   .balk-naam { min-width: 11rem; font-size: .8rem; }
   .balk-buiten { flex: 1; background: rgba(201,168,76,.08); border-radius: 3px; height: 14px; overflow: hidden; }
@@ -154,6 +156,7 @@ function analyse(sessie) {
     eind: entries.length ? entries[entries.length - 1].t : null,
     events: [],           // sleutelmomenten
     shared: [],           // gedeelde schrijfacties
+    gokken: [],           // heks-gokken op het podium (type 'gok')
     dwellPerRol: {},      // rol -> {locatie -> ms}
     gatenPerRol: {},      // rol -> [{van, tot, ms}]
     rollen: {}            // set van rollen
@@ -168,6 +171,8 @@ function analyse(sessie) {
       res.events.push(e);
     } else if (e.type === 'shared') {
       res.shared.push(e);
+    } else if (e.type === 'gok') {
+      res.gokken.push(e);
     }
     if (e.type === 'scherm' || e.type === 'hartslag') {
       if (!levenPerRol[rol]) levenPerRol[rol] = [];
@@ -213,6 +218,26 @@ function analyse(sessie) {
   res.oplostijd = (res.teamStart && res.teamEind) ? (res.teamEind - res.teamStart) : null;
   return res;
 }
+
+// Weergavenamen voor de heks-gokken. De keys komen uit de gok-telemetrie
+// in het spel (logboekSchrijf('gok', ...)); onbekende waarden vallen terug
+// op de ruwe code, zodat toekomstige blokken of verdachten niet stil
+// wegvallen uit het overzicht.
+var GOK_BLOK_NAMEN = {
+  kraaienkwartier: 'Kraaienkwartier',
+  dorendael: 'Dorendael',
+  heerdonatuslaan: 'Heer Donatuslaan'
+};
+var GOK_KEUZE_NAMEN = {
+  robbie: 'Robbie Kweekel', madeleine: 'Madeleine', stoop: 'Stoop',
+  wallingen: 'Mevr. van Wallingen', man7: 'De Man van Nummer 7',
+  bart: 'Bart', trijn10: 'Trijn', merel: 'Merel', schim: 'De Schim',
+  strix: 'Strix (de kikker)', priscilla: 'De Non',
+  tobbe: 'Tobbe', burgemeester: 'De Burgemeester',
+  slager: 'Slager Verstilt', roet: 'Vrouwe Roet', apotheker: 'De Apotheker'
+};
+function gokBlokNaam(k) { return GOK_BLOK_NAMEN[k] || k || '?'; }
+function gokKeuzeNaam(k) { return GOK_KEUZE_NAMEN[k] || k || '?'; }
 
 function eventTag(actie) {
   var soort = 'paginaload';
@@ -268,6 +293,38 @@ function renderDetail(id) {
       html += '<div class="rij"><span class="tijd">' + esc(tijdStr(e.t)) + '</span>' +
         '<span class="rol">' + esc(e.rol) + '</span>' + eventTag(e.actie) +
         ' <span>' + eventTekst(e) + '</span></div>';
+    });
+  }
+  html += '</div>';
+
+  // Heks-gokken: per straat wie het stemrecht gebruikte, wat er werd
+  // aangewezen en hoe vaak het misging. Gevoed door de gok-telemetrie.
+  html += '<div class="kaart"><h2>Heks-gokken (' + a.gokken.length + ')</h2>';
+  if (!a.gokken.length) {
+    html += '<div class="leeg" style="padding:.5rem">geen gokken gelogd (sessie van voor deze telemetrie, of nog niet zover)</div>';
+  } else {
+    var gokBlokken = Object.keys(GOK_BLOK_NAMEN);
+    a.gokken.forEach(function (e) {
+      var b = e.blok || '?';
+      if (gokBlokken.indexOf(b) === -1) gokBlokken.push(b);
+    });
+    gokBlokken.forEach(function (b) {
+      var rijen = a.gokken.filter(function (e) { return (e.blok || '?') === b; });
+      if (!rijen.length) return;
+      var fout = rijen.filter(function (e) { return !e.goed; }).length;
+      var samenvatting = rijen.length + (rijen.length === 1 ? ' poging' : ' pogingen') + ', ' + fout + ' fout';
+      if (rijen.length > 1) {
+        samenvatting += ', ' + duurStr((rijen[rijen.length - 1].t || 0) - (rijen[0].t || 0)) + ' van eerste tot laatste poging';
+      }
+      html += '<div class="rol-blok"><h3>' + esc(gokBlokNaam(b)) + '</h3>';
+      html += '<div style="color:var(--mist);font-size:.78rem;margin:.15rem 0 .4rem">' + esc(samenvatting) + '</div>';
+      html += '<table><thead><tr><th>tijd</th><th>rol</th><th>keuze</th><th>uitslag</th></tr></thead><tbody>';
+      rijen.forEach(function (e) {
+        html += '<tr><td class="num">' + esc(tijdStr(e.t)) + '</td><td>' + esc(e.rol) +
+          '</td><td>' + esc(gokKeuzeNaam(e.keuze)) + '</td><td>' +
+          (e.goed ? '<span class="tag goed">juist</span>' : '<span class="tag fout">fout</span>') + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
     });
   }
   html += '</div>';
@@ -444,6 +501,13 @@ function downloadMd(id) {
   L.push('## Sleutelmomenten');
   if (!a.events.length) L.push('_geen_');
   a.events.forEach(function (e) { L.push('- ' + tijdStr(e.t) + ' ' + e.rol + ' — ' + eventTekst(e)); });
+  L.push('');
+  L.push('## Heks-gokken');
+  if (!a.gokken.length) L.push('_geen gokken gelogd_');
+  a.gokken.forEach(function (e) {
+    L.push('- ' + tijdStr(e.t) + ' ' + e.rol + ' (' + gokBlokNaam(e.blok) + '): ' +
+      gokKeuzeNaam(e.keuze) + (e.goed ? ', juist' : ', fout'));
+  });
   L.push('');
   L.push('## Verblijftijd per rol');
   rollen.forEach(function (rol) {

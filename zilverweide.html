@@ -13660,6 +13660,9 @@ function openLocatie(id) {
   if (!loc) return;
   // Zit hier iemand vast (schaduw)? Lege huls plus redder-invoer, echte locatie dicht.
   if (schaduwRedderIntercept(id, 'kraaienkwartier')) return;
+  // Een straatlocatie openen betekent: niet meer bij het podium ingelogd.
+  // Afmelden bij de stemscherm-aanwezigheid (no-op buiten de gok-fases).
+  if (typeof stemAanwezigWeg === 'function') stemAanwezigWeg();
   // Kraaienkwartier-locatie-afbeeldingen (map: locaties/kraaienkwartier/).
   const K1_AFBEELDINGEN = {
     'k1_groenteboer':  'locaties/kraaienkwartier/stoop.jpeg',
@@ -14547,6 +14550,9 @@ function goBackFromLocatie() {
   _verborgenHandBinnen    = false;
   _apotheekBinnen         = false;
   _herbergBinnen          = false;
+  // Het stemscherm op het podium via de terugknop verlaten: afmelden bij
+  // de aanwezigheids-gate (no-op buiten de gok-fases).
+  if (typeof stemAanwezigWeg === 'function') stemAanwezigWeg();
   if (state.lastZone === 'dorpsplein') showScreen('screen-dorpsplein');
   else if (state.lastZone === 'dorendael') showScreen('screen-dorendael');
   else if (state.lastZone === 'sintdonatuslaan') showScreen('screen-sintdonatuslaan');
@@ -15208,6 +15214,96 @@ function claimBeslisser(key, onKlaar) {
   }
 }
 
+// ─── Stemscherm-aanwezigheid (gate voor de drie heks-gokken) ────────
+// De stemming op het podium begint pas als het hele team op D2 in het
+// stemscherm zit. Elke speler meldt zich aan via een eigen subkey
+// (race-vrij, zelfde patroon als de per-rol subkeys van de intro-fix)
+// en wordt afgemeld zodra hij ergens anders inlogt of het podium via de
+// terugknop verlaat. Afmelden schrijft bewust false en geen null: de
+// Firebase-merge op de andere tablets voegt alleen keys toe en wist
+// niets, dus een verwijderde subkey zou daar als "aanwezig" blijven
+// hangen (zelfde valkuil als destijds de schaduw-locks).
+var STEM_AANWEZIG_KEYS = {
+  kraaienkwartier: 'gok_aanwezig_kraaienkwartier',
+  dorendael: 'gok_aanwezig_dorendael',
+  heerdonatuslaan: 'gok_aanwezig_heerdonatuslaan'
+};
+
+function stemAanwezigen(blok) {
+  return sharedLijst(STEM_AANWEZIG_KEYS[blok]);
+}
+
+function stemAanwezigMeld(blok) {
+  var key = STEM_AANWEZIG_KEYS[blok];
+  if (!key || !state.personage) return;
+  if (!getSharedState(key + '__' + state.personage)) {
+    setSharedState(key + '__' + state.personage, true);
+  }
+}
+
+// Afmelden bij alle drie de stemschermen tegelijk: er is er altijd maar
+// een tegelijk actief, en zo hoeft geen enkele aanroeper te weten welke
+// gok-fase er loopt. Schrijft alleen als er echt iets aan stond, zodat
+// gewone navigatie buiten de gok-fases geen Firebase-verkeer oplevert.
+function stemAanwezigWeg() {
+  if (!state.personage) return;
+  Object.keys(STEM_AANWEZIG_KEYS).forEach(function (blok) {
+    var key = STEM_AANWEZIG_KEYS[blok];
+    if (getSharedState(key + '__' + state.personage)) {
+      setSharedState(key + '__' + state.personage, false);
+    }
+  });
+}
+
+// Mag de stemming beginnen? Iedereen aanwezig en de leestaak af. Zodra
+// er een beslisser is, is de stemming al begonnen en geldt de gate niet
+// meer: een tablet die middenin de stemming herlaadt moet direct terug
+// de lopende stemming in, niet een wachtscherm dat de boel blokkeert.
+function stemGateKlaar(blok, boek) {
+  return stemAanwezigen(blok).length >= SHARED_ROLLEN.length &&
+         boekDoorIedereenGelezen(boek);
+}
+
+// Wachtscherm voor het podium: toont live hoeveel spelers er ingelogd
+// zijn en (zolang die open staat) de leestaak-teller. De poll her-opent
+// de gok-flow zodra er iets verandert. Dit vervangt de oude statische
+// "gok is nog niet mogelijk"-schermen: daar moest je uitloggen en
+// opnieuw inloggen om de nieuwe stand te zien.
+function toonStemWachtscherm(cfg) {
+  var aanwezig = stemAanwezigen(cfg.blok);
+  var lezers = telBoekLezers(cfg.boek);
+  var dialog = [
+    'Het podium. Hier wijzen jullie zo samen de heks van ' + cfg.straat + ' aan.',
+    { spreker: 'Verteller', tekst: 'De stemming begint pas als het hele team hier is ingelogd. Wie als eerste van het team bij het podium was, krijgt straks het stemrecht.' }
+  ];
+  if (lezers < SHARED_ROLLEN.length) {
+    dialog.push({ spreker: 'Verteller', tekst: cfg.leesZin + ' Het dorpsarchief blijft daarvoor open.' });
+  }
+  var status = 'Bij het podium: ' + aanwezig.length + ' / ' + SHARED_ROLLEN.length;
+  if (lezers < SHARED_ROLLEN.length) {
+    status += ' &bull; ' + cfg.leesLabel + ': ' + lezers + ' / ' + SHARED_ROLLEN.length;
+  }
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: 'Wie is de heks?',
+    sub:   'Dorpsplein, het podium',
+    image: podiumAfbeelding(),
+    dialog: dialog,
+    extra: gateStatusExtra(status)
+  });
+  plaatsGateMarker(cfg.markerId);
+  startGatePoll(cfg.markerId, cfg.openFn, function () {
+    // Aanwezigheid, leestaak en beslisser: elke wijziging her-opent de
+    // flow, die dan zelf beslist of het wachtscherm blijft of doorgaat.
+    return stemAanwezigen(cfg.blok).slice().sort().join(',') + '|' +
+           telBoekLezers(cfg.boek) + '|' +
+           String(getSharedState(cfg.beslisserKey) || '');
+  });
+  state.lastOpenedLocatie = null;
+  showScreen('screen-locatie');
+  state.lastZone = 'dorpsplein';
+}
+
 // De beslis-pop-up: ligt bovenop een neutraal podium-scherm. De knop telt
 // eerst 7 seconden af (niet indrukbaar) en wordt dan "Ik beslis". Claimt een
 // teamgenoot het stemrecht terwijl deze pop-up openstaat, dan sluit hij
@@ -15374,6 +15470,9 @@ function openBeslispunt() {
     { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'De Nachtenwens', portret: 'karakters/terugkerend/wallingen.png' },
     { code: 'man7',      naam: 'De Man van Nummer 7', sub: 'Het gesloten huis', portret: 'karakters/kraaienkwartier/mannummer7-pop.png' },
   ];
+  // Aanmelden bij het stemscherm: deze speler is er, en dat telt mee in
+  // de gate hieronder (op alle tablets, via de gedeelde subkey).
+  stemAanwezigMeld('kraaienkwartier');
   var beslisser = getSharedState('heks_beslisser');
   if (beslisser && beslisser !== state.personage) {
     // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
@@ -15392,21 +15491,23 @@ function openBeslispunt() {
     });
     return;
   }
-  // Gate: iedereen moet het dagboek in het archief uitgelezen hebben
-  // voordat de gok mogelijk is (leestaak 4/4).
-  if (!boekDoorIedereenGelezen('dagboek')) {
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel:    'De gok is nog niet mogelijk',
-      sub:      'Dorpsplein — het podium',
-      image:    podiumAfbeelding(),
-      dialog: [
-        'Voordat jullie de heks aanwijzen, moet iedereen het dagboek in het dorpsarchief gelezen hebben. (' + telBoekLezers('dagboek') + '/4)',
-        { spreker: 'Verteller', tekst: 'Kom terug zodra dat is gebeurd.' }
-      ]
+  // Gate: de stemming begint pas als het hele team op D2 ingelogd is en
+  // iedereen het dagboek in het dorpsarchief uitgelezen heeft. Het
+  // wachtscherm heeft een poll en klapt vanzelf door zodra beide rond
+  // zijn; er hoeft niemand meer uit en weer in te loggen. Is er al een
+  // beslisser (deze speler zelf, na een herlaad), dan is de stemming al
+  // begonnen en slaan we de gate over.
+  if (!beslisser && !stemGateKlaar('kraaienkwartier', 'dagboek')) {
+    toonStemWachtscherm({
+      blok: 'kraaienkwartier',
+      boek: 'dagboek',
+      straat: 'het Kraaienkwartier',
+      leesZin: 'Ook moet iedereen eerst het dagboek in het dorpsarchief uitgelezen hebben.',
+      leesLabel: 'Dagboek gelezen',
+      beslisserKey: 'heks_beslisser',
+      markerId: 'stemgate-kraai-marker',
+      openFn: openBeslispunt
     });
-    showScreen('screen-locatie');
-    state.lastZone = 'dorpsplein';
     return;
   }
   if (!beslisser) {
@@ -15481,6 +15582,11 @@ function toonNummer7Overleg() {
 
 function kiesHeks(code) {
   if (state.heksCooldown && Date.now() < state.heksCooldown) return;
+  // Telemetrie: elke echte poging (na de cooldown-check) naar het logboek,
+  // zodat achteraf te zien is wie wat aanwees en hoe vaak het misging.
+  if (typeof logboekSchrijf === 'function') {
+    logboekSchrijf('gok', { blok: 'kraaienkwartier', keuze: code, goed: code === 'man7' });
+  }
   const msg = document.getElementById('heks-msg');
   const timer = document.getElementById('heks-timer');
   if (code === 'man7') {
@@ -15550,24 +15656,6 @@ function openDorendaelGok() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  // Gate: iedereen moet de molen-legende (het filmpje bij de oude kranten)
-  // gezien hebben voordat de gok mogelijk is (leestaak 4/4). Het
-  // dorpsarchief (D3) blijft hiervoor open, zie checkCodeToegankelijk.
-  if (!boekDoorIedereenGelezen('molen')) {
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel:    'De gok is nog niet mogelijk',
-      sub:      'Dorpsplein, het podium',
-      image:    podiumAfbeelding(),
-      dialog: [
-        'Voordat jullie de heks aanwijzen, moet iedereen de molen-legende in het dorpsarchief gezien hebben. (' + telBoekLezers('molen') + '/4)',
-        { spreker: 'Verteller', tekst: 'Het dorpsarchief is open. Kom terug zodra iedereen het filmpje uit heeft.' }
-      ]
-    });
-    showScreen('screen-locatie');
-    state.lastZone = 'dorpsplein';
-    return;
-  }
   const opties = [
     { code: 'bart',      naam: 'Bart',                sub: 'Nummer 2',             portret: 'karakters/dorendael/bartintens-pop.png' },
     { code: 'trijn10',   naam: 'Trijn',               sub: 'De moeder, Nummer 10', portret: 'karakters/dorendael/trijn-pop.png' },
@@ -15576,6 +15664,8 @@ function openDorendaelGok() {
     { code: 'wallingen', naam: 'Mevr. van Wallingen', sub: 'Overal en nergens',    portret: 'karakters/terugkerend/wallingen.png' },
     { code: 'strix',     naam: 'Strix',               sub: 'De kikker',            portret: 'karakters/dorendael/strix-pop.png' },
   ];
+  // Aanmelden bij het stemscherm (gedeelde subkey, telt mee in de gate).
+  stemAanwezigMeld('dorendael');
   var beslisser = getSharedState('dorendael_beslisser');
   if (beslisser && beslisser !== state.personage) {
     // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
@@ -15591,6 +15681,23 @@ function openDorendaelGok() {
       succesTitel: '✦  Juist, de kikker',
       succesHtml: '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Strix. Al die tijd zat de heks op een schouder, op een vensterbank, op een steen aan de oever. Kijkend. Luisterend. En ze is het woud in gevlucht.</p>' +
         '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Het woud staat nu open voor het team.</p>',
+      openFn: openDorendaelGok
+    });
+    return;
+  }
+  // Gate: de stemming begint pas als het hele team op D2 ingelogd is en
+  // iedereen de molen-legende (het filmpje bij de oude kranten) in het
+  // dorpsarchief gezien heeft. Het dorpsarchief (D3) blijft daarvoor
+  // open, zie checkCodeToegankelijk. Het wachtscherm klapt vanzelf door.
+  if (!beslisser && !stemGateKlaar('dorendael', 'molen')) {
+    toonStemWachtscherm({
+      blok: 'dorendael',
+      boek: 'molen',
+      straat: 'Dorendael',
+      leesZin: 'Ook moet iedereen eerst de molen-legende in het dorpsarchief gezien hebben.',
+      leesLabel: 'Molen-legende gezien',
+      beslisserKey: 'dorendael_beslisser',
+      markerId: 'stemgate-dorendael-marker',
       openFn: openDorendaelGok
     });
     return;
@@ -15636,6 +15743,10 @@ function openDorendaelGok() {
 
 function kiesDorendaelHeks(code) {
   if (state.dorendaelGokCooldown && Date.now() < state.dorendaelGokCooldown) return;
+  // Telemetrie: zie kiesHeks.
+  if (typeof logboekSchrijf === 'function') {
+    logboekSchrijf('gok', { blok: 'dorendael', keuze: code, goed: code === 'strix' });
+  }
   const msg = document.getElementById('dorendael-heks-msg');
   const timer = document.getElementById('dorendael-heks-timer');
   if (code === 'strix') {
@@ -15698,6 +15809,9 @@ function checkDorpspleinLocatie(val) {
     'D4': openVerborgenHand
   };
   if (acties[val]) {
+    // Ergens anders inloggen dan het podium (D2): afmelden bij de
+    // stemscherm-aanwezigheid (no-op buiten de gok-fases).
+    if (val !== 'D2' && typeof stemAanwezigWeg === 'function') stemAanwezigWeg();
     msg.className = 'code-success';
     msg.textContent = '✦ Toegang verleend!';
     markVisited('dorpsplein_incident');
@@ -17036,6 +17150,9 @@ function openMicrofoon() {
 
 // ══ OVERWORLD ══
 function visitZone(zone, inputVal) {
+  // Ergens anders inloggen dan het podium (D2): afmelden bij de
+  // stemscherm-aanwezigheid (no-op buiten de gok-fases).
+  if (inputVal !== 'D2' && typeof stemAanwezigWeg === 'function') stemAanwezigWeg();
   state.lastZone = zone;
   state.zone = zone;
   state.activeKwartier = zone;
@@ -17979,24 +18096,6 @@ function openHeerDonatusGok() {
     state.lastZone = 'dorpsplein';
     return;
   }
-  // Gate: iedereen moet "Over de Rozen" in het dorpsarchief uitgelezen
-  // hebben voordat de gok mogelijk is (leestaak 4/4). Het dorpsarchief
-  // (D3) blijft hiervoor open, zie checkCodeToegankelijk.
-  if (!boekDoorIedereenGelezen('rozen')) {
-    renderLocatieScene({
-      container: document.getElementById('locatie-content'),
-      titel:    'De gok is nog niet mogelijk',
-      sub:      'Dorpsplein, het podium',
-      image:    podiumAfbeelding(),
-      dialog: [
-        'Voordat jullie de heks aanwijzen, moet iedereen "Over de Rozen" in het dorpsarchief gelezen hebben. (' + telBoekLezers('rozen') + '/4)',
-        { spreker: 'Verteller', tekst: 'Het dorpsarchief is open. Kom terug zodra iedereen het boekje uit heeft.' }
-      ]
-    });
-    showScreen('screen-locatie');
-    state.lastZone = 'dorpsplein';
-    return;
-  }
   var opties = [
     { code: 'priscilla',   naam: 'De Non',           sub: 'Priscilla',          portret: 'karakters/heerdonatuslaan/non-pop.png' },
     { code: 'tobbe',       naam: 'Tobbe',             sub: 'Het jongetje',       portret: 'karakters/terugkerend/tobbearrogant-pop.png' },
@@ -18005,6 +18104,8 @@ function openHeerDonatusGok() {
     { code: 'roet',        naam: 'Vrouwe Roet',       sub: 'Het Hol',            portret: 'karakters/heerdonatuslaan/vrouwevroet-pop.png' },
     { code: 'apotheker',   naam: 'De Apotheker',      sub: 'Kruidentuin',        portret: 'karakters/heerdonatuslaan/apotheker-pop.png' },
   ];
+  // Aanmelden bij het stemscherm (gedeelde subkey, telt mee in de gate).
+  stemAanwezigMeld('heerdonatuslaan');
   var beslisser = getSharedState('hd_beslisser');
   if (beslisser && beslisser !== state.personage) {
     // Medespeler: rechtstreeks naar het beslismoment, alleen meekijken.
@@ -18020,6 +18121,23 @@ function openHeerDonatusGok() {
       succesTitel: '✦  Juist!',
       succesHtml: '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Tobbe was bij de kerk toch?! Kom, we gaan daarheen.</p>' +
         '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Ga naar de kerk in Heer Donatuslaan.</p>',
+      openFn: openHeerDonatusGok
+    });
+    return;
+  }
+  // Gate: de stemming begint pas als het hele team op D2 ingelogd is en
+  // iedereen "Over de Rozen" in het dorpsarchief uitgelezen heeft. Het
+  // dorpsarchief (D3) blijft daarvoor open, zie checkCodeToegankelijk.
+  // Het wachtscherm klapt vanzelf door.
+  if (!beslisser && !stemGateKlaar('heerdonatuslaan', 'rozen')) {
+    toonStemWachtscherm({
+      blok: 'heerdonatuslaan',
+      boek: 'rozen',
+      straat: 'Heer Donatuslaan',
+      leesZin: 'Ook moet iedereen eerst "Over de Rozen" in het dorpsarchief uitgelezen hebben.',
+      leesLabel: 'Over de Rozen gelezen',
+      beslisserKey: 'hd_beslisser',
+      markerId: 'stemgate-hd-marker',
       openFn: openHeerDonatusGok
     });
     return;
@@ -18068,6 +18186,10 @@ function openHeerDonatusGok() {
 
 function kiesHeerDonatusHeks(code) {
   if (state.hdGokCooldown && Date.now() < state.hdGokCooldown) return;
+  // Telemetrie: zie kiesHeks.
+  if (typeof logboekSchrijf === 'function') {
+    logboekSchrijf('gok', { blok: 'heerdonatuslaan', keuze: code, goed: code === 'tobbe' });
+  }
   var msg = document.getElementById('hd-heks-msg');
   var timer = document.getElementById('hd-heks-timer');
   if (code === 'tobbe') {
@@ -19478,6 +19600,8 @@ function buildDebugPanel() {
       ['🗳️ Heks-gok geslaagd (K6 finale)', function(){ state.heksOpgelost = true; setSharedState('heks_opgelost', true); updateMissieTeller(); close(); }, !state.heksOpgelost, 'Finale'],
       ['👑 Reset beslisser (heks-gok)', function(){ setSharedState('heks_beslisser', null); setSharedState('heks_fout_tot', null); close(); }, true, 'Finale'],
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
+      ['🗳️ Alle 4 in het stemscherm (heks-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, true); }); close(); }, !state.heksOpgelost, 'Finale'],
+      ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); }); close(); }, true, 'Finale'],
       ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
       ['🔄 Reset Kraaienkwartier',   function(){
         ['kelly_in_put','kelly_gered','tobbe_gevonden','stoop_beloning_ontvangen','fenna_robbie_bezoek','jan_toren_geklommen','jan_heeft_speld','jan_toren_haak_gebroken','toren_code_ingevoerd','fenna_spijker_gegeven','nummer7_filmpje_gezien','wallingen_informatie_ontvangen'].forEach(function(f){ state.visited.delete(f); });
@@ -19496,6 +19620,7 @@ function buildDebugPanel() {
         setSharedState('heks_beslisser', null);
         setSharedState('heks_fout_tot', null);
         setSharedState('nummer7_aanwezig', []);
+        SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); });
         debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
         state.finalePopupGetoond = false;
@@ -19584,6 +19709,8 @@ function buildDebugPanel() {
       ['🌹 Trigger DD-finale popup', function(){ debugDorendaelKlaar(); markVisited('herberg_scene_voltooid'); state.dorendaelFinalePopupGetoond = false; state.dorendaelGokOpgelost = false; close(); checkDorendaelTokens(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
       ['🎯 Forceer DD-gok juist (woud open)', function(){ state.dorendaelGokOpgelost = true; setSharedState('dorendael_gok_opgelost', true); markVisited('dorendael_finale_gestart'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === 'Latin Jurk'; })) { addInventory('💃', 'Latin Jurk', false); } debugDoolhofKlaar(); close(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
       ['👑 Reset beslisser (DD-gok)', function(){ setSharedState('dorendael_beslisser', null); setSharedState('dorendael_fout_tot', null); close(); }, true, 'Finale'],
+      ['🗳️ Alle 4 in het stemscherm (DD-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_dorendael__' + r, true); }); close(); }, !state.dorendaelGokOpgelost && !inWoudWinScreen, 'Finale'],
+      ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_dorendael__' + r, false); }); close(); }, true, 'Finale'],
       // ── Woud
       ['🌲 Alle 4 uit doolhof',      function(){ debugWoudAlleVoltooid(); close(); }, inWoudWinScreen, 'Woud'],
       ['👍 Alle 4 Klaar gedrukt',    function(){ ['jan','kelly','fenna','felix'].forEach(function(r){ woudKlaarZet(r); }); toonWoudEindBlok(); close(); }, inWoudWinScreen, 'Woud'],
@@ -19652,6 +19779,8 @@ function buildDebugPanel() {
       ['🌹 Trigger HD-finale popup', function(){ markVisited('felix_hd2_vrij'); setSharedState('felix_hd2_vrij',true); markVisited('jan_slagerij_gevlucht'); setSharedState('jan_slagerij_gevlucht',true); markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan',true); markVisited('kerk_non_weg'); setSharedState('kerk_non_weg',true); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien',true); markVisited('muziekdoosje_afgeleverd'); setSharedState('muziekdoosje_afgeleverd',true); markVisited('muziekdoosje_bij_aaltje'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } state.hdFinalePopupGetoond = false; close(); checkHeerDonatusTokens(); }, !state.tobbeGokOpgelost, 'HD Finale'],
       ['🎯 Forceer Tobbe-gok juist', function(){ debugHdFaseCompleet(); state.tobbeGokOpgelost = true; setSharedState('tobbe_gok_opgelost', true); if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer(); close(); if (typeof toonToast === 'function') toonToast('🎯', 'Tobbe-gok juist en de HD-fase staat compleet: verhaalscore 6/6, items bijgewerkt. Ga naar De Kerk (H4) en ga naar binnen voor het vervolg.'); }, !state.tobbeGokOpgelost, 'HD Finale'],
       ['👑 Reset beslisser (Tobbe-gok)', function(){ setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); close(); }, true, 'HD Finale'],
+      ['🗳️ Alle 4 in het stemscherm (Tobbe-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_heerdonatuslaan__' + r, true); }); close(); }, !state.tobbeGokOpgelost, 'HD Finale'],
+      ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_heerdonatuslaan__' + r, false); }); close(); }, true, 'HD Finale'],
       ['⛪ Alle 4 bij kerkkelder',   function(){ setSharedState('kerk_kelder_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['🎭 Alle 4 op podium (finale)', function(){ setSharedState('podium_finale_aanwezig', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
       ['📖 Alle 4 verhaal klaar (podium)', function(){ setSharedState('podium_verhaal_klaar', ['jan','kelly','fenna','felix']); close(); }, true, 'HD Finale'],
@@ -19666,7 +19795,7 @@ function buildDebugPanel() {
       ['🎬 Kerkkelder gezien', function(){ state.kerkkelderGezien = true; close(); }, !state.kerkkelderGezien, 'HD Finale'],
       ['🎭 Open finale podium', function(){ close(); openFinalePodium(); }, state.kerkkelderGezien && !state.podiumFinaleKlaar, 'HD Finale'],
       ['🏆 Podium finale klaar', function(){ state.podiumFinaleKlaar = true; close(); }, !state.podiumFinaleKlaar, 'HD Finale'],
-      ['🔄 Reset HD finale', function(){ state.tobbeGokOpgelost = false; state.kerkkelderGezien = false; state.podiumFinaleKlaar = false; state.hdFinalePopupGetoond = false; state.gekozenArm = null; setSharedState('tobbe_gok_opgelost', false); setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); setSharedState('kerk_kelder_aanwezig',[]); setSharedState('podium_finale_aanwezig',[]); setSharedState('podium_verhaal_klaar',[]); setSharedState('kerk_verhaal_klaar',[]); setSharedState('armen_gekozen',{}); close(); }, true, 'HD Finale'],
+      ['🔄 Reset HD finale', function(){ state.tobbeGokOpgelost = false; state.kerkkelderGezien = false; state.podiumFinaleKlaar = false; state.hdFinalePopupGetoond = false; state.gekozenArm = null; setSharedState('tobbe_gok_opgelost', false); setSharedState('hd_beslisser', null); setSharedState('hd_fout_tot', null); setSharedState('kerk_kelder_aanwezig',[]); setSharedState('podium_finale_aanwezig',[]); setSharedState('podium_verhaal_klaar',[]); setSharedState('kerk_verhaal_klaar',[]); setSharedState('armen_gekozen',{}); SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_heerdonatuslaan__' + r, false); }); close(); }, true, 'HD Finale'],
       ['⏳ VH-klok HD laten aflopen (diepere hint)', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
       ['🔄 VH-klok HD resetten', function(){ debugVhKlokReset('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
     ];
