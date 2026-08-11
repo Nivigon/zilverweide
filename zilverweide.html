@@ -14191,7 +14191,12 @@ function janStaatNuBijToren() {
 
 // Aangeroepen vanuit showScreen (elke schermwissel) en door de eigen
 // hartslag-timer. Start en stopt zichzelf; alleen Jans tablet beheert de
-// gedeelde sleutel.
+// gedeelde sleutel. Vertrek wordt als waarde 0 geschreven, NIET als null:
+// null wist de sleutel uit Firebase, maar de gedeelde-stand-merge op de
+// andere tablets voegt alleen toe en wist niets, waardoor Fenna's tablet
+// de oude stempel zou houden en de knop na Jans vertrek nog tot
+// anderhalve minuut zou tonen (op twee apparaten bevestigd). Waarde 0 is
+// een gewone update die overal aankomt, en telt nooit als vers.
 function janTorenPresenceCheck() {
   if (janStaatNuBijToren()) {
     setSharedState('jan_bij_toren', gedeeldeTijdNu());
@@ -14201,7 +14206,7 @@ function janTorenPresenceCheck() {
   } else {
     if (_janTorenHartslag) { clearInterval(_janTorenHartslag); _janTorenHartslag = null; }
     if (state.personage === 'jan' && getSharedState('jan_bij_toren')) {
-      setSharedState('jan_bij_toren', null);
+      setSharedState('jan_bij_toren', 0);
     }
   }
 }
@@ -19739,7 +19744,7 @@ function buildDebugPanel() {
       ['🪝 Jans haakje afgebroken (toren)', function(){ markVisited('jan_toren_haak_gebroken'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('jan_toren_haak_gebroken'), 'Toren (K3)'],
       // Doet alsof Jans tablet nu het torenscherm toont (aanwezigheids-check
       // van de overhandig-knop), voor solo-testen zonder tweede tablet.
-      ['🗼 Jan staat bij de toren (aan/uit)', function(){ setSharedState('debug_jan_bij_toren', getSharedState('debug_jan_bij_toren') ? null : true); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Toren (K3)'],
+      ['🗼 Jan staat bij de toren (aan/uit)', function(){ setSharedState('debug_jan_bij_toren', getSharedState('debug_jan_bij_toren') ? false : true); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Toren (K3)'],
       ['🔓 Toren-code ingevoerd (skip overdracht)', function(){ markVisited('toren_code_ingevoerd'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('toren_code_ingevoerd'), 'Toren (K3)'],
       ['📌 + Kromme Spijker (toren)', function(){ debugItem('📌','Kromme Spijker'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Verborgen Hand: de stille hulpklok van dit district
@@ -19759,8 +19764,10 @@ function buildDebugPanel() {
         setSharedState('vflag_kelly_gered', null);
         setSharedState('vflag_toren_code_ingevoerd', null);
         setSharedState('vflag_jan_toren_haak_gebroken', null);
-        setSharedState('jan_bij_toren', null);
-        setSharedState('debug_jan_bij_toren', null);
+        // Waarde-writes, geen null: verwijderingen komen niet aan in de
+        // lokale spiegel van andere tablets (merge wist niets).
+        setSharedState('jan_bij_toren', 0);
+        setSharedState('debug_jan_bij_toren', false);
         setSharedState('tobbe_gevonden', false);
         setSharedState('kk_sleutel_dagboek', false);
         setSharedState('kk_sleutel_wallingen', false);
