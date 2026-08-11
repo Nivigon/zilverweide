@@ -19217,6 +19217,14 @@ function buildDebugPanel() {
       }
       close();
     }, true],
+    // Regels die al in beeld zijn geweest krijgen nog maar 250 ms lock, zodat
+    // terugbladeren niet betekent dat je de hele scene weer uitzit. Bij testen
+    // is dat een valkuil: de tweede keer door dezelfde scene lijkt de lock
+    // kapot. Deze knop wist dat geheugen zodat de volle lock terugkomt.
+    ['🧠 Gelezen-regels vergeten (volle lock terug)', function(){
+      if (window._gelezenDialoogRegels && window._gelezenDialoogRegels.clear) window._gelezenDialoogRegels.clear();
+      close();
+    }, true],
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],

@@ -650,7 +650,7 @@
       var r = lines[i], sp = '', tx = '', lockOverride = null;
       if (typeof r === 'string') tx = r; else if (r && typeof r === 'object') { sp = r.spreker || ''; tx = r.tekst || ''; lockOverride = (typeof r.lockMs === 'number') ? r.lockMs : null; }
       // Verder-lock: de scene-engine bezit de berekening, zie daar.
-      if (typeof window.dialoogLockKnop === 'function') window.dialoogLockKnop(verderBtn, window.dialoogLockMs(tx, lockOverride), 'lp-verder-locked');
+      if (typeof window.dialoogLockVoorRegel === 'function') window.dialoogLockKnop(verderBtn, window.dialoogLockVoorRegel(sp, tx, lockOverride), 'lp-verder-locked');
       if (sp) { spreker.textContent = sp; spreker.style.display = ''; } else spreker.style.display = 'none';
       tekst.textContent = tx; tekst.style.animation = 'none'; void tekst.offsetWidth; tekst.style.animation = '';
     }

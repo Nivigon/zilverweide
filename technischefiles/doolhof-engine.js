@@ -438,8 +438,8 @@
       }
       // Verder-lock: zelfde regeling als in de scene-engine, die de
       // berekening bezit. Ontbreekt hij, dan simpelweg geen lock.
-      if (typeof window.dialoogLockKnop === 'function') {
-        window.dialoogLockKnop(verderBtn, window.dialoogLockMs(tx, lockOverride), 'dh-verder-locked');
+      if (typeof window.dialoogLockVoorRegel === 'function') {
+        window.dialoogLockKnop(verderBtn, window.dialoogLockVoorRegel(sp, tx, lockOverride), 'dh-verder-locked');
       }
       if (sp) {
         spreker.textContent = sp;
