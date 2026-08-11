@@ -2891,7 +2891,13 @@ function verwerkBinnengekomenShared(data) {
     // Staat Felix in de spiek-mini-game, dan haalt die zichzelf eruit via zijn
     // eigen onderbreek-check; dan niet ook nog eens hertekenen eronder.
     var _inSpiek = !!document.getElementById('felix-spiek-overlay');
-    if (_h2Loc && !_inSpiek) renderH2FelixKamer(_h2Loc);
+    if (_h2Loc && !_inSpiek) {
+      // Her-render sloopt de sluitknop van een eventueel lopende pop-dialoog
+      // (die staat in de scene-DOM): eerst netjes sluiten, zelfde afspraak
+      // als bij de put en de vijver hierboven.
+      if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+      renderH2FelixKamer(_h2Loc);
+    }
   }
 }
 
@@ -8158,6 +8164,13 @@ function renderH2FelixKamer(loc) {
     // markVisited spiegelt dit nu zelf naar de sessie (de vlag staat in
     // SHARED_VISITED_FLAGS), dus Felix ziet dat er iemand aan het gat staat.
     markVisited('jan_bezocht_felix');
+    // markVisited deelt alleen nieuwe vlaggen. Stond de vlag lokaal nog van
+    // een eerdere ronde (Firebase-reset zonder verse browserstate), dan bleef
+    // de spiegel leeg en kreeg Felix zijn doorgeef-knop nooit. Alleen
+    // bijschrijven als hij er nog niet staat: dit scherm rendert vaker.
+    if (!getSharedState('vflag_jan_bezocht_felix')) {
+      setSharedState('vflag_jan_bezocht_felix', true);
+    }
     // Heeft Felix het zakje door het gat geduwd? Gedeeld, dus dit komt van zijn
     // tablet. Zijn eigen zoektocht (felix_munten_gevonden) hoeft Jan niet te
     // weten; die vlag blijft daarom per speler.
@@ -8555,6 +8568,9 @@ function felixNaarBuiten() {
 // markVisited spiegelt hem zelf naar de sessie en het andere tablet volgt.
 function simuleerFelixCode() {
   markVisited('felix_code_ingevoerd');
+  // Zelfde vangnet als bij de echte invoer: ook delen als de vlag lokaal
+  // nog van een eerdere ronde stond.
+  setSharedState('vflag_felix_code_ingevoerd', true);
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
   if (loc) renderH2FelixKamer(loc);
 }
@@ -8641,6 +8657,9 @@ function felixGeefMuntenAanJan() {
   state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.zakjeMunten.naam; });
   updateInventoryBar();
   markVisited('felix_munten_aan_jan');
+  // Vangnet voor een lokaal achtergebleven vlag na een Firebase-reset:
+  // zonder gedeelde spiegel verschijnt Jans aanneem-knop nooit.
+  setSharedState('vflag_felix_munten_aan_jan', true);
   toonLade(
     '\ud83e\ude99 Muntenzakje overhandigd aan Jan',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je duwt het zakje door het gat. Jan kan er net bij met zijn lange arm. Nu is het wachten. Als hij terugkomt, kun je eruit.</p>',
@@ -8664,6 +8683,9 @@ function checkFelixHd2Code(val) {
     if (input) input.disabled = true;
     // De code laat de outfit door het gat vallen (F5).
     markVisited('felix_code_ingevoerd');
+    // Vangnet voor een lokaal achtergebleven vlag na een Firebase-reset:
+    // zonder gedeelde spiegel komt Jans Verder-knop nooit vrij.
+    setSharedState('vflag_felix_code_ingevoerd', true);
     setTimeout(() => {
       const loc = locatiesHeerDonatuslaan.find(l => l.id === 'h2_felixkamer');
       if (loc) renderH2FelixKamer(loc);
@@ -20727,6 +20749,15 @@ function debugResetIngangen() {
 }
 
 function toonZoneInvoer(zone) {
+  // Felix begint Heer Donatuslaan IN de straat: hij wordt daar opgesloten
+  // wakker (H2) en is dus nooit langs het H1-bordje bij de ingang gekomen.
+  // De ingangscode-popup zou hem na zijn ontsnapping vastzetten op een code
+  // die hij niet kan weten. Zodra zijn opsluiting bestaat telt zijn entree
+  // daarom als gedaan; de popup verschijnt voor hem nooit.
+  if (zone === 'sintdonatuslaan' && state.personage === 'felix'
+      && hasVisited('felix_hd2_vast') && !entreeGedaan(zone)) {
+    markEntree(zone);
+  }
   // Al eerder deze straat binnen geweest en de straat is nu gewoon
   // toegankelijk (geen finale-afscherming): sla de code-popup over en ga direct
   // naar het invoerscherm van die straat.
@@ -23614,6 +23645,11 @@ function openHeerDonatuslaanVanuitWoud() {
     // Felix-pad: zwart scherm + opsluit in zijn kamer.
     if (state.personage === 'felix') {
       markVisited('felix_hd2_vast');
+      // markVisited deelt alleen nieuwe vlaggen. Stond de vlag lokaal nog van
+      // een eerdere ronde (Firebase-reset zonder verse browserstate), dan
+      // bleef de gedeelde spiegel leeg en zag Jan bij H2 "niets te doen".
+      // Expliciet bijzetten, zelfde vangnet als in debugFelixWeerVastInH2.
+      setSharedState('vflag_felix_hd2_vast', true);
       state.locatieOnbekend = true;
       // Zijn kleding is afgepakt: een eventuele actieve vermomming vervalt,
       // en de outfit-items verdwijnen uit zijn inventaris. We onthouden
