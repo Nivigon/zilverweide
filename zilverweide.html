@@ -12472,7 +12472,7 @@ function renderK1Uitkijktoren(loc) {
       let observaties;
       if (donatusOpen) {
         observaties = [
-          { quote: '"Bij het gemeentehuis brandt nog licht. De burgemeester zal wel druk bezig zijn met alle paniek in de stad. Iedereen sprak vandaag goed over hem. Licht betekent natuurlijk niet dat hij er ook echt is, maar toch."' },
+          { quote: '"Bij het gemeentehuis brandt nog licht. De burgemeester zal wel druk bezig zijn met alle paniek in het dorp. Iedereen sprak vandaag goed over hem. Licht betekent natuurlijk niet dat hij er ook echt is, maar toch."' },
           { quote: '"Is dat niet die criminele hangplek van, ach, hoe heet die troep ook alweer... Vergeten... Vrouwe Roet was de leider, geloof ik."' },
           { quote: '[Placeholder: hint Heer Donatuslaan 3]' },
         ];
@@ -12531,14 +12531,21 @@ function renderK1Uitkijktoren(loc) {
       } else {
         // Eerste bezoek: Jans eigen haakje breekt af in het slot. De toren
         // gaat pas open met de code die bij het vervangende voorwerp hoort.
-        markVisited('jan_toren_haak_gebroken');
         dialog.push('Een zijpad leidt naar een smalle hoge toren. De deur zit op slot.');
         dialog.push({ spreker: 'Jan', tekst: '"Van daarboven kijk je vast de hele straat over. Daar wil ik heen."' });
         dialog.push({ spreker: 'Jan', tekst: '*(hurkt bij het slot)* "Oud en roestig, maar de pinnen zitten er nog in. Dit krijg ik open."' });
         dialog.push('Je schuift je eigen haakje in het slot. De eerste pin geeft mee. Dan: krak.');
         dialog.push({ spreker: 'Jan', tekst: '"Nee hè. Afgebroken. En m\'n reservespullen liggen thuis in de werkplaats."' });
         dialog.push({ spreker: 'Jan', tekst: '"Als ik nou iets dunners had. Een pin, een spijker, een stevige speld, zoiets. Misschien heeft iemand anders iets bruikbaars bij zich."' });
-        extraHtml = torenCodeInvoerHtml();
+        // De haak-vlag valt pas als de hele scene is doorgeklikt en het
+        // invoerveld echt in beeld staat (de scene-engine toont extra na de
+        // laatste dialoogregel). Wie de toren opent en meteen op terug drukt
+        // heeft de breuk niet gezien: geen vlag, dus Fenna kan de spijker
+        // nog niet overhandigen, en de scene speelt de volgende keer opnieuw.
+        extraHtml = function (wrap) {
+          markVisited('jan_toren_haak_gebroken');
+          wrap.innerHTML = torenCodeInvoerHtml();
+        };
       }
     }
   } else if (p === 'kelly') {
