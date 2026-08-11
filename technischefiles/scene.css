@@ -365,6 +365,23 @@
   0%, 100% { opacity: .65; }
   50%      { opacity: 1; }
 }
+/* Verder-lock: de knop staat na elke nieuwe regel even op slot (zie de
+   VERDER-LOCK-notitie in scene-engine.js). Een knop die niets doet voelt
+   kapot, dus hij dimt zichtbaar en de ornament-pulse staat stil. Zodra
+   de pulse weer loopt, mag je klikken. De opacity-transitie zit al in
+   `transition: all .2s` op .sc-dialog-verder. */
+.sc-dialog-verder.sc-verder-locked {
+  opacity: .35;
+  cursor: default;
+  /* pointer-events uit houdt ook hover en :active weg, zodat de knop niet
+     oplicht alsof hij klaarstaat. De klik zelf wordt al door `disabled`
+     geblokkeerd; eronder ligt alleen de dialoogbalk. */
+  pointer-events: none;
+}
+.sc-dialog-verder.sc-verder-locked .sc-verder-ornament {
+  animation: none;
+  opacity: .6;
+}
 
 /* ─── Observatie-kaarten (bv. Jan's uitzicht vanaf de toren) ─── */
 .observatie-grid {
@@ -486,4 +503,16 @@
 .sc-actie-btn.sc-actie-blood:hover {
   background: rgba(139, 26, 26, .15);
   border-color: #a52020;
+}
+/* Korte lock op verse actieknoppen: ze verschijnen precies op het moment
+   van de laatste Verder-klik, dus een dubbele tik landt hier. Staat
+   bewust na de groot- en blood-varianten, zodat de hover-onderdrukking
+   ook bij die twee wint (gelijke specificiteit, dus bronvolgorde). */
+.sc-actie-btn.sc-actie-locked {
+  opacity: .4;
+  cursor: default;
+  /* pointer-events uit houdt ook hover en :active weg, zodat de knop niet
+     oplicht alsof hij klaarstaat. De klik zelf wordt al door `disabled`
+     geblokkeerd; eronder ligt alleen een gewone container. */
+  pointer-events: none;
 }

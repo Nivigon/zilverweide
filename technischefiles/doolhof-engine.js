@@ -428,11 +428,18 @@
       var regel = lines[i];
       var sp = '';
       var tx = '';
+      var lockOverride = null;
       if (typeof regel === 'string') {
         tx = regel;
       } else if (regel && typeof regel === 'object') {
         sp = regel.spreker || '';
         tx = regel.tekst || '';
+        lockOverride = (typeof regel.lockMs === 'number') ? regel.lockMs : null;
+      }
+      // Verder-lock: zelfde regeling als in de scene-engine, die de
+      // berekening bezit. Ontbreekt hij, dan simpelweg geen lock.
+      if (typeof window.dialoogLockKnop === 'function') {
+        window.dialoogLockKnop(verderBtn, window.dialoogLockMs(tx, lockOverride), 'dh-verder-locked');
       }
       if (sp) {
         spreker.textContent = sp;
@@ -450,6 +457,7 @@
     function volgende() {
       idx++;
       if (idx >= lines.length) {
+        if (typeof window.dialoogLockOpruimen === 'function') window.dialoogLockOpruimen(verderBtn);
         if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
         if (onComplete) onComplete();
         return;
