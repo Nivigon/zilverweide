@@ -265,6 +265,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .code-input::placeholder{color:var(--ash);letter-spacing:.1em}
 .code-error{color:var(--blood);font-size:.9rem;margin-top:.5rem;min-height:1.4rem;font-style:italic}
 .code-success{color:#7dbf7d;font-size:.9rem;margin-top:.5rem;font-style:italic}
+/* Pop-dialoog (put-reunie, toren-overdracht): zelfde leesrem als de
+   scene-dialoog. Kleur en cursor staan inline op de knop, dus het
+   vergrendeld-uiterlijk loopt via filter. */
+.pop-dialoog-verder:disabled{filter:brightness(.5)}
 .item-found{display:flex;gap:1rem;align-items:center;background:rgba(155,58,74,.1);border:1px solid rgba(155,58,74,.4);border-radius:4px;padding:1rem 1.25rem;margin:1.25rem 0}
 .item-icon{font-size:2rem;flex-shrink:0}
 .item-icon.item-afbeelding{width:2.6rem;height:2.6rem}
@@ -13564,11 +13568,12 @@ function renderK1Dorpsput(loc) {
       dialog.push('Je maakt de stof voorzichtig los. De spijker laat het steen los en blijft in de stof hangen.');
       dialog.push({ spreker: 'Fenna-Viviènne', tekst: '*(bekijkt het ding)* "Hm. Wat een vorm. Dun, stevig, en die knik erin. Bijna alsof het ergens voor gemaakt is."' });
       dialog.push({ spreker: 'Fenna-Viviènne', tekst: '"Ik hou hem bij me. Zoiets komt vast nog eens van pas. Al is het maar voor iemand anders."' });
+      // Na de lade terug naar het straatoverzicht, net als bij de
+      // winkel-vindplek. De her-render van de put die hier eerst stond
+      // startte de hele scene opnieuw, inclusief de Kelly-vast-dialoog
+      // als die toevallig actief was.
       acties = [{ label: 'Neem de spijker mee', onclick: function () {
-        fennaPaktSpijker(function () {
-          const l = locatiesK1.find(x => x.id === 'k1_dorpsput');
-          if (l) renderK1Dorpsput(l);
-        });
+        fennaPaktSpijker(goBackFromLocatie);
       } }];
     }
   }
@@ -16037,6 +16042,7 @@ function toonPopDialoog(stappen, callback) {
   // Zet de knop op dezelfde plek als de "Volgende →" knop — in sc-acties-mount
   const actiesMount = document.querySelector('#locatie-content .sc-acties-mount');
   const knop = document.createElement('button');
+  knop.className = 'pop-dialoog-verder';
   knop.style.cssText = 'width:100%;font-family:\'Cinzel\',serif;font-size:.8rem;letter-spacing:.15em;text-transform:uppercase;padding:.85rem 1.5rem;border:1px solid rgba(201,168,76,.45);background:rgba(13,10,6,.85);color:var(--gold);cursor:pointer;border-radius:2px;pointer-events:auto;opacity:0;transition:opacity .3s ease';
   if (actiesMount) {
     actiesMount.style.display = '';
@@ -16074,6 +16080,25 @@ function toonPopDialoog(stappen, callback) {
 
   let stap = 0;
 
+  // Zelfde leesrem als de scene-dialoog (dialoogLockVoorRegel uit de
+  // scene-engine): de knop gaat per nieuwe regel even op slot, afhankelijk
+  // van de tekstlengte; al gelezen regels houden alleen de korte
+  // dubbeltik-rem. Zonder deze rem was de pop-dialoog (put-reunie,
+  // toren-overdracht) in een paar snelle tikken door te klikken.
+  let vorigePopTeksten = { links: null, rechts: null };
+  function lockVoorStap(s) {
+    if (typeof dialoogLockVoorRegel !== 'function' || typeof dialoogLockKnop !== 'function') return;
+    var ms = 0;
+    ['links', 'rechts'].forEach(function (kant) {
+      var d = s[kant];
+      if (d && d.tekst !== vorigePopTeksten[kant]) {
+        ms = Math.max(ms, dialoogLockVoorRegel(d.naam, d.tekst));
+      }
+      if (d) vorigePopTeksten[kant] = d.tekst;
+    });
+    dialoogLockKnop(knop, ms, 'pop-verder-locked');
+  }
+
   function updatePop(el, data) {
     if (data) {
       el.querySelector('.pop-naam').textContent = data.naam;
@@ -16096,6 +16121,7 @@ function toonPopDialoog(stappen, callback) {
     updatePop(popRechts, s.rechts || null);
     knop.textContent = (i === stappen.length - 1) ? 'Begrepen →' : 'Verder →';
     if (knop.style.opacity === '0') knop.style.opacity = '1';
+    lockVoorStap(s);
   }
 
   knop.addEventListener('click', function() {
