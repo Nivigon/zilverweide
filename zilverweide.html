@@ -384,7 +384,10 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .rol-ov-mini-foto{width:4.6rem;height:4.6rem;border-radius:50%;overflow:hidden;border:1px solid rgba(201,168,76,.4);background:radial-gradient(circle,rgba(46,32,14,.7),rgba(13,10,6,.85));box-shadow:0 3px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease}
 .rol-ov-mini-foto img{width:100%;height:100%;object-fit:cover}
 .rol-ov-mini:hover .rol-ov-mini-foto{border-color:var(--gold);box-shadow:0 0 16px rgba(201,168,76,.4);transform:translateY(-2px)}
-.rol-ov-mini-naam{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.04em;color:var(--parchment);text-align:center;line-height:1.2;max-width:6rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Twee namen op een gedeelde tablet ("Anna & Bram") passen niet op een regel
+   van 6rem, dus twee regels toestaan en daarna pas afkappen. Solo-namen
+   blijven precies zoals ze waren: die halen de tweede regel niet. */
+.rol-ov-mini-naam{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.04em;color:var(--parchment);text-align:center;line-height:1.2;max-width:6rem;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:break-word}
 .rol-ov-mini.leeg{cursor:default}
 .rol-ov-mini.leeg .rol-ov-mini-foto{border-style:dashed;opacity:.55}
 .rol-ov-mini.leeg:hover .rol-ov-mini-foto{border-color:rgba(201,168,76,.4);box-shadow:0 3px 12px rgba(0,0,0,.45);transform:none}
@@ -1726,11 +1729,91 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   </div>
 </div>
 
-<!-- SPELERNAAM (vóór de teamkeuze): elke speler vult op zijn eigen tablet zijn
-     eigen naam in. Lokaal bewaard; bij de rolkeuze aan de rol gekoppeld en
-     gedeeld, zodat teamgenoten (en later een begeleider) zien wie wie is. -->
+<!-- TABLETMODUS (het eerste scherm na Begin): hoeveel spelers delen dit scherm.
+     Bewust een keuze en geen invoerveld: in de eerste sessie lazen spelers het
+     naamveld dat hier stond als "de teamnaam". Een keuze zonder het woord naam
+     of team erin kan zo niet gelezen worden, en zet meteen de verwachting dat
+     de namen die zo komen persoonlijke namen zijn.
+     De uitkomst is niet alleen cosmetisch: hij wordt per rol gedeeld als
+     tablet_spelers_<rol>, zodat later spelinhoud (bijvoorbeeld een minigame
+     voor twee) op een duo-tablet kan reageren. Zie duoTablet() hieronder. -->
+<style>
+  #screen-tabletmodus .tm-wrap { max-width: 40rem; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; text-align: center; }
+  #screen-tabletmodus .tm-titel { font-family: 'Cinzel', serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--gold); letter-spacing: .05em; margin-bottom: .5rem; }
+  #screen-tabletmodus .tm-orn { color: var(--gold-dim); letter-spacing: .32em; font-size: .62rem; text-transform: uppercase; margin-bottom: 1.4rem; }
+  #screen-tabletmodus .tm-uitleg {
+    font-family: 'Crimson Text', Georgia, serif; font-style: italic; color: var(--parchment);
+    font-size: 1.02rem; line-height: 1.6; margin: 0 auto 1.8rem; max-width: 27rem;
+  }
+  #screen-tabletmodus .tm-keuzes { display: flex; gap: .9rem; justify-content: center; flex-wrap: wrap; }
+  .tm-keuze {
+    flex: 1 1 13rem; max-width: 16rem; cursor: pointer; text-align: center;
+    background: rgba(13,10,6,.7); border: 1px solid rgba(201,168,76,.3); border-radius: 6px;
+    padding: 1.4rem 1rem; transition: all .15s;
+  }
+  .tm-keuze:hover { border-color: rgba(201,168,76,.6); background: rgba(201,168,76,.06); }
+  .tm-keuze.gekozen { border-color: var(--gold); background: rgba(201,168,76,.16); box-shadow: 0 0 16px rgba(201,168,76,.3); }
+  .tm-keuze-icoon { font-size: 1.9rem; line-height: 1; margin-bottom: .55rem; }
+  .tm-keuze-kop { font-family: 'Cinzel', serif; font-size: 1rem; letter-spacing: .06em; color: var(--gold); margin-bottom: .35rem; }
+  .tm-keuze-sub { font-family: 'Crimson Text', Georgia, serif; font-size: .92rem; line-height: 1.45; color: var(--parchment); opacity: .85; }
+  /* Hoogtebeheer, bewust onderaan dit blok zodat het de maten hierboven
+     overschrijft: meeschalen op schermhoogte, zodat dit scherm op geen enkele
+     landscape-tablet hoeft te scrollen. */
+  #screen-tabletmodus.screen { padding: 0; }
+  #screen-tabletmodus .tm-wrap { box-sizing: border-box; padding: clamp(.6rem, 4vh, 2.5rem) 1.25rem; }
+  #screen-tabletmodus .tm-titel { font-size: clamp(1.15rem, 4.4vh, 2rem); margin-bottom: clamp(.2rem, .8vh, .5rem); }
+  #screen-tabletmodus .tm-orn { margin-bottom: clamp(.5rem, 2.6vh, 1.4rem); }
+  #screen-tabletmodus .tm-uitleg {
+    font-size: clamp(.85rem, 2.4vh, 1.02rem); line-height: 1.45;
+    margin: 0 auto clamp(.8rem, 3.2vh, 1.8rem); max-width: 27rem;
+  }
+  .tm-keuze { padding: clamp(.8rem, 3vh, 1.4rem) 1rem; }
+  .tm-keuze-icoon { font-size: clamp(1.4rem, 4vh, 1.9rem); margin-bottom: clamp(.25rem, 1vh, .55rem); }
+  .tm-keuze-sub { font-size: clamp(.8rem, 2.2vh, .92rem); }
+  @media (max-height: 560px) {
+    #screen-tabletmodus .tm-orn { display: none; }
+  }
+</style>
+<div class="screen" id="screen-tabletmodus">
+  <div class="tm-wrap">
+    <div class="tm-titel">Deze tablet</div>
+    <div class="tm-orn">✦ &nbsp; voor we beginnen &nbsp; ✦</div>
+    <p class="tm-uitleg">Kijk even naar het scherm dat je vasthoudt. Hou je het in je eentje vast, of kijkt er iemand met je mee die samen met jou dezelfde rol speelt?</p>
+    <div class="tm-keuzes">
+      <button type="button" class="tm-keuze" id="tm-keuze-1" onclick="kiesTabletModus(1)">
+        <div class="tm-keuze-icoon">👤</div>
+        <div class="tm-keuze-kop">In mijn eentje</div>
+        <div class="tm-keuze-sub">Dit scherm is van mij alleen.</div>
+      </button>
+      <button type="button" class="tm-keuze" id="tm-keuze-2" onclick="kiesTabletModus(2)">
+        <div class="tm-keuze-icoon">👥</div>
+        <div class="tm-keuze-kop">Met zijn tweeën</div>
+        <div class="tm-keuze-sub">Wij delen dit scherm en spelen samen een rol.</div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SPELERNAAM (na de tabletmodus, vóór de teamkeuze): elke speler vult op zijn
+     eigen tablet zijn eigen naam in. Bij een gedeelde tablet staan beide velden
+     tegelijk in beeld, zodat allebei meteen zien dat er twee namen gevraagd
+     worden. Lokaal bewaard; bij de rolkeuze aan de rol gekoppeld en gedeeld,
+     zodat teamgenoten (en de begeleider) zien wie wie is. -->
 <style>
   #screen-spelernaam .sn-wrap { max-width: 32rem; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; text-align: center; }
+  #screen-spelernaam.duo .sn-wrap { max-width: 40rem; }
+  /* Duo: twee velden naast elkaar. Op smalle schermen onder elkaar, maar nog
+     altijd samen in beeld (dit scherm heeft geen scroll nodig). */
+  #screen-spelernaam .sn-velden { display: grid; grid-template-columns: 1fr; gap: .9rem; text-align: left; }
+  #screen-spelernaam.duo .sn-velden { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 34rem) { #screen-spelernaam.duo .sn-velden { grid-template-columns: 1fr; gap: .7rem; } }
+  #screen-spelernaam .sn-veld-2 { display: none; }
+  #screen-spelernaam.duo .sn-veld-2 { display: block; }
+  #screen-spelernaam .sn-label {
+    display: none; font-family: 'Cinzel', serif; font-size: .62rem; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--gold-dim); margin-bottom: .35rem; padding-left: .15rem;
+  }
+  #screen-spelernaam.duo .sn-label { display: block; }
   #screen-spelernaam .sn-titel { font-family: 'Cinzel', serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--gold); letter-spacing: .05em; margin-bottom: .5rem; }
   #screen-spelernaam .sn-orn { color: var(--gold-dim); letter-spacing: .32em; font-size: .62rem; text-transform: uppercase; margin-bottom: 1.4rem; }
   #screen-spelernaam .sn-uitleg {
@@ -1747,15 +1830,50 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   #screen-spelernaam .sn-veld::placeholder { color: var(--mist); font-style: italic; letter-spacing: 0; }
   #screen-spelernaam .sn-fout { min-height: 1.2rem; margin-top: .55rem; font-family: 'Crimson Text', Georgia, serif; font-style: italic; color: #d4826e; font-size: .92rem; }
   #screen-spelernaam .sn-knop { margin-top: 1.2rem; }
+
+  /* Hoogtebeheer, bewust ONDERAAN dit blok zodat het de maten hierboven
+     overschrijft. Dit scherm mag nooit scrollen, ook niet in de duo-stand
+     (twee velden plus labels) op een lage landscape-tablet. In plaats van een
+     enkel breekpunt schalen de verticale maten mee met de schermhoogte (vh),
+     zodat het er tussenin ook goed gaat. De .screen-basispadding (2rem boven,
+     4rem onder) is de grootste post en gaat er als eerste af. */
+  #screen-spelernaam.screen { padding: 0; }
+  #screen-spelernaam .sn-wrap { box-sizing: border-box; padding: clamp(.5rem, 4vh, 2.5rem) 1.25rem; }
+  #screen-spelernaam .sn-titel { font-size: clamp(1.1rem, 4.2vh, 2rem); margin-bottom: clamp(.15rem, .8vh, .5rem); }
+  #screen-spelernaam .sn-orn { margin-bottom: clamp(.4rem, 2.6vh, 1.4rem); }
+  #screen-spelernaam .sn-uitleg { font-size: clamp(.82rem, 2.2vh, 1.02rem); line-height: 1.4; margin-bottom: clamp(.5rem, 3vh, 1.6rem); }
+  #screen-spelernaam .sn-veld { font-size: clamp(.95rem, 2.6vh, 1.1rem); padding: clamp(.4rem, 1.7vh, .9rem) 1rem; }
+  #screen-spelernaam .sn-fout { min-height: clamp(.85rem, 2.2vh, 1.2rem); margin-top: clamp(.2rem, 1vh, .55rem); font-size: clamp(.8rem, 2vh, .92rem); }
+  #screen-spelernaam .sn-knop { margin-top: clamp(.4rem, 2.2vh, 1.2rem); }
+  /* Heel lage schermen: het ornamentregeltje is puur sfeer en gaat als eerste
+     weg, zodat de velden en de knop wel in beeld blijven. */
+  @media (max-height: 560px) {
+    #screen-spelernaam .sn-orn { display: none; }
+    #screen-spelernaam .sn-label { margin-bottom: .15rem; }
+  }
 </style>
 <div class="screen" id="screen-spelernaam">
   <div class="sn-wrap">
-    <div class="sn-titel">Hoe heet jij?</div>
-    <div class="sn-orn">✦ &nbsp; jouw naam &nbsp; ✦</div>
-    <p class="sn-uitleg">Vul je eigen naam in. Straks zien je teamgenoten wie welke rol speelt, dus schrijf hem zoals je genoemd wilt worden.</p>
-    <input class="sn-veld" id="spelernaam-input" type="text" maxlength="24" autocomplete="off" placeholder="Typ je naam..." oninput="wisSpelerNaamFout()" onkeydown="if(event.key==='Enter')bevestigSpelerNaam()">
+    <div class="sn-titel" id="spelernaam-titel">Hoe heet jij?</div>
+    <div class="sn-orn" id="spelernaam-orn">✦ &nbsp; jouw naam &nbsp; ✦</div>
+    <p class="sn-uitleg" id="spelernaam-uitleg">Vul je eigen naam in. Straks zien je teamgenoten wie welke rol speelt, dus schrijf hem zoals je genoemd wilt worden.</p>
+    <div class="sn-velden">
+      <div>
+        <div class="sn-label">Speler 1</div>
+        <input class="sn-veld" id="spelernaam-input" type="text" maxlength="24" autocomplete="off" placeholder="Typ je naam..." oninput="wisSpelerNaamFout()" onkeydown="if(event.key==='Enter')bevestigSpelerNaam()">
+      </div>
+      <div class="sn-veld-2">
+        <div class="sn-label">Speler 2</div>
+        <input class="sn-veld" id="spelernaam-input2" type="text" maxlength="24" autocomplete="off" placeholder="Typ je naam..." oninput="wisSpelerNaamFout()" onkeydown="if(event.key==='Enter')bevestigSpelerNaam()">
+      </div>
+    </div>
     <div class="sn-fout" id="spelernaam-fout"></div>
     <button class="btn sn-knop" onclick="bevestigSpelerNaam()">Verder →</button>
+    <!-- Terug naar de tabletmodus: wie zich verteld heeft (of alsnog iemand
+         naast zich krijgt) moet dat kunnen herstellen zonder herladen. -->
+    <div style="margin-top:1rem">
+      <button type="button" onclick="toonTabletModus(_spelerNaamVervolg)" style="background:none;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.12em;color:var(--mist);text-transform:uppercase;opacity:.7">← &nbsp; Toch met een ander aantal</button>
+    </div>
     <label class="ssi-toggle" style="justify-content:center;margin-top:1.6rem" title="Toont in het Kraaienkwartier een kaartje met de plekken waar je al geweest bent">
       <span class="ssi-label">Beginner modus</span>
       <input type="checkbox" id="beginner-modus-check" onchange="zetBeginnerModus(this.checked)">
@@ -2102,6 +2220,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-rol { font-family:'Cinzel',serif; font-size:.85rem; color:var(--gold); flex:0 0 9rem; }
   .bgl-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .bgl-naam.leeg { color:var(--mist); }
+  /* Merkje bij een rol die door twee mensen op een gedeelde tablet gespeeld
+     wordt. Blijft staan als de namen zelf afgekapt worden, zodat de begeleider
+     in een oogopslag ziet hoeveel mensen er echt aan tafel zitten. */
+  .bgl-duo { flex:0 0 auto; font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; color:var(--gold-dim); background:rgba(201,168,76,.12); border-radius:10px; padding:.1rem .45rem; }
   .bgl-veld { width:100%; box-sizing:border-box; font-family:'Cinzel',serif; font-size:1.05rem; text-align:center; letter-spacing:.06em; color:var(--parchment); background:rgba(13,10,6,.7); border:1px solid rgba(201,168,76,.35); border-radius:6px; padding:.85rem 1rem; }
   .bgl-veld:focus { outline:none; border-color:var(--gold); box-shadow:0 0 16px rgba(201,168,76,.3); }
   .bgl-fout { min-height:1.2rem; margin-top:.55rem; font-family:'Crimson Text',Georgia,serif; font-style:italic; color:#d4826e; font-size:.92rem; }
@@ -2354,6 +2476,13 @@ const state = {
   // lokaal (er is dan nog geen sessie); bij de rolkeuze koppelen we hem aan de
   // rol en delen we hem als speler_naam_<rol> zodat teamgenoten zien wie wie is.
   spelerNaam: '',
+  // Delen twee mensen deze tablet, dan staat hier de naam van de tweede.
+  spelerNaam2: '',
+  // Hoeveel mensen deze ene tablet delen: 1 of 2, gekozen op het allereerste
+  // scherm. Nooit meer dan 2: met oortjes op is drie op een scherm niet te
+  // doen. Wordt bij de rolkeuze gedeeld als tablet_spelers_<rol>, zodat
+  // spelinhoud erop kan sturen (zie duoTablet en duoTabletVoorRol).
+  spelersOpTablet: 1,
   vermomming: null,
   inventory: [],
   lastOpenedLocatie: null,
@@ -2436,6 +2565,8 @@ const state = {
 // ververst voordat de rol gekozen is). Zo hoeft de speler hem niet opnieuw te
 // typen; het invoerscherm vult hem dan alvast in.
 try { var _bewaardeSpelerNaam = localStorage.getItem('zw_spelernaam'); if (_bewaardeSpelerNaam) state.spelerNaam = _bewaardeSpelerNaam; } catch (e) {}
+try { var _bewaardeSpelerNaam2 = localStorage.getItem('zw_spelernaam2'); if (_bewaardeSpelerNaam2) state.spelerNaam2 = _bewaardeSpelerNaam2; } catch (e) {}
+try { var _bewaardTabletAantal = parseInt(localStorage.getItem('zw_tablet_spelers'), 10); if (_bewaardTabletAantal === 2) state.spelersOpTablet = 2; } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════════════
 // GEDEELDE STATE — Firebase Realtime Database
@@ -5255,22 +5386,112 @@ function sluitTeaser() {
 // Is de sessie al expliciet gezet via ?sessie= (begeleider of testen), dan
 // slaan we de teamkeuze over en gaan direct naar de intro.
 function startBegin() {
-  if (window._sessieOverride) { toonSpelerNaam(showVerhaal); return; }
-  toonSpelerNaam(toonTeamKeuze);
+  if (window._sessieOverride) { toonTabletModus(showVerhaal); return; }
+  toonTabletModus(toonTeamKeuze);
 }
 
-// Naam-invoer vóór de teamkeuze. De naam blijft eerst lokaal (er is nog geen
-// sessie), bij de rolkeuze koppelen we hem aan de rol en delen we hem. De
-// vervolgstap (normaal de teamkeuze, bij een sessie-override direct de intro)
-// geven we mee als callback.
+// ── Tabletmodus: hoeveel spelers delen dit scherm (1 of 2) ──
+// Dit is het eerste scherm na Begin. De vervolgstap na de namen (normaal de
+// teamkeuze, bij een sessie-override direct de intro) reizen we hier al mee,
+// zodat toonSpelerNaam hem alleen hoeft door te geven.
 var _spelerNaamVervolg = null;
+
+function toonTabletModus(vervolg) {
+  _spelerNaamVervolg = (typeof vervolg === 'function') ? vervolg : toonTeamKeuze;
+  markeerTabletModusKeuze();
+  showScreen('screen-tabletmodus');
+}
+
+// De onthouden keuze oplichten, zodat een tablet die opnieuw begint ziet wat
+// er de vorige keer stond. Wel gewoon opnieuw bevestigen: aan het begin van
+// een sessie kan er iemand bij zijn gekomen of weggevallen.
+//
+// Alleen een ECHT onthouden keuze licht op. Zonder deze voorwaarde staat bij
+// een verse start "in mijn eentje" al aan (de standaardwaarde), en dat leest
+// als "er is al voor je gekozen".
+function tabletModusOnthouden() {
+  try { return localStorage.getItem('zw_tablet_spelers') !== null; } catch (e) { return false; }
+}
+function markeerTabletModusKeuze() {
+  var toon = tabletModusOnthouden();
+  [1, 2].forEach(function (n) {
+    var el = document.getElementById('tm-keuze-' + n);
+    if (el) el.classList.toggle('gekozen', toon && state.spelersOpTablet === n);
+  });
+}
+
+function kiesTabletModus(aantal) {
+  zetSpelersOpTablet(aantal);
+  toonSpelerNaam(_spelerNaamVervolg);
+}
+
+// Eén plek waar het aantal wordt gezet: state, opslag en de schermklasse die
+// het tweede naamveld toont. Ook de debugknop komt hier langs.
+function zetSpelersOpTablet(aantal) {
+  var n = (parseInt(aantal, 10) === 2) ? 2 : 1;
+  state.spelersOpTablet = n;
+  if (n === 1) state.spelerNaam2 = '';
+  try {
+    localStorage.setItem('zw_tablet_spelers', String(n));
+    if (n === 1) localStorage.removeItem('zw_spelernaam2');
+  } catch (e) {}
+  var scherm = document.getElementById('screen-spelernaam');
+  if (scherm) scherm.classList.toggle('duo', n === 2);
+  markeerTabletModusKeuze();
+  // Al een rol gekozen (begeleider of debug zet dit later om), dan de
+  // gedeelde stand meteen bijwerken zodat het begeleidersscherm klopt.
+  if (state.personage) registreerSpelerNaam(state.personage);
+}
+
+// ── Gameplay-haak ──
+// Speelt deze tablet met twee mensen? Bedoeld voor spelinhoud die daarop mag
+// reageren (bijvoorbeeld een minigame die met twee paar handen te doen is).
+// Nog nergens in de spelinhoud gebruikt: dit is de aansluiting, geen regel.
+function duoTablet() {
+  return state.spelersOpTablet === 2;
+}
+
+// Hetzelfde voor een andere rol, via de gedeelde stand. Onbekend (nog niet
+// ingestapt) telt als 1, zodat een ontbrekende waarde nooit per ongeluk een
+// duo-variant aanzet.
+function aantalSpelersOpTablet(rol) {
+  if (!rol || rol === state.personage) return state.spelersOpTablet === 2 ? 2 : 1;
+  return getSharedState('tablet_spelers_' + rol) === 2 ? 2 : 1;
+}
+function duoTabletVoorRol(rol) {
+  return aantalSpelersOpTablet(rol) === 2;
+}
+
+// ── Naam-invoer (na de tabletmodus, vóór de teamkeuze) ──
+// De namen blijven eerst lokaal (er is nog geen sessie), bij de rolkeuze
+// koppelen we ze aan de rol en delen we ze.
 function toonSpelerNaam(vervolg) {
   _spelerNaamVervolg = (typeof vervolg === 'function') ? vervolg : toonTeamKeuze;
+  var duo = duoTablet();
+  var scherm = document.getElementById('screen-spelernaam');
+  if (scherm) scherm.classList.toggle('duo', duo);
   var inv = document.getElementById('spelernaam-input');
   if (inv) {
     var bewaard = state.spelerNaam || '';
     try { if (!bewaard) bewaard = localStorage.getItem('zw_spelernaam') || ''; } catch (e) {}
     inv.value = bewaard;
+  }
+  var inv2 = document.getElementById('spelernaam-input2');
+  if (inv2) {
+    var bewaard2 = duo ? (state.spelerNaam2 || '') : '';
+    try { if (duo && !bewaard2) bewaard2 = localStorage.getItem('zw_spelernaam2') || ''; } catch (e) {}
+    inv2.value = bewaard2;
+  }
+  // Kop en uitleg meebewegen: bij twee spelers is "Hoe heet jij?" misleidend.
+  var titel = document.getElementById('spelernaam-titel');
+  var orn = document.getElementById('spelernaam-orn');
+  var uitleg = document.getElementById('spelernaam-uitleg');
+  if (titel) titel.textContent = duo ? 'Hoe heten jullie?' : 'Hoe heet jij?';
+  if (orn) orn.innerHTML = duo ? '✦ &nbsp; jullie namen &nbsp; ✦' : '✦ &nbsp; jouw naam &nbsp; ✦';
+  if (uitleg) {
+    uitleg.textContent = duo
+      ? 'Jullie delen dit scherm en spelen samen een rol. Vul allebei je eigen naam in, zoals je genoemd wilt worden: straks zien je teamgenoten wie welke rol speelt.'
+      : 'Vul je eigen naam in. Straks zien je teamgenoten wie welke rol speelt, dus schrijf hem zoals je genoemd wilt worden.';
   }
   wisSpelerNaamFout();
   showScreen('screen-spelernaam');
@@ -5283,19 +5504,41 @@ function wisSpelerNaamFout() {
 }
 
 function bevestigSpelerNaam() {
+  var duo = duoTablet();
   var inv = document.getElementById('spelernaam-input');
+  var inv2 = document.getElementById('spelernaam-input2');
   var naam = inv ? inv.value.trim().replace(/\s+/g, ' ') : '';
+  var naam2 = (duo && inv2) ? inv2.value.trim().replace(/\s+/g, ' ') : '';
+  var f = document.getElementById('spelernaam-fout');
   if (!naam) {
-    var f = document.getElementById('spelernaam-fout');
-    if (f) f.textContent = 'Vul eerst je naam in om verder te gaan.';
+    if (f) f.textContent = duo ? 'Vul bij speler 1 een naam in om verder te gaan.' : 'Vul eerst je naam in om verder te gaan.';
     if (inv) { try { inv.focus(); } catch (e) {} }
     return;
   }
+  if (duo && !naam2) {
+    if (f) f.textContent = 'Vul ook bij speler 2 een naam in om verder te gaan.';
+    if (inv2) { try { inv2.focus(); } catch (e) {} }
+    return;
+  }
   state.spelerNaam = naam;
-  try { localStorage.setItem('zw_spelernaam', naam); } catch (e) {}
+  state.spelerNaam2 = naam2;
+  try {
+    localStorage.setItem('zw_spelernaam', naam);
+    if (naam2) localStorage.setItem('zw_spelernaam2', naam2);
+    else localStorage.removeItem('zw_spelernaam2');
+  } catch (e) {}
   var vervolg = _spelerNaamVervolg || toonTeamKeuze;
   _spelerNaamVervolg = null;
   vervolg();
+}
+
+// De namen van deze tablet als één regel, voor plekken die één label tonen
+// (rol-overzicht, begeleiderspaneel). Solo levert gewoon de ene naam op.
+function spelerNamenLabel() {
+  var a = (state.spelerNaam || '').trim();
+  var b = (state.spelersOpTablet === 2) ? (state.spelerNaam2 || '').trim() : '';
+  if (a && b) return a + ' & ' + b;
+  return a || b;
 }
 
 function showVerhaal() {
@@ -6612,8 +6855,13 @@ function begeleiderRenderPaneel() {
     var pending = _bglPending.hasOwnProperty(r.id);
     var p = _bglPending[r.id] || {};
     var checked = p.hasOwnProperty('beginner') ? p.beginner : (_bglShared['beginner_modus_' + r.id] === true);
+    // Twee spelers op een gedeelde tablet: naast de namen een 👥-merkje, zodat
+    // het aantal ook zichtbaar blijft als de namen niet helemaal passen.
+    var duoRol = _bglShared['tablet_spelers_' + r.id] === 2 ||
+      (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].aantal === 2);
     var naamHtml = naam
-      ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>'
+      ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>' +
+        (duoRol ? '<span class="bgl-duo">👥 2</span>' : '')
       : '<span class="bgl-naam leeg">' + (bezet ? '(naam onbekend)' : 'nog niet gekozen') + '</span>';
     // Schaduw-status van deze speler: vastzitten (met de code, zodat de
     // begeleider desnoods kan voorzeggen) gaat boven vervloekt-met-meter.
@@ -6883,32 +7131,53 @@ function debugSnelstart(p) {
   startSpelNaKeuze();
 }
 
-// Koppel de eigen naam aan de zojuist gekozen rol en deel hem, zodat
-// teamgenoten in het spelers-overzicht zien wie wie is. Naast de platte
-// gedeelde sleutel (speler_naam_<rol>, die een begeleider onder
+// Koppel de naam of namen van deze tablet aan de zojuist gekozen rol en deel
+// ze, zodat teamgenoten in het spelers-overzicht zien wie wie is. Naast de
+// platte gedeelde sleutel (speler_naam_<rol>, die een begeleider onder
 // sessies/<sid>/shared kan lezen) ook een nette roster-tak, klaar voor een
 // latere begeleiders-module. Lege naam (bijvoorbeeld bij een testsnelstart)
 // slaan we over.
+//
+// speler_naam_<rol> houdt de weergavestring ("Anna & Bram" bij een gedeelde
+// tablet), zodat alles wat die sleutel al leest blijft werken. De losse tweede
+// naam en het aantal staan ernaast: tablet_spelers_<rol> is de sleutel waar
+// spelinhoud later op kan sturen (zie duoTabletVoorRol).
 function registreerSpelerNaam(rol) {
   var naam = (state.spelerNaam || '').trim();
   if (!naam) return;
-  setSharedState('speler_naam_' + rol, naam);
+  var duo = state.spelersOpTablet === 2;
+  var naam2 = duo ? (state.spelerNaam2 || '').trim() : '';
+  setSharedState('speler_naam_' + rol, spelerNamenLabel() || naam);
+  setSharedState('speler_naam2_' + rol, naam2 || null);
+  setSharedState('tablet_spelers_' + rol, duo && naam2 ? 2 : 1);
   try {
     if (typeof firebase !== 'undefined' && firebase.database) {
       firebase.database().ref('sessies/' + herstelSessieId() + '/meta/spelers/' + rol)
-        .update({ naam: naam, rol: rol }).catch(function () {});
+        .update({
+          naam: spelerNamenLabel() || naam,
+          naam1: naam,
+          naam2: naam2 || null,
+          aantal: (duo && naam2) ? 2 : 1,
+          rol: rol
+        }).catch(function () {});
     }
   } catch (e) {}
 }
 
 // Testmodus: vul voor de drie andere rollen een bezet-vlag en een testnaam,
 // zodat het spelers-overzicht (knop rechtsboven) in je eentje te bekijken is.
+// Kelly krijgt bewust een gedeelde tablet, zodat de duo-weergave (twee namen,
+// "spelen" in plaats van "speelt", het merkje in het begeleiderspaneel) ook
+// solo te controleren is.
 function debugVulAndereSpelers() {
-  var testNamen = { jan: 'Tom', kelly: 'Sanne', fenna: 'Nora', felix: 'Ravi' };
+  var testNamen = { jan: 'Tom', kelly: 'Sanne & Ilse', fenna: 'Nora', felix: 'Ravi' };
+  var testDuo = { kelly: 'Ilse' };
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function (rol) {
     if (rol === state.personage) return;
     zetRolBezet(rol, true);
     setSharedState('speler_naam_' + rol, testNamen[rol]);
+    setSharedState('speler_naam2_' + rol, testDuo[rol] || null);
+    setSharedState('tablet_spelers_' + rol, testDuo[rol] ? 2 : 1);
   });
   if (typeof toonToast === 'function') toonToast('🧑‍🤝‍🧑', 'Testnamen voor de andere spelers gezet');
 }
@@ -7153,6 +7422,8 @@ function toonAnderSpeler(rol) {
   if (!pop || !kaart) return;
   var naam = getSharedState('speler_naam_' + rol);
   var spelerNaam = (naam && String(naam).trim()) ? String(naam).trim() : null;
+  // Twee mensen op één tablet: "Anna & Bram spelen", niet "speelt".
+  var spelerWerkwoord = duoTabletVoorRol(rol) ? ' spelen' : ' speelt';
   // Zelfde "waarom deze rol"-blok als op het keuzescherm en het eigen
   // rol-overzicht, zodat spelers hier terugzien waarom de rollen ook alweer
   // zo verdeeld zijn.
@@ -7166,7 +7437,7 @@ function toonAnderSpeler(rol) {
     '<div class="asp-top">' +
       '<div class="asp-foto"><img src="' + d.img + '" alt="" style="object-position:' + d.imgPos + '"></div>' +
       '<div>' +
-        (spelerNaam ? '<div class="asp-speler">' + escSpelerNaam(spelerNaam) + ' speelt</div>' : '') +
+        (spelerNaam ? '<div class="asp-speler">' + escSpelerNaam(spelerNaam) + spelerWerkwoord + '</div>' : '') +
         '<div class="asp-naam">' + d.naam + '</div>' +
         '<div class="asp-rol">' + d.rol + '</div>' +
       '</div>' +
@@ -19228,6 +19499,25 @@ function buildDebugPanel() {
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],
+    // Tabletmodus omzetten zonder opnieuw te beginnen: zo is de duo-weergave
+    // (rol-overzicht, begeleiderspaneel) te testen zonder de hele flow over
+    // te doen. Bij het aanzetten vullen we zo nodig een tweede testnaam in,
+    // anders blijft het aantal op 1 staan.
+    ['👥 Tablet: ' + (duoTablet() ? '2 spelers (klik = 1)' : '1 speler (klik = 2)'), function(){
+      if (duoTablet()) {
+        zetSpelersOpTablet(1);
+      } else {
+        if (!(state.spelerNaam2 || '').trim()) {
+          state.spelerNaam2 = 'Testmaatje';
+          try { localStorage.setItem('zw_spelernaam2', state.spelerNaam2); } catch (e) {}
+        }
+        zetSpelersOpTablet(2);
+      }
+      if (typeof toonToast === 'function') {
+        toonToast('👥', duoTablet() ? 'Tablet staat op 2 spelers' : 'Tablet staat op 1 speler');
+      }
+      close();
+    }, true],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
