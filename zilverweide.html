@@ -19201,6 +19201,22 @@ function buildDebugPanel() {
     // of zet het loggen aan/uit (staat standaard aan).
     ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
     ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
+    // Verder-lock: de korte pauze voordat je op Verder mag klikken, zodat
+    // niemand doorklikt voor de tekst gelezen kan zijn. Tijdens testen wil
+    // je juist wel snel door, vandaar deze schakelaar.
+    ['⏱️ Verder-lock: ' + (window._verderLockUit ? 'UIT (klik = aan)' : 'AAN (klik = uit)'), function(){
+      window._verderLockUit = !window._verderLockUit;
+      // Knoppen die nu op slot staan meteen vrijgeven, anders zit je nog
+      // tot drie seconden vast aan de stand van voor het omzetten.
+      if (window._verderLockUit && typeof window.dialoogLockKnop === 'function') {
+        [['.sc-verder-locked','sc-verder-locked'], ['.dh-verder-locked','dh-verder-locked'],
+         ['.lp-verder-locked','lp-verder-locked'], ['.sc-actie-locked','sc-actie-locked']]
+          .forEach(function(p){
+            document.querySelectorAll(p[0]).forEach(function(b){ window.dialoogLockKnop(b, 0, p[1]); });
+          });
+      }
+      close();
+    }, true],
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],

@@ -21,7 +21,8 @@
      mediaSlotAfterDialog: '<div>...</div>',  // optioneel: vervangt media-container na laatste dialoog-regel (met fade)
      dialog: [
        'Voor je staat een huis met de gordijnen open.',
-       { spreker: 'Brem', tekst: 'Goedendag.' }
+       { spreker: 'Brem', tekst: 'Goedendag.' },
+       { tekst: 'Een beat die tijd moet krijgen.', lockMs: 4000 }
      ],
      extra: '<div class="code-section">...</div>',  // optioneel: HTML/element/functie
      acties: [
@@ -37,6 +38,10 @@
      - functie(wrapEl) die zelf elementen toevoegt aan wrapEl
 
    `extra` verschijnt pas na de laatste dialoog-regel, vóór de acties.
+
+   Een dialoog-regel mag `lockMs` meekrijgen: dat overschrijft de
+   berekende Verder-lock voor die ene regel (zie VERDER-LOCK hieronder).
+   `lockMs: 0` zet de lock voor die regel helemaal uit.
 
    De terug-knop:
      - Default: roept goBackFromLocatie() aan als die bestaat
@@ -61,6 +66,80 @@
     }
     if (kids) kids.forEach(function (k) { if (k) e.appendChild(k); });
     return e;
+  }
+
+  /* ─── VERDER-LOCK ────────────────────────────────────────────────
+     Testspelers klikten sneller door dan ze konden lezen. Solo omdat de
+     duim al onderweg was naar de knop, in duo omdat de snelste speler de
+     knop had en de ander nog las. Daarom staat Verder na elke nieuwe
+     regel even op slot.
+
+     De lock schaalt mee met de regellengte: LOCK_BASIS plus
+     LOCK_PER_TEKEN per teken, begrensd tussen LOCK_MIN en LOCK_MAX. Op
+     de mediane regel in dit spel (65 tekens) komt dat op 2,0 seconde,
+     oftewel ruim 300 woorden per minuut. Dat is sneller dan vrijwel
+     iedereen leest, dus de lock raakt alleen wie onmogelijk gelezen kan
+     hebben. Wie wel leest, merkt er niets van. Het is een ondergrens,
+     geen opgelegd leestempo; daarom bewust niet de volle leestijd.
+
+     In beginnersmodus loopt de lock maal LOCK_BEGINNER_FACTOR, want dat
+     is precies de speler waar deze feedback vandaan kwam.
+
+     Uit te zetten via het debugpaneel (window._verderLockUit).
+  */
+  var LOCK_BASIS           = 400;
+  var LOCK_PER_TEKEN       = 25;
+  var LOCK_MIN             = 800;
+  var LOCK_MAX             = 3000;
+  var LOCK_BEGINNER_FACTOR = 1.5;
+
+  // Vaste, kortere lock op de knoppen die na de laatste dialoog-regel
+  // verschijnen. De dialoogbalk verdwijnt dan uit de DOM en de acties
+  // schuiven omhoog naar ongeveer dezelfde plek, dus een tweede reflex-
+  // klik landt zo op een verse knop. Hier is niets te lezen, het gaat
+  // puur om die dubbele tik, vandaar een vaste korte waarde.
+  var LOCK_ACTIES = 700;
+
+  // Berekent de lockduur in ms. `override` (een getal, ook 0) wint van de
+  // berekening en gaat bewust buiten de beginners-factor om: wie een beat
+  // handmatig instelt, bedoelt precies dat aantal.
+  function dialoogLockMs(tekst, override) {
+    if (global._verderLockUit) return 0;
+    if (typeof override === 'number') return override;
+    var ms = LOCK_BASIS + String(tekst || '').length * LOCK_PER_TEKEN;
+    if (ms < LOCK_MIN) ms = LOCK_MIN;
+    if (ms > LOCK_MAX) ms = LOCK_MAX;
+    if (global._beginnerModus) ms = Math.round(ms * LOCK_BEGINNER_FACTOR);
+    return ms;
+  }
+
+  // Zet een knop ms lang op slot. `disabled` zorgt dat de klik echt
+  // wegvalt en niet wordt bewaard: een bewaarde klik doet na afloop
+  // alsnog precies wat we willen voorkomen. De lock-klasse dimt de knop
+  // en zet de ornament-pulse stil, want een knop die niets doet voelt
+  // kapot en dan gaan mensen juist harder tikken. De pulse die weer gaat
+  // lopen is het teken dat je mag klikken.
+  function lockKnop(btn, ms, lockKlasse) {
+    if (!btn) return;
+    var kl = lockKlasse || 'sc-verder-locked';
+    if (btn._lockTimer) { clearTimeout(btn._lockTimer); btn._lockTimer = null; }
+    if (!ms || ms <= 0) {
+      btn.disabled = false;
+      btn.classList.remove(kl);
+      return;
+    }
+    btn.disabled = true;
+    btn.classList.add(kl);
+    btn._lockTimer = setTimeout(function () {
+      btn._lockTimer = null;
+      btn.disabled = false;
+      btn.classList.remove(kl);
+    }, ms);
+  }
+
+  // Timer opruimen als de knop uit beeld gaat voordat de lock afloopt.
+  function lockOpruimen(btn) {
+    if (btn && btn._lockTimer) { clearTimeout(btn._lockTimer); btn._lockTimer = null; }
   }
 
   // ─── Main render-functie ────────────────────────────────────────
@@ -230,14 +309,18 @@
         var klasse = 'sc-actie-btn';
         if (actie.stijl === 'blood') klasse += ' sc-actie-blood';
         if (actie.stijl === 'groot') klasse += ' sc-actie-groot';
-        groep.appendChild(el('button', {
+        var btn = el('button', {
           class: klasse,
           text: actie.label,
           onclick: function (e) {
             e.preventDefault();
             if (actie.onclick) actie.onclick();
           }
-        }));
+        });
+        // Korte lock: deze knoppen verschijnen op het moment van de
+        // laatste Verder-klik, dus een dubbele tik zou hier landen.
+        lockKnop(btn, global._verderLockUit ? 0 : LOCK_ACTIES, 'sc-actie-locked');
+        groep.appendChild(btn);
       });
       actiesContainer.appendChild(groep);
     }
@@ -264,14 +347,17 @@
 
     function toonRegel(i) {
       var regel = lines[i];
-      var sp = '', tx = '', onShow = null;
+      var sp = '', tx = '', onShow = null, lockOverride = null;
       if (typeof regel === 'string') {
         tx = regel;
       } else if (regel && typeof regel === 'object') {
         sp = regel.spreker || '';
         tx = regel.tekst || '';
         onShow = regel.onShow || null;
+        lockOverride = (typeof regel.lockMs === 'number') ? regel.lockMs : null;
       }
+      // Verder gaat op slot zolang deze regel niet gelezen kan zijn.
+      lockKnop(verderBtn, dialoogLockMs(tx, lockOverride), 'sc-verder-locked');
       if (sp) {
         spreker.textContent = sp;
         spreker.style.display = '';
@@ -299,6 +385,7 @@
     function volgende() {
       idx++;
       if (idx >= lines.length) {
+        lockOpruimen(verderBtn);
         if (dialog.parentNode) dialog.parentNode.removeChild(dialog);
         if (onComplete) onComplete();
         return;
@@ -312,4 +399,10 @@
 
   // Expose
   global.renderScene = renderScene;
+  // De doolhof- en lockpick-engine hebben een eigen Verder-knop met
+  // hetzelfde patroon en gebruiken deze twee, zodat de lock overal
+  // dezelfde is en op één plek te verstellen valt.
+  global.dialoogLockMs  = dialoogLockMs;
+  global.dialoogLockKnop = lockKnop;
+  global.dialoogLockOpruimen = lockOpruimen;
 })(window);

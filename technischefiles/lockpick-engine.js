@@ -647,12 +647,14 @@
     var dialog = el('div', { class: 'lp-dialog' }, [body, verderBtn]);
     if (sceneEl.parentNode) sceneEl.parentNode.insertBefore(dialog, sceneEl.nextSibling);
     function toonRegel(i) {
-      var r = lines[i], sp = '', tx = '';
-      if (typeof r === 'string') tx = r; else if (r && typeof r === 'object') { sp = r.spreker || ''; tx = r.tekst || ''; }
+      var r = lines[i], sp = '', tx = '', lockOverride = null;
+      if (typeof r === 'string') tx = r; else if (r && typeof r === 'object') { sp = r.spreker || ''; tx = r.tekst || ''; lockOverride = (typeof r.lockMs === 'number') ? r.lockMs : null; }
+      // Verder-lock: de scene-engine bezit de berekening, zie daar.
+      if (typeof window.dialoogLockKnop === 'function') window.dialoogLockKnop(verderBtn, window.dialoogLockMs(tx, lockOverride), 'lp-verder-locked');
       if (sp) { spreker.textContent = sp; spreker.style.display = ''; } else spreker.style.display = 'none';
       tekst.textContent = tx; tekst.style.animation = 'none'; void tekst.offsetWidth; tekst.style.animation = '';
     }
-    function volgende() { idx++; if (idx >= lines.length) { if (dialog.parentNode) dialog.parentNode.removeChild(dialog); if (onComplete) onComplete(); return; } toonRegel(idx); }
+    function volgende() { idx++; if (idx >= lines.length) { if (typeof window.dialoogLockOpruimen === 'function') window.dialoogLockOpruimen(verderBtn); if (dialog.parentNode) dialog.parentNode.removeChild(dialog); if (onComplete) onComplete(); return; } toonRegel(idx); }
     toonRegel(0);
   };
   // ─── Audio: whistle-loop + drops/mes op instelbaar interval + klik ─
