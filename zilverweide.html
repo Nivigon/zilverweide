@@ -2710,6 +2710,7 @@ function verwerkBinnengekomenShared(data) {
   var ietsNieuws = false;
   var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
   var vijverFlagBinnen = false, fennaVijverVrijBinnen = false;
+  var torenCodeBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -2721,6 +2722,7 @@ function verwerkBinnengekomenShared(data) {
           if (f === 'kelly_gered') kellyGeredBinnen = true;
           if (f === 'fenna_vijver_vast' || f === 'fenna_vijver_vrij') vijverFlagBinnen = true;
           if (f === 'fenna_vijver_vrij') fennaVijverVrijBinnen = true;
+          if (f === 'toren_code_ingevoerd') torenCodeBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
               || f === 'felix_code_ingevoerd') h2FlagBinnen = true;
           if (typeof DORENDAEL_MISSIE_KEYS !== 'undefined' && DORENDAEL_MISSIE_KEYS.indexOf(f) !== -1) {
@@ -2813,6 +2815,18 @@ function verwerkBinnengekomenShared(data) {
       var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
+  }
+  // Toren-overdracht: Fenna staat op haar code-scherm bij de toren te wachten
+  // tot Jan de spijker-code invoert. Komt die vlag binnen terwijl ze daar
+  // staat, dan speelt de overdracht-dialoog meteen (zelfde patroon als de
+  // put-reunie bij Jan hierboven). Niet tijdens de eerste snapshot (herladen).
+  if (torenCodeBinnen && !eersteSnapshot &&
+      state.personage === 'fenna' && hasVisited('fenna_spijker_gegeven') &&
+      state.lastOpenedLocatie === 'k1_uitkijktoren' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      typeof speelTorenOverdracht === 'function') {
+    speelTorenOverdracht();
   }
   // Zelfde voor de Stiltevijver (DD8). Sta je daar terwijl Fenna's status via
   // een ander apparaat verandert, dan het scherm meteen herzien. Voor Kelly
@@ -3385,7 +3399,10 @@ const VISITED_FLAGS = {
 
   // Overige locaties
   jan_toren_geklommen:        'Jan is de uitkijktoren opgeklommen',
-  jan_heeft_speld:            'Jan heeft de kromme speld van de uitkijktoren',
+  jan_heeft_speld:            'Jan heeft de kromme spijker van de uitkijktoren',
+  jan_toren_haak_gebroken:    'Jans eigen haakje is afgebroken in het torenslot',
+  toren_code_ingevoerd:       'Jan heeft de spijker-code bij de toren ingevoerd',
+  fenna_spijker_gegeven:      'Fenna heeft de roestige spijker aan Jan overhandigd',
   nummer7_filmpje_gezien:     'Het filmpje bij nummer 7 is afgespeeld',
   terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na de podium-openingsdialoog)',
 
@@ -3510,6 +3527,10 @@ const SHARED_VISITED_FLAGS = [
   'kerk_non_weg','h6_klokkenmaker_gezien','muziekdoosje_bij_aaltje',
   // Vastzit-situaties (iedereen moet de situatie en de afloop zien)
   'kelly_in_put','kelly_gered','fenna_vijver_vast','fenna_vijver_vrij',
+  // Toren-overdracht: Fenna wacht bij de toren tot Jan de spijker-code
+  // invoert. Zonder delen blijft haar code-scherm staan en speelt de
+  // overdracht-dialoog op haar tablet nooit.
+  'toren_code_ingevoerd',
   // Felix' opsluiting in H2 hoort in dezelfde categorie: zonder delen weet
   // alleen Felix zelf dat hij vastzit, en dan ziet Jan bij H2 "hier valt
   // niets te doen" in plaats van het gat in de muur. De vrij-vlag stond al
@@ -3946,13 +3967,13 @@ const KRAAIEN_MISSIE_KEYS = [
   { id: 'dagboek',  label: 'Het dagboek leesbaar',       check: function(){ return !!state.inventory.find(function(i){return i.naam==='Leesbaar Dagboek 🔑';}) || !!getSharedState('kk_sleutel_dagboek'); } },
   { id: 'wallingen',label: 'Plan voor Nummer 7 bekend',check: function(){ return !!state.inventory.find(function(i){return i.naam==='Sleutel Wallingen 🔑';}) || !!getSharedState('kk_sleutel_wallingen'); } },
   { id: 'robbie',   label: 'Robbie staat klaar',         check: function(){ return !!state.inventory.find(function(i){return i.naam==='Robbie staat klaar 🔑';}) || !!getSharedState('kk_sleutel_robbie'); } },
-  { id: 'speld',    label: 'Jan kan sommige deuren kraken', check: function(){ return !!state.inventory.find(function(i){return i.naam==='Kromme Speld';}) || !!getSharedState('kk_sleutel_speld'); } },
+  { id: 'speld',    label: 'Jan kan sommige deuren kraken', check: function(){ return !!state.inventory.find(function(i){return i.naam==='Kromme Spijker';}) || !!getSharedState('kk_sleutel_speld'); } },
 ];
 const KK_SLEUTEL_ITEMS = {
   'Leesbaar Dagboek 🔑':   'dagboek',
   'Sleutel Wallingen 🔑':  'wallingen',
   'Robbie staat klaar 🔑': 'robbie',
-  'Kromme Speld':          'speld'
+  'Kromme Spijker':          'speld'
 };
 
 // Dorendael-keys: de 5 cruciale pad-flags voor de heks-gok.
@@ -4605,7 +4626,7 @@ const ITEMS = {
   coneHoedje:         { emoji: '🐉', naam: 'Chinees Kegelhoedje' },
   zakjeMunten:        { emoji: '🪙', naam: 'Zakje Munten' },
   felixOutfit:        { emoji: '👘', naam: 'Vermomming voor Felix' },
-  speld:              { emoji: '📌', naam: 'Kromme Speld' },
+  speld:              { emoji: '📌', naam: 'Kromme Spijker' },
   // Anti-Schaduw quest (H7 Apotheker)
   donderbloesem:      { emoji: '🌸', naam: 'Donderbloesem' },
   kraalBeengiht:      { emoji: '📿', naam: 'Kraal van Beengiht' },
@@ -5102,7 +5123,7 @@ const locatiesK1 = [
     locked: false, emoji: '🗼',
     tekst: null,
     tekstPerRol: {
-      jan:   'Een smalle hoge toren aan het einde van een steegje. De deur zit op slot, maar naast de drempel ligt een kromme speld.',
+      jan:   'Een zijpad leidt naar een smalle hoge toren. De deur zit op slot.',
       kelly: 'Een smalle hoge toren aan het einde van een steegje. Je duwt tegen de deur, maar die zit stevig op slot. <em>"Hmm, hier kom ik niet in. Misschien kan iemand anders hier iets mee."</em>',
       fenna: 'Een smalle hoge toren. Fenna-Viviènne kijkt ernaar en schudt haar hoofd: <em>"Pff, sorry hoor. M&#39;n jurk, m&#39;n make-up, m&#39;n haar, allemaal naar de knoppen door één trap. Niet doen."</em>',
       felix: 'Een smalle hoge toren. De Vos kijkt omhoog en kreunt: <em>"Al die trappen? Dat trekken m&#39;n knieën niet."</em>',
@@ -7249,7 +7270,7 @@ function addInventory(emoji, naam, toonPopup=true) {
         return (k.id === 'dagboek'   && naam === 'Leesbaar Dagboek 🔑') ||
                (k.id === 'wallingen' && naam === 'Sleutel Wallingen 🔑') ||
                (k.id === 'robbie'    && naam === 'Robbie staat klaar 🔑') ||
-               (k.id === 'speld'     && naam === 'Kromme Speld');
+               (k.id === 'speld'     && naam === 'Kromme Spijker');
       });
       if (matched) onMissieKeyVoltooid(matched.label);
     }
@@ -7462,7 +7483,8 @@ var ITEM_AFBEELDINGEN = {
   'Nat Dagboek':          'items/viesdagboekitem.png',
   'Microfoon':            'items/microfoonitem.png',   // Fenna's microfoon
   'Breiwerkje':           'items/lucindeitem.png',      // Felix' Lucinde-vermomming
-  'Kromme Speld':         'items/spijkeritem.png',      // Jan's lockpick-speld
+  'Kromme Spijker':         'items/spijkeritem.png',      // Jan's lockpick-spijker
+  'Roestige Spijker':       'items/spijkeritem.png',      // Fenna's vondst voor Jan (zelfde beeld)
   'Zakje Munten':         'items/munten.png',           // Jan in Heer Donatuslaan
   'Munten van de Bewoner':'items/munten.png',           // Felix bij DD2
   'Munten van Stoop':     'items/munten.png',           // Felix bij K2 (Stoop)
@@ -7512,7 +7534,8 @@ function itemAantalBadge(item) {
 // staan tonen de placeholder-tekst in toonInventarisItem().
 var ITEM_TEKSTEN = {
   // Kraaienkwartier
-  'Kromme Speld':              'Een slotenmaker kan sloten ook breken.',
+  'Kromme Spijker':              'Een slotenmaker kan sloten ook breken.',
+  'Roestige Spijker':            'Dun en stevig, met een eigenwijze knik erin. Hier kan een ander vast wat mee.',
   'Tobbe':                      'Breng Tobbe terug naar Stoop.',
   'Munten van Stoop':           'Het geld brandt in je zakken. Wie verkoopt hier iets?',
   'Breiwerkje':                 'Een oude dame zonder breiwerk valt op. Met breiwerk niet.',
@@ -12396,6 +12419,7 @@ function renderK1Uitkijktoren(loc) {
   const dialog = [];
   let acties = null;
   let mediaSlotHtml = null;
+  let extraHtml = null;
   // Toont deze klim de telling? Alleen voor Jan, en alleen nadat Stazia haar
   // diepere hint gegeven heeft en het antwoord nog niet gegeven is.
   let torenTelling = false;
@@ -12464,19 +12488,45 @@ function renderK1Uitkijktoren(loc) {
         // Al eerder geklommen, deur staat nog open
         dialog.push('De torendeur staat nog open van de vorige keer.');
         acties = [{ label: 'Begin de klim', onclick: janKlimt }];
-      } else {
-        // Eerste bezoek: slot + speld
-        dialog.push('Een smalle hoge toren aan het einde van een steegje. De deur zit op slot.');
-        dialog.push({ spreker: 'Jan', tekst: '*(kijkt omlaag)* "Hé, een kromme roestige speld naast de drempel." *(pakt hem op, bekijkt hem)* "Dun genoeg, en net de juiste kromming. Deze is perfect."' });
+      } else if (hasVisited('toren_code_ingevoerd')) {
+        // De overdracht is geweest: de spijker zit in Jans zak, het slot wacht.
+        dialog.push('De torendeur wacht. De roestige spijker van Fenna zit in je zak.');
         acties = [{ label: 'Probeer het slot te openen', onclick: startTorenLockpick }];
+      } else if (hasVisited('jan_toren_haak_gebroken')) {
+        // Herbezoek zonder vervangend voorwerp: kort, plus het invoerveld.
+        dialog.push('De toren. Het slot zit er nog net zo dicht bij als daarnet.');
+        dialog.push({ spreker: 'Jan', tekst: '"Nog steeds niets om mee te wrikken. Wie loopt er nou rond met een losse speld of een spijker..."' });
+        extraHtml = torenCodeInvoerHtml();
+      } else {
+        // Eerste bezoek: Jans eigen haakje breekt af in het slot. De toren
+        // gaat pas open met de code die bij het vervangende voorwerp hoort.
+        markVisited('jan_toren_haak_gebroken');
+        dialog.push('Een zijpad leidt naar een smalle hoge toren. De deur zit op slot.');
+        dialog.push({ spreker: 'Jan', tekst: '"Van daarboven kijk je vast de hele straat over. Daar wil ik heen."' });
+        dialog.push({ spreker: 'Jan', tekst: '*(hurkt bij het slot)* "Oud en roestig, maar de pinnen zitten er nog in. Dit krijg ik open."' });
+        dialog.push('Je schuift je eigen haakje in het slot. De eerste pin geeft mee. Dan: krak.');
+        dialog.push({ spreker: 'Jan', tekst: '"Nee hè. Afgebroken. En m\'n reservespullen liggen thuis in de werkplaats."' });
+        dialog.push({ spreker: 'Jan', tekst: '"Als ik nou iets dunners had. Een pin, een spijker, een stevige speld, zoiets. Misschien heeft iemand anders iets bruikbaars bij zich."' });
+        extraHtml = torenCodeInvoerHtml();
       }
     }
   } else if (p === 'kelly') {
     dialog.push('Een smalle hoge toren aan het einde van een steegje. Je duwt tegen de deur, maar die zit stevig op slot.');
     dialog.push({ spreker: 'Kelly', tekst: '"Hmm, hier kom ik niet in. Misschien kan iemand anders hier iets mee."' });
   } else if (p === 'fenna') {
+    // Overhandigd maar Jan heeft de code nog niet ingevoerd (bv. na een
+    // herlaad): meteen weer het code-scherm, daar wacht ze tot de gedeelde
+    // vlag binnenkomt.
+    if (hasVisited('fenna_spijker_gegeven') && !hasVisited('toren_code_ingevoerd')) {
+      return renderTorenCodeVoorFenna(loc);
+    }
     dialog.push('Een smalle hoge toren.');
     dialog.push({ spreker: 'Fenna-Viviènne', tekst: '"Pff, sorry hoor. M\'n jurk, m\'n make-up, m\'n haar, allemaal naar de knoppen door één trap. Niet doen."' });
+    if (!hasVisited('fenna_spijker_gegeven')
+        && state.inventory.find(function (i) { return i.naam === 'Roestige Spijker'; })) {
+      dialog.push({ spreker: 'Fenna-Viviènne', tekst: '*(voelt aan de onderkant van haar jurk)* "Die spijker... dun, stevig, die knik. Dat is toch precies iets voor Jan en dit slot?"' });
+      acties = [{ label: 'Overhandig de spijker aan Jan', onclick: fennaGeeftSpijker }];
+    }
   } else if (p === 'felix') {
     dialog.push('Een smalle hoge toren.');
     dialog.push({ spreker: 'De Vos', tekst: '"Al die trappen? Dat trekken m\'n knieën niet."' });
@@ -12489,6 +12539,7 @@ function renderK1Uitkijktoren(loc) {
     image: null,
     dialog: dialog,
     mediaSlot: mediaSlotHtml,
+    extra: extraHtml,
     acties: acties
   });
 
@@ -13434,15 +13485,33 @@ function renderK1Dorpsput(loc) {
   }
 
   else if (p === 'fenna') {
-    // ── Fenna: 2 staten ─────────────────────────────────────────
+    // ── Fenna: Kelly-staten plus de spijker-vindplek ────────────
     // Kelly verschijnt pas rechtsonder op het moment dat Fenna haar in de
-    // put opmerkt, niet al bij de sfeerregel.
+    // put opmerkt, niet al bij de sfeerregel. De spijker-beat komt na de
+    // Kelly-interactie (of meteen, als er niemand vastzit), en alleen
+    // zolang ze er nog geen heeft gevonden of weggegeven.
+    const spijkerBeat = !heeftItem('Roestige Spijker') && !hasVisited('fenna_spijker_gegeven');
     if (hasVisited('kelly_in_put') && !hasVisited('kelly_gered')) {
       dialog.push({ tekst: 'Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.', onShow: function () { verbergNpcPop(); } });
       dialog.push({ spreker: 'Fenna-Viviènne', tekst: '*(kijkt in de put)* "Kelly?! Hoe kom je daar nou in?!" *(strekt haar armen uit, bereikt haar bij lange na niet)* "Ik ben echt te klein voor dit. Dit is een geval voor Jan."', onShow: function () { toonNpcPop('karakters/spelers/kelly-pop.png'); } });
     } else {
       dialog.push('Een oude stenen put, bijna vergroeid met het straatwerk. Het steen is bemost en vochtig.');
-      dialog.push({ spreker: 'Verteller', tekst: 'Niets bijzonders hier voor Fenna.' });
+      if (!spijkerBeat) {
+        dialog.push({ spreker: 'Verteller', tekst: 'Niets bijzonders hier voor Fenna.' });
+      }
+    }
+    if (spijkerBeat) {
+      dialog.push('Je leunt even tegen de rand van de put. Iets prikt. Als je je omdraait trekt je jurk strak: de onderkant zit vast achter een roestige spijker tussen de stenen.');
+      dialog.push({ spreker: 'Fenna-Viviènne', tekst: '"Ook dat nog. Deze jurk overleeft dit dorp niet."' });
+      dialog.push('Je maakt de stof voorzichtig los. De spijker laat het steen los en blijft in de stof hangen.');
+      dialog.push({ spreker: 'Fenna-Viviènne', tekst: '*(bekijkt het ding)* "Hm. Wat een vorm. Dun, stevig, en die knik erin. Bijna alsof het ergens voor gemaakt is."' });
+      dialog.push({ spreker: 'Fenna-Viviènne', tekst: '"Ik hou hem bij me. Zoiets komt vast nog eens van pas. Al is het maar voor iemand anders."' });
+      acties = [{ label: 'Neem de spijker mee', onclick: function () {
+        fennaPaktSpijker(function () {
+          const l = locatiesK1.find(x => x.id === 'k1_dorpsput');
+          if (l) renderK1Dorpsput(l);
+        });
+      } }];
     }
   }
 
@@ -14031,6 +14100,151 @@ function kellyWeigertHand() {
   );
 }
 
+// ── Toren-overdracht: Fenna's roestige spijker voor Jan ─────────────
+// Fenna vindt de spijker bij Naald en Masker of bij de put (wie het eerst
+// komt; nooit allebei). Bij de toren overhandigt ze hem met een code; pas
+// als Jan die invoert speelt op beide tablets de overdracht-dialoog en kan
+// zijn lockpick starten. De code-controle is lokaal; alleen het feit dat de
+// code is ingevoerd gaat via de gedeelde vlag toren_code_ingevoerd.
+const TOREN_SPIJKER_CODE = 'XXX';
+
+function torenCodeInvoerHtml() {
+  return '<div class="code-section">' +
+      '<span class="code-label">Misschien heeft iemand anders een vervangend voorwerp voor je?</span>' +
+      '<input class="code-input" id="code-toren" type="text" placeholder="Voer code in..." maxlength="10" oninput="checkTorenCode(this.value)">' +
+      '<div class="code-error" id="code-toren-msg"></div>' +
+    '</div>' +
+    '<p style="margin-top:.75rem;color:var(--mist);font-style:italic;font-size:.9rem;text-align:center">Of ga via de terugknop eerst verder met andere plekken. De toren wacht wel.</p>';
+}
+
+function checkTorenCode(val) {
+  val = val.trim().toUpperCase();
+  const msg = document.getElementById('code-toren-msg');
+  if (!msg) return;
+  if (val === TOREN_SPIJKER_CODE) {
+    msg.className = 'code-success';
+    msg.textContent = '✦ Die past! De spijker wisselt van eigenaar.';
+    const input = document.getElementById('code-toren');
+    if (input) input.disabled = true;
+    // Gedeeld: Fenna's code-scherm klapt hierdoor om naar de dialoog.
+    markVisited('toren_code_ingevoerd');
+    setTimeout(speelTorenOverdracht, 700);
+  } else if (val.length >= 2) {
+    msg.className = 'code-error';
+    msg.textContent = 'Dat is niet de juiste code...';
+  }
+}
+
+// De overdracht-dialoog, op beide tablets: eigen personage links (zelfde
+// spiegel-patroon als de put-reunie). Daarna her-rendert de toren-scene:
+// Jan krijgt dan de knop om het slot te proberen, Fenna is weer vrij.
+function speelTorenOverdracht() {
+  var cont = document.getElementById('locatie-content');
+  if (cont) {
+    cont.querySelectorAll('.sc-dialog').forEach(function (el) { el.remove(); });
+    var mount = cont.querySelector('.sc-acties-mount');
+    if (mount) { mount.innerHTML = ''; mount.style.display = ''; }
+  }
+  var charPop = document.getElementById('char-pop');
+  if (charPop) charPop.style.display = 'none';
+  verbergNpcPop(true);
+  var fImg = 'karakters/spelers/fenna-pop.png', jImg = 'karakters/spelers/jan-pop.png';
+  var f1 = { img: fImg, naam: 'Fenna-Viviènne', tekst: 'Alsjeblieft. Eén roestige spijker, rechtstreeks uit de jurk van een wereldster. Weet je wel wat zoiets waard is?' };
+  var j1 = { img: jImg, naam: 'Jan', tekst: 'Eh. Het is een spijker.' };
+  var f2 = { img: fImg, naam: 'Fenna-Viviènne', tekst: 'Het is memorabilia, Jan. Wacht. Eerst signeren. *(ze zet met eyeliner heel precies een piepkleine handtekening op de kop van de spijker)*' };
+  var j2 = { img: jImg, naam: 'Jan', tekst: '...heb je nou je handtekening op een spijker gezet?' };
+  var f3 = { img: fImg, naam: 'Fenna-Viviènne', tekst: 'Gesigneerd exemplaar. Ooit is dat ding geld waard. Dus: niet verliezen, niet beschadigen.' };
+  var j3 = { img: jImg, naam: 'Jan', tekst: 'Ik ga hem nu in een slot duwen.' };
+  var f4 = { img: fImg, naam: 'Fenna-Viviènne', tekst: 'WAT?' };
+  // Hoofdpersoon altijd links: op Jans scherm staat Jan links en Fenna
+  // rechts, op Fenna's scherm precies andersom.
+  var speeltJan = state.personage === 'jan';
+  function paar(fennaData, janData) {
+    return speeltJan ? { links: janData,   rechts: fennaData }
+                     : { links: fennaData, rechts: janData };
+  }
+  var stappen = [
+    paar(f1, null), paar(f1, j1), paar(f2, j1), paar(f2, j2),
+    paar(f3, j2), paar(f3, j3), paar(f4, j3)
+  ];
+  toonPopDialoog(stappen, function () {
+    var cp = document.getElementById('char-pop');
+    if (cp) cp.style.display = '';
+    var torenLoc = locatiesK1.find(function (l) { return l.id === 'k1_uitkijktoren'; });
+    if (torenLoc) renderK1Uitkijktoren(torenLoc);
+  });
+}
+
+// Fenna drukt op de overhandig-knop: spijker uit haar rugzak, code in beeld.
+function fennaGeeftSpijker() {
+  markVisited('fenna_spijker_gegeven');
+  state.inventory = state.inventory.filter(function (i) { return i.naam !== 'Roestige Spijker'; });
+  updateInventoryBar();
+  var loc = locatiesK1.find(function (l) { return l.id === 'k1_uitkijktoren'; });
+  renderTorenCodeVoorFenna(loc);
+}
+
+// Fenna's code-scherm bij de toren. Bewust zonder terugknop: ze blijft hier
+// tot Jan de code invoert, zodat ze de overdracht-dialoog niet mist (de
+// terugknop-vangst in goBackFromLocatie dekt her-renders af).
+function renderTorenCodeVoorFenna(loc) {
+  verbergNpcPop();
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: loc ? loc.naam : 'De Uitkijktoren',
+    sub:   loc ? loc.sub : '',
+    image: null,
+    geenTerug: true,
+    dialog: [
+      { spreker: 'Fenna-Viviènne', tekst: '"Hier, voor jou. Voorzichtig ermee."' },
+      { spreker: 'Verteller', tekst: 'Geef Jan de code door en blijf bij hem tot hij hem heeft ingevoerd.' }
+    ],
+    extra:
+      '<div style="padding:1rem;background:rgba(0,0,0,.4);border:1px solid var(--gold);border-radius:4px;text-align:center">' +
+        '<div style="font-family:Cinzel,serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.5rem">Code voor Jan</div>' +
+        '<div style="font-family:Cinzel,serif;font-size:1.6rem;color:var(--gold);letter-spacing:.3em">' + TOREN_SPIJKER_CODE + '</div>' +
+      '</div>' +
+      '<p style="margin-top:.75rem;color:var(--mist);font-style:italic;font-size:.9rem;text-align:center">Roep de code hardop naar Jan.</p>'
+  });
+  state.lastZone = 'kraaienkwartier';
+}
+
+// Fenna verlaat Naald en Masker: haar jurk blijft haken aan een roestige
+// spijker in de deurpost. Aangeroepen vanuit goBackFromLocatie, dus na de
+// lade gaat de terug-navigatie gewoon verder.
+function fennaSpijkerBijWinkel() {
+  verbergNpcPop();
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel: 'Naald en Masker',
+    sub:   'Bij de deur',
+    image: null,
+    geenTerug: true,
+    dialog: [
+      'Je stapt de winkel uit. Een ruk aan je jurk en je staat stil. De onderkant van je jurk zit vast achter een roestige spijker die half uit de deurpost steekt.',
+      { spreker: 'Fenna-Viviènne', tekst: '"Nee hè. Niet de jurk."' },
+      'Voorzichtig, plooi voor plooi, trek je de stof los. Geen scheur, gelukkig. Maar de spijker wipt mee uit het hout en blijft in de stof hangen.',
+      { spreker: 'Fenna-Viviènne', tekst: '*(bekijkt het ding)* "Roestig rotding. Maar wat een vorm eigenlijk. Dun, stevig, met precies zo\'n eigenwijze knik erin."' },
+      { spreker: 'Fenna-Viviènne', tekst: '"Weet je wat, ik hou hem bij me. Zoiets komt vast nog eens van pas. Al is het maar voor iemand anders."' }
+    ],
+    acties: [{ label: 'Neem de spijker mee', onclick: function () { fennaPaktSpijker(goBackFromLocatie); } }]
+  });
+}
+
+// Gedeelde afronding van beide vindplekken: item erbij plus de lade met de
+// afbeelding. Geen toast (het voorwerp heeft een eigen afbeelding).
+function fennaPaktSpijker(naAfloop) {
+  addInventory('📌', 'Roestige Spijker', false);
+  updateInventoryBar();
+  toonLade(
+    'Roestige spijker',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Dun en stevig, met een eigenwijze knik erin. Hier kan een ander vast wat mee.</p>',
+    'Verder →',
+    naAfloop,
+    ITEM_AFBEELDINGEN['Roestige Spijker']
+  );
+}
+
 // ── Toren lockpick: intro-versie (1 ronde, 3 simpele pins) ──────────
 const TOREN_LOCKPICK_CONFIG = {
   reeks: [
@@ -14040,18 +14254,18 @@ const TOREN_LOCKPICK_CONFIG = {
   straf: 'slot',
   images: {},
   teksten: {
-    titel: 'De Speld',
+    titel: 'De Spijker',
     sub: 'Wrik het slot open',
     intro: [
-      'Je schuift de kromme speld in het slot. Het mechanisme is oud en roestig, maar er zitten nog pinnen in.',
+      'Je schuift de roestige spijker in het slot. Het mechanisme is oud en stroef, maar er zitten nog pinnen in.',
       { spreker: 'Verteller', tekst: 'Til elke pin tot de schaarlijn en zet hem vast.' }
     ],
-    naam: 'Speld', instructie: 'zet elke pin op de schaarlijn',
+    naam: 'Spijker', instructie: 'zet elke pin op de schaarlijn',
     teLaag: 'Te laag, de pin zakt terug.',
     teHoog: 'Te hoog! De pin klemt en alle pinnen vallen terug.',
     allesOpnieuw: 'Misgegrepen. Het slot valt terug. Opnieuw.',
     tussen: [],
-    winAlles: { titel: 'Het slot geeft mee', body: 'De laatste pin klikt op zijn plek. Het slot draait open en de deur zwaait los. De speld is nog heel. Die kan nog van pas komen.' }
+    winAlles: { titel: 'Het slot geeft mee', body: 'De laatste pin klikt op zijn plek. Het slot draait open en de deur zwaait los. Je bekijkt de spijker: krom getrokken door al het gewrik, maar heel. En eigenlijk is hij zo precies goed. De handtekening zit er ook nog op. Die houd je.' }
   }
 };
 
@@ -14086,7 +14300,7 @@ function startTorenLockpick() {
           if (zwBackBtn) zwBackBtn.style.display = '';
           toonLade(
             'Het slot begeeft het',
-            '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Na al dat gewrik springt het slot los. De speld is nog heel. Die kan nog van pas komen.</p>',
+            '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Na al dat gewrik springt het slot los. De spijker is krom getrokken, maar heel. En eigenlijk is hij zo precies goed. Die houd je.</p>',
             'Omhoog',
             function () { markVisited('jan_heeft_speld'); geefItem(ITEMS.speld.emoji, ITEMS.speld.naam); janKlimt(); }
           );
@@ -14249,6 +14463,36 @@ function goBackFromLocatie() {
   if (state.personage === 'felix' && state.lastOpenedLocatie === 'h2_felixkamer'
       && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
     toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.');
+    return;
+  }
+  // Code-gevers blijven staan tot de vastzitter de code heeft ingevoerd,
+  // anders missen ze de dialoog die daarna op beide tablets speelt. Zelfde
+  // afspraak als Jan bij H2 (die wacht daar al op felix_code_ingevoerd).
+  if (state.personage === 'jan' && state.lastOpenedLocatie === 'k1_dorpsput'
+      && hasVisited('jan_kelly_code_gezien') && !hasVisited('kelly_gered')) {
+    toonToast('🔒', 'Blijf bij de put tot Kelly de code heeft ingevoerd');
+    return;
+  }
+  if (state.personage === 'kelly' && state.lastOpenedLocatie === 'dd8_stiltevijver'
+      && hasVisited('kelly_vijver_code_gezien')
+      && hasVisited('fenna_vijver_vast') && !hasVisited('fenna_vijver_vrij')) {
+    toonToast('🔒', 'Blijf bij het meisje tot Fenna de code heeft ingevoerd');
+    return;
+  }
+  if (state.personage === 'fenna' && state.lastOpenedLocatie === 'k1_uitkijktoren'
+      && hasVisited('fenna_spijker_gegeven') && !hasVisited('toren_code_ingevoerd')) {
+    toonToast('🔒', 'Blijf bij Jan tot hij de code heeft ingevoerd');
+    return;
+  }
+  // Fenna verlaat Naald en Masker zonder spijker: haar jurk blijft haken
+  // achter een roestige spijker in de deurpost. Alleen als ze er nog geen
+  // heeft (en er nog geen heeft weggegeven), anders is de put de vindplek.
+  if (state.personage === 'fenna' && state.lastOpenedLocatie === 'k1_naaldmasker'
+      && _naaldmaskerBinnen
+      && !hasVisited('fenna_spijker_gegeven')
+      && !state.inventory.find(function (i) { return i.naam === 'Roestige Spijker'; })
+      && typeof fennaSpijkerBijWinkel === 'function') {
+    fennaSpijkerBijWinkel();
     return;
   }
   // Verlaat je een locatie, dan stopt de molen-ambient (no-op als die niet
@@ -17597,7 +17841,7 @@ function debugVhKlokReset(district) {
 function alleFinaleCodesVerzameld() {
   // Het dagboek blijft in het archief, en Wallingen en Robbie zijn
   // verhaalstappen zonder fysiek item: we kijken naar de gedeelde
-  // teamvlaggen i.p.v. de items. De speld (Kromme Speld, K3) is wel een
+  // teamvlaggen i.p.v. de items. De speld (Kromme Spijker, K3) is wel een
   // fysiek item, maar telt via dezelfde gedeelde vlag ook mee als vierde
   // vereiste voor de finale.
   return !!getSharedState('kk_sleutel_dagboek') &&
@@ -19173,7 +19417,7 @@ function buildDebugPanel() {
     // tablet staat de gedeelde spiegel (kk_sleutel_speld) nog op true
     // terwijl zijn rugzak leeg is, en dan moet de +knop juist zichtbaar
     // zijn om de speld terug te kunnen geven.
-    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Speld');
+    const heeftSpeld   = !!state.inventory.find(i => i.naam === 'Kromme Spijker');
     btns = [
       // ── Kelly & de put
       ['🕳️ Kelly valt in de put',    function(){ markVisited('kelly_in_put'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Kelly & de put'],
@@ -19223,7 +19467,9 @@ function buildDebugPanel() {
       // ── Wallingen
       ['✦ Mevr. v Wallingen klaar', function(){ kkSleutelVerkregen('wallingen'); document.getElementById('debug-panel').style.display='none'; }, !sleutelKlaar, 'Wallingen'],
       // ── Toren (K3)
-      ['📌 + Kromme Speld (toren)', function(){ debugItem('📌','Kromme Speld'); }, !heeftSpeld, 'Toren (K3)'],
+      ['📌 + Roestige Spijker (Fenna)', function(){ debugItem('📌','Roestige Spijker'); }, p === 'fenna' && !state.inventory.find(function(i){ return i.naam === 'Roestige Spijker'; }) && !hasVisited('fenna_spijker_gegeven'), 'Toren (K3)'],
+      ['🔓 Toren-code ingevoerd (skip overdracht)', function(){ markVisited('toren_code_ingevoerd'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('toren_code_ingevoerd'), 'Toren (K3)'],
+      ['📌 + Kromme Spijker (toren)', function(){ debugItem('📌','Kromme Spijker'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Verborgen Hand: de stille hulpklok van dit district
       ['⏳ Klok nu laten aflopen',   function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
       ['🔄 Klok en hint resetten',   function(){ debugVhKlokReset('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
@@ -19234,9 +19480,10 @@ function buildDebugPanel() {
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
       ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
       ['🔄 Reset Kraaienkwartier',   function(){
-        ['kelly_in_put','kelly_gered','tobbe_gevonden','stoop_beloning_ontvangen','fenna_robbie_bezoek','jan_toren_geklommen','jan_heeft_speld','nummer7_filmpje_gezien','wallingen_informatie_ontvangen'].forEach(function(f){ state.visited.delete(f); });
+        ['kelly_in_put','kelly_gered','tobbe_gevonden','stoop_beloning_ontvangen','fenna_robbie_bezoek','jan_toren_geklommen','jan_heeft_speld','jan_toren_haak_gebroken','toren_code_ingevoerd','fenna_spijker_gegeven','nummer7_filmpje_gezien','wallingen_informatie_ontvangen'].forEach(function(f){ state.visited.delete(f); });
         setSharedState('vflag_kelly_in_put', null);
         setSharedState('vflag_kelly_gered', null);
+        setSharedState('vflag_toren_code_ingevoerd', null);
         setSharedState('tobbe_gevonden', false);
         setSharedState('kk_sleutel_dagboek', false);
         setSharedState('kk_sleutel_wallingen', false);
@@ -19252,7 +19499,7 @@ function buildDebugPanel() {
         debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
         state.finalePopupGetoond = false;
-        state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Speld','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
+        state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Spijker','Roestige Spijker','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
         updateInventoryBar();
         close();
       }, true, 'Finale'],
@@ -19670,10 +19917,17 @@ function debugSkipNaarDorendael() {
     addInventory('🧶', 'Breiwerkje', false);
   }
   if (p === 'jan') {
-    // Jan heeft de toren gekraakt en de speld gevonden
+    // Jan heeft de toren gekraakt en de spijker gevonden
     markVisited('jan_toren_geklommen');
     markVisited('jan_heeft_speld');
+    markVisited('jan_toren_haak_gebroken');
+    markVisited('toren_code_ingevoerd');
     addInventory(ITEMS.speld.emoji, ITEMS.speld.naam, false);
+  }
+  if (p === 'fenna') {
+    // Fenna's spijker is in dit stadium al aan Jan overhandigd
+    markVisited('fenna_spijker_gegeven');
+    markVisited('toren_code_ingevoerd');
   }
   updateInventoryBar();
 
@@ -21215,10 +21469,10 @@ function renderDd7Klokkenmaker(loc) {
           'De klokkenmaker is buiten, druk in gesprek met een dame in een rode jurk. Maar de deur naar de werkplaats zit op slot.'
         ];
         if (heeftSpeld) {
-          d.push({ spreker: 'Jan', tekst: '*(voelt aan de speld in zijn zak)* "Dit slot is steviger dan die toren. Maar ik heb het eerder gedaan..."' });
+          d.push({ spreker: 'Jan', tekst: '*(voelt aan de spijker in zijn zak)* "Dit slot is steviger dan die toren. Maar ik heb het eerder gedaan..."' });
           return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De werkplaats', image: null,
             dialog: d,
-            acties: [{ label: '\ud83d\udd13 Forceer het slot met de speld', onclick: function() { startWerkplaatsLockpick(loc); } }] });
+            acties: [{ label: '\ud83d\udd13 Forceer het slot met de spijker', onclick: function() { startWerkplaatsLockpick(loc); } }] });
         } else {
           d.push({ spreker: 'Jan', tekst: '*(in gedachten)* Het slot is te sterk voor m\'n blote handen. Had ik maar iets duns om mee te peuteren...' });
           return renderLocatieScene({ container: cont, titel: loc.naam, sub: 'De werkplaats', image: null,
@@ -21555,7 +21809,7 @@ const WERKPLAATS_LOCKPICK_CONFIG = {
     titel: 'De Speld',
     sub: 'Forceer het werkplaats-slot',
     intro: [
-      'Je schuift de speld in het slot. Dit is een ander beest dan die toren, steviger, complexer.',
+      'Je schuift de spijker in het slot. Dit is een ander beest dan die toren, steviger, complexer.',
       { spreker: 'Verteller', tekst: 'Til elke pin tot de schaarlijn en zet hem vast.' }
     ],
     naam: 'Speld', instructie: 'zet elke pin op de schaarlijn',
@@ -21565,7 +21819,7 @@ const WERKPLAATS_LOCKPICK_CONFIG = {
     tussen: [
       'Er klikt iets. De eerste grendel geeft mee, maar er zit nog een tweede achter.'
     ],
-    winAlles: { titel: 'Het slot gaat open', body: 'De laatste pin geeft mee. De deur zwaait open. Maar de speld... knakt af in het mechanisme. Balen. Die had nog van pas kunnen komen.' }
+    winAlles: { titel: 'Het slot gaat open', body: 'De laatste pin geeft mee. De deur zwaait open. Maar de spijker... knakt af in het mechanisme. Balen.' }
   }
 };
 
@@ -21606,15 +21860,15 @@ function startWerkplaatsLockpick(loc) {
           try { lp.destroy(); } catch (e) {}
           if (zwBackBtn) zwBackBtn.style.display = '';
           markVisited('jan_werkplaats_open');
-          // Speld breekt: verwijder uit inventory + rode toast
+          // Spijker breekt: verwijder uit inventory + rode toast
           state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.speld.naam; });
           updateInventoryBar();
-          toonToast('\u274c', 'Kromme Speld is gebroken');
-          // Stap 1: slot gaat open, speld breekt
+          toonToast('\u274c', 'Kromme Spijker is gebroken');
+          // Stap 1: slot gaat open, spijker breekt
           toonLade(
             'Het slot bezwijkt',
             '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Na al dat gewrik knakt er iets in het slot. De deur zwaait open.</p>' +
-            '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic;margin-top:.5rem">Maar de speld... knak. Gebroken. Balen. Die was perfect, zoiets vind je niet zomaar weer.</p>',
+            '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic;margin-top:.5rem">Maar de spijker... knak. Gebroken. Daar gaat het gesigneerde exemplaar... dat wordt sorry zeggen tegen Fenna.</p>',
             'Naar binnen',
             function () {
               // Stap 2: Jan loopt binnen, schuldgevoel bouwt op
@@ -21648,14 +21902,14 @@ function startWerkplaatsLockpick(loc) {
       try { lp.destroy(); } catch (e) {}
       if (zwBackBtn) zwBackBtn.style.display = '';
       markVisited('jan_werkplaats_open');
-      // Speld breekt: verwijder uit inventory + rode toast
+      // Spijker breekt: verwijder uit inventory + rode toast
       state.inventory = state.inventory.filter(function(i) { return i.naam !== ITEMS.speld.naam; });
       updateInventoryBar();
-      toonToast('\u274c', 'Kromme Speld is gebroken');
-      // Speld breekt ook bij winst, maar geen schaduw
+      toonToast('\u274c', 'Kromme Spijker is gebroken');
+      // Spijker breekt ook bij winst, maar geen schaduw
       toonLade(
         'De deur gaat open',
-        '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De deur zwaait open. Maar de speld... knak. Gebroken. Balen, die was perfect. Zoiets vind je niet zomaar weer.</p>',
+        '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De deur zwaait open. Maar de spijker... knak. Gebroken. Daar gaat het gesigneerde exemplaar... dat wordt sorry zeggen tegen Fenna.</p>',
         'Naar binnen',
         function () { renderDd7Klokkenmaker(loc); }
       );
