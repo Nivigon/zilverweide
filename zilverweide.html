@@ -993,6 +993,11 @@ body.woudscene-actief .finale-btn{display:none !important;}
    randen in het niets oplossen zodat hij als rookflard over de scene
    hangt in plaats van als rechthoekige poster. */
 .pf-slot.pf-schim img{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* Zelfde schim, nu in de pop-dialoog: bij het gat in de muur (H2) horen Jan
+   en Felix elkaar wel maar zien ze elkaar niet, dus staat de ander als schim
+   naast je eigen portret. Zonder deze mask zou de jpeg als rechthoekige foto
+   naast een uitgeknipte pop hangen. */
+.pop-img[src$="schim.jpeg"]{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
 /* Midden-pop (Sybille in de slotscene): horizontaal gecentreerd in plaats
    van rechts, zodat zij en de roos samen het middelpunt vormen. */
 #pf-pop.pf-midden{left:50%;right:auto;transform:translateX(-50%)}
@@ -2750,7 +2755,9 @@ function verwerkBinnengekomenShared(data) {
           if (f === 'toren_code_ingevoerd') torenCodeBinnen = true;
           if (f === 'jan_toren_haak_gebroken') torenHaakBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
-              || f === 'felix_code_ingevoerd') h2FlagBinnen = true;
+              || f === 'felix_code_ingevoerd' || f === 'felix_klaar_voor_jan'
+              || f === 'jan_outfit_bij_gat' || f === 'jan_outfit_geleverd'
+              || f === 'munten_code_ingevoerd') h2FlagBinnen = true;
           if (typeof DORENDAEL_MISSIE_KEYS !== 'undefined' && DORENDAEL_MISSIE_KEYS.indexOf(f) !== -1) {
             onMissieKeyVoltooid(DORENDAEL_MISSIE_LABELS[f] || 'Stap voltooid');
           } else if (typeof HEER_DONATUSLAAN_MISSIE_KEYS !== 'undefined' && HEER_DONATUSLAAN_MISSIE_KEYS.indexOf(f) !== -1) {
@@ -2916,7 +2923,12 @@ function verwerkBinnengekomenShared(data) {
     // Staat Felix in de spiek-mini-game, dan haalt die zichzelf eruit via zijn
     // eigen onderbreek-check; dan niet ook nog eens hertekenen eronder.
     var _inSpiek = !!document.getElementById('felix-spiek-overlay');
-    if (_h2Loc && !_inSpiek) renderH2FelixKamer(_h2Loc);
+    // Loopt er een gedeeld gesprek bij het gat, dan NIET hertekenen. De ander
+    // kan sneller doorklikken dan jij leest, en zijn volgende stap zou jouw
+    // gesprek dan halverwege afkappen. De dialoog hertekent zelf zodra hij
+    // uitgelezen is, en pikt de nieuwe stand dan alsnog op.
+    var _inGesprek = !!document.getElementById('pop-dialoog-overlay');
+    if (_h2Loc && !_inSpiek && !_inGesprek) renderH2FelixKamer(_h2Loc);
   }
 }
 
@@ -3542,12 +3554,20 @@ const VISITED_FLAGS = {
   felix_hd2_vrij:             'Felix heeft de code van Jan gehad en is vermomd als Liu-Yen',
   felix_hd2_gespiekt:         'Felix heeft door het gat naar buiten gespiekt',
   felix_munten_gevonden:      'Felix heeft het zakje munten gevonden bij de spulletjes',
+  felix_klaar_voor_jan:       'Felix heeft iets om door het gat te geven en kan Jan te woord staan',
   felix_munten_aan_jan:       'Felix heeft de munten door het gat aan Jan gegeven',
+  munten_code_ingevoerd:      'Jan heeft de muntencode ingevoerd en het zakje aangenomen',
   jan_bezocht_felix:          'Jan heeft Felix door het gat gehoord en gesproken',
   jan_heeft_munten:           'Jan heeft het zakje munten van Felix aangenomen',
   jan_outfit_gekocht:         'Jan heeft bij Naald en Masker een vermomming voor Felix gekocht',
+  jan_outfit_bij_gat:         'Jan is met de vermomming bij het gat geweest',
   jan_outfit_geleverd:        'Jan heeft de vermomming door het gat aan Felix gegeven',
   felix_code_ingevoerd:       'Felix heeft de outfit-code ingevoerd (tijdelijke teststap)',
+  // Eigen scèneprogressie: welke gedeelde gesprekken deze speler al zag.
+  // Bewust NIET gedeeld, anders slaat de ander het gesprek over.
+  h2_muntengesprek_gezien:    'Deze speler heeft het muntengesprek bij het gat gezien',
+  h2_outfitgesprek_gezien:    'Deze speler heeft het outfitgesprek bij het gat gezien',
+  h2_afscheid_gezien:         'Deze speler heeft het afscheid bij het gat gezien',
 
   // H6 — Het Hol (Vrouwe Roet)
   h6_deur_lucinde_geprobeerd: 'Felix heeft bij de deur van Het Hol Lucinde geprobeerd (afgewezen)',
@@ -3616,6 +3636,19 @@ const SHARED_VISITED_FLAGS = [
   //   anders verschijnt zijn aanneem-knop nooit.
   // - felix_code_ingevoerd: Jan mag pas weg als Felix de code heeft ingevoerd.
   'jan_bezocht_felix','felix_munten_aan_jan','felix_code_ingevoerd',
+  // De rest van de H2-keten, toegevoegd toen beide overdrachten gedeelde
+  // momenten werden. Elk hiervan is een feit dat de ANDER moet weten,
+  // anders start of eindigt het gesprek maar op een van de twee tablets:
+  // - felix_klaar_voor_jan: Jan hoort pas een gesprek als Felix iets te
+  //   bieden heeft. Bewust een eigen vlag en niet felix_munten_gevonden:
+  //   die laatste is ook de poort van Felix' eigen zoek-scene, en delen zou
+  //   die scene laten overslaan zodra een ander tablet hem zet.
+  // - jan_outfit_bij_gat: Felix moet weten dat Jan met de vermomming terug is.
+  // - jan_outfit_geleverd: Felix' code-invoer hangt hieraan.
+  // - munten_code_ingevoerd: Felix wacht met verder gaan tot Jan het zakje
+  //   echt heeft aangenomen.
+  'felix_klaar_voor_jan','jan_outfit_bij_gat','jan_outfit_geleverd',
+  'munten_code_ingevoerd',
   // Uitkomst van de Dorendael-heksengok. Sinds alleen de beslisser de gok
   // zelf maakt is dit een wereldfeit: zonder delen blijft het woud (DD5)
   // voor de meekijkers op slot.
@@ -5325,6 +5358,9 @@ function showScreen(id) {
   // bij de toren aangekomen of vertrokken kan zijn. De check zelf staat bij
   // de toren-overdracht (janTorenPresenceCheck).
   if (typeof janTorenPresenceCheck === 'function') janTorenPresenceCheck();
+  // Zelfde verhaal voor het gat in H2: Felix mag alleen overhandigen terwijl
+  // Jan er echt staat.
+  if (typeof janH2PresenceCheck === 'function') janH2PresenceCheck();
 
   // Logboek: schermwissel vastleggen (tijdlijn voor verblijftijd-analyse).
   if (typeof logboekSchrijf === 'function') {
@@ -8163,6 +8199,208 @@ function h2Scene(opts) {
   h2GeheimeDeurHotspot();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// HET GAT IN DE MUUR (H2): twee gedeelde overdrachten
+// Jan en Felix staan aan weerszijden van dezelfde muur. Ze horen elkaar,
+// maar zien elkaar niet. Beide overdrachten (het zakje munten en de
+// vermomming) draaien daarom als gedeeld moment: hetzelfde gesprek op
+// beide tablets, met de eigen pop links en een schim rechts, gevolgd door
+// een code die de ONTVANGER intypt. Dezelfde afspraak als bij de toren:
+// de gever drukt op de knop, de ontvanger typt de code.
+//
+// Waarom aanwezigheid en niet een vlag: eerder hing Felix' overdracht aan
+// "Jan is hier ooit geweest", en die vlag blijft eeuwig aan staan. Dan
+// speelde Felix het hele moment tegen een leeg gat terwijl Jan al lang weg
+// was, en kreeg Jan hetzelfde moment veel later nog eens in een andere
+// versie. Nu telt alleen of Jans tablet dit scherm nu echt toont.
+// ══════════════════════════════════════════════════════════════════
+const H2_MUNTEN_CODE = 'XXX';
+const H2_SCHIM_POP = 'karakters/dorendael/schim.jpeg';
+
+// Hartslag-patroon, gelijk aan jan_bij_toren. Vertrek wordt als waarde 0
+// geschreven en niet als null: null wist de sleutel uit Firebase, terwijl de
+// merge op het andere tablet alleen toevoegt en nooit wist. Felix zou de
+// oude stempel dan houden en zijn knop na Jans vertrek nog tot anderhalve
+// minuut tonen.
+var JAN_H2_HARTSLAG_MS = 20000;
+var JAN_H2_VERS_MS = 90000;
+var _janH2Hartslag = null;
+
+function janStaatNuBijGat() {
+  return state.personage === 'jan' &&
+    state.lastOpenedLocatie === 'h2_felixkamer' &&
+    !!document.getElementById('screen-locatie') &&
+    document.getElementById('screen-locatie').classList.contains('active');
+}
+
+// Aangeroepen vanuit showScreen (elke schermwissel) en door de eigen timer.
+// Alleen Jans tablet beheert de gedeelde sleutel.
+function janH2PresenceCheck() {
+  if (janStaatNuBijGat()) {
+    setSharedState('jan_bij_gat', gedeeldeTijdNu());
+    if (!_janH2Hartslag) {
+      _janH2Hartslag = setInterval(janH2PresenceCheck, JAN_H2_HARTSLAG_MS);
+    }
+  } else {
+    if (_janH2Hartslag) { clearInterval(_janH2Hartslag); _janH2Hartslag = null; }
+    if (state.personage === 'jan' && getSharedState('jan_bij_gat')) {
+      setSharedState('jan_bij_gat', 0);
+    }
+    // Weg bij het gat: de vloek mag weer lopen. Zonder dit blijft de meter
+    // stilstaan als Jan tijdens een gedeeld moment wegnavigeert.
+    if (state.personage === 'jan') h2SchaduwPauze(false);
+  }
+}
+
+// Felix' kant: is Jans hartslag vers genoeg? De debug-sleutel laat de
+// overdracht solo testen zonder tweede tablet.
+function janIsBijGat() {
+  if (getSharedState('debug_jan_bij_gat')) return true;
+  var ts = getSharedState('jan_bij_gat');
+  return typeof ts === 'number' && (gedeeldeTijdNu() - ts) < JAN_H2_VERS_MS;
+}
+
+// Felix staat in zijn kamer te wachten: elke paar seconden kijken of Jan
+// intussen bij het gat is gekomen of vertrokken, en alleen bij een echte
+// wissel hertekenen (zodat de knop live verschijnt en verdwijnt zonder de
+// dialoog steeds te herstarten). Zelfde patroon als Fenna bij de toren.
+var _felixGatWatch = null;
+var _felixGatStand = null;
+function stopFelixGatWatch() {
+  if (_felixGatWatch) { clearInterval(_felixGatWatch); _felixGatWatch = null; }
+}
+function startFelixGatWatch(huidigeStand) {
+  stopFelixGatWatch();
+  _felixGatStand = huidigeStand;
+  _felixGatWatch = setInterval(function () {
+    var hier = state.personage === 'felix' &&
+      state.lastOpenedLocatie === 'h2_felixkamer' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      !document.getElementById('felix-spiek-overlay') &&
+      !document.getElementById('pop-dialoog-overlay');
+    if (!hier) { stopFelixGatWatch(); return; }
+    if (janIsBijGat() === _felixGatStand) return;
+    if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+    h2Herteken();   // her-render start deze watch opnieuw
+  }, 3000);
+}
+
+function h2Herteken() {
+  var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
+  if (loc) renderH2FelixKamer(loc);
+}
+
+// De vloek mag een gedeeld moment niet onderbreken: het vergrendel-scherm
+// van de Schaduw ligt boven de pop-dialoog, dus zonder pauze schuift hij er
+// dwars overheen terwijl de ander staat te wachten.
+function h2SchaduwPauze(aan) {
+  if (typeof schaduwPauze === 'function') schaduwPauze(!!aan, 'h2gesprek');
+}
+
+// Scene-dialoog en actieknoppen opruimen voor een pop-dialoog eroverheen.
+function h2PopOpzet() {
+  var cont = document.getElementById('locatie-content');
+  if (cont) {
+    cont.querySelectorAll('.sc-dialog').forEach(function (el) { el.remove(); });
+    var mount = cont.querySelector('.sc-acties-mount');
+    if (mount) { mount.innerHTML = ''; mount.style.display = ''; }
+  }
+  var charPop = document.getElementById('char-pop');
+  if (charPop) charPop.style.display = 'none';
+  if (typeof verbergNpcPop === 'function') verbergNpcPop(true);
+}
+
+// Bouwt de stappen voor een gesprek door het gat. regels is een lijst
+// [{wie:'jan'|'felix', tekst:'...'}]. Op elk tablet staat de eigen speler
+// links met zijn eigen portret en de ander rechts als schim: ze horen
+// elkaar wel, maar zien elkaar niet. De GESPROKEN tekst is aan beide kanten
+// gelijk, want die zeggen ze hardop tegen elkaar; wat per kant verschilt is
+// de vertelling eromheen, en die staat in de scene zelf.
+function h2GesprekStappen(regels) {
+  var eigenRol = (state.personage === 'jan') ? 'jan' : 'felix';
+  var eigenImg = (eigenRol === 'jan') ? 'karakters/spelers/jan-pop.png'
+                                      : 'karakters/spelers/felix-pop.png';
+  var namen = { jan: 'Jan', felix: 'Felix' };
+  var links = null, rechts = null;
+  return regels.map(function (r) {
+    var data = {
+      img:  (r.wie === eigenRol) ? eigenImg : H2_SCHIM_POP,
+      naam: namen[r.wie],
+      tekst: r.tekst
+    };
+    if (r.wie === eigenRol) links = data; else rechts = data;
+    return { links: links, rechts: rechts };
+  });
+}
+
+function h2SpeelGesprek(vlag, regels) {
+  markVisited(vlag);
+  h2SchaduwPauze(true);
+  stopFelixGatWatch();
+  h2PopOpzet();
+  toonPopDialoog(h2GesprekStappen(regels), function () {
+    var cp = document.getElementById('char-pop');
+    if (cp) cp.style.display = '';
+    h2Herteken();
+  });
+}
+
+// Het muntengesprek: Jan komt bij het gat terwijl Felix iets te bieden heeft.
+function speelH2Muntengesprek() {
+  h2SpeelGesprek('h2_muntengesprek_gezien', [
+    { wie: 'jan',   tekst: '"Felix? Ben jij dat daarbinnen?"' },
+    { wie: 'felix', tekst: '"Jan. Goddank. Waar ben ik eigenlijk, man?"' },
+    { wie: 'jan',   tekst: '"In een huis in de Heer Donatuslaan. Hoe krijgen we jou hieruit?"' },
+    { wie: 'felix', tekst: '"Niet via dit gat. Ik pas er nooit door, en jij komt er net bij. Dus jij doet de benen, ik doe de mond."' },
+    { wie: 'felix', tekst: '"Ik heb hier een zakje munten gevonden. Haal daar een outfit mee bij Naald en Masker, in het Kraaienkwartier."' },
+    { wie: 'jan',   tekst: '"Een outfit. Natuurlijk. En dan?"' },
+    { wie: 'felix', tekst: '"Dan klets ik mezelf hier wel uit."' }
+  ]);
+}
+
+// Het outfitgesprek: Jan is terug met de vermomming.
+function speelH2Outfitgesprek() {
+  h2SpeelGesprek('h2_outfitgesprek_gezien', [
+    { wie: 'felix', tekst: '"Jan? Zeg me dat je hem hebt."' },
+    { wie: 'jan',   tekst: '"Ik heb hem. Madeleine pakte hem van de plank alsof ze me verwachtte."' },
+    { wie: 'felix', tekst: '"Dat deed ze ook. Prop hem door het gat."' },
+    { wie: 'jan',   tekst: '"En dan ben je eruit?"' },
+    { wie: 'felix', tekst: '"Dan begint het pas. Blijf nog even staan, ik heb iets van je nodig."' }
+  ]);
+}
+
+// Het afscheid, nadat Felix de outfit-code heeft ingevoerd.
+function speelH2Afscheid() {
+  h2SpeelGesprek('h2_afscheid_gezien', [
+    { wie: 'felix', tekst: '"Hebbes. Ga nu maar, Jan. Wat hierna komt kun je beter niet zien."' },
+    { wie: 'jan',   tekst: '"Ik hoor het wel als het misgaat."' }
+  ]);
+}
+
+// Jan typt de code die Felix hem voorleest. Pas daarmee neemt hij het
+// zakje echt aan: de code is de bevestiging dat de overdracht is geland,
+// net als bij de spijker aan de toren.
+function checkH2MuntenCode(val) {
+  val = val.trim().toUpperCase();
+  var msg = document.getElementById('code-h2-munten-msg');
+  if (!msg) return;
+  if (val === H2_MUNTEN_CODE) {
+    msg.className = 'code-success';
+    msg.textContent = '✦ Je hebt het zakje te pakken.';
+    var input = document.getElementById('code-h2-munten');
+    if (input) input.disabled = true;
+    markVisited('munten_code_ingevoerd');
+    // Vangnet voor een lokaal achtergebleven vlag na een Firebase-reset:
+    // zonder gedeelde spiegel blijft Felix wachten op een code die al binnen is.
+    setSharedState('vflag_munten_code_ingevoerd', true);
+    setTimeout(janNeemMuntenAan, 700);
+  } else if (val.length >= 2) {
+    msg.className = 'code-error';
+    msg.textContent = 'Dat is niet de juiste code...';
+  }
+}
+
 function renderH2FelixKamer(loc) {
   const p = state.personage;
   const scenario = VASTZIT_SCENARIOS.felix_hd2;
@@ -8204,84 +8442,144 @@ function renderH2FelixKamer(loc) {
     // markVisited spiegelt dit nu zelf naar de sessie (de vlag staat in
     // SHARED_VISITED_FLAGS), dus Felix ziet dat er iemand aan het gat staat.
     markVisited('jan_bezocht_felix');
-    // Heeft Felix het zakje door het gat geduwd? Gedeeld, dus dit komt van zijn
-    // tablet. Zijn eigen zoektocht (felix_munten_gevonden) hoeft Jan niet te
-    // weten; die vlag blijft daarom per speler.
+    // markVisited deelt alleen nieuwe vlaggen. Stond de vlag lokaal nog van
+    // een eerdere ronde (Firebase-reset zonder verse browserstate), dan bleef
+    // de spiegel leeg en kreeg Felix zijn doorgeef-knop nooit. Alleen
+    // bijschrijven als hij er nog niet staat: dit scherm rendert vaker.
+    if (!getSharedState('vflag_jan_bezocht_felix')) {
+      setSharedState('vflag_jan_bezocht_felix', true);
+    }
+    // Aanwezigheidsstempel meteen bij het tekenen van dit scherm. De hoofd-
+    // check hangt aan showScreen, en die draait bij het openen van een
+    // locatie PAS NA de renderer. Zonder deze regel zou Felix' kant bij Jans
+    // eerste render nog even denken dat hij er niet staat.
+    setSharedState('jan_bij_gat', gedeeldeTijdNu());
+    // Felix' eigen zoektocht (felix_munten_gevonden) hoeft Jan niet te weten,
+    // die vlag blijft per speler. Wat hij wel moet weten is of Felix iets te
+    // bieden heeft: daarvoor staat felix_klaar_voor_jan wel in de gedeelde
+    // lijst. Zolang die er niet is hoort Jan alleen gerommel, en zegt Felix
+    // niets, want op Felix' tablet gebeurt er op dat moment ook niets.
+    const felixKlaar      = hasVisited('felix_klaar_voor_jan');
     const muntenDoorgegeven = hasVisited('felix_munten_aan_jan');
-    const heeftMunten = !!state.inventory.find(i => i.naam === ITEMS.zakjeMunten.naam);
-    const heeftOutfit = !!state.inventory.find(i => i.naam === ITEMS.felixOutfit.naam);
-    const outfitGeleverd = hasVisited('jan_outfit_geleverd');
+    const muntenCodeIn    = hasVisited('munten_code_ingevoerd');
+    const heeftMunten     = !!state.inventory.find(i => i.naam === ITEMS.zakjeMunten.naam);
+    const heeftOutfit     = !!state.inventory.find(i => i.naam === ITEMS.felixOutfit.naam);
+    const outfitGeleverd  = hasVisited('jan_outfit_geleverd');
+    const outfitCodeIn    = hasVisited('felix_code_ingevoerd');
 
-    const acties = [];
-    let extraHtml = '';
-    let onBack = null;
-    let dialog;
+    const wachtStrook = function (tekst) {
+      return '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">' + tekst + '</p>';
+    };
 
-    const codeBlok =
-      '<div class="code-section">' +
-        '<span class="code-label">Geef deze outfit-code aan Felix (voorlopig): ' + VASTZIT_SCENARIOS.felix_hd2.code + '</span>' +
-      '</div>';
-
-    if (outfitGeleverd) {
-      // Vermomming is doorgegeven. Jan wacht tot Felix de code invoert; pas
-      // dan mag hij weg. Tijdelijk: twee knoppen, en de terug-knop is
-      // geblokkeerd tot de code is ingevoerd.
-      const codeIn = hasVisited('felix_code_ingevoerd');
-      if (codeIn) {
-        dialog = [
-          { spreker: 'Felix', tekst: '"De code werkt. Ik kleed me nu om, geef me even."' },
-          'Achter de muur ritselen kleren. Dan een kreet, en rennende voetstappen.'
-        ];
-        extraHtml =
-          '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Felix heeft de code ingevoerd. Je kunt nu verder.</p>' +
-          '<div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button class="btn" onclick="janVerderNaCode()">Verder</button></div>';
-        onBack = null;
-      } else {
-        dialog = [
-          { spreker: 'Felix', tekst: '"Ik heb hem binnen. Zeg me nu de code, dan kleed ik me om."' }
-        ];
-        // Geen knop meer waarmee Jan zelf kan doen alsof Felix de code invoerde:
-        // dat liet hem het hele samenwerkingsmoment overslaan. In testmodus kan
-        // het nog via het testpaneel, knop "Code ingevoerd (outfit valt bij
-        // Felix)" onder Felix H2.
-        extraHtml = codeBlok +
-          '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Felix de code heeft ingevoerd. Je kunt hier nog niet weg.</p>' +
-          '<div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">' +
-            '<button class="btn" disabled style="opacity:.4;cursor:not-allowed">Verder</button>' +
-          '</div>';
-        onBack = function () { toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd'); };
-      }
-    } else if (heeftOutfit) {
-      // Jan heeft de vermomming gekocht en kan hem doorgeven.
-      dialog = [
-        { spreker: 'Felix', tekst: '"Mooi, je hebt hem. Prop hem door het gat en zeg me de code."' }
-      ];
-      extraHtml = codeBlok;
-      acties.push({ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix });
-    } else if (heeftMunten) {
-      dialog = [
-        { spreker: 'Felix', tekst: '"Haal met die munten een outfit voor me bij Naald en Masker in het Kraaienkwartier, en breng hem hierheen."' }
-      ];
-    } else if (muntenDoorgegeven) {
-      dialog = [
-        'Je hoort een geluid uit dat gat in de muur. Jij bent lang genoeg om erbij te kunnen. Je buigt je ernaartoe.',
-        { spreker: 'Felix', tekst: '"Jan? Ben jij dat? Goddank. Ik heb een plan. Ik heb hier een zakje munten gevonden. Pak het aan door het gat, dan kun jij een outfit voor me halen bij Naald en Masker in Kraaienkwartier."' }
-      ];
-      acties.push({ label: 'Neem het zakje munten aan', onclick: janNeemMuntenAan });
-    } else {
-      dialog = [
-        'Je hoort een geluid uit dat gat in de muur. Jij bent lang genoeg om erbij te kunnen. Je buigt je ernaartoe.',
-        { spreker: 'Felix', tekst: '"Jan? Ben jij dat? Goddank. Wacht even, ik zoek nog wat bij elkaar hier."' }
-      ];
+    // 1. Felix heeft de outfit-code ingevoerd: eerst het gedeelde afscheid,
+    //    dan mag Jan weg. De vloek loopt vanaf hier weer.
+    //    De scene wordt altijd eerst getekend en het gesprek komt eroverheen,
+    //    zodat de achtergrond klopt en de Verder-knop van de dialoog in de
+    //    gewone actie-zone landt. Zelfde volgorde als bij de toren.
+    if (outfitGeleverd && outfitCodeIn) {
+      h2SchaduwPauze(hasVisited('h2_afscheid_gezien') ? false : true);
+      const naAfscheid = h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: ['Achter de muur ritselen kleren. Dan een kreet, en rennende voetstappen.'],
+        extra: wachtStrook('Felix heeft de code ingevoerd. Je kunt nu verder.') +
+          '<div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button class="btn" onclick="janVerderNaCode()">Verder</button></div>'
+      });
+      if (!hasVisited('h2_afscheid_gezien')) speelH2Afscheid();
+      return naAfscheid;
     }
 
+    // 2. Vermomming is doorgegeven: Jan leest de code voor en blijft staan.
+    if (outfitGeleverd) {
+      h2SchaduwPauze(true);
+      return h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: ['De bundel verdwijnt door het gat. Aan de andere kant wordt het even helemaal stil.'],
+        extra:
+          '<div class="code-section">' +
+            '<span class="code-label">Lees deze code voor aan Felix: ' + VASTZIT_SCENARIOS.felix_hd2.code + '</span>' +
+          '</div>' +
+          wachtStrook('Wacht tot Felix de code heeft ingevoerd. Je kunt hier nog niet weg.'),
+        onBack: function () { toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd'); }
+      });
+    }
+
+    // 3. Jan staat er met de vermomming: eerst het gedeelde gesprek, daarna
+    //    de knop om hem door het gat te proppen. De vlag laat Felix' tablet
+    //    weten dat Jan terug is, zodat daar hetzelfde gesprek start.
+    if (heeftOutfit) {
+      markVisited('jan_outfit_bij_gat');
+      if (!getSharedState('vflag_jan_outfit_bij_gat')) {
+        setSharedState('vflag_jan_outfit_bij_gat', true);
+      }
+      h2SchaduwPauze(true);
+      const naOutfitgesprek = h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: ['Je hebt de bundel onder je arm. Achter de muur is het stil, maar je weet dat hij er is.'],
+        acties: [{ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix }],
+        onBack: function () { toonToast('🔒', 'Felix wacht op die vermomming'); }
+      });
+      if (!hasVisited('h2_outfitgesprek_gezien')) speelH2Outfitgesprek();
+      return naOutfitgesprek;
+    }
+
+    // 4. Het zakje is door het gat: Jan typt de code die Felix voorleest.
+    if (muntenDoorgegeven && !muntenCodeIn) {
+      h2SchaduwPauze(true);
+      return h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: ['Er komt iets door het gat naar je toe. Een zakje, licht, en het rinkelt.'],
+        extra:
+          '<div class="code-section">' +
+            '<span class="code-label">Voer de code in die Felix je doorgeeft</span>' +
+            '<input class="code-input" id="code-h2-munten" type="text" placeholder="Code..." maxlength="10" oninput="checkH2MuntenCode(this.value)">' +
+            '<div class="code-error" id="code-h2-munten-msg"></div>' +
+          '</div>',
+        onBack: function () { toonToast('🔒', 'Voer eerst de code in die Felix je voorleest'); }
+      });
+    }
+
+    // 5. Jan heeft het zakje: op pad naar Naald en Masker.
+    if (heeftMunten || muntenCodeIn) {
+      h2SchaduwPauze(false);
+      return h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: [
+          { spreker: 'Felix', tekst: '"Haal met die munten een outfit voor me bij Naald en Masker in het Kraaienkwartier, en breng hem hierheen."' }
+        ]
+      });
+    }
+
+    // 6. Felix heeft iets te bieden: het gedeelde gesprek, daarna wachten
+    //    tot hij het zakje door het gat duwt.
+    if (felixKlaar) {
+      h2SchaduwPauze(true);
+      const naMuntengesprek = h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
+        dialog: ['Aan de andere kant hoor je hem rommelen.'],
+        extra: wachtStrook('Wacht tot Felix het zakje doorgeeft.'),
+        onBack: function () { toonToast('🔒', 'Blijf staan tot Felix het zakje doorgeeft'); }
+      });
+      if (!hasVisited('h2_muntengesprek_gezien')) speelH2Muntengesprek();
+      return naMuntengesprek;
+    }
+
+    // 7. Felix is nog nergens klaar voor. Eenzijdig: geen enkele regel van
+    //    hem, want op zijn tablet gebeurt er nu niets. Jan mag gewoon weg.
+    h2SchaduwPauze(false);
     return h2Scene({
       container: document.getElementById('locatie-content'),
       titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
-      dialog: dialog,
-      acties: acties,
-      extra: extraHtml,
-      onBack: onBack
+      dialog: [
+        'Uit het gat hoog in de muur komt geluid. Je bent lang genoeg om erbij te kunnen, dus je buigt je ernaartoe en luistert.',
+        'Er graait iemand door spullen, ver achterin. Je hoort mompelen, en het klinkt als Felix. Maar hij is met iets bezig en heeft je niet in de gaten.'
+      ],
+      extra: wachtStrook('Hij is nog ergens mee bezig. Wacht hier even, of kom over ongeveer een minuutje terug.')
     });
   }
 
@@ -8329,47 +8627,35 @@ function renderH2FelixKamer(loc) {
   //    volgende open.
 
   if (felixVast) {
+    const janHier = janIsBijGat();
+
     // F5/F6: zodra de code is ingevoerd, valt de outfit door het gat en kan
-    // Felix zich vermommen. De code invoeren (Felix hieronder, of Jan via zijn
-    // tijdelijke knop) is dus wat de kleding laat vallen.
+    // Felix zich vermommen. Eerst het gedeelde afscheid, zodat Jan en Felix
+    // hetzelfde slotmoment zien voordat ieder zijn eigen kant op gaat.
     if (hasVisited('felix_code_ingevoerd')) {
-      return h2Scene({
+      h2SchaduwPauze(hasVisited('h2_afscheid_gezien') ? false : true);
+      stopFelixGatWatch();
+      const felixNaAfscheid = h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: [
           'Er valt iets door het gat in de muur naar binnen. Stof. Een outfit. Precies wat je vroeg.',
           'Nu wordt het toneel. Je kent maar een manier om iemand een deur te laten opendoen die hij dicht wil houden: hem zo nieuwsgierig maken dat hij het niet kan laten.'
         ],
-        acties: [{ label: '\ud83d\udc09 Vermom', onclick: felixVermomEscape }]
+        acties: [{ label: '\u2726 Vermom', onclick: felixVermomEscape }]
       });
+      if (!hasVisited('h2_afscheid_gezien')) speelH2Afscheid();
+      return felixNaAfscheid;
     }
 
-    // F4: Jan staat aan het gat en Felix heeft de munten. Doorgeven.
-    if (hasVisited('jan_bezocht_felix') && hasVisited('felix_munten_gevonden') && !hasVisited('felix_munten_aan_jan')) {
+    // De vermomming is door het gat: Felix typt de code die Jan voorleest.
+    if (hasVisited('jan_outfit_geleverd')) {
+      h2SchaduwPauze(true);
+      stopFelixGatWatch();
       return h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
-        dialog: [
-          'Een schaduw voor het gat in de muur. Groot genoeg om erbij te kunnen. Eindelijk iemand aan de goede kant van de muur, en met de juiste lengte.',
-          { spreker: 'Felix', tekst: '"Jan? Goddank. Waar ben ik eigenlijk, man?"' },
-          { spreker: 'Jan', tekst: '"Je zit in een huis in de Heer Donatuslaan. Wacht, hoe krijgen we jou hieruit?"' },
-          { spreker: 'Felix', tekst: '"Ik heb een plan. Maar ik heb jou nodig, want ik pas niet door dit gat en jij komt er wel bij."' },
-          { spreker: 'Felix', tekst: '"Ik heb hier een zakje munten. Haal daarmee een outfit voor me bij Naald en Masker in Kraaienkwartier. Dan klets ik mezelf hier wel uit."' }
-        ],
-        acties: [{ label: '\ud83e\ude99 Geef het muntenzakje door het gat', onclick: felixGeefMuntenAanJan }]
-      });
-    }
-
-    // Munten gegeven, wachten op de outfit. Felix voert de code in die Jan
-    // hem doorgeeft; die code laat de kleding vallen (F5).
-    if (hasVisited('felix_munten_aan_jan')) {
-      return h2Scene({
-        container: document.getElementById('locatie-content'),
-        titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
-        dialog: [
-          'Je hebt hem verteld wat je nodig hebt. Nu is het wachten. Als hij terugkomt, kun je eruit.'
-        ],
-        acties: [{ label: '\ud83e\ude9c Klim op het kratje', onclick: startFelixSpiek }],
+        dialog: ['Er valt een bundel stof naar binnen.'],
         extra:
           '<div class="code-section">' +
             '<span class="code-label">Voer de code in die Jan je doorgeeft</span>' +
@@ -8378,6 +8664,85 @@ function renderH2FelixKamer(loc) {
           '</div>'
       });
     }
+
+    // Jan is terug met de vermomming en staat er nu echt: eerst het gedeelde
+    // gesprek, daarna wachten tot hij hem door het gat propt.
+    if (hasVisited('jan_outfit_bij_gat') && janHier) {
+      h2SchaduwPauze(true);
+      startFelixGatWatch(true);
+      const felixNaOutfitgesprek = h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
+        dialog: ['Weer een schaduw voor het gat. En deze keer draagt hij iets.'],
+        extra: '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Jan de vermomming doorgeeft.</p>'
+      });
+      if (!hasVisited('h2_outfitgesprek_gezien')) speelH2Outfitgesprek();
+      return felixNaOutfitgesprek;
+    }
+
+    // Zakje is door het gat: Felix leest de code voor en wacht tot Jan hem
+    // heeft ingetypt. Pas dan is de overdracht geland.
+    if (hasVisited('felix_munten_aan_jan') && !hasVisited('munten_code_ingevoerd')) {
+      h2SchaduwPauze(true);
+      // Geen watch: dit scherm ziet er hetzelfde uit of Jan er nu staat of
+      // niet, en hertekenen zou de regel alleen maar opnieuw laten beginnen.
+      // De volgende stap komt binnen als vlag zodra Jan de code intypt.
+      stopFelixGatWatch();
+      return h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
+        dialog: ['Je duwt het zakje door het gat. Even voel je vingers aan de andere kant.'],
+        extra:
+          '<div class="code-section">' +
+            '<span class="code-label">Lees deze code voor aan Jan: ' + H2_MUNTEN_CODE + '</span>' +
+          '</div>' +
+          '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Jan de code heeft ingevoerd.</p>'
+      });
+    }
+
+    // Munten aangenomen, wachten op de outfit. Geen code-invoer meer op dit
+    // scherm: die hoort pas bij het moment dat Jan er weer staat. Wel het
+    // kratje, zodat Felix ondertussen iets te doen heeft.
+    if (hasVisited('felix_munten_aan_jan')) {
+      h2SchaduwPauze(false);
+      // Is Jan hier al eens met de vermomming geweest, dan hangt het volgende
+      // scherm alleen nog op zijn aanwezigheid en niet op een nieuwe vlag.
+      // Zonder watch bleef Felix hier hangen als Jans tablet tussendoor
+      // herlaadde en hij daarna terugkwam.
+      if (hasVisited('jan_outfit_bij_gat')) startFelixGatWatch(janHier);
+      else stopFelixGatWatch();
+      return h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
+        dialog: ['Het zakje is weg. Nu is het wachten. Als hij terugkomt, kun je eruit.'],
+        acties: [{ label: '\ud83e\ude9c Klim op het kratje', onclick: startFelixSpiek }]
+      });
+    }
+
+    // Felix heeft iets te bieden en Jan staat er nu echt: eerst het gedeelde
+    // gesprek, daarna de overhandig-knop.
+    if (hasVisited('felix_klaar_voor_jan') && janHier) {
+      h2SchaduwPauze(true);
+      startFelixGatWatch(true);
+      const felixNaMuntengesprek = h2Scene({
+        container: document.getElementById('locatie-content'),
+        titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
+        dialog: [
+          'Een schaduw voor het gat in de muur. Groot genoeg om erbij te kunnen, en met de juiste lengte. Eindelijk iemand aan de goede kant van de muur.',
+          'Je vist het zakje uit je zak. Nu maar hopen dat hij er met die lange arm bij kan.'
+        ],
+        acties: [{ label: '\u2726 Geef het zakje door het gat', onclick: felixGeefMuntenAanJan }]
+      });
+      if (!hasVisited('h2_muntengesprek_gezien')) speelH2Muntengesprek();
+      return felixNaMuntengesprek;
+    }
+
+    // Vanaf hier zijn het Felix' eigen fases, zonder Jan. De vloek loopt
+    // gewoon door. Heeft hij al iets om te geven, dan houdt de watch bij of
+    // Jan aankomt, zodat het gesprek vanzelf start.
+    h2SchaduwPauze(false);
+    if (hasVisited('felix_klaar_voor_jan')) startFelixGatWatch(false);
+    else stopFelixGatWatch();
 
     // F1b: net wakker, de kamer.
     if (!hasVisited('felix_sleutelgat')) {
@@ -8464,16 +8829,21 @@ function startFelixSpiek() {
     window.FelixSpiek.start({
       onKlaar: naSpieken,
       onderbreek: function () {
-        // Haal Felix uit de spiek zodra Jan aan het gat staat (F4) of de
-        // code binnen is en de outfit valt (F5).
-        return hasVisited('felix_code_ingevoerd') ||
-               (hasVisited('jan_bezocht_felix') && hasVisited('felix_munten_gevonden') && !hasVisited('felix_munten_aan_jan'));
+        // Haal Felix uit de spiek zodra er iets aan het gat te doen is. Dit
+        // hangt op Jans AANWEZIGHEID en niet meer op de vlag dat hij hier ooit
+        // was: die blijft eeuwig aan staan en trok Felix dus ook uit de spiek
+        // voor een bezoek van tien minuten geleden.
+        if (hasVisited('felix_code_ingevoerd')) return true;
+        if (hasVisited('jan_outfit_geleverd')) return true;
+        if (!janIsBijGat()) return false;
+        if (hasVisited('jan_outfit_bij_gat') && !hasVisited('jan_outfit_geleverd')) return true;
+        return hasVisited('felix_klaar_voor_jan') && !hasVisited('felix_munten_aan_jan');
       },
       onOnderbreek: function () {
         // Felix wordt uit de spiek gehaald voor een interactie. Korte pop-up
         // zodat het niet abrupt voelt.
         var titel, tekst;
-        if (hasVisited('felix_code_ingevoerd')) {
+        if (hasVisited('felix_code_ingevoerd') || hasVisited('jan_outfit_geleverd')) {
           titel = 'Er valt iets door het gat';
           tekst = 'Terwijl je op het kratje staat, valt er iets door het gat naar binnen. Je laat je zakken om te kijken.';
         } else {
@@ -8506,6 +8876,14 @@ function felixDoorzoekKamer() {
   if (!hasVisited('felix_munten_gevonden')) {
     markVisited('felix_munten_gevonden');
     geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam);
+  }
+  // Vanaf nu heeft Felix iets te bieden. Dit is de gedeelde vlag waar Jans
+  // scherm op wacht: zolang die er niet is hoort hij alleen gerommel.
+  // Bewust een eigen vlag naast felix_munten_gevonden, want die laatste is
+  // ook de poort van deze scene zelf en delen zou hem laten overslaan.
+  markVisited('felix_klaar_voor_jan');
+  if (!getSharedState('vflag_felix_klaar_voor_jan')) {
+    setSharedState('vflag_felix_klaar_voor_jan', true);
   }
   toonLade(
     '\ud83e\ude99 Muntenzakje gevonden',
@@ -8601,6 +8979,9 @@ function felixNaarBuiten() {
 // markVisited spiegelt hem zelf naar de sessie en het andere tablet volgt.
 function simuleerFelixCode() {
   markVisited('felix_code_ingevoerd');
+  // Zelfde vangnet als bij de echte invoer: ook delen als de vlag lokaal
+  // nog van een eerdere ronde stond.
+  setSharedState('vflag_felix_code_ingevoerd', true);
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
   if (loc) renderH2FelixKamer(loc);
 }
@@ -8640,14 +9021,14 @@ function janLevertOutfitAanFelix() {
   state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.felixOutfit.naam; });
   updateInventoryBar();
   markVisited('jan_outfit_geleverd');
-  // Sleutelnaam gelijkgetrokken met de lezer: hier stond felix_outfit_geleverd,
-  // terwijl elke lezer jan_outfit_geleverd checkt, dus die schrijfactie deed
-  // niets. LET OP: deze gedeelde sleutel wordt nog nergens gelezen. De vlag
-  // staat niet in SHARED_VISITED_FLAGS, dus hasVisited kijkt er niet naar. Het
-  // synchroniseren van de hele H2-keten tussen Jan en Felix is apart werk.
-  setSharedState('jan_outfit_geleverd', true);
-  var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
-  if (loc) renderH2FelixKamer(loc);
+  // De vlag staat nu in SHARED_VISITED_FLAGS, dus markVisited spiegelt hem
+  // zelf. Expliciet bijzetten blijft het vangnet voor een vlag die lokaal nog
+  // van een eerdere ronde stond: zonder spiegel krijgt Felix zijn code-scherm
+  // nooit te zien.
+  if (!getSharedState('vflag_jan_outfit_geleverd')) {
+    setSharedState('vflag_jan_outfit_geleverd', true);
+  }
+  h2Herteken();
 }
 
 // Jan neemt het zakje munten aan dat Felix door het gat geeft.
@@ -8662,7 +9043,7 @@ function janNeemMuntenAan() {
   // voordat Jans aanneem-knop kon verschijnen, en die knop verdween daardoor.
   toonLade(
     'Munten aangenomen',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je vist het zakje door het gat naar je toe. Nu een outfit halen bij de kledingwinkel in Kraaienkwartier.]</p>',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je vist het zakje door het gat naar je toe. Het weegt bijna niets, maar het rinkelt genoeg. Op naar het Kraaienkwartier, naar de winkel van Madeleine.</p>',
     'Verder',
     function () {
       var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
@@ -8687,15 +9068,12 @@ function felixGeefMuntenAanJan() {
   state.inventory = state.inventory.filter(function (i) { return i.naam !== ITEMS.zakjeMunten.naam; });
   updateInventoryBar();
   markVisited('felix_munten_aan_jan');
-  toonLade(
-    '\ud83e\ude99 Muntenzakje overhandigd aan Jan',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je duwt het zakje door het gat. Jan kan er net bij met zijn lange arm. Nu is het wachten. Als hij terugkomt, kun je eruit.</p>',
-    'Verder',
-    function () {
-      var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h2_felixkamer'; });
-      if (loc) renderH2FelixKamer(loc);
-    }
-  );
+  // Vangnet voor een lokaal achtergebleven vlag na een Firebase-reset:
+  // zonder gedeelde spiegel verschijnt Jans code-scherm nooit.
+  setSharedState('vflag_felix_munten_aan_jan', true);
+  // Geen tussenlade meer: het volgende scherm vertelt dit moment al, en de
+  // code die Felix daar voorleest hoort er direct achteraan.
+  h2Herteken();
 }
 
 function checkFelixHd2Code(val) {
@@ -8710,6 +9088,9 @@ function checkFelixHd2Code(val) {
     if (input) input.disabled = true;
     // De code laat de outfit door het gat vallen (F5).
     markVisited('felix_code_ingevoerd');
+    // Vangnet voor een lokaal achtergebleven vlag na een Firebase-reset:
+    // zonder gedeelde spiegel komt Jans Verder-knop nooit vrij.
+    setSharedState('vflag_felix_code_ingevoerd', true);
     setTimeout(() => {
       const loc = locatiesHeerDonatuslaan.find(l => l.id === 'h2_felixkamer');
       if (loc) renderH2FelixKamer(loc);
@@ -14686,6 +15067,21 @@ function goBackFromLocatie() {
     toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.');
     return;
   }
+  // Jan blijft bij het gat zolang een overdracht loopt. Beide codemomenten
+  // vragen dat ze er allebei bij zijn, dus wegwandelen halverwege kan niet.
+  // De onBack van de scene vangt de knop in de scene-header al af; dit is
+  // dezelfde afspraak voor de vaste terugknop eronder.
+  if (state.personage === 'jan' && state.lastOpenedLocatie === 'h2_felixkamer'
+      && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
+    if (hasVisited('h2_muntengesprek_gezien') && !hasVisited('munten_code_ingevoerd')) {
+      toonToast('🔒', 'Blijf staan tot je het zakje hebt aangenomen');
+      return;
+    }
+    if (hasVisited('h2_outfitgesprek_gezien') && !hasVisited('felix_code_ingevoerd')) {
+      toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd');
+      return;
+    }
+  }
   // Code-gevers blijven staan tot de vastzitter de code heeft ingevoerd,
   // anders missen ze de dialoog die daarna op beide tablets speelt. Zelfde
   // afspraak als Jan bij H2 (die wacht daar al op felix_code_ingevoerd).
@@ -19996,10 +20392,14 @@ function buildDebugPanel() {
       // keten-vlaggen (vrij, munten, code), en dat mag niet per ongeluk
       // vanaf het tablet van een teamgenoot gebeuren.
       ['🛏️ Felix wakker (vast in H2)', function(){ debugFelixWeerVastInH2(); close(); h2refresh(); }, state.personage === 'felix', 'Felix H2'],
-      ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
-      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ markVisited('felix_munten_gevonden'); markVisited('felix_munten_aan_jan'); markVisited('jan_heeft_munten'); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['🪙 Felix vindt zakje munten', function(){ markVisited('felix_sleutelgat'); markVisited('felix_munten_gevonden'); markVisited('felix_klaar_voor_jan'); setSharedState('vflag_felix_klaar_voor_jan', true); if (state.personage === 'felix') geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); close(); h2refresh(); }, true, 'Felix H2'],
+      // Solo testen zonder tweede tablet: doet alsof Jans tablet het
+      // gat-scherm toont, zodat Felix' overdracht-knop verschijnt.
+      ['🕳️ Jan staat bij het gat (aan/uit)', function(){ setSharedState('debug_jan_bij_gat', getSharedState('debug_jan_bij_gat') ? false : true); close(); h2refresh(); }, true, 'Felix H2'],
+      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ ['felix_munten_gevonden','felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd','jan_heeft_munten','h2_muntengesprek_gezien'].forEach(markVisited); ['felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
-      ['🐉 Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
+      ['👘 Jan levert de vermomming (shortcut)', function(){ ['jan_outfit_gekocht','jan_outfit_bij_gat','h2_outfitgesprek_gezien','jan_outfit_geleverd'].forEach(markVisited); ['jan_outfit_bij_gat','jan_outfit_geleverd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); if (state.personage === 'jan') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.felixOutfit.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['✦ Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
       ['🗝️ Stazia-hint HD gegeven (deur klikbaar)', function(){ setSharedState('vh_hint_gegeven_sintdonatuslaan', true); close(); h2refresh(); }, !getSharedState('vh_hint_gegeven_sintdonatuslaan'), 'Felix H2'],
@@ -20389,20 +20789,27 @@ function debugFelixWeerVastInH2() {
   // kant. Anders begint de keten halverwege of blijft Jan in een tussenstand
   // hangen waarin hij de kamer niet meer uit mag.
   ['felix_hd2_wakker', 'felix_sleutelgat', 'felix_munten_gevonden',
-   'felix_kratje_bekeken', 'felix_hd2_gespiekt', 'felix_munten_aan_jan',
+   'felix_klaar_voor_jan', 'felix_kratje_bekeken', 'felix_hd2_gespiekt',
+   'felix_munten_aan_jan', 'munten_code_ingevoerd',
    'felix_code_ingevoerd', 'felix_vermommingen_herovert', 'schaduw_felix',
    'jan_bezocht_felix', 'jan_heeft_munten', 'jan_outfit_gekocht',
-   'jan_outfit_geleverd'].forEach(function (f) {
+   'jan_outfit_bij_gat', 'jan_outfit_geleverd',
+   'h2_muntengesprek_gezien', 'h2_outfitgesprek_gezien',
+   'h2_afscheid_gezien'].forEach(function (f) {
     state.visited.delete(f);
   });
-  // Deze drie zijn gedeeld: naast de lokale set ook de vflag-spiegel wissen,
+  // De gedeelde vlaggen: naast de lokale set ook de vflag-spiegel wissen,
   // anders komt de stand bij de eerstvolgende snapshot gewoon terug. De losse
   // sleutel wissen we ook nog, voor sessies die van vóór het delen komen.
-  ['felix_munten_aan_jan', 'felix_code_ingevoerd',
-   'jan_bezocht_felix'].forEach(function (f) {
+  ['felix_munten_aan_jan', 'munten_code_ingevoerd', 'felix_code_ingevoerd',
+   'jan_bezocht_felix', 'felix_klaar_voor_jan', 'jan_outfit_bij_gat',
+   'jan_outfit_geleverd'].forEach(function (f) {
     setSharedState('vflag_' + f, null);
     setSharedState(f, null);
   });
+  // Aanwezigheid bij het gat en de solo-testsleutel terug naar nul.
+  setSharedState('jan_bij_gat', 0);
+  setSharedState('debug_jan_bij_gat', null);
 
   // Items die bij die stappen horen ook weg: het muntenzakje (bij Felix of
   // bij Jan) en de vermomming die Jan bij Naald en Masker koopt.
@@ -20818,6 +21225,15 @@ function debugResetIngangen() {
 }
 
 function toonZoneInvoer(zone) {
+  // Felix begint Heer Donatuslaan IN de straat: hij wordt daar opgesloten
+  // wakker (H2) en is dus nooit langs het H1-bordje bij de ingang gekomen.
+  // De ingangscode-popup zou hem na zijn ontsnapping vastzetten op een code
+  // die hij niet kan weten. Zodra zijn opsluiting bestaat telt zijn entree
+  // daarom als gedaan; de popup verschijnt voor hem nooit.
+  if (zone === 'sintdonatuslaan' && state.personage === 'felix'
+      && hasVisited('felix_hd2_vast') && !entreeGedaan(zone)) {
+    markEntree(zone);
+  }
   // Al eerder deze straat binnen geweest en de straat is nu gewoon
   // toegankelijk (geen finale-afscherming): sla de code-popup over en ga direct
   // naar het invoerscherm van die straat.
@@ -23705,6 +24121,11 @@ function openHeerDonatuslaanVanuitWoud() {
     // Felix-pad: zwart scherm + opsluit in zijn kamer.
     if (state.personage === 'felix') {
       markVisited('felix_hd2_vast');
+      // markVisited deelt alleen nieuwe vlaggen. Stond de vlag lokaal nog van
+      // een eerdere ronde (Firebase-reset zonder verse browserstate), dan
+      // bleef de gedeelde spiegel leeg en zag Jan bij H2 "niets te doen".
+      // Expliciet bijzetten, zelfde vangnet als in debugFelixWeerVastInH2.
+      setSharedState('vflag_felix_hd2_vast', true);
       state.locatieOnbekend = true;
       // Zijn kleding is afgepakt: een eventuele actieve vermomming vervalt,
       // en de outfit-items verdwijnen uit zijn inventaris. We onthouden
