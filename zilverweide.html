@@ -19477,41 +19477,6 @@ function debugAlleVierVerhaal() {
   podiumVerhaalWacht();
 }
 
-function podiumStills() {
-  var cont = document.getElementById('locatie-content');
-  var stills = [
-    { tekst: '[Placeholder: still 1, de heksen verschijnen op het podium, Hilketrude en Aleida]' },
-    { tekst: '[Placeholder: still 2, ze taunten de spelers, gelach, dreiging]' },
-    { tekst: '[Placeholder: still 3, de spelers kijken toe, machteloos]' },
-    { tekst: '[Placeholder: still 4, iets vreemds, een schaduw, iets wat niet klopt]' },
-    { tekst: '[Placeholder: still 5, een vervormde stem: "Pak ze!"]' },
-    { tekst: '[Placeholder: still 6, de heksen draaien zich om]' },
-    { tekst: '[Placeholder: still 7, de spelers kijken elkaar aan, knikken]' },
-  ];
-  var huidigeStill = 0;
-
-  function toonStill(i) {
-    var s = stills[i];
-    var isLaatste = (i === stills.length - 1);
-    renderLocatieScene({
-      container: cont,
-      titel: 'Het Podium',
-      sub: 'De heksen verschijnen',
-      image: podiumAfbeelding(),
-      dialog: [
-        { spreker: 'Verteller', tekst: s.tekst }
-      ],
-      geenTerug: true,
-      acties: [
-        { label: isLaatste ? 'Nu! \u2192' : 'Volgende \u2192', onclick: isLaatste ? podiumArmSelectie : function() { huidigeStill++; toonStill(huidigeStill); } }
-      ]
-    });
-    showScreen('screen-locatie');
-  }
-
-  toonStill(0);
-}
-
 // Arm-selectie: elke speler pakt een ledemaat. Via shared state, live
 // gesynchroniseerd. Pakken twee spelers tegelijk dezelfde arm (race via
 // Firebase), dan wint de eerste in de vaste rolvolgorde; de ander krijgt
