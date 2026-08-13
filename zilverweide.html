@@ -2720,6 +2720,9 @@ var _leesvlagGemeld = {};
 // af waren. Deze vlaggen onderdrukken de effecten tijdens die eerste sync.
 var _verhaalInitieleSnapshotBezig = false;
 var _verhaalSnapshotGehad = false;
+// Laatst geziene stand van de extra hulp (begeleidersknop). null = nog geen
+// snapshot gehad, dan is er niets omgezet en hoeft er niets herzien te worden.
+var _extraHulpVorige = null;
 function verwerkBinnengekomenShared(data) {
   var eersteSnapshot = !_verhaalSnapshotGehad;
   if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
@@ -2858,6 +2861,22 @@ function verwerkBinnengekomenShared(data) {
     var _torenHaakLoc = locatiesK1.find(function(l){ return l.id === 'k1_uitkijktoren'; });
     if (_torenHaakLoc) renderK1Uitkijktoren(_torenHaakLoc);
   }
+  // Extra hulp omgezet in het begeleiderspaneel: staat Jan op dat moment
+  // boven op de toren, dan zijn observaties meteen herzien, zodat hij de
+  // duidelijkere hints ziet zonder eerst naar beneden en weer omhoog te
+  // moeten. Stil, zoals alle ingrepen van de begeleider: geen melding.
+  var _hulpNu = !!(data && data.extra_hulp);
+  if (_extraHulpVorige !== null && _hulpNu !== _extraHulpVorige && !eersteSnapshot &&
+      state.personage === 'jan' && state.janTorenDitBezoek &&
+      state.lastOpenedLocatie === 'k1_uitkijktoren' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      typeof renderK1Uitkijktoren === 'function') {
+    if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+    var _hulpLoc = locatiesK1.find(function(l){ return l.id === 'k1_uitkijktoren'; });
+    if (_hulpLoc) renderK1Uitkijktoren(_hulpLoc);
+  }
+  _extraHulpVorige = _hulpNu;
   // Zelfde voor de Stiltevijver (DD8). Sta je daar terwijl Fenna's status via
   // een ander apparaat verandert, dan het scherm meteen herzien. Voor Kelly
   // speelt bovendien dezelfde reunie-dialoog als bij de put zodra Fenna de
@@ -6964,12 +6983,18 @@ function begeleiderRenderPaneel() {
   var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
     return _bglShared['schaduw_pauze_' + r.id] === true;
   });
+  var hulpAan = _bglShared.extra_hulp === true;
   html += '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
     (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
+    '<div style="text-align:center;margin-top:.5rem"><button class="bgl-knopje" onclick="begeleiderExtraHulp()">' +
+      (hulpAan ? '💡 Extra hulp uitzetten' : '💡 Extra hulp geven') + '</button></div>' +
+    '<div class="bgl-info" style="margin-bottom:0">Extra hulp' + (hulpAan ? ' <b>staat aan</b>' : '') +
+      ': Jans hints vanaf de uitkijktoren noemen dan met zoveel woorden wie er iets mee kan. ' +
+      'Werkt direct, voor het hele team.</div>' +
   '</div>' +
     begeleiderMissieHtml() +
     '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
-    'alleen de team-pauzeknop werkt direct. Alle wijzigingen komen stil binnen: ' +
+    'alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
@@ -7149,6 +7174,21 @@ function begeleiderPauzeAlles() {
       basis.child('schaduw_pauze_' + r.id).set(nieuw).catch(fout);
     });
   } catch (e) { fout(e); }
+  begeleiderRenderPaneel();
+}
+
+// Extra hulp voor het hele team: één knop, geen Bevestig. De gedeelde vlag
+// extra_hulp maakt Jans toren-hints concreter (zie extraHulpAan). Bewust een
+// waarde-write (false in plaats van wissen): een verwijderde sleutel komt niet
+// aan in de lokale spiegel van de tablets, want de merge daar wist niets.
+function begeleiderExtraHulp() {
+  if (!_bglSid) return;
+  var nieuw = !(_bglShared.extra_hulp === true);
+  try {
+    _bglShared.extra_hulp = nieuw;
+    firebase.database().ref('sessies/' + _bglSid + '/shared').child('extra_hulp').set(nieuw)
+      .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
   begeleiderRenderPaneel();
 }
 
@@ -12454,6 +12494,14 @@ function speelVijverReunie() {
 // HTML-string-flow lopen.
 // ══════════════════════════════════════════════════════════════════
 
+// Extra hulp: de begeleider kan met één knop in het begeleiderspaneel de
+// hints van het hele team concreter maken. Team-breed (niet per rol), zodat
+// het één beslissing blijft. Nu gebruikt door Jans observaties boven op de
+// uitkijktoren; nieuwe hulp-teksten kunnen dezelfde vlag lezen.
+function extraHulpAan() {
+  return getSharedState('extra_hulp') === true;
+}
+
 function renderK1Uitkijktoren(loc) {
   const p = state.personage;
   const dialog = [];
@@ -12477,28 +12525,38 @@ function renderK1Uitkijktoren(loc) {
       // Hints zijn gefaseerd: ze verschuiven mee met het verst ontgrendelde
       // district. Zodra Dorendael open is, verdwijnen de Kraaienkwartier-hints;
       // zodra Heer Donatuslaan open is, verdwijnen de Dorendael-hints.
+      // Staat de extra hulp van de begeleider aan, dan zijn een paar hints
+      // concreter: ze noemen wie ermee verder kan (zie extraHulpAan).
       const donatusOpen = hasVisited('sintdonatuslaan_unlocked');
+      const hulp = extraHulpAan();
       let observaties;
       if (donatusOpen) {
         observaties = [
           { quote: '"Bij het gemeentehuis brandt nog licht. De burgemeester zal wel druk bezig zijn met alle paniek in het dorp. Iedereen sprak vandaag goed over hem. Licht betekent natuurlijk niet dat hij er ook echt is, maar toch."' },
           { quote: '"Is dat niet die criminele hangplek van, ach, hoe heet die troep ook alweer... Vergeten... Vrouwe Roet was de leider, geloof ik."' },
-          { quote: '[Placeholder: hint Heer Donatuslaan 3]' },
         ];
       } else if (dorendaelOpen) {
         observaties = [
-          { quote: '"Wat hangt daar nu, een uithangbord met een klok erop? Te ver om te lezen wat er bij staat. Zulke borden hangen alleen bij vakmensen. Onthouden."' },
-          { quote: '"Die oude molen steekt boven alles uit. Verbrand, naar het eruitziet. Vergt onderzoek en daarna misschien het archief in duiken."' },
+          { quote: hulp
+              ? '"Wat hangt daar nu, een uithangbord met een klok erop? Te ver om te lezen wat er bij staat. Zulke borden hangen alleen bij vakmensen. Voor mij als sleutelmaker handig."'
+              : '"Wat hangt daar nu, een uithangbord met een klok erop? Te ver om te lezen wat er bij staat. Zulke borden hangen alleen bij vakmensen. Onthouden."' },
+          { quote: hulp
+              ? '"Die oude molen steekt boven alles uit. Verbrand, naar het eruitziet. Vergt onderzoek en daarna misschien het archief in duiken. Maar dat is écht Kelly\'s ding."'
+              : '"Die oude molen steekt boven alles uit. Verbrand, naar het eruitziet. Vergt onderzoek en daarna misschien het archief in duiken."' },
         ];
       } else {
         observaties = [
           { quote: '"Daar op het dorpsplein, is dat het archief? Echt iets voor Kelly om in te duiken."' },
-          { quote: '"Het podium… daar ligt nog van alles. Dat is vast iets voor iemand anders in de groep."' },
+          { quote: hulp
+              ? '"Het podium… daar ligt nog van alles. Maar daar ligt vast iets voor Fenna. Maar misschien moet ze eerst weten wat ze zoekt."'
+              : '"Het podium… daar ligt nog van alles. Dat is vast iets voor iemand anders in de groep."' },
         ];
         if (!state.heksOpgelost) {
           observaties.push({ quote: '"Zit daar nu een vrouw in de tuin te huilen bij nummer 7? Ik kan het niet goed zien van hieruit..."' });
         }
-        observaties.push({ quote: '"Wat een uitzicht. Geen slecht idee om hier nog eens terug te komen."' });
+        observaties.push({ quote: hulp
+          ? '"Wat een uitzicht. Geen slecht idee om hier nog eens terug te komen. Dit is jouw basis. Hier krijg je vaker hints per straat."'
+          : '"Wat een uitzicht. Geen slecht idee om hier nog eens terug te komen."' });
       }
 
       let html = '<div class="observatie-grid">';
@@ -20026,6 +20084,13 @@ function buildDebugPanel() {
     ['💃 Kleed om naar Lola',    function(){ addInventory(ITEMS.lolaOutfit.emoji, ITEMS.lolaOutfit.naam, false); debugVermomFelix('Lola'); }, isFelix],
     ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix],
     ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming],
+    // Extra hulp van de begeleider: dezelfde gedeelde vlag als de knop in het
+    // begeleiderspaneel, zodat de duidelijkere hints solo te testen zijn.
+    ['💡 Extra hulp: ' + (extraHulpAan() ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){
+      setSharedState('extra_hulp', !extraHulpAan());
+      close();
+      if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
+    }, true],
     // Herstelpunt (crash-herstel): forceer een save, kijk wat er staat, of wis.
     ['💾 Herstelpunt nu opslaan', function(){ schrijfHerstelpuntNu(true); close(); }, true],
     ['🔎 Herstelpunt in console', function(){ herstelpuntNaarConsole(); close(); }, true],
