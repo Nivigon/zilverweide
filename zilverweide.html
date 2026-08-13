@@ -299,12 +299,18 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 #locatie-indicator{position:fixed;top:4rem;right:1rem;z-index:200;background:rgba(13,10,6,.92);border:1px solid rgba(201,168,76,.35);border-radius:50px;padding:.5rem 1rem;display:none;align-items:center;gap:.5rem;backdrop-filter:blur(4px);box-shadow:0 0 20px rgba(0,0,0,.5)}
 #locatie-indicator .ind-symbol{font-size:1.2rem}
 #locatie-indicator .ind-name{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase}
-/* Tijdens de podium-intro (vanaf het wachtscherm tot en met de uitleg over de
-   terug-knop) mag de speler nergens anders op drukken. De vaste knoppen
-   blijven staan zoals ze staan, maar reageren niet: alleen de intro zelf gaat
-   verder. Zie zetIntroVergrendeling(). */
+/* Tijdens de podium-intro (vanaf het moment dat de teller op 4/4 staat tot en
+   met de uitleg over de terug-knop) mag de speler nergens anders op drukken.
+   De vaste knoppen blijven staan zoals ze staan, maar reageren niet: alleen de
+   intro zelf gaat verder. Op het wachtscherm ervoor mag hij wel zijn rol en
+   rugzak bekijken; wat dan openstaat gaat op 4/4 vanzelf dicht. Zie
+   zetIntroVergrendeling() en sluitIntroOverlays().
+   De terug-knop staat er ook in. Die is tijdens de intro al op display:none
+   gezet, maar zo kan geen enkele route hem alsnog klikbaar maken. De kloon in
+   de terugknop-uitleg heeft geen id en blijft dus wel werken. */
 body.intro-vergrendeld #inv-bar,
 body.intro-vergrendeld #topright-cluster,
+body.intro-vergrendeld #locatie-back-btn,
 body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 
 /* Op korte schermen (telefoon in landscape) de locatie-aanduider kleiner en
@@ -15976,13 +15982,24 @@ function checkDorpspleinLocatie(val) {
   }
 }
 
-// Zet de vaste knoppen (rugzak, verhaal-teller, rol-badge, locatie-aanduider)
-// aan of uit. Gebruikt tijdens de podium-intro: vanaf het wachtscherm tot en
-// met de uitleg over de terug-knop is alleen de intro zelf klikbaar. De
-// knoppen blijven staan zoals ze staan, ze reageren alleen niet.
+// Zet de vaste knoppen (rugzak, verhaal-teller, rol-badge, terug-knop,
+// locatie-aanduider) aan of uit. Gebruikt tijdens de podium-intro: vanaf 4/4
+// aanwezig tot en met de uitleg over de terug-knop is alleen de intro zelf
+// klikbaar. De knoppen blijven staan zoals ze staan, ze reageren alleen niet.
 function zetIntroVergrendeling(aan) {
   if (!document.body) return;
   document.body.classList.toggle('intro-vergrendeld', !!aan);
+}
+
+// Klap alles dicht wat de speler over de scene heen open kan hebben staan.
+// Nodig op het moment dat de podium-intro begint: wie tijdens het wachten op
+// 4/4 zijn rol of rugzak zat te lezen, zou het aftellen en het hele filmpje
+// anders achter die laag missen. Het slot hierboven houdt ze daarna dicht.
+function sluitIntroOverlays() {
+  if (typeof sluitRolOverzicht === 'function')        sluitRolOverzicht();
+  if (typeof sluitInventarisOverzicht === 'function') sluitInventarisOverzicht();
+  if (typeof sluitAnderSpeler === 'function')         sluitAnderSpeler();
+  if (typeof sluitMissiePaneel === 'function')        sluitMissiePaneel();
 }
 
 function podiumAfbeelding() {
@@ -15999,8 +16016,11 @@ function openToneel() {
 
   // Eerste bezoek aan podium: interactieve intro-scene
   if (!hasVisited('intro_filmpje_gezien')) {
-    // Vanaf hier ligt alles vast tot de uitleg over de terug-knop weg is.
-    zetIntroVergrendeling(true);
+    // Op het wachtscherm mogen de vaste knoppen nog gewoon werken: wachten op
+    // de anderen is dode tijd, en juist dan is je eigen rol teruglezen nuttig.
+    // Het slot gaat pas op 4/4 dicht, in de poll hieronder, samen met het
+    // dichtklappen van wat er dan openstaat.
+    zetIntroVergrendeling(false);
     var locContent = document.getElementById('locatie-content');
     renderLocatieScene({
       container: locContent,
@@ -16049,6 +16069,12 @@ function openToneel() {
         tellerTekst.textContent = huidige.length + '/4 aanwezig';
         if (huidige.length >= 4) {
           clearInterval(introPolling);
+          // De show begint: eerst dichtklappen wat de speler tijdens het
+          // wachten open had staan (rol, rugzak, verhaal-paneel), dan pas het
+          // slot erop. Vanaf hier tot de uitleg over de terug-knop is alleen
+          // de intro zelf nog klikbaar.
+          sluitIntroOverlays();
+          zetIntroVergrendeling(true);
           wachtTekst.textContent = '';
           // Aftellen 3 2 1
           podiumAftellen(tellerTekst, beginKnop, actiesMount, locContent);
