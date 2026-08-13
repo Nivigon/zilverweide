@@ -6987,9 +6987,9 @@ function begeleiderRenderPaneel() {
   html += '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
     (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
     '<div style="text-align:center;margin-top:.5rem"><button class="bgl-knopje" onclick="begeleiderExtraHulp()">' +
-      (hulpAan ? '💡 Extra hulp uitzetten' : '💡 Extra hulp geven') + '</button></div>' +
-    '<div class="bgl-info" style="margin-bottom:0">Extra hulp' + (hulpAan ? ' <b>staat aan</b>' : '') +
-      ': Jans hints vanaf de uitkijktoren noemen dan met zoveel woorden wie er iets mee kan. ' +
+      (hulpAan ? '💡 Toren hints moeilijker maken' : '💡 Toren hints makkelijker maken') + '</button></div>' +
+    '<div class="bgl-info" style="margin-bottom:0">Staat nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>. ' +
+      'Makkelijk: Jans hints vanaf de uitkijktoren noemen met zoveel woorden wie er iets mee kan. ' +
       'Werkt direct, voor het hele team.</div>' +
   '</div>' +
     begeleiderMissieHtml() +
