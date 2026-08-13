@@ -9690,21 +9690,6 @@ function kellyKerkArchief() {
   });
 }
 
-// (kellyKerkArchiefNaVideo blijft bestaan als tussenstap voor de bestaande
-// video-placeholder-route. Het doolhof heeft geen terugknop meer, dus deze
-// stap wordt niet langer door een onExit aangeroepen.)
-function kellyKerkArchiefNaVideo() {
-  const cont = document.getElementById('locatie-content');
-  renderLocatieScene({
-    container: cont, titel: 'Het kerkarchief', sub: '', image: 'locaties/heerdonatuslaan/kerkdoolhof.jpeg',
-    // Geen terugknop: de tekst zegt dat de deur achter haar dicht zit, dus
-    // weglopen mag hier niet. De enige weg is opnieuw het gangenstelsel in.
-    geenTerug: true,
-    dialog: ['Je wilt terug, maar de deur waardoor je kwam zit dicht. De enige uitweg loopt door de kelder, een donker gangenstelsel waarin je makkelijk verdwaalt.'],
-    acties: [{ label: 'Ga het gangenstelsel in', onclick: startKerkDoolhof }]
-  });
-}
-
 // Instructie-popup die verschijnt zodra de speler op de startknop van een
 // doolhof drukt, vlak voordat het doolhof echt begint. In-stijl, kort, en
 // een tikje dreigend.
@@ -9770,7 +9755,7 @@ function startKerkDoolhof() {
       // afloop als winst (de boekenvondst), zonder Schaduw-vloek.
       toonLade(
         'Je glipt erdoor',
-        '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: de non wendt haar hoofd af, heel even maar. Genoeg. Je glipt langs haar de duisternis in, en dit keer neemt het gangenstelsel je niet terug.]</p>',
+        '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De non wendt haar hoofd af, heel even maar. Genoeg. Je glipt langs haar de duisternis in, en dit keer neemt het gangenstelsel je niet terug.</p>',
         'Verder',
         function() {
           if (zwBackBtn) zwBackBtn.style.display = '';
@@ -22501,14 +22486,14 @@ const KERK_CONFIG = {
     titel:   'Het kerkarchief',
     sub:     'Donkere gangen',
     intro: [
-      '[Placeholder: gangen vol stoffige kasten, het kaarslicht flakkert.]',
-      '[Placeholder: één verkeerde afslag en de non staat weer voor je.]'
+      'Gangen vol stoffige kasten, het kaarslicht flakkert.',
+      'Eén verkeerde afslag en de non staat weer voor je.'
     ],
     caption: 'De gangen onder het kerkarchief',
     heks:    'Verkeerde kant. De non brengt je terug bij het begin.',
     win: {
       titel: 'Je bent door het gangenstelsel',
-      body:  '[Placeholder: een laatste deur, en je staat buiten op straat.]'
+      body:  'Een laatste deur, en je staat buiten op straat.'
     }
   }
 };
