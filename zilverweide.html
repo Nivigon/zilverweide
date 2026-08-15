@@ -2769,16 +2769,33 @@ function verwerkBinnengekomenShared(data) {
     }
     // Leesvlaggen van andere tablets: teller en (open) missie-paneel meteen
     // bijwerken zodat de leestaak-teller live oploopt.
+    var leesvlagBoeken = { 'dagboek_gelezen_': 'dagboek', 'molen_gezien_': 'molen', 'rozen_gelezen_': 'rozen' };
+    var boekVlagBinnen = {};
     for (var lvKey in data) {
-      if (lvKey.indexOf('dagboek_gelezen_') === 0 || lvKey.indexOf('molen_gezien_') === 0 || lvKey.indexOf('rozen_gelezen_') === 0) {
+      for (var lvPrefix in leesvlagBoeken) {
+        if (lvKey.indexOf(lvPrefix) !== 0) continue;
         if (data[lvKey] && !_leesvlagGemeld[lvKey]) {
           _leesvlagGemeld[lvKey] = true;
+          boekVlagBinnen[leesvlagBoeken[lvPrefix]] = true;
           ietsNieuws = true;
         } else if (!data[lvKey] && _leesvlagGemeld[lvKey]) {
-          // Reset via het testpaneel op een ander tablet: teller terug omlaag.
+          // Reset via het testpaneel op een ander tablet: teller terug omlaag,
+          // en de compleet-melding mag daarna opnieuw afgaan.
           delete _leesvlagGemeld[lvKey];
+          delete _leestaakCompleetGemeld[leesvlagBoeken[lvPrefix]];
           ietsNieuws = true;
         }
+      }
+    }
+    // Kwam er een leesvlag binnen en is de leestaak daarmee 4/4 terwijl de
+    // finale al compleet was, dan op deze tablet het sein "naar het podium"
+    // geven. Bij de allereerste snapshot (herstel na verversen) stil
+    // markeren: dat moment is dan al geweest.
+    for (var lvBoek in boekVlagBinnen) {
+      if (eersteSnapshot) {
+        if (boekDoorIedereenGelezen(lvBoek)) _leestaakCompleetGemeld[lvBoek] = true;
+      } else {
+        meldLeestaakCompleet(lvBoek);
       }
     }
     for (var kkKey in data) {
@@ -4167,6 +4184,47 @@ function markeerBoekGelezen(boek) {
     toonToast('📖', taak.voltooidWoord + ' (' + telBoekLezers(boek) + '/' + SHARED_ROLLEN.length + ')');
   }
   updateMissieTeller();
+  // Was dit de laatste leesbeurt terwijl de finale al compleet was? Dan
+  // meteen ook op deze tablet het sein geven (de Firebase-echo dekt de
+  // andere drie, en de gemeld-vlag voorkomt een dubbele melding hier).
+  meldLeestaakCompleet(boek);
+}
+
+// Het team wacht op het einde van een wijk vaak alleen nog op het lezen: de
+// finale-popup stuurt iedereen naar het podium, maar de gok kan pas als de
+// leestaak 4/4 staat. Vroeger ontbrak het sein dat dat moment bereikt was
+// (in de ronde van 15 augustus stond het team zeven minuten bij het podium
+// te wachten). Deze melding vuurt precies één keer, op elke tablet, zodra
+// de laatste leesvlag binnenkomt EN de finale van die wijk al compleet is.
+// Is het lezen eerder klaar dan de sleutels, dan is dit sein overbodig: de
+// finale-popup meldt dan zelf al dat er meteen beslist kan worden.
+var _leestaakCompleetGemeld = {};
+function leestaakFaseKlaar(boek) {
+  if (boek === 'dagboek') {
+    var kkVol = (typeof kraaienMissieVoltooid === 'function' &&
+      kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length);
+    var kkGok = state.heksOpgelost || !!getSharedState('heks_opgelost');
+    return (alleFinaleCodesVerzameld() || kkVol) && !kkGok;
+  }
+  if (boek === 'molen') {
+    return dorendaelFinaleKlaar() && !state.dorendaelGokOpgelost &&
+      !getSharedState('dorendael_gok_opgelost');
+  }
+  if (boek === 'rozen') {
+    return heerDonatusFinaleKlaar() && !state.tobbeGokOpgelost &&
+      !getSharedState('tobbe_gok_opgelost');
+  }
+  return false;
+}
+function meldLeestaakCompleet(boek) {
+  if (_leestaakCompleetGemeld[boek]) return;
+  if (!boekDoorIedereenGelezen(boek)) return;
+  if (!leestaakFaseKlaar(boek)) return;
+  _leestaakCompleetGemeld[boek] = true;
+  var taak = LEESTAKEN[boek];
+  if (typeof toonToast === 'function') {
+    toonToast('📖', taak.labelKlaar + '. Naar het podium!');
+  }
 }
 
 // Regel voor het missie-paneel: open taak met teller, of voltooid met vink.
@@ -18671,10 +18729,20 @@ function checkAllTokens() {
     kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length);
   if ((alleFinaleCodesVerzameld() || kraaienScoreVol) && !state.finalePopupGetoond && !popupOpen) {
     state.finalePopupGetoond = true;
+    // De leesplicht alleen noemen als hij nog openstaat: heeft iedereen het
+    // dagboek al gelezen, dan zou die zin ten onrechte terugsturen naar het
+    // archief. In de ronde van 15 augustus stuurde de omgekeerde variant
+    // (altijd "ga naar het podium" terwijl het lezen nog openstond) het team
+    // zeven minuten te vroeg naar het podium.
+    var kkLeesKlaar = boekDoorIedereenGelezen('dagboek');
     toonLade(
     'Alles verzameld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alles verzameld. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
-      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. Maar de gok kan pas gemaakt worden als iedereen het dagboek in het dorpsarchief gelezen heeft.</p>',
+      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">' +
+      (kkLeesKlaar
+        ? 'Wie als eerste bij het podium is, krijgt het stemrecht. Iedereen heeft het dagboek al gelezen, jullie kunnen meteen beslissen.'
+        : 'Wie als eerste bij het podium is, krijgt het stemrecht. Maar de gok kan pas gemaakt worden als iedereen het dagboek in het dorpsarchief gelezen heeft.') +
+      '</p>',
     'Verder →',
     null
   );
@@ -18696,10 +18764,19 @@ function checkDorendaelTokens() {
     if (window.ZilverweideSchaduw) {
       window.ZilverweideSchaduw.kalmeer({ laatPuzzelUitspelen: true });
     }
+    // Zelfde tekst-branch als bij het Kraaienkwartier: de leesplicht alleen
+    // noemen zolang hij openstaat. Is het lezen al 4/4, dan is het archief
+    // ook echt dicht (checkCodeToegankelijk laat D3 dan niet meer toe) en
+    // zou de archief-zin de verkeerde kant op wijzen.
+    var ddLeesKlaar = boekDoorIedereenGelezen('molen');
     toonLade(
     '✦  Verhaalscore compleet',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie hebben alle stukken bij elkaar. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks is.</p>' +
-      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen de molen-legende gezien heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.</p>',
+      '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">' +
+      (ddLeesKlaar
+        ? 'Wie als eerste bij het podium is, krijgt het stemrecht. Iedereen heeft de molen-legende al gezien, jullie kunnen meteen beslissen. Andere plekken zijn nu gesloten.'
+        : 'Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen de molen-legende gezien heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.') +
+      '</p>',
     'Verder →',
     null
   );
@@ -18749,10 +18826,16 @@ function checkHeerDonatusTokens() {
     if (window.ZilverweideSchaduw) {
       window.ZilverweideSchaduw.kalmeer({ laatPuzzelUitspelen: true });
     }
+    // Zelfde tekst-branch als bij de andere twee wijken.
+    var hdLeesKlaar = boekDoorIedereenGelezen('rozen');
     toonLade(
       '✦  Verhaalscore compleet',
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jullie zijn klaar in Heer Donatuslaan. Verzamel voor overleg bij de plek waar het begon, het podium. Het is tijd om te beslissen wie jullie denken dat de heks in deze straat is.</p>' +
-        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen "Over de Rozen" gelezen heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.</p>',
+        '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">' +
+        (hdLeesKlaar
+          ? 'Wie als eerste bij het podium is, krijgt het stemrecht. Iedereen heeft "Over de Rozen" al gelezen, jullie kunnen meteen beslissen. Andere plekken zijn nu gesloten.'
+          : 'Wie als eerste bij het podium is, krijgt het stemrecht. De gok kan pas gemaakt worden als iedereen "Over de Rozen" gelezen heeft. Andere plekken zijn nu gesloten, alleen het dorpsarchief blijft daarvoor open.') +
+        '</p>',
       'Verder →',
       null
     );
