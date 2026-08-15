@@ -3201,6 +3201,12 @@ function rondTeamAf(slug, deviceIds) {
   var code = teamCodeVanApparaten(deviceIds);
   var sid = slug + '-' + datum + '-' + code;
   var pretty = teamPrettyVanSlug(slug);
+  // Eerst het geheugen van deze tablet leeg. Een tablet die na een vorige
+  // ronde is blijven openstaan heeft state.visited en zoneUnlocked nog
+  // gevuld, en neemt die voortgang anders mee de nieuwe ronde in. Puur
+  // lokaal: hier gaat niets naar Firebase, dus de drie andere tablets die
+  // op ditzelfde moment afronden merken er niets van.
+  wisLokaleRondeStand();
   // Gedeelde stand naar de teamsessie, met verse beginwaarden.
   initSharedFirebase(sid, true);
   try { localStorage.setItem('zw_sessie', sid); } catch (e) {}
@@ -6273,28 +6279,30 @@ function controleerWachten() {
 }
 
 // ─────────────────────────────────────────────────────────────────
-// Test-modus: alles resetten en direct naar rolkeuze. Bedoeld om
-// snel een ander personage of een ander startpunt te kunnen testen
-// zonder het hele intro-pad te hoeven doorlopen.
+// Alle voortgang van deze tablet zelf terug naar nul: bezochte scenes,
+// bezochte locaties, inventaris, finale-vlaggen en de zone-unlocks.
+// Schrijft bewust niets naar Firebase en raakt geen enkele andere
+// tablet, zodat dit ook veilig is op het moment dat vier tablets
+// tegelijk een teamnaam afronden.
+//
+// Nodig omdat state.visited alleen in het geheugen leeft. Een tablet
+// die na een vorige ronde blijft openstaan neemt die voortgang mee de
+// volgende ronde in, en checkCodeToegankelijk gaat op die oude vlaggen
+// af. In de praktijk zette dat hele wijken op slot: met een oude
+// dorendael_finale_gestart kreeg de speler bij elke locatie in het
+// Kraaienkwartier "Het woud roept" te zien.
+//
+// initSharedFirebase(sid, true) doet hetzelfde voor de gedeelde stand.
+// Dit is de lokale tegenhanger daarvan.
 // ─────────────────────────────────────────────────────────────────
-function resetSpel() {
-  // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
-  // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
-  // tablets wissen. Daarom altijd eerst bevestigen.
-  if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
-  // Logboek: de testmodus-reset laat de log-tak staan, dus dit moment is
-  // achteraf terug te vinden (in tegenstelling tot de volledige Firebase-reset).
-  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_testmodus' });
-  // Intro-slot altijd los: anders zou een reset midden in de intro je met
-  // dode knoppen achterlaten.
-  zetIntroVergrendeling(false);
+function wisLokaleRondeStand() {
   // Schaduw-effect uitzetten als het liep, en een eventuele opgeslagen
   // vergrendeling wissen (anders zou een refresh je weer vast zetten).
   if (window.ZilverweideSchaduw) {
     window.ZilverweideSchaduw.kalmeer();
     if (window.ZilverweideSchaduw.wisVergrendeling) window.ZilverweideSchaduw.wisVergrendeling();
   }
-  // State leegen — zelfde defaults als bij paginaload.
+  // State leegen, zelfde defaults als bij paginaload.
   state.personage = null;
   state.vermomming = null;
   state.inventory = [];
@@ -6321,6 +6329,29 @@ function resetSpel() {
   state.codes = { kraai: 'KRAAIENKWARTIER' };
   state.lastZone = null;
   state.locatieOnbekend = false;
+  // Zone-unlocks resetten naar default (alleen overworld zichtbaar,
+  // alle districten op slot tot ze legitiem worden ontgrendeld).
+  Object.keys(zoneUnlocked).forEach(function(z) { zoneUnlocked[z] = false; });
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Test-modus: alles resetten en direct naar rolkeuze. Bedoeld om
+// snel een ander personage of een ander startpunt te kunnen testen
+// zonder het hele intro-pad te hoeven doorlopen.
+// ─────────────────────────────────────────────────────────────────
+function resetSpel() {
+  // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
+  // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
+  // tablets wissen. Daarom altijd eerst bevestigen.
+  if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
+  // Logboek: de testmodus-reset laat de log-tak staan, dus dit moment is
+  // achteraf terug te vinden (in tegenstelling tot de volledige Firebase-reset).
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_testmodus' });
+  // Intro-slot altijd los: anders zou een reset midden in de intro je met
+  // dode knoppen achterlaten.
+  zetIntroVergrendeling(false);
+  // Eigen voortgang van deze tablet leeg (schaduw, visited, zone-unlocks).
+  wisLokaleRondeStand();
   state.shared = standaardGedeeldeState();
   // Wis ook de Firebase shared-node: de listener merget anders de oude
   // data (van een eerdere test) direct weer terug ("Firebase wint").
@@ -6342,10 +6373,6 @@ function resetSpel() {
   });
   _herstelVorigeKern = '';
   _herstelOvergenomen = false;
-
-  // Zone-unlocks resetten naar default (alleen overworld zichtbaar,
-  // alle districten op slot tot ze legitiem worden ontgrendeld).
-  Object.keys(zoneUnlocked).forEach(function(z) { zoneUnlocked[z] = false; });
 
   // Doolhof opruimen mocht hij nog draaien.
   if (typeof huidigDoolhof !== 'undefined' && huidigDoolhof) {
@@ -7259,7 +7286,10 @@ function debugSnelstart(p) {
   if (magResetten) {
     ['tobbe_gevonden','herberg_resultaat','dagboek_gerestaureerd','filmpje_gezien',
      'rol_bezet_fenna','rol_bezet_kelly','rol_bezet_felix','rol_bezet_jan',
-     'dorendael_finale_gestart',
+     // Dit is een visited-flag uit SHARED_VISITED_FLAGS, en die staat in
+     // Firebase onder 'vflag_'. De platte naam werd door niemand gelezen,
+     // waardoor de reset de Dorendael-finale juist niet terugdraaide.
+     'vflag_dorendael_finale_gestart',
      'dagboek_gelezen_jan','dagboek_gelezen_kelly','dagboek_gelezen_fenna','dagboek_gelezen_felix',
      'molen_gezien_jan','molen_gezien_kelly','molen_gezien_fenna','molen_gezien_felix',
      'rozen_gelezen_jan','rozen_gelezen_kelly','rozen_gelezen_fenna','rozen_gelezen_felix'
@@ -20270,6 +20300,10 @@ function buildDebugPanel() {
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🚪 Reset ingang-geheugen',   function(){ debugResetIngangen(); close(); }, true, 'Algemeen'],
+      // Doet precies wat de teamkeuze sinds kort zelf doet: het geheugen van
+      // deze tablet leeg, zonder iets naar Firebase te schrijven. Hiermee is
+      // te controleren dat een tablet van een vorige ronde schoon begint.
+      ['🧹 Wis lokale rondestand',   function(){ wisLokaleRondeStand(); close(); showScreen('screen-personages'); }, true, 'Algemeen'],
       ['🎵 Lied: alles goed',        function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); close(); }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Algemeen'],
       // ── Herberg
       ['🍺 Forceer herberg-succes',  function(){ debugHerbergSucces(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
