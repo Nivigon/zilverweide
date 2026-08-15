@@ -3024,6 +3024,34 @@ function logboekZetAan(aan) {
   if (typeof toonToast === 'function') toonToast('📊', 'Logboek loggen ' + (aan ? 'aan' : 'uit'));
 }
 
+// Waar staat deze speler, voor de verblijftijd-analyse in het logboek?
+//
+// Niet zomaar state.lastOpenedLocatie: die variabele is van de gameplay (de
+// schaduw leest hem om te weten of je wel of niet op een locatie staat) en
+// wordt op ruim twintig plekken bewust op null gezet, onder andere bij de
+// boekviewers, het dorpsarchief en de podium-scenes. Elk van die momenten
+// maakte de speler naamloos in de grafiek: in de ronde van 15 augustus
+// verdween daardoor alle archieftijd van drie spelers in een anonieme balk
+// "screen-locatie" van meer dan een uur.
+//
+// Daarom valt deze functie terug op de scene-titel. state.laatsteSceneTitel
+// wordt door renderLocatieScene bij elke scene gezet (dat bestond al voor
+// het schaduw-vergrendelscherm), dus dit dekt in een klap alle deelschermen
+// zonder dat er ergens iets extra's bijgehouden hoeft te worden. Alleen
+// lezen: deze functie verandert niets aan de spelstand.
+function logboekPlek() {
+  if (state.lastOpenedLocatie) return state.lastOpenedLocatie;
+  // De scene-titel geldt alleen zolang we echt op het locatie-scherm staan.
+  // Anders zou een oude titel blijven plakken op de wereldkaart.
+  try {
+    var actief = document.querySelector('.screen.active');
+    if (actief && actief.id === 'screen-locatie' && state.laatsteSceneTitel) {
+      return 'scene: ' + state.laatsteSceneTitel;
+    }
+  } catch (e) {}
+  return null;
+}
+
 // Hartslag: elke 30s een monster van het huidige scherm. Zo is een speler
 // die lang op dezelfde plek blijft (vastgelopen) te onderscheiden van een
 // tablet die stilviel (dan stopt de hartslag helemaal). Pas actief zodra
@@ -3034,7 +3062,7 @@ setInterval(function () {
     var scherm = document.querySelector('.screen.active');
     logboekSchrijf('hartslag', {
       scherm: scherm ? scherm.id : null,
-      locatie: state.lastOpenedLocatie || null
+      locatie: logboekPlek()
     });
   } catch (e) {}
 }, 30000);
@@ -5371,7 +5399,7 @@ function showScreen(id) {
 
   // Logboek: schermwissel vastleggen (tijdlijn voor verblijftijd-analyse).
   if (typeof logboekSchrijf === 'function') {
-    logboekSchrijf('scherm', { scherm: id, locatie: state.lastOpenedLocatie || null });
+    logboekSchrijf('scherm', { scherm: id, locatie: logboekPlek() });
   }
 
   // Schaduw: meter loopt alleen op locatie-schermen. In overworld/invoer/zone-selectie
