@@ -148,6 +148,50 @@ function logLijst(sessie) {
   return arr;
 }
 
+// Sleutels die het schaduw-systeem schrijft. Samen bijna de helft van al het
+// verkeer, dus die krijgen hun eigen kaart in plaats van honderden tabelrijen.
+var SCHADUW_KEY = /^schaduw_(status|lock|bevrijd)_/;
+
+// Maak van de ruwe schaduw-schrijfacties een leesbaar verloop per rol: wanneer
+// de vloek begon, wanneer de meter vol stond (dus de Chaos-puzzel kwam),
+// wanneer iemand echt vastzat en door wie hij bevrijd werd, en wanneer de
+// vloek week. Precies de regels die je bij nakijken wilt zien, zonder de
+// tientallen meterstapjes ertussen.
+function vatSchaduwSamen(entries) {
+  var perRol = {};
+  var vorige = {};   // rol -> {vervloekt, vast, meter}
+  var codes = {};    // rol -> laatst geziene lock-code
+  entries.forEach(function (e) {
+    var m = /^schaduw_(status|lock|bevrijd)_(.+)$/.exec(e.key || '');
+    if (!m) return;
+    var soort = m[1], rol = m[2];
+    if (!perRol[rol]) perRol[rol] = [];
+    var w = e.waarde;
+    if (soort === 'lock') {
+      if (w && w.code) codes[rol] = w.code;   // heartbeats van dezelfde lock: alleen onthouden
+      return;
+    }
+    if (soort === 'bevrijd') {
+      if (w && w.door) perRol[rol].push({ t: e.t, wat: 'bevrijd door ' + w.door, soort: 'goed' });
+      return;
+    }
+    // status: alleen de overgangen die er toe doen.
+    if (!w || typeof w !== 'object') return;
+    var v = vorige[rol] || { vervloekt: false, vast: false, meter: 0 };
+    if (w.vervloekt && !v.vervloekt) perRol[rol].push({ t: e.t, wat: 'vervloekt', soort: 'fout' });
+    if (!w.vervloekt && v.vervloekt) perRol[rol].push({ t: e.t, wat: 'vloek weg', soort: 'goed' });
+    if (w.meter >= 100 && v.meter < 100 && !w.vast) {
+      perRol[rol].push({ t: e.t, wat: 'meter vol (Chaos-puzzel)', soort: 'gat' });
+    }
+    if (w.vast && !v.vast) {
+      perRol[rol].push({ t: e.t, wat: 'vastgezet' + (codes[rol] ? ' (code ' + codes[rol] + ')' : ''), soort: 'fout' });
+    }
+    if (!w.vast && v.vast) perRol[rol].push({ t: e.t, wat: 'weer los', soort: 'goed' });
+    vorige[rol] = { vervloekt: !!w.vervloekt, vast: !!w.vast, meter: w.meter || 0 };
+  });
+  return perRol;
+}
+
 // Bereken alles wat we per sessie willen tonen.
 function analyse(sessie) {
   var entries = logLijst(sessie);
@@ -159,18 +203,26 @@ function analyse(sessie) {
     gokken: [],           // heks-gokken op het podium (type 'gok')
     dwellPerRol: {},      // rol -> {locatie -> ms}
     gatenPerRol: {},      // rol -> [{van, tot, ms}]
+    schaduwPerRol: {},    // rol -> [{t, wat, extra}] samengevat vloekverloop
     rollen: {}            // set van rollen
   };
   // Per rol de op tijd gesorteerde "teken van leven"-monsters (scherm/hartslag),
   // voor verblijftijd en gaten.
   var levenPerRol = {};
+  var schaduwEntries = [];
   entries.forEach(function (e) {
     var rol = e.rol || '?';
     if (rol !== '?') res.rollen[rol] = true;
     if (e.type === 'sessie') {
       res.events.push(e);
     } else if (e.type === 'shared') {
-      res.shared.push(e);
+      // Schaduw-sleutels gaan niet in de grote tabel maar in hun eigen kaart.
+      // Ze zijn met bijna de helft van alle schrijfacties veruit de drukste
+      // (de meter tikt per 10%), en zouden de echte gebeurtenissen wegdrukken.
+      // Bewust NIET weggegooid: juist dit verloop wees de oorzaak aan van een
+      // vloek die tijdens de puzzel verdween.
+      if (SCHADUW_KEY.test(e.key || '')) schaduwEntries.push(e);
+      else res.shared.push(e);
     } else if (e.type === 'gok') {
       res.gokken.push(e);
     }
@@ -196,6 +248,7 @@ function analyse(sessie) {
     res.dwellPerRol[rol] = dwell;
     res.gatenPerRol[rol] = gaten;
   }
+  res.schaduwPerRol = vatSchaduwSamen(schaduwEntries);
   // Teamnaam en oplostijd (uit meta en de gedeelde stand).
   var meta = sessie && sessie.meta;
   var shared = sessie && sessie.shared;
@@ -366,7 +419,28 @@ function renderDetail(id) {
   if (!enigGat) html += '<div class="leeg" style="padding:.5rem">geen gaten langer dan ' + Math.round(GAT_MS / 1000) + 's</div>';
   html += '</div>';
 
-  // Gedeelde schrijfacties
+  // Schaduw-verloop per rol
+  html += '<div class="kaart"><h2>Schaduw per rol</h2>';
+  var enigSchaduw = false;
+  rollen.forEach(function (rol) {
+    var rijen = a.schaduwPerRol[rol] || [];
+    if (!rijen.length) return;
+    enigSchaduw = true;
+    var vol = rijen.filter(function (r) { return r.wat.indexOf('meter vol') === 0; }).length;
+    var vast = rijen.filter(function (r) { return r.wat.indexOf('vastgezet') === 0; }).length;
+    html += '<div class="rol-blok"><h3>' + esc(rol) + '</h3>';
+    html += '<div style="color:var(--mist);font-size:.78rem;margin:.15rem 0 .4rem">' +
+      vol + 'x meter vol, ' + vast + 'x vastgezet</div>';
+    rijen.forEach(function (r) {
+      html += '<div class="rij"><span class="tijd">' + esc(tijdStr(r.t)) + '</span>' +
+        '<span class="tag ' + esc(r.soort) + '">' + esc(r.wat) + '</span></div>';
+    });
+    html += '</div>';
+  });
+  if (!enigSchaduw) html += '<div class="leeg" style="padding:.5rem">geen schaduw-activiteit gelogd</div>';
+  html += '</div>';
+
+  // Gedeelde schrijfacties (schaduw-sleutels zitten in de kaart hierboven)
   html += '<div class="kaart"><h2>Gedeelde schrijfacties (' + a.shared.length + ')</h2>';
   if (!a.shared.length) { html += '<div class="leeg" style="padding:.5rem">geen</div>'; }
   else {
@@ -518,6 +592,18 @@ function downloadMd(id) {
     plekken.forEach(function (p) { L.push('- ' + p + ': ' + duurStr(dwell[p])); });
     L.push('');
   });
+  L.push('## Schaduw per rol');
+  var enigSch = false;
+  rollen.forEach(function (rol) {
+    var rijen = a.schaduwPerRol[rol] || [];
+    if (!rijen.length) return;
+    enigSch = true;
+    L.push('### ' + rol);
+    rijen.forEach(function (r) { L.push('- ' + tijdStr(r.t) + ': ' + r.wat); });
+    L.push('');
+  });
+  if (!enigSch) L.push('_geen schaduw-activiteit gelogd_');
+  L.push('');
   L.push('## Hartslag-gaten');
   var enig = false;
   rollen.forEach(function (rol) {
