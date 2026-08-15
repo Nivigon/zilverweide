@@ -24470,9 +24470,33 @@ function pasSchaduwInstellingenToe() {
 
 // ── Schaduw-status naar de gedeelde stand (voor het begeleiderspaneel) ──
 // Elke paar seconden kijken of er iets veranderd is aan de eigen vloek
-// (actief, vergrendeld, metervulling in stappen van 10%) en alleen bij een
-// echte wijziging schrijven. De spelers-tablets doen niets met deze sleutel;
-// alleen het begeleiderspaneel leest hem.
+// (actief, vergrendeld, metervulling) en alleen bij een echte wijziging
+// schrijven. De spelers-tablets doen niets met deze sleutel; alleen het
+// begeleiderspaneel leest hem.
+//
+// De meter wordt grover gerapporteerd dan voorheen. In de ronde van 15
+// augustus was dit met 329 van de 689 schrijfacties veruit de drukste
+// sleutel van het hele spel, en 257 daarvan waren enkel een meterstapje
+// zonder dat er iets veranderde aan vervloekt, vast of pauze.
+//
+// Naar beneden afronden, niet naar het dichtstbijzijnde: bij afronden zou
+// een meter van 90 als 100 gemeld worden, en dan lijkt de Chaos-puzzel
+// begonnen terwijl de speler nog gewoon loopt. Op de echte sessiedata gaf
+// dat 25 valse "meter vol"-momenten. Naar beneden afronden geeft er nul.
+//
+// Wel een extra drempel op 90, want dat is precies wat een begeleider wil
+// weten: deze speler staat op het punt vast te lopen. Zonder die drempel
+// zou 99% als 75% binnenkomen. Netto stappen: 0, 25, 50, 75, 90, 100. Dat
+// is op de meetsessie 36% minder verkeer voor deze sleutel.
+//
+// De overgangen zelf (vervloekt, vast, pauze) blijven onverkort doorkomen,
+// dus voor de forensiek achteraf gaat er niets verloren: die analyse draait
+// op die overgangen, niet op de fijnheid van de meter.
+function schaduwMeterStap(m) {
+  if (m >= 100) return 100;
+  if (m >= 90) return 90;
+  return Math.floor(m / 25) * 25;
+}
 var _schaduwStatusVorig = null;
 function schaduwStatusSync() {
   if (!window.ZilverweideSchaduw || !state.personage) return;
@@ -24481,7 +24505,7 @@ function schaduwStatusSync() {
   var status = {
     vervloekt: !!(s.isVervloekt && s.isVervloekt()),
     vast: !!(s.isVergrendeld && s.isVergrendeld()),
-    meter: (typeof s.getMeter === 'function') ? Math.round(s.getMeter() / 10) * 10 : 0,
+    meter: (typeof s.getMeter === 'function') ? schaduwMeterStap(s.getMeter()) : 0,
     pauze: !!(s.isBezig && s.isBezig()),
     t: gedeeldeTijdNu()
   };
