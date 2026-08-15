@@ -84,6 +84,9 @@ window.ZilverweideSchaduw = (function () {
   let vergrendeld = false;
   let opLocatie = false;          // sta je op een locatie-scherm? (host meldt dit via setOpLocatie)
   let gedroptVoorPuzzel = false;  // ben je door de schaduw naar een lege huls getrokken?
+  // De finale vroeg om kalmeer terwijl de Chaos-puzzel liep: puzzel eerst
+  // laten uitspelen, daarna alsnog kalmeren (zie kalmeer met laatPuzzelUitspelen).
+  let kalmeerUitgesteld = false;
   let tickTimer = null, fluisterTimer = null;
   let memSeq = [], memInput = [], memAccept = false;
   // Losstaand hand-ritueel (Kelly bij Naald en Masker): dezelfde rune-puzzel,
@@ -470,6 +473,9 @@ window.ZilverweideSchaduw = (function () {
         opLocatie = false;
         if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
       }
+      // Vroeg de finale om kalmeer terwijl deze puzzel liep? Dan wijkt de
+      // vloek nu helemaal, als beloning direct na het gehaalde zegel.
+      if (kalmeerUitgesteld) kalmeer();
     }, 1100);
   }
   function memFout() {
@@ -477,7 +483,18 @@ window.ZilverweideSchaduw = (function () {
     el.memRunes.querySelectorAll('.zv-rune').forEach(r => r.classList.add('zv-disabled'));
     // Hand-ritueel: geen vergrendeling. Ze mag het oneindig opnieuw proberen.
     if (handModus) { setTimeout(handHerstart, 900); return; }
-    setTimeout(() => { el.memory.classList.remove('zv-open'); vergrendel(); }, 900);
+    setTimeout(() => {
+      el.memory.classList.remove('zv-open');
+      // Vroeg de finale om kalmeer terwijl deze puzzel liep? Dan niet
+      // vergrendelen: niemand komt je tijdens de finale nog bevrijden.
+      // De schim laat los en de vloek wijkt na de flits alsnog.
+      if (kalmeerUitgesteld) {
+        stopFluisterGeluid();
+        toonVloekFlits('De schaduw reikt naar je uit... en laat je gaan.', function () { kalmeer(); });
+        return;
+      }
+      vergrendel();
+    }, 900);
   }
 
   // ── Losstaand hand-ritueel ───────────────────────────────────────
@@ -713,6 +730,7 @@ window.ZilverweideSchaduw = (function () {
   function vervloek(opts) {
     if (vergrendeld) return;                    // niet opnieuw vervloeken tijdens lock
     if (cursed) { updateSmoke(); return; }      // al vervloekt → niet dubbel inplannen
+    kalmeerUitgesteld = false;                  // een verse vloek erft geen oud uitstel
     var start = opts && typeof opts.startMeter === 'number' ? opts.startMeter : 0;
     meter = Math.max(0, Math.min(99, start));   // 99 als plafond: nooit meteen vol
     cursed = true;
@@ -770,7 +788,23 @@ window.ZilverweideSchaduw = (function () {
       o.style.display = 'none'; o.style.transition = 'none';
     }, 950);
   }
-  function kalmeer() {
+  function kalmeer(opts) {
+    // Zachte variant (finale): zit de speler middenin de Chaos-puzzel, laat
+    // die dan uitspelen in plaats van hem onder de handen weg te trekken.
+    // De vloek eindigt daarna alsnog: bij succes direct na de puzzel, bij
+    // falen via "de schim laat je gaan" (zie memGoed en memFout). Wie al
+    // vergrendeld is valt hier bewust buiten: die wordt direct bevrijd,
+    // want tijdens de finale komt niemand meer langs met de code.
+    if (opts && opts.laatPuzzelUitspelen && cursed && !vergrendeld
+        && !handModus && el.memory.classList.contains('zv-open')) {
+      kalmeerUitgesteld = true;
+      return;
+    }
+    kalmeerUitgesteld = false;
+    // Was de speler voor de puzzel naar een lege huls getrokken, dan hoort
+    // hij terug naar de straat, net als in de succes-route en laatLos.
+    // Zonder dit bleef hij achter in een locatie die hij nooit zelf koos.
+    var wasGedropt = gedroptVoorPuzzel;
     cursed = false; meter = 0; gedroptVoorPuzzel = false;
     if (vergrendeld) {                          // ook een lopende vergrendeling opheffen
       vergrendeld = false; actieveCode = null;
@@ -785,6 +819,10 @@ window.ZilverweideSchaduw = (function () {
     if (el.vloekmerk) el.vloekmerk.style.opacity = '0';   // vloekmerk weg als de vloek wijkt
     clearTimeout(fluisterTimer);
     updateSmoke();
+    if (wasGedropt) {
+      opLocatie = false;
+      if (typeof CFG.onTerugNaarStraat === 'function') CFG.onTerugNaarStraat();
+    }
   }
   // Pauze aan- of uitzetten namens één reden. Twee keer dezelfde reden
   // aanzetten telt als één (idempotent), zodat een defensieve dubbele aanroep
