@@ -2199,6 +2199,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <label class="schaduw-range">Chaos-knoppen <span id="schaduw-tempo-val">normaal</span>
     <input type="range" id="schaduw-tempo" min="0.5" max="2" step="0.05" value="1" oninput="schaduwChaosTempo(this.value)">
   </label>
+  <button class="schaduw-mi" onclick="schaduwZachteKalmeerTest()">Finale-kalmeer over 6s (test)</button>
   <button class="schaduw-mi" onclick="schaduwRedderTest()">Redder-invoer openen</button>
   <button class="schaduw-mi" onclick="schaduwSpooklockTest()">Nep-lock hier plaatsen</button>
   <button class="schaduw-mi" onclick="schaduwBevrijdTest()">Bevrijd-gesprek (test)</button>
@@ -18687,9 +18688,13 @@ function checkDorendaelTokens() {
   const popupOpen = document.getElementById('spel-melding') && document.getElementById('spel-melding').style.display === 'block';
   if (dorendaelFinaleKlaar() && !state.dorendaelFinalePopupGetoond && !state.dorendaelGokOpgelost && !popupOpen) {
     state.dorendaelFinalePopupGetoond = true;
-    // Schaduw pauzeert bij de finale: vastzittende spelers worden bevrijd
+    // Schaduw wijkt bij de finale: vastzittende spelers worden direct bevrijd,
+    // maar wie middenin de Chaos-puzzel zit speelt die eerst uit. Anders
+    // verdwijnt de puzzel onder iemands handen zodra een teamgenoot elders
+    // de laatste sleutel binnenhaalt. De finale-lade (z-index 481) valt
+    // achter de puzzel-overlay (600) en verschijnt vanzelf na afloop.
     if (window.ZilverweideSchaduw) {
-      window.ZilverweideSchaduw.kalmeer();
+      window.ZilverweideSchaduw.kalmeer({ laatPuzzelUitspelen: true });
     }
     toonLade(
     '✦  Verhaalscore compleet',
@@ -18738,9 +18743,11 @@ function checkHeerDonatusTokens() {
   var popupOpen = document.getElementById('spel-melding') && document.getElementById('spel-melding').style.display === 'block';
   if (heerDonatusFinaleKlaar() && !state.hdFinalePopupGetoond && !state.tobbeGokOpgelost && !popupOpen) {
     state.hdFinalePopupGetoond = true;
-    // Schaduw gaat permanent uit bij de HD-finale
+    // Schaduw gaat permanent uit bij de HD-finale. Zelfde zachte variant als
+    // bij de Dorendael-finale: wie middenin de Chaos-puzzel zit speelt die
+    // eerst uit, wie vastzit wordt direct bevrijd.
     if (window.ZilverweideSchaduw) {
-      window.ZilverweideSchaduw.kalmeer();
+      window.ZilverweideSchaduw.kalmeer({ laatPuzzelUitspelen: true });
     }
     toonLade(
       '✦  Verhaalscore compleet',
@@ -24244,6 +24251,20 @@ function schaduwAan() {
 function schaduwUit() {
   if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer();
   setSchaduwStatus();
+}
+// Naspelen wat de finale doet terwijl de Chaos-puzzel loopt, op één tablet.
+// Gebruik: eerst "Meter bijna vol (test)", wacht tot de puzzel opent, en deze
+// knop vuurt 6 seconden na het indrukken de zachte finale-kalmeer af. De
+// vertraging bestaat omdat het menu tijdens de puzzel-overlay niet meer
+// bereikbaar is: je drukt hem dus vlak voor of vlak na "Meter bijna vol" in.
+// Verwacht gedrag: de puzzel blijft staan; zegel goed = vloek wijkt na
+// afloop, zegel fout = "de schaduw laat je gaan" en de vloek wijkt ook.
+function schaduwZachteKalmeerTest() {
+  if (typeof toonToast === 'function') toonToast('🌑', 'Zachte finale-kalmeer volgt over 6 seconden.');
+  setTimeout(function () {
+    if (window.ZilverweideSchaduw) window.ZilverweideSchaduw.kalmeer({ laatPuzzelUitspelen: true });
+    setSchaduwStatus();
+  }, 6000);
 }
 function schaduwMeterVol() {
   if (window.ZilverweideSchaduw) {
