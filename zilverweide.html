@@ -7663,6 +7663,7 @@ var ITEM_TEKSTEN = {
   'Breiwerkje':                 'Een oude dame zonder breiwerk valt op. Met breiwerk niet.',
   'Microfoon':                  'Een artiest is niets zonder haar microfoon.',
   'Nat Dagboek':                'Doorweekt en vies. Iemand met gevoel voor papier kan er misschien nog wat van redden.',
+  'Vermomming voor Felix':      'Zwaar zijden gewaad met een drakenmotief, het ruikt naar steranijs en een land ver van hier.',
   // Dorendael
   'Klei':                       'Alleen nog even friemelen bij het slot.',
   'Klei-afdruk van slot':       'De beste en meest stinkende versie om na te maken, maar waar?',
@@ -7671,6 +7672,7 @@ var ITEM_TEKSTEN = {
   'Latin Jurk':                 'Wat Lola wil, dat krijgt Lola.',
   'Muziekdoosje (roetbedekt)':  'Zo mooi, maar zo beschadigd. Waar kun je het laten herstellen?',
   'Het Meisje':                 'Tijd om Merel naar huis te brengen.',
+  'Naald':                      'Wie steekt er naalden in het lijf van een kinderpop? Deze is nog warm.',
   // Heer Donatuslaan
   'Vleespen':                   'Je moet er niet aan denken waar hij eerder in zat. Wel handig bij een slot.',
   'Muziekdoosje':               'Hersteld, en mooier dan je had verwacht. Je durft het bijna niet vast te houden.',
@@ -9120,7 +9122,7 @@ function felixVermomLiuYen() {
 
   toonLade(
     'Je bent nu Liu-Yen',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: niemand zal je hier herkennen. De wereld ligt weer open.]</p>',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Je kijkt naar je handen. Niet meer van Felix. Ze zijn van... Liu-Yen!</p>',
     'Verder →',
     () => {
       const loc = locatiesHeerDonatuslaan.find(l => l.id === 'h2_felixkamer');
@@ -19475,41 +19477,6 @@ function debugAlleVierVerhaal() {
   podiumVerhaalWacht();
 }
 
-function podiumStills() {
-  var cont = document.getElementById('locatie-content');
-  var stills = [
-    { tekst: '[Placeholder: still 1, de heksen verschijnen op het podium, Hilketrude en Aleida]' },
-    { tekst: '[Placeholder: still 2, ze taunten de spelers, gelach, dreiging]' },
-    { tekst: '[Placeholder: still 3, de spelers kijken toe, machteloos]' },
-    { tekst: '[Placeholder: still 4, iets vreemds, een schaduw, iets wat niet klopt]' },
-    { tekst: '[Placeholder: still 5, een vervormde stem: "Pak ze!"]' },
-    { tekst: '[Placeholder: still 6, de heksen draaien zich om]' },
-    { tekst: '[Placeholder: still 7, de spelers kijken elkaar aan, knikken]' },
-  ];
-  var huidigeStill = 0;
-
-  function toonStill(i) {
-    var s = stills[i];
-    var isLaatste = (i === stills.length - 1);
-    renderLocatieScene({
-      container: cont,
-      titel: 'Het Podium',
-      sub: 'De heksen verschijnen',
-      image: podiumAfbeelding(),
-      dialog: [
-        { spreker: 'Verteller', tekst: s.tekst }
-      ],
-      geenTerug: true,
-      acties: [
-        { label: isLaatste ? 'Nu! \u2192' : 'Volgende \u2192', onclick: isLaatste ? podiumArmSelectie : function() { huidigeStill++; toonStill(huidigeStill); } }
-      ]
-    });
-    showScreen('screen-locatie');
-  }
-
-  toonStill(0);
-}
-
 // Arm-selectie: elke speler pakt een ledemaat. Via shared state, live
 // gesynchroniseerd. Pakken twee spelers tegelijk dezelfde arm (race via
 // Firebase), dan wint de eerste in de vaste rolvolgorde; de ander krijgt
@@ -22569,7 +22536,7 @@ function dd7LolaLeidAf() {
   markVisited('klokkenmaker_afgeleid');
   toonLade(
     '✦  Klokkenmaker afgeleid',
-    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">[Placeholder: je houdt hem buiten met je verhalen. Jan kan nu binnen sluipen.]</p>',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">Qué fácil. Hij volgt je als een lammetje. Missie geslaagd. Jan heeft vrijspel.</p>',
     'Verder →',
     function() {
       const loc = locatiesDorendael.find(l => l.id === 'dd7_klokkenmaker');
