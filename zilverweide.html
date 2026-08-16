@@ -2794,6 +2794,12 @@ function verwerkBinnengekomenShared(data) {
     }
     for (var kkKey in data) {
       if (kkKey.indexOf('kk_sleutel_') === 0 && data[kkKey] && !_kkSleutelGemeld[kkKey]) {
+        // De dagboek-stap wacht op Kelly's eigen leesbeurt. Zolang zij het
+        // dagboek niet uit heeft, weten de anderen nog niet waar het ligt en
+        // is de melding alleen maar verwarrend. Bewust NIET als gemeld
+        // markeren: dan pikt een volgende snapshot de stap alsnog op zodra
+        // Kelly's leesvlag binnenkomt.
+        if (kkKey === 'kk_sleutel_dagboek' && !getSharedState('dagboek_gelezen_kelly')) continue;
         _kkSleutelGemeld[kkKey] = true;
         ietsNieuws = true;
         // Toast alleen als deze speler het item niet zelf heeft (die kreeg
@@ -4113,12 +4119,23 @@ function wisHerstelpunt(rol) {
 // je nu in de story zit, niet de afgeronde fase ervoor.
 // ─────────────────────────────────────────────────────────────────
 
+// De dagboek-stap telt pas mee zodra Kelly het dagboek ook echt gelezen
+// heeft. Alleen restaureren is te vroeg: de andere tablets kregen dan een
+// verhaalmelding terwijl Kelly nog zat te lezen en dus nog niet kon
+// vertellen waar het dagboek ligt. De gedeelde vlaggen worden bij het
+// restaureren gewoon meteen gezet, alleen de teller en de melding wachten.
+function dagboekStapTelt() {
+  var leesbaar = !!state.inventory.find(function(i){ return i.naam === 'Leesbaar Dagboek 🔑'; })
+              || !!getSharedState('kk_sleutel_dagboek');
+  return leesbaar && !!getSharedState('dagboek_gelezen_kelly');
+}
+
 // Kraaienkwartier-keys: het zijn de vier sleutel-items (inventory).
 // De finale-sleutels zitten elk in de inventaris van ÉÉN speler,
 // maar de teller is een teamscore: daarom telt de check ook de gedeelde
 // spiegel-flag mee die addInventory zet zodra iemand de sleutel krijgt.
 const KRAAIEN_MISSIE_KEYS = [
-  { id: 'dagboek',  label: 'Het dagboek leesbaar',       check: function(){ return !!state.inventory.find(function(i){return i.naam==='Leesbaar Dagboek 🔑';}) || !!getSharedState('kk_sleutel_dagboek'); } },
+  { id: 'dagboek',  label: 'Het dagboek leesbaar',       check: function(){ return dagboekStapTelt(); } },
   { id: 'wallingen',label: 'Plan voor Nummer 7 bekend',check: function(){ return !!state.inventory.find(function(i){return i.naam==='Sleutel Wallingen 🔑';}) || !!getSharedState('kk_sleutel_wallingen'); } },
   { id: 'robbie',   label: 'Robbie staat klaar',         check: function(){ return !!state.inventory.find(function(i){return i.naam==='Robbie staat klaar 🔑';}) || !!getSharedState('kk_sleutel_robbie'); } },
   { id: 'speld',    label: 'Jan kan sommige deuren kraken', check: function(){ return !!state.inventory.find(function(i){return i.naam==='Kromme Spijker';}) || !!getSharedState('kk_sleutel_speld'); } },
@@ -4180,7 +4197,10 @@ var LEESTAKEN = {
     voltooidWoord: 'Gelezen!',
     label:      'Iedereen moet het dagboek lezen',
     labelKlaar: 'Iedereen heeft het dagboek gelezen',
-    beschikbaar: function () { return !!getSharedState('dagboek_gerestaureerd'); }
+    // Pas zichtbaar als Kelly het dagboek zelf uit heeft: zij is degene die
+    // haar team kan vertellen dat het in het dorpsarchief ligt. Daarvoor is
+    // de leestaak een melding zonder bestemming.
+    beschikbaar: function () { return !!getSharedState('dagboek_gerestaureerd') && !!getSharedState('dagboek_gelezen_kelly'); }
   },
   molen: {
     prefix:     'molen_gezien_',
@@ -4188,7 +4208,10 @@ var LEESTAKEN = {
     voltooidWoord: 'Gezien!',
     label:      'Iedereen moet de molen-legende zien',
     labelKlaar: 'Iedereen heeft de molen-legende gezien',
-    beschikbaar: function () { return !!getSharedState('oude_kranten_ontdekt'); }
+    // Zelfde regel als bij het dagboek: de kranten zijn ontdekt zodra Kelly
+    // ze vindt, maar de leestaak verschijnt pas als zij de legende zelf
+    // gezien heeft en het kan doorgeven.
+    beschikbaar: function () { return !!getSharedState('oude_kranten_ontdekt') && !!getSharedState('molen_gezien_kelly'); }
   },
   rozen: {
     prefix:     'rozen_gelezen_',
@@ -4196,6 +4219,9 @@ var LEESTAKEN = {
     voltooidWoord: 'Gelezen!',
     label:      'Iedereen moet Over de Rozen lezen',
     labelKlaar: 'Iedereen heeft Over de Rozen gelezen',
+    // Hier is geen extra check nodig: over_de_rozen_beschikbaar wordt pas
+    // gezet in kellyUitKerkDoolhof, en die draait uit de onKlaar van het
+    // boekje. De vlag komt dus per definitie na Kelly's leesbeurt.
     beschikbaar: function () { return !!getSharedState('over_de_rozen_beschikbaar'); }
   }
 };
@@ -4221,6 +4247,20 @@ function markeerBoekGelezen(boek) {
     toonToast('📖', taak.voltooidWoord + ' (' + telBoekLezers(boek) + '/' + SHARED_ROLLEN.length + ')');
   }
   updateMissieTeller();
+}
+
+// Terugknop van de lopende scene weghalen zodra iemand het boek echt
+// openslaat. Op de kaft mag je nog gewoon weg (verkeerde plek binnengelopen),
+// maar wie begint te lezen komt er alleen uit via de Verder-knop op de laatste
+// bladzijde. Zonder dit telde een leesbeurt niet mee als iemand halverwege op
+// Terug drukte, en bleef de leestaak op 3/4 hangen zonder dat iemand snapte
+// waarom.
+function vergrendelLeesscherm() {
+  var cont = document.getElementById('locatie-content');
+  var sceneBack = cont && cont.querySelector('.sc-back-btn');
+  if (sceneBack) sceneBack.style.display = 'none';
+  var globaleBack = document.getElementById('locatie-back-btn');
+  if (globaleBack) globaleBack.style.display = 'none';
 }
 
 // Regel voor het missie-paneel: open taak met teller, of voltooid met vink.
@@ -7197,12 +7237,15 @@ function begeleiderMissieHtml() {
     KRAAIEN_MISSIE_KEYS.forEach(function (k) {
       stappen.push({ af: !!_bglShared['kk_sleutel_' + k.id], tekst: k.label });
     });
-    leestaak('dagboek_gelezen_', 'Iedereen leest het dagboek', 'dagboek_gerestaureerd');
+    // Zelfde poort als bij de spelers: de leestaak bestaat pas zodra Kelly
+    // het dagboek uit heeft. Anders ziet de begeleider een taak die op de
+    // tablets nog niet zichtbaar is.
+    leestaak('dagboek_gelezen_', 'Iedereen leest het dagboek', 'dagboek_gelezen_kelly');
   } else if (fase === 'dorendael') {
     DORENDAEL_MISSIE_KEYS.forEach(function (f) {
       stappen.push({ af: !!_bglShared['vflag_' + f], tekst: DORENDAEL_MISSIE_LABELS[f] || f });
     });
-    leestaak('molen_gezien_', 'Iedereen ziet de molen-legende', 'oude_kranten_ontdekt');
+    leestaak('molen_gezien_', 'Iedereen ziet de molen-legende', 'molen_gezien_kelly');
   } else if (fase === 'sintdonatuslaan') {
     HEER_DONATUSLAAN_MISSIE_KEYS.forEach(function (f) {
       stappen.push({ af: !!_bglShared['vflag_' + f], tekst: HEER_DONATUSLAAN_MISSIE_LABELS[f] || f });
@@ -15521,18 +15564,28 @@ function kkSleutelVerkregen(id) {
   }
 }
 
+// Verhaalstap "dagboek leesbaar" laten afgaan (flash, geluid, teller). Draait
+// bewust pas nadat Kelly het dagboek uit heeft: dan pas telt de stap mee en
+// kan zij haar team vertellen waar het ligt. _kkSleutelGemeld voorkomt dat de
+// gedeelde-state-listener dezelfde stap zo meteen nog eens meldt (bijvoorbeeld
+// als Kelly halverwege haar leesbeurt herlaadt).
+function dagboekStapMelden() {
+  _kkSleutelGemeld['kk_sleutel_dagboek'] = true;
+  if (actieveMissieZone() === 'kraaienkwartier') {
+    var dagboekKey = KRAAIEN_MISSIE_KEYS.find(function(k){ return k.id === 'dagboek'; });
+    if (dagboekKey) onMissieKeyVoltooid(dagboekKey.label);
+  } else {
+    updateMissieTeller();
+  }
+  setTimeout(checkAllTokens, 3000);
+}
+
 function restaureerDagboek() {
   state.inventory = state.inventory.filter(i => i.naam !== 'Nat Dagboek');
   // Herstelde dagboek blijft in het archief (geen inventaris-item bij Kelly).
   dagboekHersteldFlags();
   updateInventoryBar();
-  // Verhaalstap "dagboek leesbaar" laten afgaan (flash + geluid + teller), net
-  // zoals de andere Kraaienkwartier-keys dat via addInventory deden.
-  if (actieveMissieZone() === 'kraaienkwartier') {
-    var dagboekKey = KRAAIEN_MISSIE_KEYS.find(function(k){ return k.id === 'dagboek'; });
-    if (dagboekKey) onMissieKeyVoltooid(dagboekKey.label);
-  }
-  setTimeout(checkAllTokens, 3000);
+  // De verhaalstap volgt pas na Kelly's leesbeurt, zie dagboekStapMelden.
   toonLade(
     '✦  Dagboek hersteld',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic">De archivaris heeft de bladzijden voorzichtig gedroogd en leesbaar gemaakt.</p>',
@@ -15560,7 +15613,7 @@ function kellyBekijktDagboekEerste() {
         geenTerugBladeren: true,   // alleen vooruit, niet terugbladeren
         onTonen: startDagboekMuziek,
         onOpen:  function(){ setSharedState('filmpje_gezien', true); },
-        onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('dagboek'); naarArchivarisRuimte(); }
+        onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('dagboek'); dagboekStapMelden(); naarArchivarisRuimte(); }
       });
     },
     dialog: []
@@ -15736,7 +15789,9 @@ function mountOverDeRozenBoekje(el, onKlaar) {
     startTekst: 'Het kleine zilveren boekje is te dik om nu helemaal te lezen, maar stukjes pak je er snel uit. Het lijkt geschreven door ene Wolter Grimbeeck.',
     openLabel:  'Open het boekje',
     onTonen: startDagboekMuziek,
-    onOpen:  function(){ markVisited('over_de_rozen_gelezen'); },
+    // Boekje open: geen terugknop meer. Uitgang is de Verder-knop op de
+    // laatste bladzijde, want alleen die legt de leesbeurt vast.
+    onOpen:  function(){ markVisited('over_de_rozen_gelezen'); vergrendelLeesscherm(); },
     // Telt ook Kelly's leesbeurt in het kerkarchief mee: daardoor start de
     // leestaak op 1/4 zodra het boekje voor iedereen beschikbaar komt.
     onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('rozen'); onKlaar(); }
@@ -15773,7 +15828,9 @@ function openDagboekFilmpje() {
         startTekst: 'Vertel je vrienden dat ze hier het dagboek kunnen bekijken.',
         openLabel:  'Bekijk dagboek',
         onTonen: startDagboekMuziek,
-        onOpen:  function(){ setSharedState('filmpje_gezien', true); },
+        // Dagboek open: geen terugknop meer. Uitgang is de Verder-knop op de
+        // laatste bladzijde, want alleen die legt de leesbeurt vast.
+        onOpen:  function(){ setSharedState('filmpje_gezien', true); vergrendelLeesscherm(); },
         onKlaar: function(){ stopDagboekMuziek(); markeerBoekGelezen('dagboek'); openDorpsarchiefArchieven(); }
       });
     },
@@ -18778,7 +18835,11 @@ function alleFinaleCodesVerzameld() {
   // teamvlaggen i.p.v. de items. De speld (Kromme Spijker, K3) is wel een
   // fysiek item, maar telt via dezelfde gedeelde vlag ook mee als vierde
   // vereiste voor de finale.
-  return !!getSharedState('kk_sleutel_dagboek') &&
+  // Het dagboek telt hier pas mee zodra Kelly het ook gelezen heeft, net als
+  // in de verhaalteller. Anders meldt deze popup "alles verzameld" terwijl de
+  // teller nog een stap open heeft staan. De gok is toch al geblokkeerd tot
+  // alle vier gelezen hebben, dus dit kan de finale niet ophouden.
+  return dagboekStapTelt() &&
          !!getSharedState('kk_sleutel_wallingen') &&
          !!getSharedState('kk_sleutel_robbie') &&
          !!getSharedState('kk_sleutel_speld');
@@ -20370,8 +20431,11 @@ function buildDebugPanel() {
       ['🎵 Lied: alles goed', function(){ if (window.FennaLied && FennaLied.allesGoed) FennaLied.allesGoed(); document.getElementById('debug-panel').style.display='none'; }, p === 'fenna' && !!(window.FennaLied && FennaLied.actief && FennaLied.actief()), 'Robbie & het lied'],
       // ── Dagboek
       ['📔 + Nat Dagboek',            function(){ debugItem('📔','Nat Dagboek'); }, !dagboekKlaar, 'Dagboek'],
-      ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
-      ['📖 Eigen dagboek-leesbeurt (+1)', function(){ markeerBoekGelezen('dagboek'); close(); }, !getSharedState('dagboek_gelezen_' + state.personage), 'Dagboek'],
+      // Herstellen zet alleen de vlaggen. De verhaalstap volgt pas als Kelly
+      // het dagboek uit heeft, precies zoals in het echte spel.
+      ['📖 Dagboek herstellen (archief)', function(){ dagboekHersteldFlags(); updateMissieTeller(); document.getElementById('debug-panel').style.display='none'; }, !dagboekKlaar, 'Dagboek'],
+      ['📖 Kelly heeft dagboek gelezen (stap + leestaak vrij)', function(){ setSharedState('dagboek_gelezen_kelly', true); dagboekStapMelden(); close(); }, !getSharedState('dagboek_gelezen_kelly'), 'Dagboek'],
+      ['📖 Eigen dagboek-leesbeurt (+1)', function(){ markeerBoekGelezen('dagboek'); if (state.personage === 'kelly') dagboekStapMelden(); close(); }, !getSharedState('dagboek_gelezen_' + state.personage), 'Dagboek'],
       ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }, !boekDoorIedereenGelezen('dagboek'), 'Dagboek'],
       ['🔄 Reset leestaak dagboek (0/4)', function(){ debugResetLeestaak('dagboek'); close(); }, telBoekLezers('dagboek') > 0, 'Dagboek'],
       // ── Felix & vermommingen
@@ -20402,7 +20466,10 @@ function buildDebugPanel() {
       ['🗳️ Alle 4 in het stemscherm (heks-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, true); }); close(); }, !state.heksOpgelost, 'Finale'],
       ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); }); close(); }, true, 'Finale'],
       ['🔓 Locatieslot wachtfase aan/uit', function(){ debugLocatieslotToggle(); close(); }, true, 'Finale'],
-      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
+      // Kelly's leesvlag hoort erbij: zonder die vlag telt de dagboek-stap niet
+      // mee en komt de teller nooit op 4/4 (en de gok is toch al geblokkeerd
+      // tot iedereen gelezen heeft).
+      ['🌹 Trigger KK-finale popup',    function(){ dagboekHersteldFlags(); setSharedState('dagboek_gelezen_kelly', true); kkSleutelVerkregen('wallingen'); kkSleutelVerkregen('robbie'); kkSleutelVerkregen('speld'); updateInventoryBar(); state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Finale'],
       ['🔄 Reset Kraaienkwartier',   function(){
         ['kelly_in_put','kelly_gered','tobbe_gevonden','stoop_beloning_ontvangen','fenna_robbie_bezoek','jan_toren_geklommen','jan_heeft_speld','jan_toren_haak_gebroken','toren_code_ingevoerd','fenna_spijker_gegeven','nummer7_filmpje_gezien','wallingen_informatie_ontvangen'].forEach(function(f){ state.visited.delete(f); });
         setSharedState('vflag_kelly_in_put', null);
@@ -20495,6 +20562,7 @@ function buildDebugPanel() {
       ['🏚️ Kelly bij molen geweest', function(){ markVisited('molen_doorgelopen'); markVisited('kelly_muziekdoosje_gevonden'); close(); }, p === 'kelly' && !hasVisited('kelly_muziekdoosje_gevonden') && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['🎵 Muziekdoos ingeleverd',   function(){ debugMuziekdoosIngeleverd(); close(); }, !muziekKlaar && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
+      ['🎞️ Kelly heeft molen-legende gezien (leestaak vrij)', function(){ setSharedState('oude_kranten_ontdekt', true); setSharedState('molen_gezien_kelly', true); updateMissieTeller(); close(); }, !getSharedState('molen_gezien_kelly'), 'Muziekdoos & Archief'],
       ['📖 Eigen molen-kijkbeurt (+1)', function(){ setSharedState('oude_kranten_ontdekt', true); markeerBoekGelezen('molen'); close(); }, !getSharedState('molen_gezien_' + state.personage), 'Muziekdoos & Archief'],
       ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, !boekDoorIedereenGelezen('molen'), 'Muziekdoos & Archief'],
       ['🔄 Reset leestaak molen-legende (0/4)', function(){ debugResetLeestaak('molen'); close(); }, telBoekLezers('molen') > 0, 'Muziekdoos & Archief'],
@@ -21985,18 +22053,34 @@ function renderDd6Bord(loc) {
     ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
 }
 
+// De scene-engine geeft de aangeklikte knop niet mee aan de handler, dus
+// zoeken we hem hier zelf op. Zonder dit bleef de plukknop na het plukken
+// staan en gaf een tweede tik de melding dat een teamgenoot de bloesem al
+// had, terwijl je hem net zelf in je tas had gestopt.
+function molenBloesemKnop() {
+  var knoppen = document.querySelectorAll('#locatie-content .sc-actie-btn');
+  for (var i = 0; i < knoppen.length; i++) {
+    if (knoppen[i].textContent.indexOf('Donderbloesem') !== -1) return knoppen[i];
+  }
+  return null;
+}
+
 // Anti-Schaduw quest: Donderbloesem plukken IN de molen-scene (timer
 // loopt door, dus een korte toast in plaats van een lade). Race-
 // condition-vrij: eerste speler wint, de rest ziet een korte melding.
 function molenPlukDonderbloesem(btn) {
+  var knop = btn || molenBloesemKnop();
+  if (knop) knop.style.display = 'none';
   if (getSharedState('ing_donderbloesem')) {
-    toonToast('\u2139\ufe0f', 'Al verzameld door een teamgenoot');
-    if (btn) btn.style.display = 'none';
+    // Heb je de bloesem zelf, dan was dit een tweede tik op een knop die nog
+    // stond: knop weg en verder zwijgen. Alleen wie hem niet heeft, hoort dat
+    // een teamgenoot hem voor was.
+    var zelfInTas = !!state.inventory.find(function (i) { return i.naam === ITEMS.donderbloesem.naam; });
+    if (!zelfInTas) toonToast('\u2139\ufe0f', 'Al verzameld door een teamgenoot');
     return;
   }
   setSharedState('ing_donderbloesem', 'verzameld');
   geefItem(ITEMS.donderbloesem.emoji, ITEMS.donderbloesem.naam);
-  if (btn) btn.style.display = 'none';
 }
 
 // ── FASE B — de getimede molen-scène ─────────────────────────────────
