@@ -14802,6 +14802,24 @@ function beeindigK6Finale() {
   naNummer7Filmpje();
 }
 
+// Alleen de sprong uit de aanloop, zonder de minuten ervoor. Voor het afstellen
+// van de jumpscare. Loopt daarna gewoon door naar het vervolg.
+function debugK6Sprong() {
+  zetSpelMuziek(false);
+  state.lastZone = 'kraaienkwartier';
+
+  if (k6FinaleContainer) return;
+  if (typeof K6Finale === 'undefined') return;
+
+  k6FinaleContainer = document.createElement('div');
+  k6FinaleContainer.id = 'k6finale-container';
+  k6FinaleContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
+  document.body.appendChild(k6FinaleContainer);
+  document.body.classList.add('k6finale-actief');
+
+  K6Finale.startVanafSprong(k6FinaleContainer, { onEinde: beeindigK6Finale });
+}
+
 function debugAlleVierNummer7() {
   setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']);
   renderK1Nummer7({ id: 'k1_nummer7', naam: 'Nummer 7', sub: 'Het gesloten huis' });
@@ -20786,6 +20804,7 @@ function buildDebugPanel() {
       ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); }); close(); }, true, 'Finale'],
       ['🎬 Start K6-aanloop nu',     function(){ close(); toonNummer7Filmpje(); }, !k6FinaleContainer && !hasVisited('nummer7_filmpje_gezien'), 'Finale'],
       ['⏭️ K6-aanloop overslaan',    function(){ close(); beeindigK6Finale(); }, !!k6FinaleContainer, 'Finale'],
+      ['😱 K6-sprong testen (heks)', function(){ close(); debugK6Sprong(); }, !k6FinaleContainer, 'Finale'],
       ['🔓 Locatieslot wachtfase aan/uit', function(){ debugLocatieslotToggle(); close(); }, true, 'Finale'],
       // Kelly's leesvlag hoort erbij: zonder die vlag telt de dagboek-stap niet
       // mee en komt de teller nooit op 4/4 (en de gok is toch al geblokkeerd

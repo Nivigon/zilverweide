@@ -224,14 +224,25 @@
     },
     beat8: {
       jumpBeeld: 'jump.png',
+      jumpVerhouding: 408 / 612, // breedte gedeeld door hoogte van jump.png, terugval
+                                 // zolang het plaatje zelf nog niet geladen is
       gaatje: 1350,        // stilte na "Laat", het gat waar de sprong in valt
       flinchDuur: 220,     // korte terugdeins, nu duidelijker merkbaar
       flinchTerug: 0.7,    // ze deinst verder terug voor ze uithaalt
       sprongDuur: 360,     // de doorschieter, kort en versnellend
       sprongStart: 0.4,    // beginformaat, klein op de plek van de heks bij de deur
-      sprongZoom: 3.6,     // ze schiet voorbij het scherm, door je heen
-      sprongEindX: 50,     // waar ze door je heen gaat, horizontaal
-      sprongEindY: 66,     // op haar hoogte, we zoomen in op haar gezicht, niet omhoog
+      // De sprong draait om haar gezicht, niet om het midden van het plaatje.
+      // Deze waarden zeggen waar het gezicht in jump.png zelf zit, in procenten
+      // van het plaatje. Aanpassen zodra jump.png vervangen wordt.
+      gezicht: {
+        x: 52,             // midden van het gezicht, horizontaal in het plaatje
+        y: 30,             // net tussen de ogen en de open mond
+        breedte: 27        // breedte van het gezicht, waarop de eindzoom gerekend wordt
+      },
+      sprongMidX: 50,      // waar het gezicht op het scherm ligt tijdens de sprong
+      sprongMidY: 50,      // recht voor je: daar gaat het door de camera heen
+      sprongBedekking: 1.15, // eindmaat, het gezicht is 1.15 keer de schermbreedte
+      sprongZoomMax: 14,   // bovengrens op de eindzoom, tegen extreem uitvergroten
       zwartNaSprong: 3000, // volledig zwart en stil na de schrik
       mumbleInZwart: 3000, // dan hoor je Robbie mompelen in het zwart, nog onzichtbaar
       oogOpen: 3500,       // dan open je je ogen, afgestemd op de piek van de swell
@@ -370,6 +381,10 @@
       container.appendChild(this.ondertitelEl);
 
       this.actieveLaag = null;
+      // jump.png alvast laden: de sprong rekent met de echte beeldverhouding en
+      // het plaatje moet hoe dan ook klaarstaan als de schrik valt
+      this.jumpBeeldEl = new Image();
+      this.jumpBeeldEl.src = (this.config.beeldmap || '') + this.config.beat8.jumpBeeld;
       if (!this.bladLoopBound) { this.bladLoopBound = this.bladerenLoop.bind(this); }
       if (!this.beat3LoopBound) { this.beat3LoopBound = this.beat3Loop.bind(this); }
       if (!this.beat4LoopBound) { this.beat4LoopBound = this.beat4Loop.bind(this); }
@@ -527,7 +542,19 @@
       this.zwartEl.style.opacity = 0;
       var v = this.config.geluid.vuur;
       this.audioSpeel('vuur', { loop: true, infade: (v && v.infade) || 800 });
+      // de kamer eronder zetten, anders springt ze uit een leeg scherm
+      this.beat8Kamer();
       this.beat8Start();
+    },
+
+    // De sprong los starten, met scene en geluid erbij. Voor het afstellen van
+    // de jumpscare zonder de hele aanloop ervoor af te wachten.
+    startVanafSprong: function (container, opts) {
+      this.opts = opts || {};
+      if (container) { this.mount(container); }
+      if (!this.scene) { return; }
+      this.geluidOntgrendel();
+      this.startBeat8();
     },
 
     toonBeat: function (index) {
@@ -1348,6 +1375,30 @@
 
     /* beat 8: de jumpscare, en de landing op Robbie. */
 
+    // De kamer zoals beat 7 hem achterlaat: de haard brandt en de heks staat
+    // omgedraaid voor de deur. Alleen nodig als er bij de sprong wordt
+    // ingestapt, in de gewone volgorde staat die kamer er al.
+    beat8Kamer: function () {
+      var c = this.config.beat7;
+      var h = c.heks;
+      var laag = this.nieuweLaag((this.config.beeldmap || '') + c.beeld);
+      var fr = document.createElement('div');
+      fr.className = 'k6-heksframe';
+      fr.style.backgroundImage = 'url("' + (this.config.beeldmap || '') +
+        h.frames[h.frames.length - 1] + '")';
+      fr.style.left = h.x + '%';
+      fr.style.top = h.y + '%';
+      fr.style.width = h.grootte + '%';
+      fr.style.height = h.hoogte + '%';
+      fr.style.opacity = 1;
+      laag.appendChild(fr);
+      laag.style.transition = 'none';
+      laag.style.opacity = 1;
+      this.actieveLaag = laag;
+      this.beat7Laag = laag;
+      this.vonkenAan();
+    },
+
     beat8Start: function () {
       var self = this;
       var b = this.config.beat8;
@@ -1363,20 +1414,64 @@
       this.plan(function () { self.beat8Knal(); }, b.gaatje);
     },
 
+    // Waar haar gezicht op het scherm ligt en hoe ver de sprong inzoomt.
+    // jump.png is een staand plaatje dat met contain in een liggend scherm valt,
+    // dus het gezicht zit niet op een vaste procentplek van het scherm: dat hangt
+    // van de schermverhouding af en wordt hier uitgerekend.
+    sprongMeetkunde: function () {
+      var b = this.config.beat8;
+      var g = b.gezicht || { x: 50, y: 50, breedte: 30 };
+      var vak = this.scene.getBoundingClientRect();
+      var sw = vak.width || 1;
+      var sh = vak.height || 1;
+
+      var verhouding = b.jumpVerhouding || 1;
+      var img = this.jumpBeeldEl;
+      if (img && img.naturalWidth && img.naturalHeight) {
+        verhouding = img.naturalWidth / img.naturalHeight;
+      }
+
+      // contain: het hele plaatje past in het scherm, gecentreerd
+      var bw, bh;
+      if (sw / sh > verhouding) { bh = sh; bw = sh * verhouding; }
+      else { bw = sw; bh = sw / verhouding; }
+      var links = (sw - bw) / 2;
+      var boven = (sh - bh) / 2;
+
+      // het gezicht in pixels op het scherm, bij schaal 1
+      var gx = links + (g.x / 100) * bw;
+      var gy = boven + (g.y / 100) * bh;
+
+      // eindzoom: zo groot dat het gezicht het scherm vult en er doorheen gaat
+      var breed = Math.max((g.breedte / 100) * bw, 1);
+      var zoom = (b.sprongBedekking * sw) / breed;
+      if (b.sprongZoomMax && zoom > b.sprongZoomMax) { zoom = b.sprongZoomMax; }
+
+      return {
+        // het gezicht is het draaipunt: bij elke schaal blijft dat punt liggen
+        origin: gx + 'px ' + gy + 'px',
+        // en het ligt de hele sprong op de plek waar ze door je heen komt
+        verschuif: 'translate(' + ((b.sprongMidX / 100) * sw - gx) + 'px, ' +
+                   ((b.sprongMidY / 100) * sh - gy) + 'px) ',
+        zoom: zoom
+      };
+    },
+
     beat8Knal: function () {
       var self = this;
       var b = this.config.beat8;
-      var h = this.config.beat7.heks;
 
       var laag = this.nieuweLaag((this.config.beeldmap || '') + b.jumpBeeld);
       var beeld = laag.querySelector('.k6-beeld');
       beeld.style.backgroundSize = 'contain';
       beeld.style.backgroundPosition = 'center';
-      // de zoom richt zich op haar gezicht, daar zoomen we op in
-      beeld.style.transformOrigin = b.sprongEindX + '% ' + b.sprongEindY + '%';
+
+      // de zoom richt zich op haar gezicht, daar gaat de camera doorheen
+      var meet = this.sprongMeetkunde();
+      beeld.style.transformOrigin = meet.origin;
 
       beeld.style.transition = 'none';
-      beeld.style.transform = 'scale(' + b.sprongStart + ')';
+      beeld.style.transform = meet.verschuif + 'scale(' + b.sprongStart + ')';
       // ze is nog niet te zien; ze verschijnt pas als de aanval al loopt
       laag.style.transition = 'none';
       laag.style.opacity = 0;
@@ -1395,7 +1490,7 @@
       // de flinch: heel even inhouden, maar nog onzichtbaar, dan valt ze aan
       void beeld.offsetWidth;
       beeld.style.transition = 'transform ' + b.flinchDuur + 'ms ease-out';
-      beeld.style.transform = 'scale(' + (b.sprongStart * b.flinchTerug) + ')';
+      beeld.style.transform = meet.verschuif + 'scale(' + (b.sprongStart * b.flinchTerug) + ')';
 
       // de doorschieter: ze verschijnt pas nu, al in volle beweging, met de klap.
       // op ditzelfde moment dooft de haard, zodat niets over haar heen ligt.
@@ -1404,7 +1499,7 @@
         laag.style.opacity = 1;
         self.audioSpeel('horrorhit', {});
         beeld.style.transition = 'transform ' + b.sprongDuur + 'ms cubic-bezier(0.7, 0, 1, 0.4)';
-        beeld.style.transform = 'scale(' + b.sprongZoom + ')';
+        beeld.style.transform = meet.verschuif + 'scale(' + meet.zoom + ')';
       }, b.flinchDuur);
 
       // op het hoogtepunt: hard weg, zwart
