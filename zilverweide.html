@@ -10813,7 +10813,7 @@ function renderH5Gemeentehuis(loc) {
   // ───────────────────────────────────────────── FELIX ──
   if (p === 'felix') {
     // Voorwerp-details, gekleurd door de vermomming.
-    if (stap === 11) return voorwerp('Voorwerp 1, de kaart', felixV('kaart'));
+    if (stap === 11) return voorwerp('Voorwerp 1, de kaart', felixV('kaart'), 'items/burgemeesterkaartitem.png');
     if (stap === 12) return voorwerp('Voorwerp 2, de verbrande roos', felixV('roos'));
     if (stap === 13) return voorwerp('Voorwerp 3', felixV('claes'));
     if (stap === 14) return voorwerp('Voorwerp 4', felixV('hd'));
@@ -10941,13 +10941,18 @@ function renderH5Gemeentehuis(loc) {
     dialog: ['Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden.']
   });
 
-  // Helper: een voorwerp tonen met een knop terug naar de voorwerpen.
-  function voorwerp(sub, dialog) {
-    return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: sub, image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
+  // Helper: een voorwerp tonen met een knop terug naar de voorwerpen. Zonder
+  // eigen beeld blijft de kamer staan. Krijgt een voorwerp wel een eigen beeld,
+  // dan komt dat volledig in beeld (imageFit contain), zodat er niets afvalt.
+  function voorwerp(sub, dialog, beeld) {
+    var opties = {
+      container: cont, titel: loc.naam, sub: sub,
+      image: beeld || 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: dialog,
       acties: [{ label: 'Terug naar het bureau', onclick: function () { ga(2); } }]
-    });
+    };
+    if (beeld) opties.imageFit = 'contain';
+    return renderLocatieScene(opties);
   }
 }
 
@@ -16753,7 +16758,10 @@ function toonNummer7Overleg() {
     geenTerug: true,
     dialog: [
       'Van een afstandje kijken jullie naar het huis. Donker, gesloten, net als altijd. Zomaar aanbellen heeft geen zin, dat weten jullie inmiddels.',
-      { spreker: 'Lucinde', tekst: '"Mevrouw van Wallingen had zo gek nog niet gedacht. Als iemand die man aan de voordeur bezighoudt, kan een ander achterom een kijkje nemen."' },
+      // Spreker is Felix, niet de vermomming: dit scherm staat op alle vier de
+      // tablets en de rest weet niets van Lucinde zolang Felix dat niet zelf
+      // in het spel gedeeld heeft.
+      { spreker: 'Felix', tekst: '"Mevrouw van Wallingen had zo gek nog niet gedacht. Als iemand die man aan de voordeur bezighoudt, kan een ander achterom een kijkje nemen."' },
       'Dat zou kunnen werken. Maar wie houdt hem dan bezig?',
       { spreker: 'Fenna-Vivi\u00e8nne', tekst: '"Robbie. Een fan van mij. Die heeft al beloofd te helpen als het nodig is. Ik ga hem even halen."' },
       'Jullie kijken elkaar aan. Dit gaan we doen. Iedereen knikt. Fenna glipt weg om Robbie op te halen.'
