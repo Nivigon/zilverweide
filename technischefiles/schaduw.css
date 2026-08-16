@@ -53,7 +53,7 @@
   background:linear-gradient(180deg,
     rgba(13,10,6,calc(.30 + var(--zv-mi)*.62)),
     rgba(13,10,6,calc(.18 + var(--zv-mi)*.58)));
-  border:1px solid rgba(201,168,76,calc(.12 + var(--zv-mi)*.40));
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc((.12 + var(--zv-mi)*.40) * var(--lijn)));
   border-radius:8px;
   box-shadow:0 4px 14px rgba(0,0,0,calc(var(--zv-mi)*.45)),
              0 0 calc(var(--zv-mi)*18px) rgba(139,26,26,calc(var(--zv-mi)*.35));
@@ -62,8 +62,8 @@
 #zv-meter.zv-zichtbaar{transform:translateX(0);opacity:calc(.55 + var(--zv-mi)*.45)}
 .zv-meter-label{font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;
   color:var(--zv-gold,#c9a84c);opacity:calc(.45 + var(--zv-mi)*.5);margin-bottom:.4rem}
-.zv-meter-track{height:6px;border-radius:4px;background:rgba(201,168,76,.12);
-  border:1px solid rgba(201,168,76,.2);overflow:hidden}
+.zv-meter-track{height:6px;border-radius:4px;background:rgba(var(--goudrgb),calc(.12 * var(--vlak)));
+  border:1px solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));overflow:hidden}
 .zv-meter-fill{height:100%;width:0%;border-radius:4px;transition:width .9s linear;
   background:linear-gradient(90deg,rgba(138,111,50,.9),#8b1a1a 78%,#b32222);
   box-shadow:0 0 calc(6px + var(--zv-mi)*10px) rgba(139,26,26,calc(.3 + var(--zv-mi)*.5))}
