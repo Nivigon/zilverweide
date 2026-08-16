@@ -22,6 +22,7 @@
 <link rel="stylesheet" href="technischefiles/regen.css">
 <link rel="stylesheet" href="technischefiles/bliksem.css">
 <link rel="stylesheet" href="technischefiles/woudscene.css">
+<link rel="stylesheet" href="technischefiles/k6finale.css">
 <style>
 :root{
   /* 100vh met dvh-upgrade: iOS Safari telt de adresbalk mee in 100vh,
@@ -2284,6 +2285,9 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- Fenna's lied-mechaniek (Mastermind: toon, liedtitel, eerste regel) -->
 <script src="technischefiles/fenna-lied.js"></script>
 
+<!-- Aanloop naar de Kraaienkwartier-finale (k6finale.js + k6finale.css) -->
+<script src="technischefiles/k6finale.js"></script>
+
 <script>
 
 window.onerror = function(msg, src, line, col, err) {
@@ -3537,7 +3541,7 @@ const VISITED_FLAGS = {
   jan_toren_haak_gebroken:    'Jans eigen haakje is afgebroken in het torenslot',
   toren_code_ingevoerd:       'Jan heeft de spijker-code bij de toren ingevoerd',
   fenna_spijker_gegeven:      'Fenna heeft de roestige spijker aan Jan overhandigd',
-  nummer7_filmpje_gezien:     'Het filmpje bij nummer 7 is afgespeeld',
+  nummer7_filmpje_gezien:     'De aanloop bij nummer 7 is afgespeeld',
   terugknop_intro_gezien:     'De uitleg over de terug-knop is getoond (na de podium-openingsdialoog)',
 
   // Dorendael — Nummer 2 (Felix)
@@ -14459,31 +14463,43 @@ function toonNummer7AvaScene() {
   showScreen('screen-locatie');
 }
 
+var k6FinaleContainer = null;
+
+// De aanloop naar de finale. Was een videofragment, is nu de k6finale-module
+// die de scene in de browser opbouwt (treden, deur, gang, kamer, de heks).
 function toonNummer7Filmpje() {
-  // Achtergrondmuziek uit: het filmpje heeft eigen geluid. Gaat pas weer
+  // Achtergrondmuziek uit: de aanloop heeft eigen geluid. Gaat pas weer
   // aan als Ava na afloop over Dorendael begint.
   zetSpelMuziek(false);
-  renderLocatieScene({
-    container: document.getElementById('locatie-content'),
-    titel:    'Nummer 7',
-    sub:      'Het gesloten huis',
-    video:    'videos/nummer7finale.mp4',
-    dialog:   ['Zet het filmpje op volledig scherm en zet het aan.'],
-    geenTerug: true,
-    acties: [
-      { label: 'Volgende \u2192', onclick: naNummer7Filmpje }
-    ]
-  });
-  // De scene-engine start video's automatisch; hier zetten we hem direct
-  // weer stil zodat de spelers zelf op play drukken (na volledig scherm).
-  setTimeout(function() {
-    var v = document.querySelector('#locatie-content .sc-video');
-    if (v) {
-      try { v.pause(); v.currentTime = 0; v.autoplay = false; } catch (e) {}
-    }
-  }, 120);
-  showScreen('screen-locatie');
   state.lastZone = 'kraaienkwartier';
+
+  if (k6FinaleContainer) return;                  // de aanloop loopt al
+  if (typeof K6Finale === 'undefined') {          // module niet geladen: sla over
+    naNummer7Filmpje();
+    return;
+  }
+
+  // Beeldvullende laag boven het spel maar onder de testknoppen (z-index 300),
+  // zodat de nood-overslaan in het debug-paneel bereikbaar blijft als een
+  // tablet hapert. Zelfde patroon als de woudscene.
+  k6FinaleContainer = document.createElement('div');
+  k6FinaleContainer.id = 'k6finale-container';
+  k6FinaleContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
+  document.body.appendChild(k6FinaleContainer);
+
+  K6Finale.start(k6FinaleContainer, { onEinde: beeindigK6Finale });
+}
+
+// Ruimt de aanloop op en draait daarna het bestaande vervolg: precies het punt
+// waar vroeger de Volgende-knop onder het filmpje heen ging. Ook de
+// nood-overslaan in het debug-paneel komt hier uit.
+function beeindigK6Finale() {
+  if (k6FinaleContainer) {
+    try { K6Finale.stop(); } catch (e) {}
+    k6FinaleContainer.remove();
+    k6FinaleContainer = null;
+  }
+  naNummer7Filmpje();
 }
 
 function debugAlleVierNummer7() {
@@ -20465,6 +20481,8 @@ function buildDebugPanel() {
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
       ['🗳️ Alle 4 in het stemscherm (heks-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, true); }); close(); }, !state.heksOpgelost, 'Finale'],
       ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); }); close(); }, true, 'Finale'],
+      ['🎬 Start K6-aanloop nu',     function(){ close(); toonNummer7Filmpje(); }, !k6FinaleContainer && !hasVisited('nummer7_filmpje_gezien'), 'Finale'],
+      ['⏭️ K6-aanloop overslaan',    function(){ close(); beeindigK6Finale(); }, !!k6FinaleContainer, 'Finale'],
       ['🔓 Locatieslot wachtfase aan/uit', function(){ debugLocatieslotToggle(); close(); }, true, 'Finale'],
       // Kelly's leesvlag hoort erbij: zonder die vlag telt de dagboek-stap niet
       // mee en komt de teller nooit op 4/4 (en de gok is toch al geblokkeerd
