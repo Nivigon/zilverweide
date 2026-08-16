@@ -6709,11 +6709,85 @@ function wisLokaleRondeStand() {
 // snel een ander personage of een ander startpunt te kunnen testen
 // zonder het hele intro-pad te hoeven doorlopen.
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// RESETCODE
+// Beide resetknoppen (de ↻ hiernaast en het bolletje van de Firebase-reset)
+// staan permanent linksonder in beeld, het hele spel lang, op het tablet van
+// elke speler. Er is geen code die ze verbergt. Een systeemdialoog met OK is
+// daar te weinig bescherming: die tikt iemand weg zonder te lezen, zeker een
+// kind, en de schade is de gedeelde sessie van het hele team midden in een
+// ronde. Daarom moet er eerst een code ingetikt worden. Vier cijfers die de
+// begeleider kent, geen wachtwoord om te onthouden.
+// ─────────────────────────────────────────────────────────────────
+var RESET_CODE = '3513';
+
+// Vraagt de resetcode en roept opJa alleen aan als die klopt. Bewust een eigen
+// overlay en geen prompt(): een systeemprompt is op een tablet met één tik weg
+// te klikken, ziet er niet uit als dit spel, en wordt op iOS in sommige
+// gevallen helemaal onderdrukt. Geen scrollen en geen kale 100vh: inset:0 met
+// flex-centrering, net als de andere overlays.
+function vraagResetCode(titel, uitleg, opJa) {
+  var bestaand = document.getElementById('zv-resetcode');
+  if (bestaand) return;   // al in beeld, niet stapelen
+  var ov = document.createElement('div');
+  ov.id = 'zv-resetcode';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:610;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(4,2,6,.94)';
+  ov.innerHTML =
+    '<div style="max-width:440px;width:100%;text-align:center;background:linear-gradient(180deg,rgba(18,13,7,.96),rgba(10,7,4,.98));border:1px solid rgba(139,26,26,.45);border-radius:12px;padding:1.6rem 1.8rem">' +
+      '<div style="font-family:Cinzel,serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#d4826e;margin-bottom:.9rem">' + titel + '</div>' +
+      '<p style="font-family:Crimson Text,Georgia,serif;font-size:1rem;color:var(--parchment);line-height:1.55;margin:0 0 1.1rem">' + uitleg + '</p>' +
+      '<p style="font-family:Crimson Text,Georgia,serif;font-size:.92rem;color:var(--gold-dim);margin:0 0 .6rem">Voer de resetcode in om door te gaan.</p>' +
+      '<input id="zv-resetcode-veld" type="text" inputmode="numeric" autocomplete="off" maxlength="4" ' +
+        'style="width:7rem;text-align:center;font-family:Cinzel,serif;font-size:1.5rem;letter-spacing:.35em;padding:.5rem .3rem;' +
+        'background:rgba(0,0,0,.45);color:var(--gold);border:1px solid rgba(var(--goudrgb),calc(.45 * var(--lijn)));border-radius:5px">' +
+      '<div id="zv-resetcode-fout" style="min-height:1.2rem;margin-top:.5rem;font-family:Crimson Text,Georgia,serif;font-size:.85rem;color:#d4826e"></div>' +
+      '<div style="display:flex;gap:.6rem;justify-content:center;margin-top:.6rem">' +
+        '<button id="zv-resetcode-ok" class="btn">Resetten</button>' +
+        '<button id="zv-resetcode-nee" style="font-family:Cinzel,serif;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);background:transparent;border:1px solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));border-radius:3px;padding:.5rem .9rem;cursor:pointer">Annuleer</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  var veld = ov.querySelector('#zv-resetcode-veld');
+  var fout = ov.querySelector('#zv-resetcode-fout');
+  function sluit() { if (ov.parentNode) ov.parentNode.removeChild(ov); }
+  function probeer() {
+    if ((veld.value || '').trim() === RESET_CODE) { sluit(); opJa(); return; }
+    fout.textContent = 'Verkeerde code.';
+    veld.value = '';
+    try { veld.focus(); } catch (e) {}
+  }
+  ov.querySelector('#zv-resetcode-ok').onclick = probeer;
+  ov.querySelector('#zv-resetcode-nee').onclick = sluit;
+  veld.onkeydown = function (ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); probeer(); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); sluit(); }
+  };
+  try { veld.focus(); } catch (e) {}
+}
+
+// Debugflag bij de resetcode: het codescherm openen als droogloop, zodat je de
+// invoer, de foutmelding en het annuleren kunt bekijken zonder iets te wissen.
+function debugResetCodeScherm() {
+  vraagResetCode(
+    'Resetcode testen',
+    'Droogloop vanuit het testpaneel. Er wordt niets gewist, wat je hier ook intikt.',
+    function () {
+      if (typeof toonToast === 'function') toonToast('🔢', 'Code klopt. In het echt zou de reset nu draaien.');
+    }
+  );
+}
+
 function resetSpel() {
-  // De knop staat vast in beeld, pal naast het testpaneel: een misklik zou
-  // hieronder zonder waarschuwing de gedeelde sessie van alle vier de
-  // tablets wissen. Daarom altijd eerst bevestigen.
-  if (!confirm('Alles resetten in sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '"? Dit wist ook de gedeelde sessie (Firebase) voor alle vier de tablets.')) return;
+  // De knop staat vast in beeld, pal naast het testpaneel, en wist hieronder
+  // de gedeelde sessie van alle vier de tablets. Daarom eerst de resetcode.
+  vraagResetCode(
+    'Alles resetten',
+    'Sessie "' + (typeof herstelSessieId === 'function' ? herstelSessieId() : 'test') + '". Dit wist ook de gedeelde sessie in Firebase, voor alle vier de tablets.',
+    resetSpelUitvoeren
+  );
+}
+
+function resetSpelUitvoeren() {
   // Logboek: de testmodus-reset laat de log-tak staan, dus dit moment is
   // achteraf terug te vinden (in tegenstelling tot de volledige Firebase-reset).
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_testmodus' });
@@ -21189,6 +21263,9 @@ function buildDebugPanel() {
     // sessie zojuist heeft gewist, zodat de lege-snapshot-tak en de melding
     // solo te testen zijn zonder echt iets in Firebase weg te gooien.
     ['🧪 Doe alsof de sessie elders gewist is', function(){ debugSessieEldersGewist(); close(); }, true],
+    // Debugflag bij de resetcode: het codescherm als droogloop, zodat de
+    // invoer en de foutmelding te bekijken zijn zonder iets te wissen.
+    ['🔢 Codescherm van de reset tonen', function(){ close(); debugResetCodeScherm(); }, true],
     // Tabletmodus omzetten zonder opnieuw te beginnen: zo is de duo-weergave
     // (rol-overzicht, begeleiderspaneel) te testen zonder de hele flow over
     // te doen. Bij het aanzetten vullen we zo nodig een tweede testnaam in,
@@ -25412,7 +25489,14 @@ function firebaseVolleReset() {
   // De sessienaam MOET in de vraag staan: sinds ?sessie= lokaal onthouden
   // wordt kan een tablet zonder parameter stilletjes in een echte sessie
   // zitten, en dan zou je hier denken dat je 'test' aan het schonen bent.
-  if (!confirm('Alles resetten in Firebase-sessie "' + sessieId + '"?\n(schaduw + alle gedeelde state + herstelpunten; het logboek blijft bewaard)')) return;
+  vraagResetCode(
+    'Firebase-sessie resetten',
+    'Sessie "' + sessieId + '". Dit wist de schaduw, alle gedeelde stand en de herstelpunten, voor alle vier de tablets. Het logboek blijft bewaard.',
+    function () { firebaseVolleResetUitvoeren(sessieId); }
+  );
+}
+
+function firebaseVolleResetUitvoeren(sessieId) {
   // Het wismoment eerst zelf vastleggen, dan pas wissen: zo is in logboek.html
   // terug te vinden dat en wanneer deze ronde is weggegooid.
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_firebase' });
