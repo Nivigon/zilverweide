@@ -8635,6 +8635,14 @@ function openDorendaelLocatie(code) {
   if (!id) return;
   const loc = locatiesDorendael.find(l => l.id === id);
   if (!loc) return;
+  // Wie een locatie opnieuw opent, staat altijd eerst buiten. De herberg
+  // onthield dat je binnen was: verlaat je hem via de trap na de zolder-scène
+  // (renderHerbergierOpTrap gaat rechtstreeks naar het districtsscherm en komt
+  // dus niet langs de reset in goBackFromLocatie), dan stond je bij een
+  // volgend bezoek meteen in de gelagkamer. Hier resetten is de enige plek die
+  // álle routes dekt; afdalen van de zolder loopt niet langs deze functie en
+  // houdt je dus wél netjes binnen.
+  _herbergBinnen = false;
   // Zit hier iemand vast (schaduw)? Dan lege huls plus redder-invoer, de echte
   // locatie blijft dicht (geen trigger).
   if (schaduwRedderIntercept(id, 'dorendael')) return;
@@ -12272,6 +12280,18 @@ const HERBERG_TIMER_SEC = 30; // speelwaarde: 30 sec vanaf het moment dat de tim
 
 let _herbergBinnen = false;
 
+// Haalt de terug-knop uit een scène die al draait. De scene-engine zet die
+// knop bij het opbouwen neer; `geenTerug: true` haalt hem meteen weg, maar hier
+// moet hij juist halverwege verdwijnen (op een bepaalde dialoogregel). De
+// engine blijft ongemoeid: dit werkt puur op het al gerenderde scherm.
+function verbergSceneTerugKnop() {
+  const cont = document.getElementById('locatie-content');
+  const knop = cont && cont.querySelector('.sc-back-btn');
+  if (knop) knop.style.display = 'none';
+  const vaste = document.getElementById('locatie-back-btn');
+  if (vaste) vaste.style.display = 'none';
+}
+
 function renderDd4Herberg(loc) {
   state.opZolder = false;
   // Buiten zie je de gevel, binnen de gelagkamer. Alle binnen-scènes geven
@@ -12501,6 +12521,17 @@ function renderDd4VoorZolder(loc, p) {
   }
 
   if (p === 'fenna') {
+    // Fenna is de enige die de zolder-scène kan starten, dus zij mag hier niet
+    // meer weglopen zodra de trap in beeld komt. Tot en met de voorlaatste
+    // regel houdt ze de terug-knop (per ongeluk binnengelopen mag je nog
+    // rechtsomkeert maken); op de laatste regel valt hij weg en is "Ga naar
+    // boven" de enige knop die de scène nog oplevert. Met het testschuifje
+    // (state.debugHerbergSlotUit) blijft de oude uitgang staan.
+    const slotAan = !state.debugHerbergSlotUit;
+    const laatsteRegel = { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Hij speelt een spel. Maar ik voel wie hij bedoelt.' };
+    if (slotAan) laatsteRegel.onShow = verbergSceneTerugKnop;
+    const fennaActies = [{ label: '↑ Ga naar boven', onclick: klikZolder }];
+    if (!slotAan) fennaActies.push({ label: 'Vertrek nog niet', onclick: goBackFromLocatie, stijl: 'blood' });
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
@@ -12510,12 +12541,9 @@ function renderDd4VoorZolder(loc, p) {
         { spreker: 'Fenna-Viviènne', tekst: 'Naar mij?' },
         { spreker: 'Herbergier', tekst: 'Hij weet wie u bent. En u kent hem ook, geloof ik.' },
         'Hij wijst niet. Maar zijn ogen flitsen heel kort naar de trap.',
-        { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Hij speelt een spel. Maar ik voel wie hij bedoelt.' }
+        laatsteRegel
       ],
-      acties: [
-        { label: '↑ Ga naar boven', onclick: klikZolder },
-        { label: 'Vertrek nog niet', onclick: goBackFromLocatie, stijl: 'blood' }
-      ]
+      acties: fennaActies
     });
   }
 
@@ -12871,6 +12899,11 @@ function renderFennaLeestBriefje() {
     titel:     'Zolderkamer',
     sub:       'Bovenaan de kraakende trap',
     image:     ZOLDER_AFBEELDING,
+    // Doorlopend slot: eenmaal boven is "Maar plots..." de enige weg verder.
+    // Liep ze hier eerder weg, dan stond herberg_betreden al aan en belandde
+    // ze bij een volgende poging in de wachtstand zonder klok. Het testschuifje
+    // zet het slot uit als Tom de oude route wil narijden.
+    geenTerug: !state.debugHerbergSlotUit,
     dialog: [
       'Een kleine kamer, dun licht door één raam. Op de tafel ligt een gevouwen briefje met je naam erop. Je pakt het op, breekt het zegel, en leest...',
       { spreker: 'Briefje', tekst: 'Lieve Fenna, ik kon niet langer op je wachten, maar heb dit voor jou achtergelaten. Ik ben zelf ook op zoek naar die heks. Hoop dat dit allemaal op te lossen is. Liefs, Robbie' }
@@ -21170,6 +21203,13 @@ function buildDebugPanel() {
       ['🚪 Kom binnen (Fenna zit boven)', function(){ debugFennaOpZolder(); close(); spelerGaatNaarBoven(); }, p !== 'fenna' && !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['👥 Vrienden arriveren',      function(){ debugHerbergVriendenArriveren(); close(); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
       ['🛑 Klok stilzetten (test vangnet)', function(){ zolderStopLeider(); close(); }, !!herbergTimerInterval, 'Herberg (DD4)'],
+      // Fenna's trap-slot: staat normaal aan (zij moet naar boven). Uit gezet
+      // krijgt ze haar oude uitgang terug, handig om beide routes na te lopen.
+      ['🔓 Fenna-slot trap: ' + (state.debugHerbergSlotUit ? 'UIT' : 'AAN'), function(){ state.debugHerbergSlotUit = !state.debugHerbergSlotUit; close(); if (typeof toonToast === 'function') toonToast('🔓', 'Fenna-slot bij de trap staat nu ' + (state.debugHerbergSlotUit ? 'uit' : 'aan') + '.'); }, !herbergGedaan && !inWoudWinScreen, 'Herberg (DD4)'],
+      // Vangnet: hard de herberg uit, ook als het slot aanstaat en er op het
+      // scherm geen enkele knop meer is. Zet de aanwezigheid netjes weg, zodat
+      // de Dorendael-finale-popup niet blijft wachten op dit tablet.
+      ['🚪 Herberg verlaten (slot omzeilen)', function(){ close(); state.opZolder = false; _herbergBinnen = false; if (typeof herbergAanwezigWeg === 'function') herbergAanwezigWeg(); showScreen('screen-dorendael'); }, !inWoudWinScreen, 'Herberg (DD4)'],
       // ── Vijver / Meisje
       ['💧 Fenna zit bij vijver',    function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && p === 'fenna' && !inWoudWinScreen, 'Vijver & Meisje'],
       ['💧 Fenna wacht op code (meisje er)', function(){ markVisited('fenna_vijver_vast'); close(); }, !fennaVrij && !inWoudWinScreen, 'Vijver & Meisje'],
