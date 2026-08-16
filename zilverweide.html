@@ -8604,20 +8604,25 @@ const dorendaelRenderers = {
 
 // Dorendael-locatie-afbeeldingen (map: locaties/dorendael/).
 const DD_AFBEELDINGEN = {
-  'dd2_nummer2':      'locaties/dorendael/Nummer2.jpeg',
-  'dd3_nummer10':     'locaties/dorendael/Nummer10.jpeg',
-  'dd4_herberg':      'locaties/dorendael/Herberg.jpeg',
-  'dd5_woud':         'locaties/dorendael/Woud.jpeg',
-  'dd6_molen':        'locaties/dorendael/Molenpad.jpeg',
-  'dd7_klokkenmaker': 'locaties/dorendael/Klokkenmaker.jpeg',
-  'dd8_stiltevijver': 'locaties/dorendael/Vijver.jpeg'
+  'dd2_nummer2':      'locaties/dorendael/nummer2.jpeg',
+  'dd3_nummer10':     'locaties/dorendael/nummer10.jpeg',
+  'dd4_herberg':      'locaties/dorendael/herberg.jpeg',
+  'dd5_woud':         'locaties/dorendael/woud.jpeg',
+  'dd6_molen':        'locaties/dorendael/molenpad.jpeg',
+  'dd7_klokkenmaker': 'locaties/dorendael/klokkenmaker.jpeg',
+  'dd8_stiltevijver': 'locaties/dorendael/vijver.jpeg'
 };
+
+// De herberg heeft twee beelden: buiten de gevel (DD_AFBEELDINGEN hierboven)
+// en binnen de gelagkamer. renderDd4Herberg wisselt ertussen zodra de speler
+// naar binnen gaat of weer buiten staat.
+const HERBERG_BINNEN = 'locaties/dorendael/herbergbinnen.jpg';
 
 // De zolderkamer is geen eigen locatie-id (je komt er via de trap in de
 // herberg), dus die beelden staan los. Ná de heks-scène is de kamer veranderd
 // en geldt de na-variant.
-const ZOLDER_AFBEELDING     = 'locaties/dorendael/Zolder.jpeg';
-const ZOLDER_NA_AFBEELDING  = 'locaties/dorendael/Zoldernascene.jpeg';
+const ZOLDER_AFBEELDING     = 'locaties/dorendael/zolder.jpeg';
+const ZOLDER_NA_AFBEELDING  = 'locaties/dorendael/zoldernascene.jpeg';
 
 // De waard (herbergier) in zijn drie staten.
 const WAARD_POP        = 'karakters/dorendael/waard-pop.png';        // gewoon, achter de bar
@@ -11953,7 +11958,7 @@ function renderDd2Nummer2(loc) {
     // deuropening met dichtgenaaide mond.
     renderLocatieScene({
       container: document.getElementById('locatie-content'),
-      titel: loc.naam, sub: loc.sub, image: 'locaties/dorendael/Nummer2.jpeg',
+      titel: loc.naam, sub: loc.sub, image: 'locaties/dorendael/nummer2.jpeg',
       dialog: [
         { tekst: 'Het huis staat er donker bij. In de deuropening staat Bart. Zijn mond is dichtgenaaid. Hij staart je aan met lege ogen.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/dorendael/bartgenaaid-pop.png'); }, 200); } },
         'Hier valt niets meer te doen. Je loopt door.'
@@ -12235,7 +12240,7 @@ function dd2StraatMunten(vervloekt) {
     container: cont,
     titel:    'Nummer 2',
     sub:      'Buiten op straat',
-    image:    'locaties/dorendael/Nummer2.jpeg',
+    image:    'locaties/dorendael/nummer2.jpeg',
     geenTerug: true,
     dialog: [
       'Je staat weer buiten, de zak munten in je handen.',
@@ -12269,6 +12274,10 @@ let _herbergBinnen = false;
 
 function renderDd4Herberg(loc) {
   state.opZolder = false;
+  // Buiten zie je de gevel, binnen de gelagkamer. Alle binnen-scènes geven
+  // `image: null` mee en vallen dus terug op deze locatie-afbeelding. De
+  // zolderkamer houdt zijn eigen beeld: die scènes zetten hun image zelf.
+  state.locAfbeelding = _herbergBinnen ? HERBERG_BINNEN : DD_AFBEELDINGEN['dd4_herberg'];
   // Alle herberg-toestanden lopen hier langs, ook het afdalen van de zolder.
   // Zolang deze tablet hier staat, houdt de Dorendael-finale-popup zich in.
   if (typeof herbergAanwezigMeld === 'function') herbergAanwezigMeld();
@@ -18861,13 +18870,13 @@ function schaduwBevrijdTest() {
 // Locatie-achtergronden per id (uit de bestaande scene-paden). De lege
 // huls toont er een als stille achtergrond, zonder de echte scene te openen.
 var SCHADUW_LOC_BG = {
-  'dd2_nummer2':      'locaties/dorendael/Nummer2.jpeg',
-  'dd3_nummer10':     'locaties/dorendael/Nummer10.jpeg',
-  'dd4_herberg':      'locaties/dorendael/Herberg.jpeg',
-  'dd5_woud':         'locaties/dorendael/Woud.jpeg',
-  'dd6_molen':        'locaties/dorendael/Molenpad.jpeg',
-  'dd7_klokkenmaker': 'locaties/dorendael/Klokkenmaker.jpeg',
-  'dd8_stiltevijver': 'locaties/dorendael/Vijver.jpeg',
+  'dd2_nummer2':      'locaties/dorendael/nummer2.jpeg',
+  'dd3_nummer10':     'locaties/dorendael/nummer10.jpeg',
+  'dd4_herberg':      'locaties/dorendael/herberg.jpeg',
+  'dd5_woud':         'locaties/dorendael/woud.jpeg',
+  'dd6_molen':        'locaties/dorendael/molenpad.jpeg',
+  'dd7_klokkenmaker': 'locaties/dorendael/klokkenmaker.jpeg',
+  'dd8_stiltevijver': 'locaties/dorendael/vijver.jpeg',
   'k1_groenteboer':   'locaties/kraaienkwartier/stoop.jpeg',
   'k1_uitkijktoren':  'locaties/kraaienkwartier/toren.jpeg',
   'k1_nachtenwens':   'locaties/kraaienkwartier/nachtenwens.jpeg',
@@ -19190,22 +19199,24 @@ const personageImgs = {
   fenna: 'karakters/spelers/fenna.jpg',
   felix: 'karakters/spelers/felix.jpg',
 };
-// Korte personagenaam voor de badge rechtsboven. Los van personages[].naam,
-// want daar staat Felix als "De Vos" en dat is niet de naam die de speler
-// op zijn eigen knop wil zien.
-const personageBadgeNamen = {
-  jan:   'Jan',
-  kelly: 'Kelly',
-  fenna: 'Fenna-Viviènne',
-  felix: 'Felix',
+// Naam en rol zoals ze in de badge rechtsboven staan. Bewust los van
+// personages[].naam en personageRollen: daar heet Felix "De Vos" en staat
+// Fenna's rol voluit, en die twee zijn voor deze knop te lang.
+const personageBadge = {
+  jan:   { naam: 'Jan',            rol: 'De slotenmaker' },
+  kelly: { naam: 'Kelly',          rol: 'Het slimme meisje' },
+  fenna: { naam: 'Fenna-Viviènne', rol: 'De diva' },
+  felix: { naam: 'Felix',          rol: 'Voormalig spion' },
 };
 function showAvatarBadge(p) {
   const badge = document.getElementById('avatar-badge');
+  const b = personageBadge[p] || {};
   document.getElementById('avatar-badge-img').src = personageImgs[p];
   // Naam, streepje, rol: samen in één knop die het rol-overzicht opent.
-  document.getElementById('avatar-badge-name').textContent = personageBadgeNamen[p] || '';
+  document.getElementById('avatar-badge-name').textContent = b.naam || '';
   const rolEl = document.getElementById('avatar-badge-rol');
-  if (rolEl) rolEl.textContent = personageRollen[p] ? '- ' + personageRollen[p] : '';
+  const rolTekst = b.rol || personageRollen[p] || '';
+  if (rolEl) rolEl.textContent = rolTekst ? '- ' + rolTekst : '';
   badge.style.display = 'flex';
 }
 
@@ -22590,7 +22601,7 @@ function renderDd6Bord(loc) {
   const p = state.personage;
   // Terug bij het bord: het Molenpad als achtergrond (na de molen-scene
   // stond hier nog de ruïne).
-  state.locAfbeelding = 'locaties/dorendael/Molenpad.jpeg';
+  state.locAfbeelding = 'locaties/dorendael/molenpad.jpeg';
   const cont = document.getElementById('locatie-content');
   const drukKnop  = { label: 'Loop naar de molen', onclick: function(){ dempMuziek(); startMolenScene(loc); } };
   const terugKnop = { label: '← Loop terug', onclick: goBackFromLocatie, stijl: 'blood' };
