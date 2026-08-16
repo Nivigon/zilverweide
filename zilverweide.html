@@ -12508,7 +12508,7 @@ function renderDd4VoorZolder(loc, p) {
       dialog: [
         'Kelly stapt de herberg in. Het ruikt naar bier, oud hout en iets zoetigs dat ze niet kan plaatsen. Eén man aan de bar lacht net iets te hard om niets.',
         { spreker: 'Herbergier', tekst: '*(zijn ogen blijven een tel te lang op haar rusten)* Een meisje alleen. Op zoek naar iemand?' },
-        { spreker: 'Kelly', tekst: 'Eh — nee, ik kijk alleen even rond.' },
+        { spreker: 'Kelly', tekst: 'Eh, nee, ik kijk alleen even rond.' },
         { spreker: 'Herbergier', tekst: 'Boven slaapt het beter. Mocht je daar interesse in hebben.' },
         'Hij wijst niet naar de trap. Maar Kelly weet precies welke trap hij bedoelt.',
         { spreker: 'Kelly', tekst: '*(in gedachten)* Hij weet meer dan hij toont. Boven moet ik niet zijn.' }
@@ -12535,7 +12535,7 @@ function renderDd4VoorZolder(loc, p) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Bij binnenkomst draaien een paar hoofden zich naar haar — een artieste in een herberg trekt aandacht.',
+        'Bij binnenkomst draaien een paar hoofden zich naar haar. Een artieste in een herberg trekt aandacht.',
         'De herbergier neemt haar van top tot teen op. Zijn glimlach is meer kromming dan vreugde.',
         { spreker: 'Herbergier', tekst: 'Mevrouw. Wat een eer. Iemand boven heeft net naar u gevraagd.' },
         { spreker: 'Fenna-Viviènne', tekst: 'Naar mij?' },
@@ -12552,7 +12552,10 @@ function renderDd4VoorZolder(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lucinde-Felix waggelt binnen. De herbergier kijkt op en ontspant zichtbaar — een oud vrouwtje is geen bedreiging.',
+          'Lucinde-Felix waggelt binnen. De herbergier kijkt op en ontspant zichtbaar, een oud vrouwtje is geen bedreiging.',
+          'Aan een tafel in de hoek zit een vrouw die haar kant op kijkt zonder haar echt aan te kijken.',
+          { spreker: 'Lucinde', tekst: '*(in gedachten)* Die dame lijkt sprekend op mevrouw Van Wallingen uit het Kraaienkwartier. Zekerheid heb ik niet, en zonder zekerheid spreek ik mij niet uit. Zo hoort dat.' },
+          'De vrouw knikt haar toe. Heel licht, heel kort. Alsof ze precies weet wie er onder die grijze krullen zit. Lucinde knikt keurig terug en kijkt weg.',
           { spreker: 'Herbergier', tekst: 'Mevrouwtje. Komt u uit de regen?' },
           { spreker: 'Lucinde', tekst: 'Och, lieverd, ik zoek mijn brillen. Heb ik die hier laten liggen?' },
           { spreker: 'Herbergier', tekst: 'Brillen heb ik niet gezien, mevrouwtje. Maar gaat u toch even zitten. U lijkt vermoeid.' },
@@ -12569,6 +12572,9 @@ function renderDd4VoorZolder(loc, p) {
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
           'Lola walst binnen alsof ze de herberg bezit. Mannen kijken op. De herbergier blijft zijn glas drogen, maar zijn ogen volgen.',
+          'Aan een tafel in de hoek zit een vrouw die haar kant op kijkt zonder haar echt aan te kijken.',
+          { spreker: 'Lola', tekst: '*(in gedachten)* Madre mía. Die vrouw lijkt verdacht veel op Mevr. van Wallingen uit Kraaienkwartier. Of speelt dit licht met mij?' },
+          'De vrouw heft haar glas. Heel licht, heel kort. Alsof ze weet dat Lola haar herkent. Lola lacht haar breedste lach terug en kijkt weg.',
           { spreker: 'Lola', tekst: 'Caballero! Een pul van uw beste!' },
           { tekst: 'De herbergier zet zwijgend een pul neer. Hij kijkt heel kort naar haar baard.', onShow: function(){ toonNpcPop(WAARD_POP); } },
           { spreker: 'Herbergier', tekst: 'Beste? Hier is alles even sterk, mevrouwtje. Net als boven.' },
@@ -12579,11 +12585,11 @@ function renderDd4VoorZolder(loc, p) {
         ]
       });
     }
-    // Felix zonder vermomming — de oud-spion
+    // Felix zonder vermomming, de oud-spion
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'Felix glipt binnen, ogen scannend zoals altijd — een gewoonte van vroeger. Hij telt: zes gasten, één herbergier, twee uitgangen.',
+        'Felix glipt binnen, ogen scannend zoals altijd, een gewoonte van vroeger. Hij telt: zes gasten, één herbergier, twee uitgangen.',
         'Aan een tafel in de hoek: een vrouw. Ze kijkt zijn kant op zonder echt naar hem te kijken.',
         { spreker: 'Felix', tekst: '*(in gedachten)* Die vrouw lijkt verdomd veel op Mevr. van Wallingen uit Kraaienkwartier. Of speelt mijn blik me parten?' },
         'Ze knikt hem toe. Heel licht. Heel kort. Alsof ze weet dat hij haar herkent. Felix wendt zijn blik af.',
@@ -12671,7 +12677,7 @@ function renderDd4NaZolder(loc, p) {
         { spreker: 'Jan', tekst: '*(in gedachten)* De herberg is stil. Stiller dan eerst.' },
         'De stoel bij het haardvuur waar Mevr. van Wallingen zat, is leeg. Op de tafel staat haar halfvolle pul. Nog warm.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Ze zat hier net nog. Niemand zag haar weggaan.' },
-        { tekst: 'In het raam zit een kikker. Hij draait zijn kop, kijkt Jan één tel aan — en hipt dan met een sprong het donker in. Weg.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } }
+        { tekst: 'In het raam zit een kikker. Hij draait zijn kop, kijkt Jan één tel aan, en hipt dan met een sprong het donker in. Weg.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } }
       ],
       acties: trapActie
     });
@@ -12681,10 +12687,10 @@ function renderDd4NaZolder(loc, p) {
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
         'Kelly stapt binnen. De stilte raakt haar als koud water. De gasten zijn er nog, maar bewegen niet. Een man houdt zijn pul halverwege naar zijn mond. Bevroren.',
-        { tekst: 'De bar is leeg. Op de vensterbank zit heel even een kikker. Hij knippert één keer, heel langzaam — en is met een sprong naar buiten verdwenen voor ze goed kijkt.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
-        { tekst: 'Van boven komt een geluid — geen woorden. Alleen iemand die probeert te praten zonder dat het lukt.', onShow: function() { verbergNpcPop(); } },
+        { tekst: 'De bar is leeg. Op de vensterbank zit heel even een kikker. Hij knippert één keer, heel langzaam, en is met een sprong naar buiten verdwenen voor ze goed kijkt.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
+        { tekst: 'Van boven komt een geluid. Geen woorden, alleen iemand die probeert te praten zonder dat het lukt.', onShow: function() { verbergNpcPop(); } },
         { spreker: 'Kelly', tekst: '*(in gedachten)* Iemand huilt boven. Maar geen woorden. Alleen het geluid.' },
-        'Kelly stapt achteruit en gaat weg.'
+        'Kelly doet een stap achteruit. En blijft dan toch staan, met haar blik op de trap.'
       ],
       acties: trapActie
     });
@@ -12693,7 +12699,7 @@ function renderDd4NaZolder(loc, p) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
-        'FV ziet wat er gebeurd is. De herbergier is weg. Ze hoort hem boven — hij heeft geen woorden meer. Alleen lucht.',
+        'Fenna ziet wat er gebeurd is. De herbergier is weg. Ze hoort hem boven, hij heeft geen woorden meer. Alleen lucht.',
         { tekst: 'Op de vensterbank zit een kikker die haar recht aankijkt. Dan, in één beweging, springt hij door het open raam en is weg.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
         { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Ik had hem niet kunnen redden. Maar het voelt anders.', onShow: function() { verbergNpcPop(); } }
       ],
@@ -12705,9 +12711,11 @@ function renderDd4NaZolder(loc, p) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: null,
         dialog: [
-          'Lucinde-Felix komt binnen. De stilte verrast haar — zelfs een oude dove dame voelt dit.',
+          'Lucinde-Felix komt binnen. De stilte verrast haar, zelfs een oude dove dame voelt dit.',
           'Van boven hoort ze iemand huilen.',
           { spreker: 'Lucinde', tekst: '*(zachtjes, voor zichzelf)* Och, die arme man. Iemand zou hem moeten helpen.' },
+          { tekst: 'Op de vensterbank zit een kikker. Hij kijkt haar één tel aan en springt dan met een sprong het donker in.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
+          { spreker: 'Lucinde', tekst: '*(in gedachten)* Een kikker. Binnen. In een zaak waar men eten en drinken serveert. Men laat de boel hier duidelijk versloffen.', onShow: function() { verbergNpcPop(); } },
           'Maar niemand reageert. De gasten staren. De herbergier is weg.',
           { spreker: 'Lucinde', tekst: '*(in gedachten)* Niemand reageert. Niemand. Dat is erger dan het huilen zelf.' }
         ],
@@ -12720,6 +12728,8 @@ function renderDd4NaZolder(loc, p) {
         dialog: [
           'Lola walst binnen, maar haar pas haakt halverwege. Iets klopt niet.',
           { spreker: 'Lola', tekst: '*(zacht, tegen zichzelf)* Caramba. Hier is iemand weg.' },
+          { tekst: 'Op de vensterbank zit een kikker die haar recht aankijkt. Dan springt hij door het open raam en is weg.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
+          { spreker: 'Lola', tekst: '*(in gedachten)* Ay. Een kikker die kijkt zoals mensen kijken. Dat beviel me niets.', onShow: function() { verbergNpcPop(); } },
           'Lola is geen vreemde van gevaar. Ze voelt het. En vertrekt zonder nog een woord.',
           { spreker: 'Lola', tekst: '*(in gedachten)* Niet jouw verhaal vanavond, Lola.' }
         ],
@@ -12731,7 +12741,7 @@ function renderDd4NaZolder(loc, p) {
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
         'Felix komt binnen na de paniek. De stilte slaat hem in zijn gezicht.',
-        { tekst: 'De vrouw die op Mevr. van Wallingen leek — weg. Stoel leeg. De pul nog op tafel. Op de vensterbank zit nog net een kikker, die meteen wegspringt, het donker in.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
+        { tekst: 'De tafel in de hoek is leeg. De vrouw die op Mevr. van Wallingen leek is weg, en niemand zag haar gaan. Op de vensterbank zit nog net een kikker, die meteen wegspringt, het donker in.', onShow: function() { toonNpcPop('karakters/dorendael/strix-pop.png'); } },
         { spreker: 'Felix', tekst: '*(in gedachten)* Eerst zat ze daar. Nu niet. Geen mens loopt zo snel een herberg uit in stilte. Iemand zou het horen.', onShow: function() { verbergNpcPop(); } }
       ],
       acties: trapActie
@@ -12761,7 +12771,7 @@ function renderZolderGeweigerd() {
       { spreker: 'Herbergier', tekst: 'Boven is niets voor jou. Nog niet.' },
       'Hij blijft staan tot je van de trap stapt. Dit was geen uitnodiging om het nog eens te proberen.'
     ],
-    acties: [{ label: '← Terug de gelagkamer in', onclick: function () {
+    acties: [{ label: '← Terug de zaal in', onclick: function () {
       verbergNpcPop();
       if (loc) renderDd4Herberg(loc);
     } }]
@@ -12863,7 +12873,7 @@ function renderHerbergierOpTrap() {
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel:     'De trap',
-    sub:       'Tussen zolder en gelagkamer',
+    sub:       'Tussen de zolder en de zaal',
     // Je bent nog boven: de zolderkamer blijft in beeld. Pas als je verder
     // naar beneden loopt, zie je de herberg weer.
     image:     ZOLDER_NA_AFBEELDING,
@@ -22483,7 +22493,7 @@ function renderDd3Nummer10(loc) {
         ]
       });
     }
-    // Felix zonder vermomming — de oud-spion
+    // Felix zonder vermomming, de oud-spion
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: loc.sub, image: null,
       dialog: [
