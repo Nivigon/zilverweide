@@ -2779,6 +2779,15 @@ try { var _bewaardTabletAantal = parseInt(localStorage.getItem('zw_tablet_speler
 var _sharedSessieId = null;
 var _sharedDbRef = null;
 var _sharedListenerActief = false;
+// Heeft deze tablet ooit een gevulde snapshot van deze sessie gezien? Nodig om
+// twee dingen uit elkaar te houden die er in de listener identiek uitzien: een
+// sessie die nog nooit iets heeft geschreven (normaal, niets aan de hand) en
+// een sessie die zojuist is leeggemaakt met de reset-knop (dan moet de lokale
+// kopie mee weg).
+var _sharedHadData = false;
+// Heeft DEZE tablet de reset zelf uitgevoerd? Dan hoeft de melding hieronder
+// niet: die tablet weet het al, want hij kreeg de bevestiging en de afloop.
+var _sharedZelfGewist = false;
 
 // Verschil tussen de klok van deze tablet en die van de Firebase-server.
 // Vier tablets lopen zelden precies gelijk, en de stille hulpklok van de
@@ -2872,13 +2881,51 @@ function initSharedFirebase(sessieId, versGedeeld) {
         delete state.shared[lk];
       }
     }
-    if (!data) return;
+    if (!data) {
+      // De sessie is leeg. Had deze tablet al data gezien, dan is hij zojuist
+      // gewist (reset-knop of testmodus-reset, hier of op een ander tablet).
+      // De merge hieronder voegt alleen toe en wist nooit iets, dus zonder
+      // deze tak bleef elk tablet de complete gedeelde stand van de vorige
+      // ronde in het geheugen houden terwijl Firebase al leeg was. Het spel
+      // liep dan verder op vlaggen die nergens meer bestonden, en dat was
+      // alleen te verhelpen door alle vier de pagina's handmatig te
+      // verversen. Was er nog nooit data, dan is dit gewoon een verse sessie
+      // en valt er niets op te ruimen.
+      if (_sharedHadData || _sharedZelfGewist) {
+        var doorMijzelf = _sharedZelfGewist;
+        _sharedZelfGewist = false;
+        _sharedHadData = false;
+        state.shared = standaardGedeeldeState();
+        // Het herstelpunt hoort bij de ronde die net is weggegooid. De
+        // reset wist de Firebase-tak en de lokale kopie op het tablet dat
+        // hem indrukte; de andere tablets hielden hun lokale kopie, en
+        // daarmee kon iemand na de reset alsnog een verouderde stand
+        // terugladen via het naamveld. Nu ruimt elk tablet zijn eigen kopie
+        // op zodra het merkt dat de sessie leeg is.
+        SHARED_ROLLEN.forEach(function (r) {
+          try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
+        });
+        _herstelVorigeKern = '';
+        if (typeof logboekSchrijf === 'function') {
+          logboekSchrijf('sessie', { actie: doorMijzelf ? 'shared_gewist_hier' : 'shared_gewist_elders' });
+        }
+        // Bolletje weer wit: er staat nu echt niets meer in deze sessie.
+        if (typeof updateFirebaseBolletje === 'function') updateFirebaseBolletje();
+        // Alleen melden als een ANDER tablet de reset deed. Wie zelf op de
+        // knop drukte heeft zijn bevestiging en zijn afloopmelding al gehad.
+        if (!doorMijzelf && typeof toonSessieGeresetMelding === 'function') {
+          toonSessieGeresetMelding();
+        }
+      }
+      return;
+    }
     // Merge Firebase-data in lokale state.shared (Firebase wint)
     for (var key in data) {
       if (data.hasOwnProperty(key)) {
         state.shared[key] = data[key];
       }
     }
+    _sharedHadData = true;
     _sharedListenerActief = true;
     // Binnengekomen wereldstatus verwerken: verhaal-flags, gok-statussen,
     // teller en toast op ALLE tablets.
@@ -6680,6 +6727,12 @@ function resetSpel() {
   // data (van een eerdere test) direct weer terug ("Firebase wint").
   try {
     if (typeof firebaseSharedBeschikbaar === 'function' && firebaseSharedBeschikbaar() && _sharedDbRef) {
+      // Zelfde markering als bij de volle Firebase-reset: de lege snapshot die
+      // hierop volgt is van onszelf, dus zonder melding. De drie andere tablets
+      // krijgen hem wel, en dat klopt met wat de bevestiging hierboven belooft
+      // (deze reset wist de gedeelde sessie voor alle vier).
+      _sharedZelfGewist = true;
+      _sharedHadData = false;
       _sharedDbRef.remove().catch(function(e){ console.warn('Firebase shared reset mislukt:', e); });
     }
   } catch (e) {}
@@ -21132,6 +21185,10 @@ function buildDebugPanel() {
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],
+    // Debugflag bij het opruimen na een reset: doet alsof een ander tablet de
+    // sessie zojuist heeft gewist, zodat de lege-snapshot-tak en de melding
+    // solo te testen zijn zonder echt iets in Firebase weg te gooien.
+    ['🧪 Doe alsof de sessie elders gewist is', function(){ debugSessieEldersGewist(); close(); }, true],
     // Tabletmodus omzetten zonder opnieuw te beginnen: zo is de duo-weergave
     // (rol-overzicht, begeleiderspaneel) te testen zonder de hele flow over
     // te doen. Bij het aanzetten vullen we zo nodig een tweede testnaam in,
@@ -25359,6 +25416,10 @@ function firebaseVolleReset() {
   // Het wismoment eerst zelf vastleggen, dan pas wissen: zo is in logboek.html
   // terug te vinden dat en wanneer deze ronde is weggegooid.
   if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'reset_firebase' });
+  // Deze tablet doet de reset zelf: geen "gewist op een ander apparaat"-melding
+  // als de lege snapshot straks terugkomt. Bewust hier, na de bevestiging, zodat
+  // een geannuleerde reset de vlag niet laat staan.
+  _sharedZelfGewist = true;
   // Bewust NIET de hele sessietak wissen. De scheidslijn: alles wat het
   // spel LEEST gaat weg (/shared en /spelers, anders lekt oude stand een
   // nieuwe ronde in), alles wat alleen de analyse achteraf leest blijft
@@ -25371,10 +25432,22 @@ function firebaseVolleReset() {
     basis.child('spelers').remove()
   ])
     .then(function () {
-      alert('Firebase gereset voor sessie: ' + sessieId + '\n(logboek bewaard)');
+      // De lokale kopie moet hier ook weg. De listener ruimt hem op zodra de
+      // lege snapshot binnenkomt, maar die kan uitblijven bij slechte wifi, en
+      // tot die tijd zou dit tablet vrolijk doorspelen op de gedeelde stand van
+      // de ronde die je net hebt weggegooid. Dat was precies waarom een reset
+      // altijd met "en ververs alle pagina's" gepaard moest gaan.
+      state.shared = standaardGedeeldeState();
+      _sharedHadData = false;
+      alert('Firebase gereset voor sessie: ' + sessieId + '\n(logboek bewaard)\n\nVervers deze pagina voor een schone ronde.');
       updateFirebaseBolletje();
     })
-    .catch(function (e) { alert('Fout: ' + e.message); });
+    .catch(function (e) {
+      // Mislukt: de vlag weer omlaag, anders slikt deze tablet straks de
+      // melding van een echte reset door iemand anders.
+      _sharedZelfGewist = false;
+      alert('Fout: ' + e.message);
+    });
   // Begeleiderspaneel: de index-vermelding van deze sessie mee opruimen,
   // anders blijft een geresette sessie als spook in de sessielijst staan.
   // De datum zit in de sessie-id (teamnaam-YYYY-MM-DD-code); een id zonder
@@ -25395,6 +25468,51 @@ function firebaseVolleReset() {
     window.ZilverweideSchaduw.kalmeer();
   }
 }
+// Debugflag bij het opruimen na een reset. Voert lokaal precies uit wat de
+// lege-snapshot-tak in de listener doet, zonder iets in Firebase weg te
+// gooien: gedeelde stand terug naar de beginwaarden, eigen herstelpunten weg,
+// en de melding in beeld. Zo is dit stuk solo te testen. Let op: de echte
+// Firebase-tak blijft staan, dus de eerstvolgende snapshot vult de gedeelde
+// stand gewoon weer aan. Dat is de bedoeling, dit is een droogloop.
+function debugSessieEldersGewist() {
+  _sharedHadData = false;
+  _sharedZelfGewist = false;
+  state.shared = standaardGedeeldeState();
+  SHARED_ROLLEN.forEach(function (r) {
+    try { localStorage.removeItem(herstelLsKey(r)); } catch (e) {}
+  });
+  _herstelVorigeKern = '';
+  if (typeof logboekSchrijf === 'function') logboekSchrijf('sessie', { actie: 'shared_gewist_test' });
+  toonSessieGeresetMelding();
+}
+
+// Een ander tablet heeft de sessie gewist. De gedeelde stand is hierboven al
+// teruggezet, maar de eigen voortgang van deze tablet (visited, inventaris,
+// zone-unlocks) leeft alleen in het geheugen en overleeft dat. Verder spelen
+// op die halve stand levert onnavolgbare bugs op, dus dit scherm vraagt om een
+// verversing. Bewust geen automatische reload: mocht deze tak ooit onbedoeld
+// afgaan, dan is een melding te negeren en een reload op vier tablets niet.
+// Geen kale 100vh maar inset:0, net als de andere overlays.
+function toonSessieGeresetMelding() {
+  var oud = document.getElementById('zv-sessie-gereset');
+  if (oud) return;   // al in beeld, niet stapelen
+  var ov = document.createElement('div');
+  ov.id = 'zv-sessie-gereset';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:600;display:flex;align-items:center;justify-content:center;padding:1.5rem;background:rgba(4,2,6,.94)';
+  ov.innerHTML =
+    '<div style="max-width:460px;text-align:center;background:linear-gradient(180deg,rgba(18,13,7,.96),rgba(10,7,4,.98));border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));border-radius:12px;padding:1.6rem 1.8rem">' +
+      '<div style="font-family:Cinzel,serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:.9rem">De sessie is opnieuw gestart</div>' +
+      '<p style="font-family:Crimson Text,Georgia,serif;font-size:1.05rem;color:var(--parchment);line-height:1.6;margin:0 0 1.3rem">De gedeelde stand van dit spel is gewist op een ander apparaat. Ververs deze pagina om schoon verder te gaan.</p>' +
+      '<button id="zv-sessie-gereset-ok" class="btn">Ververs nu</button>' +
+      '<div style="margin-top:.8rem"><button id="zv-sessie-gereset-weg" style="font-family:Cinzel,serif;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim);background:transparent;border:none;cursor:pointer">Later</button></div>' +
+    '</div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#zv-sessie-gereset-ok').onclick = function () { location.reload(); };
+  ov.querySelector('#zv-sessie-gereset-weg').onclick = function () {
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+  };
+}
+
 function updateFirebaseBolletje() {
   var btn = document.getElementById('firebase-reset-btn');
   if (!btn) return;
