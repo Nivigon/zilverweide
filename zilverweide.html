@@ -389,7 +389,11 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .locatie-detail h3{font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);margin-bottom:.25rem}
 .locatie-detail .sub{font-size:.9rem;color:var(--mist);font-style:italic;margin-bottom:1.5rem}
 .locatie-detail p{color:var(--parchment);margin-bottom:1rem}
-.inventory-bar{position:sticky;top:0;z-index:100;background:rgba(13,10,6,.92);border-bottom:1px solid rgba(var(--goudrgb),calc(.15 * var(--lijn)));padding:.6rem 16rem .6rem 1.5rem;display:flex;align-items:center;gap:.75rem;backdrop-filter:blur(4px)}
+/* De rechterpadding houdt ruimte vrij voor de vaste cluster rechtsboven
+   (verhaalscore plus rol-badge), zodat de "nieuw voorwerp"-melding er nooit
+   onder schuift. De rol-badge toont sinds kort naam plus rol en is daarmee
+   breder, dus de vrije ruimte is meegegroeid van 16rem naar 20rem. */
+.inventory-bar{position:sticky;top:0;z-index:100;background:rgba(13,10,6,.92);border-bottom:1px solid rgba(var(--goudrgb),calc(.15 * var(--lijn)));padding:.6rem 20rem .6rem 1.5rem;display:flex;align-items:center;gap:.75rem;backdrop-filter:blur(4px)}
 .inv-label{font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase}
 .inv-items{display:flex;gap:6px;flex-wrap:wrap}
 .inv-item{font-size:1.1rem;cursor:default}
@@ -474,9 +478,19 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   .asp-top{flex-direction:column;text-align:center;gap:.9rem}
   .asp-foto{width:5.5rem;height:7.2rem}
 }
-/* De naam-badge rechtsboven is klikbaar (opent het rol-overzicht). */
+/* De naam-badge rechtsboven is klikbaar (opent het rol-overzicht). Hij toont
+   naam plus rol en blijft daarbij één knop: de hover-gloed pakt de hele pil. */
 #avatar-badge{cursor:pointer;transition:border-color .22s ease,box-shadow .22s ease}
 #avatar-badge:hover{border-color:rgba(var(--goudrgb),calc(.7 * var(--lijn)));box-shadow:0 0 14px rgba(var(--goudrgb),calc(.25 * var(--schaduwdiepte)))}
+/* Telefoon liggend: de bredere badge zou samen met de verhaalscore te dicht
+   bij de inventaris-balk komen, dus tekst en portret iets kleiner. De
+   !important is nodig omdat de maten in de markup zelf staan. */
+@media (max-height:520px){
+  #avatar-badge{gap:6px !important;padding:3px 10px 3px 3px !important}
+  #avatar-badge-img{width:26px !important;height:26px !important}
+  #avatar-badge-name{font-size:.56rem !important;letter-spacing:.06em !important}
+  #avatar-badge-rol{font-size:.54rem !important;letter-spacing:.05em !important}
+}
 .inv-ov-titel{font-family:'Cinzel',serif;font-size:clamp(1.4rem,4.2vh,2.1rem);color:var(--gold);letter-spacing:.18em;text-transform:uppercase;text-shadow:0 0 34px rgba(var(--goudrgb),calc(.4 * var(--schaduwdiepte)))}
 .inv-ov-titel::before,.inv-ov-titel::after{content:'✦';font-size:.5em;color:var(--gold-dim);opacity:.7;vertical-align:middle;margin:0 .7em}
 .inv-ov-orn{color:var(--gold-dim);letter-spacing:.4em;font-size:.62rem;text-transform:uppercase;margin-top:.4rem}
@@ -1758,9 +1772,16 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <span id="missie-teller-tekst">Verhaal: 0 / 4</span>
     <div id="missie-paneel" onclick="event.stopPropagation()"></div>
   </div>
-  <div id="avatar-badge" onclick="openRolOverzicht()" title="Bekijk je rol" style="display:none;align-items:center;gap:8px;background:rgba(13,10,6,.88);border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));border-radius:50px;padding:4px 10px 4px 4px;backdrop-filter:blur(4px)">
+  <!-- Eén knop, breder dan voorheen: naam van het personage, een streepje en
+       daarna de rol ("Felix - Voormalig spion"). De verhaalscore hiernaast
+       schuift vanzelf mee naar links, want de cluster is een flexrij die
+       rechts vastzit. white-space:nowrap houdt de badge op één regel. -->
+  <div id="avatar-badge" onclick="openRolOverzicht()" title="Bekijk je rol" style="display:none;align-items:center;gap:8px;background:rgba(13,10,6,.88);border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));border-radius:50px;padding:4px 12px 4px 4px;backdrop-filter:blur(4px);white-space:nowrap">
     <img id="avatar-badge-img" src="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:center top;border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn)))">
-    <span id="avatar-badge-name" style="font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase"></span>
+    <span id="avatar-badge-tekst" style="display:inline-flex;align-items:center;gap:.34rem">
+      <span id="avatar-badge-name" style="font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase"></span>
+      <span id="avatar-badge-rol" style="font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.09em;color:var(--gold-dim);text-transform:uppercase"></span>
+    </span>
     <span id="avatar-badge-vermomming" style="display:none;font-family:'Cinzel',serif;font-size:.6rem;color:#d4826e;letter-spacing:.08em;margin-left:4px"></span>
   </div>
 </div>
@@ -19169,10 +19190,22 @@ const personageImgs = {
   fenna: 'karakters/spelers/fenna.jpg',
   felix: 'karakters/spelers/felix.jpg',
 };
+// Korte personagenaam voor de badge rechtsboven. Los van personages[].naam,
+// want daar staat Felix als "De Vos" en dat is niet de naam die de speler
+// op zijn eigen knop wil zien.
+const personageBadgeNamen = {
+  jan:   'Jan',
+  kelly: 'Kelly',
+  fenna: 'Fenna-Viviènne',
+  felix: 'Felix',
+};
 function showAvatarBadge(p) {
   const badge = document.getElementById('avatar-badge');
   document.getElementById('avatar-badge-img').src = personageImgs[p];
-  document.getElementById('avatar-badge-name').textContent = personageRollen[p];
+  // Naam, streepje, rol: samen in één knop die het rol-overzicht opent.
+  document.getElementById('avatar-badge-name').textContent = personageBadgeNamen[p] || '';
+  const rolEl = document.getElementById('avatar-badge-rol');
+  if (rolEl) rolEl.textContent = personageRollen[p] ? '- ' + personageRollen[p] : '';
   badge.style.display = 'flex';
 }
 
