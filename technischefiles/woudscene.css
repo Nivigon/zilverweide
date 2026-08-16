@@ -151,7 +151,7 @@
   box-sizing: border-box;
   padding: 1rem 1.35rem;
   background: rgba(13, 10, 6, .9);
-  border: 1px solid rgba(201, 168, 76, .38);
+  border: 1px solid rgba(var(--goudrgb),calc(.38 * var(--lijn)));
   border-radius: 6px;
   box-shadow: 0 6px 30px rgba(0, 0, 0, .6);
 }
@@ -177,7 +177,7 @@
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-bottom: 8px solid rgba(201, 168, 76, .55);
+  border-bottom: 8px solid rgba(var(--goudrgb),calc(.55 * var(--lijn)));
 }
 .ws-box-links .ws-dialoog-pijl  { left: 18%; }
 .ws-box-midden .ws-dialoog-pijl { left: 50%; margin-left: -8px; }
@@ -213,7 +213,7 @@
   font-size: .8rem;
   letter-spacing: .18em;
   text-transform: uppercase;
-  color: rgba(201, 168, 76, .8);
+  color: rgba(var(--goudrgb),calc(.8 * var(--vlak)));
   pointer-events: none;
 }
 .ws-wachtmelding.zichtbaar { opacity: 1; }

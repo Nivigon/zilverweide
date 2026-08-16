@@ -75,7 +75,7 @@
 .dh-header-sep {
   flex: 1;
   height: 1px;
-  background: linear-gradient(to right, rgba(201, 168, 76, .3), transparent);
+  background: linear-gradient(to right, rgba(var(--goudrgb),calc(.3 * var(--vlak))), transparent);
 }
 .dh-header-sub {
   font-family: 'Cinzel', serif;
@@ -94,7 +94,7 @@
   color: var(--gold);
   letter-spacing: .08em;
   text-align: center;
-  text-shadow: 0 0 30px rgba(201, 168, 76, .35);
+  text-shadow: 0 0 30px rgba(var(--goudrgb),calc(.35 * var(--schaduwdiepte)));
   line-height: 1.15;
   margin: .25rem 0 .25rem;
 }
@@ -117,7 +117,7 @@
   height: 110px;
   margin: 0 0 1rem;
   background: rgba(13, 10, 6, .55);
-  border: 1px solid rgba(201, 168, 76, .25);
+  border: 1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));
   border-radius: 4px;
   overflow: hidden;
   animation: dh-dialogIn .35s ease;
@@ -162,11 +162,11 @@
   flex: 0 0 auto;
   width: 56px;
   border: none;
-  border-left: 1px solid rgba(201, 168, 76, .25);
+  border-left: 1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));
   background: linear-gradient(180deg,
-    rgba(201, 168, 76, .06) 0%,
-    rgba(201, 168, 76, .12) 50%,
-    rgba(201, 168, 76, .06) 100%);
+    rgba(var(--goudrgb),calc(.06 * var(--vlak))) 0%,
+    rgba(var(--goudrgb),calc(.12 * var(--vlak))) 50%,
+    rgba(var(--goudrgb),calc(.06 * var(--vlak))) 100%);
   color: var(--gold);
   font-family: 'Cinzel', serif;
   font-size: 1.1rem;
@@ -181,9 +181,9 @@
 }
 .dh-dialog-verder:hover {
   background: linear-gradient(180deg,
-    rgba(201, 168, 76, .12) 0%,
-    rgba(201, 168, 76, .22) 50%,
-    rgba(201, 168, 76, .12) 100%);
+    rgba(var(--goudrgb),calc(.12 * var(--vlak))) 0%,
+    rgba(var(--goudrgb),calc(.22 * var(--vlak))) 50%,
+    rgba(var(--goudrgb),calc(.12 * var(--vlak))) 100%);
   color: var(--parchment);
 }
 .dh-dialog-verder:active { transform: scale(.97); }
@@ -216,8 +216,8 @@
 
 /* ─── Narrator-blok (gebruikt op startscherm) ─── */
 .dh-narrator {
-  background: rgba(201, 168, 76, .06);
-  border: 1px solid rgba(201, 168, 76, .2);
+  background: rgba(var(--goudrgb),calc(.06 * var(--vlak)));
+  border: 1px solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));
   border-radius: 4px;
   padding: 1.5rem 1.75rem;
   margin: 1.5rem 0;
@@ -258,7 +258,7 @@
   border-radius: 2px;
   text-transform: uppercase;
 }
-.dh-btn:hover { background: rgba(201, 168, 76, .1); border-color: var(--gold); }
+.dh-btn:hover { background: rgba(var(--goudrgb),calc(.1 * var(--vlak))); border-color: var(--gold); }
 .dh-btn:active { transform: scale(.98); }
 .dh-btn-full {
   display: block;
@@ -273,7 +273,7 @@
   aspect-ratio: 16 / 9;
   max-height: 42vh;
   background: #000 center/cover no-repeat;
-  border: 1px solid rgba(201, 168, 76, .2);
+  border: 1px solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));
   border-radius: 4px;
   margin: .5rem 0 .75rem;
   box-shadow: 0 0 40px rgba(0, 0, 0, .6) inset, 0 0 30px rgba(0, 0, 0, .5);
@@ -343,8 +343,8 @@
   font-family: 'Cinzel', serif;
   font-size: 1rem;
   color: var(--gold);
-  background: rgba(201, 168, 76, .08);
-  border: 1px solid rgba(201, 168, 76, .35);
+  background: rgba(var(--goudrgb),calc(.08 * var(--vlak)));
+  border: 1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn)));
   border-radius: 3px;
   padding: .05em .55em;
   margin-left: .4em;
@@ -381,7 +381,7 @@
   padding: .65rem 1rem;
   min-width: 110px;
   border: 1px solid var(--gold-dim);
-  background: rgba(201, 168, 76, .04);
+  background: rgba(var(--goudrgb),calc(.04 * var(--vlak)));
   color: var(--gold);
   cursor: pointer;
   transition: all .2s;
@@ -392,7 +392,7 @@
   align-items: center;
   gap: .2rem;
 }
-.dh-move-btn:hover { background: rgba(201, 168, 76, .12); border-color: var(--gold); }
+.dh-move-btn:hover { background: rgba(var(--goudrgb),calc(.12 * var(--vlak))); border-color: var(--gold); }
 .dh-move-btn:active { transform: scale(.97); }
 .dh-move-btn.dh-hidden { visibility: hidden; pointer-events: none; }
 .dh-move-btn .dh-arrow { font-size: 1.2rem; line-height: 1; color: var(--parchment); }
@@ -429,7 +429,7 @@
   width: 36px;
   height: 36px;
   background: rgba(13, 10, 6, .7);
-  border: 1px solid rgba(201, 168, 76, .25);
+  border: 1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));
   border-radius: 50%;
   color: var(--gold);
   font-size: 1rem;
@@ -463,7 +463,7 @@
   color: var(--gold-dim);
   background: rgba(13, 10, 6, .7);
   padding: .25rem .6rem;
-  border: 1px solid rgba(201, 168, 76, .15);
+  border: 1px solid rgba(var(--goudrgb),calc(.15 * var(--lijn)));
   border-radius: 2px;
   opacity: .5;
   pointer-events: none;
