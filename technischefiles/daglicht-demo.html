@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Daglichtmodus, proefblad</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   PROEFBLAD DAGLICHTMODUS
+   Staat los van het spel: dit bestand raakt zilverweide.html niet aan
+   en wordt nergens ingeladen. Bedoeld om buiten op de tablet te
+   bekijken, zodat de sterkte gekozen wordt op wat je ziet en niet op
+   wat ik denk.
+
+   Bovenin drie regelaars:
+     STAND   de vier standen naast elkaar (normaal en drie sterktes)
+     ZON     nagebootste weerkaatsing, zodat je binnen al kunt zien
+             wat er buiten gebeurt
+     WISSEL  springt heen en weer tussen normaal en de gekozen stand
+
+   De balk zelf staat altijd op maximale sterkte. Hij moet leesbaar
+   blijven, ook in de stand waarin de rest onleesbaar is.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── De tokens van het spel, zoals ze nu in zilverweide.html staan ─── */
+:root{
+  --vh100:100vh;
+  --ink:#1a1208;
+  --parchment:#f5ead6;
+  --parchment-dark:#e8d5b0;
+  --blood:#8b1a1a;
+  --gold:#c9a84c;
+  --gold-dim:#8a6f32;
+  --ash:#3d3228;
+  --mist:#c8bfaf;
+  --rose:#9b3a4a;
+
+  /* Nieuw, en de kern van het voorstel. Het goud zit nu 314 keer
+     hardgecodeerd in de css als rgba(201,168,76,alpha). Als die kleur
+     uit een variabele komt en de alpha door een factor gaat, dan
+     verandert de daglichtstand alle randen en vlakken in een keer. */
+  --goudrgb:201,168,76;
+  --lijn:1;          /* factor op de alpha van randen */
+  --vlak:1;          /* factor op de alpha van vulkleuren */
+  --randbreedte:1px;
+  --ruis:.4;         /* de korrellaag over het scherm (body::before) */
+  --tekstgewicht:400;
+  --schaduwdiepte:1; /* factor op vignetten en inset-schaduwen */
+}
+@supports (height:100dvh){ :root{ --vh100:100dvh; } }
+
+/* ─── Stand 1, zacht ─── */
+#proef[data-stand="zacht"]{
+  --parchment:#faf1e0;
+  --gold:#dcbc63;
+  --gold-dim:#b39450;
+  --mist:#dcd5c8;
+  --goudrgb:216,188,99;
+  --lijn:1.7;
+  --vlak:1.3;
+  --ruis:.2;
+  --schaduwdiepte:.7;
+}
+/* ─── Stand 2, stevig (mijn voorstel) ─── */
+#proef[data-stand="stevig"]{
+  --parchment:#fdf7ec;
+  --gold:#eed58a;
+  --gold-dim:#d4bb74;
+  --mist:#ebe5da;
+  --rose:#c46070;
+  --goudrgb:238,213,138;
+  --lijn:2.4;
+  --vlak:1.6;
+  --randbreedte:2px;
+  --ruis:0;
+  --tekstgewicht:600;
+  --schaduwdiepte:.35;
+}
+/* ─── Stand 3, maximaal ─── */
+#proef[data-stand="maximaal"]{
+  --parchment:#ffffff;
+  --gold:#fdefc0;
+  --gold-dim:#f2e4b6;
+  --mist:#f7f3ec;
+  --rose:#d97a8a;
+  --goudrgb:253,239,192;
+  --lijn:3.4;
+  --vlak:2.2;
+  --randbreedte:2px;
+  --ruis:0;
+  --tekstgewicht:600;
+  --schaduwdiepte:0;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#0d0a06;
+  color:var(--parchment);
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:18px;
+  line-height:1.7;
+  min-height:var(--vh100);
+  padding-bottom:4rem;
+}
+
+/* De korrellaag van het spel, met de opacity aan een variabele zodat je
+   ziet wat het scheelt als hij uitgaat. */
+#ruislaag{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:800;
+  opacity:var(--ruis);
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Nagebootste weerkaatsing. Een echte lichtsluier telt licht op bij elke
+   pixel; een witte laag doet dat hier bij benadering. Binnen kun je er de
+   buitensituatie mee voorspellen, maar het blijft een benadering: het
+   echte oordeel valt buiten op de tablet. */
+#zonlaag{
+  position:fixed;inset:0;pointer-events:none;z-index:900;
+  background:#fff;opacity:0;transition:opacity .25s;
+}
+
+/* ═══ De regelbalk. Altijd maximale sterkte, nooit meeschalen. ═══ */
+#balk{
+  position:sticky;top:0;z-index:950;
+  background:#100c07;
+  border-bottom:2px solid #fdefc0;
+  padding:.5rem .8rem;
+  display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.1rem;
+}
+#balk .groep{display:flex;align-items:center;gap:.4rem}
+#balk .kop{
+  font-family:'Cinzel',serif;font-size:.6rem;letter-spacing:.16em;
+  text-transform:uppercase;color:#fdefc0;opacity:.75;
+}
+#balk button{
+  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;
+  text-transform:uppercase;cursor:pointer;
+  padding:.42rem .7rem;border-radius:3px;
+  background:transparent;border:2px solid rgba(253,239,192,.55);color:#fdefc0;
+}
+#balk button.aan{background:#fdefc0;border-color:#fdefc0;color:#100c07;font-weight:600}
+#balk button.wissel{border-style:dashed}
+#balk .stand-naam{
+  font-family:'Cinzel',serif;font-size:.72rem;letter-spacing:.08em;
+  color:#fdefc0;margin-left:auto;text-transform:uppercase;
+}
+
+/* ═══ Het proefgebied ═══ */
+#proef{max-width:820px;margin:0 auto;padding:1.2rem 1.5rem 3rem;position:relative;z-index:10}
+
+/* Blokkopjes. Staan buiten de proef en houden dus hun eigen felle stijl,
+   anders kun je in de donkere stand niet meer lezen waar je naar kijkt. */
+.blok{margin:2.2rem 0 0}
+.blok-kop{
+  font-family:'Cinzel',serif;font-size:.62rem;letter-spacing:.2em;
+  text-transform:uppercase;color:#8fb4d8;
+  border-bottom:1px solid rgba(143,180,216,.35);
+  padding-bottom:.25rem;margin-bottom:.9rem;
+}
+.blok-kop span{color:#6f8ba6;letter-spacing:.06em;text-transform:none;font-style:italic}
+
+/* ─── Onderdelen uit het spel, zo dicht mogelijk bij het origineel ─── */
+.crest{text-align:center;padding:.5rem 0 .5rem}
+.crest h1{
+  font-family:'Cinzel',serif;font-size:clamp(1.8rem,6vw,2.8rem);font-weight:600;
+  color:var(--gold);letter-spacing:.08em;line-height:1.2;
+  text-shadow:0 0 40px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte)));
+}
+.crest-sub{
+  font-family:'Cinzel',serif;font-size:.85rem;color:var(--gold-dim);
+  letter-spacing:.2em;text-transform:uppercase;margin-top:.4rem;
+}
+.divider{display:flex;align-items:center;gap:1rem;margin:1.2rem 0;color:var(--gold-dim);font-size:1rem}
+.divider::before,.divider::after{
+  content:'';flex:1;height:var(--randbreedte);
+  background:linear-gradient(to right,transparent,var(--gold-dim),transparent);
+}
+
+.narrator{
+  background:rgba(var(--goudrgb),calc(.06 * var(--vlak)));
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));
+  border-radius:4px;padding:1.2rem 1.5rem;margin:1rem 0;position:relative;
+}
+.narrator::before{
+  content:'"';font-family:'Cinzel',serif;font-size:4rem;color:var(--gold);
+  opacity:.2;position:absolute;top:-.5rem;left:.75rem;line-height:1;
+}
+.narrator p{
+  font-style:italic;color:var(--parchment);font-size:1.1rem;line-height:1.8;
+  font-weight:var(--tekstgewicht);
+}
+
+.npc-line{
+  display:flex;gap:12px;align-items:flex-start;margin:1rem 0;padding:1rem 1.25rem;
+  background:rgba(255,255,255,calc(.03 * var(--vlak)));
+  border-left:3px solid var(--rose);border-radius:0 4px 4px 0;
+}
+.npc-avatar{
+  width:40px;height:40px;border-radius:50%;background:var(--ash);
+  border:var(--randbreedte) solid var(--gold-dim);
+  display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;
+}
+.npc-name{
+  font-family:'Cinzel',serif;font-size:.75rem;color:var(--gold);
+  letter-spacing:.1em;margin-bottom:3px;
+}
+.npc-text{font-style:italic;color:var(--mist);font-size:1rem;font-weight:var(--tekstgewicht)}
+
+.knoprij{display:flex;flex-wrap:wrap;gap:.7rem;align-items:center}
+.btn{
+  display:inline-block;font-family:'Cinzel',serif;font-size:.9rem;letter-spacing:.12em;
+  padding:.8rem 2rem;border:var(--randbreedte) solid var(--gold-dim);
+  background:transparent;color:var(--gold);cursor:pointer;border-radius:2px;text-transform:uppercase;
+}
+.btn-blood{border-color:var(--blood);color:#d4826e}
+#proef[data-stand="stevig"] .btn-blood,
+#proef[data-stand="maximaal"] .btn-blood{border-color:#c4574a;color:#f0a08c}
+
+.veld{
+  width:100%;font-family:'Cinzel',serif;font-size:1.1rem;text-align:center;letter-spacing:.04em;
+  color:var(--parchment);background:rgba(13,10,6,.7);
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.35 * var(--lijn)));
+  border-radius:6px;padding:.9rem 1rem;
+}
+.veld::placeholder{color:var(--mist);font-style:italic;letter-spacing:0}
+
+.tegels{display:flex;gap:.9rem;flex-wrap:wrap}
+.tegel{
+  flex:1 1 13rem;max-width:16rem;cursor:pointer;text-align:center;
+  background:rgba(13,10,6,.7);
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));
+  border-radius:6px;padding:1.1rem 1rem;
+}
+.tegel.gekozen{
+  border-color:var(--gold);
+  background:rgba(var(--goudrgb),calc(.16 * var(--vlak)));
+  box-shadow:0 0 16px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte)));
+}
+.tegel-icoon{font-size:1.7rem;line-height:1;margin-bottom:.45rem}
+.tegel-kop{font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.06em;color:var(--gold);margin-bottom:.3rem}
+.tegel-sub{font-size:.92rem;line-height:1.45;color:var(--parchment);opacity:.85;font-weight:var(--tekstgewicht)}
+
+/* Het schuifje waarmee de daglichtmodus zelf aangezet wordt. Het label is
+   in het spel gold-dim op .58rem, en dat is precies het soort element dat
+   in de zon verdwijnt. Daarom hoort dit onderdeel een uitzondering te
+   krijgen die altijd fel is. Hier staat hij twee keer, zodat je het
+   verschil ziet. */
+.ssi-toggle{display:flex;align-items:center;gap:.45rem;cursor:pointer;user-select:none;margin-bottom:.5rem}
+.ssi-toggle .ssi-label{
+  font-family:'Cinzel',serif;font-size:.58rem;letter-spacing:.12em;
+  color:var(--gold-dim);text-transform:uppercase;
+}
+.ssi-toggle input{display:none}
+.ssi-schuif{
+  position:relative;width:30px;height:16px;border-radius:50px;background:rgba(0,0,0,.6);
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.35 * var(--lijn)));flex:0 0 auto;
+}
+.ssi-schuif::after{
+  content:'';position:absolute;top:2px;left:2px;width:10px;height:10px;border-radius:50%;
+  background:var(--gold-dim);
+}
+.ssi-toggle input:checked + .ssi-schuif{background:rgba(var(--goudrgb),calc(.3 * var(--vlak)));border-color:var(--gold)}
+.ssi-toggle input:checked + .ssi-schuif::after{left:16px;background:var(--gold)}
+/* De voorgestelde uitzondering: dit label schaalt niet mee en blijft fel. */
+.ssi-toggle.altijd-fel .ssi-label{color:#fdefc0;font-size:.68rem}
+.ssi-toggle.altijd-fel .ssi-schuif{border-color:#fdefc0;border-width:2px}
+.ssi-toggle.altijd-fel .ssi-schuif::after{background:#fdefc0}
+
+.balkje{
+  background:rgba(13,10,6,.92);
+  border-bottom:var(--randbreedte) solid rgba(var(--goudrgb),calc(.15 * var(--lijn)));
+  padding:.6rem 1rem;display:flex;align-items:center;gap:.75rem;border-radius:4px 4px 0 0;
+}
+.pil{
+  display:inline-flex;align-items:center;gap:.4rem;padding:.35rem .7rem;
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));
+  border-radius:50px;background:rgba(13,10,6,.82);
+  font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;
+  color:var(--gold);text-transform:uppercase;white-space:nowrap;
+}
+.inv-leeg{font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.12em;color:var(--gold-dim);text-transform:uppercase}
+
+/* Doolhof: de scene-afbeelding met vignet en inset-schaduw, plus het
+   bijschrift in gold-dim. Twee vignetlagen bovenop een toch al donkere
+   foto is in de zon het zwaarste geval in het spel. */
+.dh-scene-image{
+  width:100%;aspect-ratio:16/9;max-height:38vh;
+  background:#000 center/cover no-repeat;
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.2 * var(--lijn)));
+  border-radius:4px;margin:.5rem 0 .75rem;position:relative;overflow:hidden;
+  box-shadow:0 0 40px rgba(0,0,0,calc(.6 * var(--schaduwdiepte))) inset,
+             0 0 30px rgba(0,0,0,calc(.5 * var(--schaduwdiepte)));
+}
+.dh-scene-image::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,calc(.55 * var(--schaduwdiepte))) 100%);
+}
+.dh-scene-caption{
+  font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold-dim);
+  text-transform:uppercase;text-align:center;margin:0 0 .5rem;
+}
+.dh-positie-letter{
+  display:inline-block;font-family:'Cinzel',serif;font-size:1rem;color:var(--gold);
+  background:rgba(var(--goudrgb),calc(.08 * var(--vlak)));
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.35 * var(--lijn)));
+  border-radius:3px;padding:.05em .55em;margin-left:.4em;
+}
+
+/* Locatiezone, vergrendeld: brightness(.5) haalt in de zon het laatste
+   restje verschil weg. In de daglichtstand liever ontkleuren dan dimmen. */
+.zones{display:flex;gap:.8rem;flex-wrap:wrap}
+.zone{
+  flex:1 1 12rem;padding:1rem;border-radius:6px;text-align:center;
+  font-family:'Cinzel',serif;font-size:.85rem;letter-spacing:.1em;
+  color:var(--gold);background:rgba(var(--goudrgb),calc(.06 * var(--vlak)));
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));
+}
+.zone.op-slot{
+  border-color:rgba(61,50,40,.4);background:rgba(0,0,0,.4);filter:brightness(.5);
+}
+#proef[data-stand="stevig"] .zone.op-slot,
+#proef[data-stand="maximaal"] .zone.op-slot{
+  filter:grayscale(1);opacity:.75;border-color:rgba(var(--goudrgb),calc(.25 * var(--lijn)));
+}
+
+/* Beginnerkaart: de niet-bezochte tegels staan op lage opacity en zijn in
+   de zon niet te onderscheiden van de bezochte. */
+.kt-rij{display:flex;gap:.7rem;flex-wrap:wrap}
+.kt{display:flex;flex-direction:column;align-items:center;gap:.24rem;width:54px}
+.kt-vak{
+  width:100%;aspect-ratio:1;border-radius:4px;
+  background:rgba(var(--goudrgb),calc(.08 * var(--vlak)));
+  border:var(--randbreedte) solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));
+}
+.kt.bezocht .kt-vak{background:var(--gold);border-color:var(--gold)}
+.kt-naam{
+  font-family:'Cinzel',serif;font-size:.5rem;letter-spacing:.06em;text-align:center;
+  color:var(--gold-dim);opacity:.45;text-transform:uppercase;line-height:1.2;
+}
+.kt.bezocht .kt-naam{opacity:1;color:var(--parchment)}
+#proef[data-stand="stevig"] .kt-naam,
+#proef[data-stand="maximaal"] .kt-naam{opacity:.8}
+
+.voet{
+  max-width:820px;margin:2.5rem auto 0;padding:0 1.5rem;
+  font-size:.82rem;line-height:1.6;color:#8fb4d8;font-style:italic;
+}
+</style>
+</head>
+<body>
+
+<div id="balk">
+  <div class="groep">
+    <span class="kop">Stand</span>
+    <button type="button" data-zet="normaal" class="aan">Normaal</button>
+    <button type="button" data-zet="zacht">Zacht</button>
+    <button type="button" data-zet="stevig">Stevig</button>
+    <button type="button" data-zet="maximaal">Maximaal</button>
+  </div>
+  <div class="groep">
+    <span class="kop">Zon</span>
+    <button type="button" data-zon="0" class="aan">Uit</button>
+    <button type="button" data-zon="0.10">Binnen fel</button>
+    <button type="button" data-zon="0.22">Buiten</button>
+    <button type="button" data-zon="0.38">Volle zon</button>
+  </div>
+  <div class="groep">
+    <button type="button" id="wissel" class="wissel">Wissel ⇄</button>
+  </div>
+  <span class="stand-naam" id="stand-naam">Normaal</span>
+</div>
+
+<div id="proef" data-stand="normaal">
+
+  <div class="blok">
+    <div class="blok-kop">1 · Titel en ornament <span>de kop van elk scherm</span></div>
+    <div class="crest">
+      <h1>Zilverweide</h1>
+      <div class="crest-sub">Een mysterie in vier stemmen</div>
+    </div>
+    <div class="divider">✦</div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">2 · Verhaaltekst en gesprek <span>parchment en mist, dit houdt zich het best</span></div>
+    <div class="narrator">
+      <p>Je staat stil bij het hek en luistert. Achter de heg beweegt iets dat je niet kunt plaatsen, en de regen maakt het er niet duidelijker op.</p>
+      <p>Je weet dat je hier niet lang moet blijven staan.</p>
+    </div>
+    <div class="npc-line">
+      <div class="npc-avatar">✦</div>
+      <div>
+        <div class="npc-name">De Klokkenmaker</div>
+        <div class="npc-text">"Ik heb je nog niet eerder gezien. Kom binnen, maar raak niets aan."</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">3 · Knoppen <span>de rand is gold-dim, dat is de eerste die omvalt</span></div>
+    <div class="knoprij">
+      <button class="btn">Verder →</button>
+      <button class="btn">Kijk rond</button>
+      <button class="btn btn-blood">Ga weg</button>
+    </div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">4 · Invoerveld <span>hier typen ze de code van het bordje</span></div>
+    <input class="veld" placeholder="Vul de code in" value="">
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">5 · Keuzetegels <span>de vorm van het keuzescherm dat je wilt</span></div>
+    <div class="tegels">
+      <div class="tegel gekozen">
+        <div class="tegel-icoon">☀</div>
+        <div class="tegel-kop">In het licht</div>
+        <div class="tegel-sub">Buiten, of een lichte ruimte.</div>
+      </div>
+      <div class="tegel">
+        <div class="tegel-icoon">🌙</div>
+        <div class="tegel-kop">In het donker</div>
+        <div class="tegel-sub">Avond, of binnen met gedempt licht.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">6 · Het schuifje zelf <span>boven zoals nu, onder met de voorgestelde uitzondering</span></div>
+    <label class="ssi-toggle">
+      <span class="ssi-label">Beginner modus</span>
+      <input type="checkbox">
+      <span class="ssi-schuif"></span>
+    </label>
+    <label class="ssi-toggle altijd-fel">
+      <span class="ssi-label">Daglicht modus</span>
+      <input type="checkbox" checked>
+      <span class="ssi-schuif"></span>
+    </label>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">7 · Balk en badges <span>staan altijd in beeld tijdens het spel</span></div>
+    <div class="balkje">
+      <span class="pil">✦ 3 ontdekt</span>
+      <span class="pil">Kelly</span>
+      <span class="inv-leeg">Je tas is nog leeg</span>
+    </div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">8 · Doolhof en locatiebeeld <span>het zwaarste geval, donkere foto met twee vignetten</span></div>
+    <div class="dh-scene-image" style="background-image:url('../locaties/dorendael/Herberg.jpeg')"></div>
+    <div class="dh-scene-caption">De Herberg <span class="dh-positie-letter">D</span></div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">9 · Zones, open en op slot <span>rechts nu met brightness(.5), dat kan beter</span></div>
+    <div class="zones">
+      <div class="zone">Dorendael</div>
+      <div class="zone">Kraaienkwartier</div>
+      <div class="zone op-slot">Nog gesloten</div>
+    </div>
+  </div>
+
+  <div class="blok">
+    <div class="blok-kop">10 · Beginnerkaart <span>bezocht is fel, niet bezocht staat op .45 opacity</span></div>
+    <div class="kt-rij">
+      <div class="kt bezocht"><div class="kt-vak"></div><div class="kt-naam">De Herberg</div></div>
+      <div class="kt bezocht"><div class="kt-vak"></div><div class="kt-naam">Nummer 10</div></div>
+      <div class="kt"><div class="kt-vak"></div><div class="kt-naam">De Molen</div></div>
+      <div class="kt"><div class="kt-vak"></div><div class="kt-naam">Het Woud</div></div>
+      <div class="kt"><div class="kt-vak"></div><div class="kt-naam">De Vijver</div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="voet">
+  De blauwe kopjes horen niet bij het spel. Die staan er alleen om te kunnen
+  zien waar je naar kijkt, en ze veranderen niet mee met de stand.
+</div>
+
+<div id="ruislaag"></div>
+<div id="zonlaag"></div>
+
+<script>
+(function () {
+  var proef = document.getElementById('proef');
+  var naam = document.getElementById('stand-naam');
+  var zonlaag = document.getElementById('zonlaag');
+  var NAMEN = { normaal:'Normaal', zacht:'Zacht', stevig:'Stevig', maximaal:'Maximaal' };
+
+  // De laatst gekozen daglichtstand onthouden, zodat Wissel weet waar hij
+  // naar terug moet springen. Begint op stevig, mijn voorstel.
+  var laatsteDag = 'stevig';
+
+  function zetStand(stand) {
+    proef.setAttribute('data-stand', stand);
+    naam.textContent = NAMEN[stand] || stand;
+    if (stand !== 'normaal') laatsteDag = stand;
+    var knoppen = document.querySelectorAll('#balk button[data-zet]');
+    for (var i = 0; i < knoppen.length; i++) {
+      knoppen[i].classList.toggle('aan', knoppen[i].getAttribute('data-zet') === stand);
+    }
+  }
+
+  function zetZon(waarde) {
+    zonlaag.style.opacity = String(waarde);
+    var knoppen = document.querySelectorAll('#balk button[data-zon]');
+    for (var i = 0; i < knoppen.length; i++) {
+      knoppen[i].classList.toggle('aan', knoppen[i].getAttribute('data-zon') === String(waarde));
+    }
+  }
+
+  document.getElementById('balk').addEventListener('click', function (e) {
+    var knop = e.target.closest ? e.target.closest('button') : null;
+    if (!knop) return;
+    if (knop.hasAttribute('data-zet')) { zetStand(knop.getAttribute('data-zet')); return; }
+    if (knop.hasAttribute('data-zon')) { zetZon(knop.getAttribute('data-zon')); return; }
+    if (knop.id === 'wissel') {
+      zetStand(proef.getAttribute('data-stand') === 'normaal' ? laatsteDag : 'normaal');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
