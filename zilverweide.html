@@ -877,6 +877,11 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
    weggehaald in beeindigWoudScene. */
 body.woudscene-actief #topright-cluster,
 body.woudscene-actief .finale-btn{display:none !important;}
+/* Zelfde regel voor de aanloop naar de K6-finale: de HUD verdwijnt zolang
+   de scene loopt. Gezet in toonNummer7Filmpje, weggehaald in
+   beeindigK6Finale. */
+body.k6finale-actief #topright-cluster,
+body.k6finale-actief .finale-btn{display:none !important;}
 .finale-btn:hover{border-color:var(--gold);}
 .finale-btn span{font-family:'Cinzel',serif;font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;}
 .finale-panel{position:fixed;inset:0;z-index:400;background:rgba(13,10,6,.97);overflow-y:auto;display:none;padding:2rem 1.5rem 4rem;}
@@ -14486,6 +14491,9 @@ function toonNummer7Filmpje() {
   k6FinaleContainer.id = 'k6finale-container';
   k6FinaleContainer.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:var(--vh100);z-index:250;background:#000';
   document.body.appendChild(k6FinaleContainer);
+  // Verhaalscore, rol-badge en finale-knop staan op z-index 300 en zouden
+  // anders over de scene heen blijven staan.
+  document.body.classList.add('k6finale-actief');
 
   K6Finale.start(k6FinaleContainer, { onEinde: beeindigK6Finale });
 }
@@ -14499,6 +14507,7 @@ function beeindigK6Finale() {
     k6FinaleContainer.remove();
     k6FinaleContainer = null;
   }
+  document.body.classList.remove('k6finale-actief');
   naNummer7Filmpje();
 }
 
