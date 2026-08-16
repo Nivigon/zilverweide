@@ -382,6 +382,7 @@
       this.opts = opts || {};
       if (container) { this.mount(container); }
       if (!this.scene) { return; }
+      this.geluidOntgrendel();
       this.speelVanaf(0);
     },
 
@@ -1829,6 +1830,42 @@
       });
       this.audioEls[naam] = el;
       return el;
+    },
+
+    /* Tablets, en Safari in het bijzonder, spelen geluid alleen af als het
+       audio-element al een keer is aangesproken binnen een echte tik van de
+       speler. De beats starten hun geluid later via timers, en dat telt niet
+       meer als zo'n tik: de browser weigert dan stil, zonder foutmelding, en
+       de hele scene blijft geluidloos. start() draait wel synchroon vanuit de
+       tik waarmee de speler naar binnen gaat, dus daar prikken we elk element
+       een keer aan en meteen weer uit. Daarna mogen de beats ze zelf starten. */
+    geluidOntgrendel: function () {
+      var g = this.config.geluid;
+      var namen = [];
+      for (var naam in g) {
+        if (!g.hasOwnProperty(naam)) { continue; }
+        var def = g[naam];
+        if (def && typeof def === 'object' && def.bestand) { namen.push(naam); }
+      }
+      for (var i = 0; i < namen.length; i++) {
+        this.geluidPrik(this.audioEls[namen[i]] || this.audioMaak(namen[i]));
+      }
+    },
+
+    // Stil aan en meteen weer uit. Het pauzeren gebeurt synchroon, nog voordat
+    // de eerste beat zijn geluid start, zodat we hier niets wegdrukken dat
+    // net legitiem begonnen is.
+    geluidPrik: function (el) {
+      if (!el || el.k6Ontgrendeld) { return; }
+      el.k6Ontgrendeld = true;
+      try {
+        el.muted = true;
+        var p = el.play();
+        if (p && p.catch) { p.catch(function () {}); }
+        el.pause();
+        el.currentTime = 0;
+      } catch (x) {}
+      el.muted = false;
     },
 
     audioSpeel: function (naam, opties) {
