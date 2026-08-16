@@ -10969,7 +10969,7 @@ function renderH5Gemeentehuis(loc) {
     if (stap === 11) return voorwerp('Voorwerp 1, de kaart', felixV('kaart'), 'items/burgemeesterkaartitem.png');
     if (stap === 12) return voorwerp('Voorwerp 2, de verbrande roos', felixV('roos'), 'items/burgemeesterroositem.jpg');
     // Voorwerp 3, het magisch gesloten boekje. Twee wegen: het slot aanraken
-    // (neonpaarse flits van vijf seconden) of eraf blijven. Beide eindigen bij
+    // (neonpaarse flits van vier seconden) of eraf blijven. Beide eindigen bij
     // het bureau, zodat de speler nooit vastloopt.
     if (stap === 13) return voorwerp('Voorwerp 3, het boekje', felixV('boekje'), 'items/burgemeesterboekitem.jpg', [
       { label: 'Pak het slot vast', onclick: function () { felixBoekjeFlits(function () { ga(15); }); } },
@@ -11194,13 +11194,22 @@ function felixV(beat) {
   var b = T[beat] || {};
   return (b[v] || b._).slice();
 }
-// Neonpaarse flits als Felix het slot van het boekje vastpakt. Vijf seconden
+// Neonpaarse flits als Felix het slot van het boekje vastpakt. Vier seconden
 // waarin er niets aan te tikken valt: de overlay ligt over de hele UI. De sis
 // komt uit de stem van zijn huidige vermomming. Bewust een eigen functie, los
 // van Kelly's rode Madeleine-scherm, zodat dat ongemoeid blijft.
 function felixBoekjeFlits(klaar) {
   var regels = felixV('kreet');
-  var secs = 5;
+  var secs = 4;
+  // Brandgeluid meteen bij het opkomen van het scherm. In een try, want op een
+  // tablet die nog geen tik heeft gehad kan afspelen geweigerd worden; dat mag
+  // de scene niet ophouden.
+  var brandSfx = null;
+  try {
+    brandSfx = new Audio('geluid/burgemeester/handburn.mp3');
+    brandSfx.volume = 0.9;
+    brandSfx.play().catch(function () {});
+  } catch (e) {}
   var overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(58,0,88,.94);z-index:700;' +
     'display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;' +
@@ -11221,6 +11230,8 @@ function felixBoekjeFlits(klaar) {
     clearInterval(interval);
     overlay.style.transition = 'opacity .4s';
     overlay.style.opacity = '0';
+    // Geluid stopt tegelijk met het scherm, ook als het bestand langer is.
+    if (brandSfx) { try { brandSfx.pause(); brandSfx.currentTime = 0; } catch (e) {} }
     setTimeout(function () {
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
       if (typeof klaar === 'function') klaar();
