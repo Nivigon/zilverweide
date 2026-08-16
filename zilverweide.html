@@ -3939,7 +3939,7 @@ const VISITED_FLAGS = {
   fenna_gemeentehuis:         'H5: Fenna heeft bij het gemeentehuis Robbie getroffen',
   fenna_wallingen_ontmoet:    'Fenna heeft Mevr. van Wallingen bij het bord al eens ontmoet',
   fenna_herberg_gedaan:       'Fenna heeft de herberg-scene (boze menigte / climax) gespeeld',
-  felix_kantoor:              'H5: Felix heeft de vier voorwerpen in het kantoor gevonden',
+  felix_kantoor:              'H5: Felix heeft de drie voorwerpen in het kantoor gevonden',
   felix_hd2_vrij:             'Felix heeft de code van Jan gehad en is vermomd als Liu-Yen',
   felix_hd2_gespiekt:         'Felix heeft door het gat naar buiten gespiekt',
   felix_munten_gevonden:      'Felix heeft het zakje munten gevonden bij de spulletjes',
@@ -10915,7 +10915,7 @@ function felixNaarTobbe() {
 // Een zaal vol dorpelingen, de spanning staat op omslaan. Per rol een eigen
 // ingang op het bewijs rond de burgemeester (5e verdachte). Fenna wordt door
 // Robbie naar binnen getrokken en ontmoet de burgemeester; Felix vindt via
-// een open raam vier voorwerpen; Jan hoort/ziet het ontlastende; Kelly ziet
+// een open raam drie voorwerpen; Jan hoort/ziet het ontlastende; Kelly ziet
 // een verwarrende schim. Schrijfregel: geen em-dashes in spelertekst.
 // ══ H5: Het Gemeentehuis (v7) ══════════════════════════════════════
 // De zetel van de burgemeester. Dorpelingen dringen samen, de sfeer is om te
@@ -10968,8 +10968,15 @@ function renderH5Gemeentehuis(loc) {
     // Voorwerp-details, gekleurd door de vermomming.
     if (stap === 11) return voorwerp('Voorwerp 1, de kaart', felixV('kaart'), 'items/burgemeesterkaartitem.png');
     if (stap === 12) return voorwerp('Voorwerp 2, de verbrande roos', felixV('roos'), 'items/burgemeesterroositem.jpg');
-    if (stap === 13) return voorwerp('Voorwerp 3', felixV('claes'));
-    if (stap === 14) return voorwerp('Voorwerp 4', felixV('hd'));
+    // Voorwerp 3, het magisch gesloten boekje. Twee wegen: het slot aanraken
+    // (neonpaarse flits van vijf seconden) of eraf blijven. Beide eindigen bij
+    // het bureau, zodat de speler nooit vastloopt.
+    if (stap === 13) return voorwerp('Voorwerp 3, het boekje', felixV('boekje'), 'items/burgemeesterboekitem.jpg', [
+      { label: 'Pak het slot vast', onclick: function () { felixBoekjeFlits(function () { ga(15); }); } },
+      { label: 'Afblijven', onclick: function () { ga(16); } }
+    ]);
+    if (stap === 15) return voorwerp('Voorwerp 3, het boekje', felixV('boekjeNa'), 'items/burgemeesterboekitem.jpg');
+    if (stap === 16) return voorwerp('Voorwerp 3, het boekje', felixV('boekjeAf'), 'items/burgemeesterboekitem.jpg');
     if (stap === 20) {
       // Conclusie, dan automatisch terug.
       return renderLocatieScene({
@@ -10993,7 +11000,7 @@ function renderH5Gemeentehuis(loc) {
       });
     }
     if (stap === 2) {
-      // De vier voorwerpen als langwerpige panelen in het beeldvenster.
+      // De drie voorwerpen als langwerpige panelen in het beeldvenster.
       markVisited('felix_kantoor');
       // Geen setSharedState hier: die sleutel werd nergens gelezen. hasVisited
       // kijkt alleen naar de vflag_-spiegel van vlaggen in SHARED_VISITED_FLAGS,
@@ -11005,8 +11012,7 @@ function renderH5Gemeentehuis(loc) {
       var voorwerpen = [
         { n: 11, cijfer: 'I',   label: 'De kaart' },
         { n: 12, cijfer: 'II',  label: 'De verbrande roos' },
-        { n: 13, cijfer: 'III', label: 'Derde voorwerp' },
-        { n: 14, cijfer: 'IV',  label: 'Vierde voorwerp' }
+        { n: 13, cijfer: 'III', label: 'Het boekje' }
       ];
       // Achter de panelen schemert de burgemeesterkamer door: de kamer als
       // achtergrond met een donkere waas erover, net genoeg voor sfeer.
@@ -11030,7 +11036,7 @@ function renderH5Gemeentehuis(loc) {
         container: cont, titel: loc.naam, sub: 'Het burgemeesterskantoor', image: 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
         mediaSlot: paneel,
         dialog: [
-          'Vier dingen, bewust bij elkaar gelegd. Tik ze aan om ze van dichtbij te bekijken.'
+          'Drie dingen, bewust bij elkaar gelegd. Tik ze aan om ze van dichtbij te bekijken.'
         ],
         acties: [{ label: 'Genoeg gezien, wegwezen', onclick: function () { ga(20); } }]
       });
@@ -11042,7 +11048,7 @@ function renderH5Gemeentehuis(loc) {
         'Een raam op een kier aan de zijkant. Voor jou is dat een uitnodiging. Je glijdt naar binnen.',
         'Klein, ordelijk kantoor achter de raadszaal. Papieren netjes gestapeld, een doofgebrande kaars, een half glas water. Iemand is haastig vertrokken, maar zorgvuldig.'
       ].concat(felixV('registratie')).concat([
-        'Op het bureau liggen vier dingen apart, alsof iemand ze bewust bij elkaar heeft gelegd.'
+        'Op het bureau liggen drie dingen apart, alsof iemand ze bewust bij elkaar heeft gelegd.'
       ]),
       acties: [{ label: 'Bekijk de voorwerpen', onclick: function () { ga(2); } }]
     });
@@ -11099,12 +11105,14 @@ function renderH5Gemeentehuis(loc) {
   // Helper: een voorwerp tonen met een knop terug naar de voorwerpen. Zonder
   // eigen beeld blijft de kamer staan. Krijgt een voorwerp wel een eigen beeld,
   // dan komt dat volledig in beeld (imageFit contain), zodat er niets afvalt.
-  function voorwerp(sub, dialog, beeld) {
+  // `extraActies` komen boven de terugknop te staan, voor voorwerpen waar de
+  // speler iets kan kiezen (het boekje).
+  function voorwerp(sub, dialog, beeld, extraActies) {
     var opties = {
       container: cont, titel: loc.naam, sub: sub,
       image: beeld || 'locaties/heerdonatuslaan/burgemeesterkamer.jpeg',
       dialog: dialog,
-      acties: [{ label: 'Terug naar het bureau', onclick: function () { ga(2); } }]
+      acties: (extraActies || []).concat([{ label: 'Terug naar het bureau', onclick: function () { ga(2); } }])
     };
     if (beeld) opties.imageFit = 'contain';
     return renderLocatieScene(opties);
@@ -11149,24 +11157,75 @@ function felixV(beat) {
                  'En een vergrootglas ernaast, keurig met de lens naar de bloem toe. Iemand bekijkt dit van zeer dichtbij.',
                  'Wat doet onze beste burgemeester met zo\'n bloem op zijn bureau? En waarom is dat ding nog altijd niet dood? Voor zulke vragen hoort een man in zijn positie een antwoord te hebben.']
     },
-    claes: {
-      _:        ['[Filler Claes-voorwerp, definitief nog te bepalen.]', 'Iets over Claes. Je weet niet precies wat je in handen hebt, maar de naam alleen al trekt een koude lijn naar dat oude verhaal. Waarom ligt dit hier?'],
-      'Liu-Yen':['Iets van Claes. Ni precies snappen. Maar naam maakt koud vanbinnen.'],
-      'Lola':   ['Iets over Claes. Dios mío, waarom ligt dat hier? Dit ruikt naar dat oude verhaal.'],
-      'Lucinde':['Iets over ene Claes. Dat trekt een koude lijn naar dat oude verhaal, als u het mij vraagt.']
+    // Het boekje: het beeld toont het slot, de paarse gloed en de titel al,
+    // dus de tekst zegt alleen wat het beeld niet kan. Kort houden.
+    boekje: {
+      _:        ['Donati Antrum. Je kent de woorden niet, maar iemand heeft ze er zelf in gekrast.'],
+      'Liu-Yen':['Donati Antrum. Ni weten wat het betekent. Iemand heeft woorden er zelf in gekrast.'],
+      'Lola':   ['Donati Antrum. Geen idee wat het betekent, querido, maar iemand heeft die woorden er zelf in gekrast.'],
+      'Lucinde':['Donati Antrum. Ik weet niet wat het betekent, maar iemand heeft die woorden er eigenhandig in gekrast.']
     },
-    hd: {
-      _: ['[Filler Heer Donatus-voorwerp, open einde richting mogelijke vierde straat.]', 'En dit laatste ding. Dit zegt je helemaal niets. Je hebt geen idee wat het is of waar het naar wijst.']
+    // De sis in het paarse scherm. Eerste regel groot, tweede regel klein.
+    kreet: {
+      _:        ['Hssss!', 'Je hand brandt!'],
+      'Liu-Yen':['Hsss!', 'Hand brandt! Hand brandt!'],
+      'Lola':   ['Hsss, ay!', 'Je hand brandt!'],
+      'Lucinde':['Hsss!', 'Je hand brandt! Nee, nee, nee!']
+    },
+    boekjeNa: {
+      _:        ['Je kijkt naar je hand waarmee je het slot vasthad. Gloeiend heet. Of dat nu belangrijk is, weet je niet.'],
+      'Liu-Yen':['Je kijkt naar hand. Hand die slot vasthad. Gloeiend heet. Belangrijk? Ni weten.'],
+      'Lola':   ['Je kijkt naar de hand die het slot vasthad. Gloeiend heet. Ay, en of dat nu belangrijk is, weet je niet.'],
+      'Lucinde':['Je kijkt naar de hand waarmee je het slot vasthad. Gloeiend heet. Of dat er nu toe doet, kun je niet zeggen.']
+    },
+    boekjeAf: {
+      _:        ['Je hand blijft boven het slot hangen. Niet vanavond.'],
+      'Liu-Yen':['Hand blijft boven slot hangen. Ni vanavond.'],
+      'Lola':   ['Je hand blijft boven het slot hangen. Vanavond niet, guapo.'],
+      'Lucinde':['Je hand blijft boven het slot hangen. Vanavond niet, lijkt me verstandig.']
     },
     conclusie: {
-      _:        ['Drie van de vier wijzen dezelfde kant op, en die kant bevalt je niet. Deze burgemeester zit dieper in dit alles dan iemand zou vermoeden. Het vierde ding snap je niet.', 'Wegwezen, voor iemand terugkomt.'],
-      'Liu-Yen':['Drie dingen, zelfde kant op. Deze man ni zo netjes als hij lijkt. Weg nu.'],
-      'Lola':   ['Drie van de vier, dezelfde kant op. Deze man is niet wat hij lijkt, para nada. Wegwezen.'],
-      'Lucinde':['Drie dingen die dezelfde kant op wijzen. Een nette man met een minder nette geheime kant. Ik heb genoeg gezien.']
+      _:        ['Twee van de drie wijzen dezelfde kant op, en die kant bevalt je niet. Deze burgemeester zit dieper in dit alles dan iemand zou vermoeden. Het derde ding snap je niet.', 'Wegwezen, voor iemand terugkomt.'],
+      'Liu-Yen':['Twee dingen, zelfde kant op. Derde ding ni snappen. Deze man ni zo netjes als hij lijkt. Weg nu.'],
+      'Lola':   ['Twee van de drie, dezelfde kant op, en het derde snap je niet. Deze man is niet wat hij lijkt, para nada. Wegwezen.'],
+      'Lucinde':['Twee dingen die dezelfde kant op wijzen, en een derde waar ik geen raad mee weet. Een nette man met een minder nette geheime kant. Ik heb genoeg gezien.']
     }
   };
   var b = T[beat] || {};
   return (b[v] || b._).slice();
+}
+// Neonpaarse flits als Felix het slot van het boekje vastpakt. Vijf seconden
+// waarin er niets aan te tikken valt: de overlay ligt over de hele UI. De sis
+// komt uit de stem van zijn huidige vermomming. Bewust een eigen functie, los
+// van Kelly's rode Madeleine-scherm, zodat dat ongemoeid blijft.
+function felixBoekjeFlits(klaar) {
+  var regels = felixV('kreet');
+  var secs = 5;
+  var overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(58,0,88,.94);z-index:700;' +
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;' +
+    'animation:fadeIn .2s ease,horrorShake 2s linear infinite';
+  overlay.innerHTML =
+    '<div style="font-family:Cinzel,serif;font-size:3rem;letter-spacing:.08em;color:#e9a2ff;text-shadow:0 0 28px rgba(214,120,255,.9)">' + regels[0] + '</div>' +
+    '<div style="font-size:1rem;color:#f0d4ff;font-style:italic;margin-top:1rem">' + (regels[1] || '') + '</div>' +
+    '<div id="boekje-teller" style="font-family:Cinzel,serif;font-size:1.6rem;color:rgba(233,162,255,.75);margin-top:1.6rem">' + secs + '</div>';
+  document.body.appendChild(overlay);
+  // Schudden alleen in het begin, daarna staat het beeld stil en blijft de
+  // tekst leesbaar.
+  setTimeout(function () { overlay.style.animation = 'none'; }, 1200);
+  var interval = setInterval(function () {
+    secs--;
+    var t = document.getElementById('boekje-teller');
+    if (t) t.textContent = secs > 0 ? secs : '';
+    if (secs > 0) return;
+    clearInterval(interval);
+    overlay.style.transition = 'opacity .4s';
+    overlay.style.opacity = '0';
+    setTimeout(function () {
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if (typeof klaar === 'function') klaar();
+    }, 420);
+  }, 1000);
 }
 function felixBekijkVoorwerp(n) {
   var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h5_gemeentehuis'; });
