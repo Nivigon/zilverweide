@@ -200,6 +200,7 @@ function analyse(sessie) {
     eind: entries.length ? entries[entries.length - 1].t : null,
     events: [],           // sleutelmomenten
     shared: [],           // gedeelde schrijfacties
+    startstand: [],       // wat stond er al aan toen een tablet aanhaakte
     gokken: [],           // heks-gokken op het podium (type 'gok')
     dwellPerRol: {},      // rol -> {locatie -> ms}
     gatenPerRol: {},      // rol -> [{van, tot, ms}]
@@ -223,6 +224,8 @@ function analyse(sessie) {
       // vloek die tijdens de puzzel verdween.
       if (SCHADUW_KEY.test(e.key || '')) schaduwEntries.push(e);
       else res.shared.push(e);
+    } else if (e.type === 'startstand') {
+      res.startstand.push(e);
     } else if (e.type === 'gok') {
       res.gokken.push(e);
     }
@@ -440,14 +443,39 @@ function renderDetail(id) {
   if (!enigSchaduw) html += '<div class="leeg" style="padding:.5rem">geen schaduw-activiteit gelogd</div>';
   html += '</div>';
 
+  // Beginstand per tablet: wat stond er al aan op het moment dat dit tablet
+  // aan de sessie koppelde? De tabel hieronder toont alleen veranderingen, dus
+  // zonder deze kaart is een vlag die er al stond nergens terug te vinden.
+  html += '<div class="kaart"><h2>Beginstand bij aanhaken (' + a.startstand.length + ')</h2>';
+  if (!a.startstand.length) {
+    html += '<div class="leeg" style="padding:.5rem">niet gelogd (sessie van voor deze registratie)</div>';
+  } else {
+    a.startstand.forEach(function (e) {
+      var sleutels = Array.isArray(e.sleutels) ? e.sleutels : [];
+      var kop = e.leeg
+        ? 'schone start, niets stond aan'
+        : (e.aantal || 0) + ' sleutel(s) stonden al aan' +
+          (e.schaduwsleutels ? ' (plus ' + e.schaduwsleutels + ' schaduw)' : '');
+      html += '<div class="rij"><span class="tijd">' + esc(tijdStr(e.t)) + '</span>' +
+        '<span class="rol">' + esc(e.rol) + '</span> <span>' + esc(kop) + '</span></div>';
+      if (sleutels.length) {
+        html += '<div class="rij" style="padding-left:1rem"><code>' +
+          esc(sleutels.join(', ')) + (e.meer ? ', en nog ' + e.meer : '') + '</code></div>';
+      }
+    });
+  }
+  html += '</div>';
+
   // Gedeelde schrijfacties (schaduw-sleutels zitten in de kaart hierboven)
   html += '<div class="kaart"><h2>Gedeelde schrijfacties (' + a.shared.length + ')</h2>';
   if (!a.shared.length) { html += '<div class="leeg" style="padding:.5rem">geen</div>'; }
   else {
-    html += '<table><thead><tr><th>tijd</th><th>rol</th><th>key</th><th>waarde</th></tr></thead><tbody>';
+    html += '<table><thead><tr><th>tijd</th><th>rol</th><th>bron</th><th>key</th><th>waarde</th><th>plek</th></tr></thead><tbody>';
     a.shared.forEach(function (e) {
       html += '<tr><td class="num">' + esc(tijdStr(e.t)) + '</td><td>' + esc(e.rol) +
-        '</td><td><code>' + esc(e.key) + '</code></td><td>' + esc(JSON.stringify(e.waarde)) + '</td></tr>';
+        '</td><td>' + esc(e.bron || '?') +
+        '</td><td><code>' + esc(e.key) + '</code></td><td>' + esc(JSON.stringify(e.waarde)) +
+        '</td><td>' + esc(e.plek || '') + '</td></tr>';
     });
     html += '</tbody></table>';
   }
@@ -616,13 +644,27 @@ function downloadMd(id) {
   });
   if (!enig) L.push('_geen gaten langer dan ' + Math.round(GAT_MS / 1000) + 's_');
   L.push('');
+  L.push('## Beginstand bij aanhaken');
+  if (!a.startstand.length) L.push('_niet gelogd (sessie van voor deze registratie)_');
+  a.startstand.forEach(function (e) {
+    var sleutels = Array.isArray(e.sleutels) ? e.sleutels : [];
+    L.push('- ' + tijdStr(e.t) + ' ' + e.rol + ': ' +
+      (e.leeg ? 'schone start, niets stond aan'
+              : (e.aantal || 0) + ' sleutel(s) stonden al aan' +
+                (e.schaduwsleutels ? ' (plus ' + e.schaduwsleutels + ' schaduw)' : '')));
+    if (sleutels.length) {
+      L.push('  - ' + sleutels.join(', ') + (e.meer ? ', en nog ' + e.meer : ''));
+    }
+  });
+  L.push('');
   L.push('## Gedeelde schrijfacties');
   if (!a.shared.length) L.push('_geen_');
   else {
-    L.push('| tijd | rol | key | waarde |');
-    L.push('| --- | --- | --- | --- |');
+    L.push('| tijd | rol | bron | key | waarde | plek |');
+    L.push('| --- | --- | --- | --- | --- | --- |');
     a.shared.forEach(function (e) {
-      L.push('| ' + tijdStr(e.t) + ' | ' + e.rol + ' | ' + e.key + ' | ' + JSON.stringify(e.waarde) + ' |');
+      L.push('| ' + tijdStr(e.t) + ' | ' + e.rol + ' | ' + (e.bron || '?') + ' | ' + e.key +
+        ' | ' + JSON.stringify(e.waarde) + ' | ' + (e.plek || '') + ' |');
     });
   }
   downloadBestand('zilverweide-' + id + '.md', L.join('\n'), 'text/markdown');

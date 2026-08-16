@@ -2855,6 +2855,11 @@ function initSharedFirebase(sessieId, versGedeeld) {
   // Listener: als een andere tablet iets schrijft, update lokale state
   _sharedDbRef.on('value', function (snap) {
     var data = snap.val();
+    // Eerste snapshot op deze sessie: leg vast wat er al stond voordat dit
+    // tablet iets deed. Moet hier staan en niet na de merge hieronder, en ook
+    // vóór de "geen data"-afslag verderop: een sessie die leeg begint is net
+    // zo goed een antwoord op de vraag "stond die vlag er al?". Alleen lezen.
+    if (typeof logboekStartstand === 'function') logboekStartstand(sessieId, data);
     // Firebase is leidend: schaduw-lock-records die daar gewist zijn, lokaal
     // ook weghalen. De merge hieronder voegt alleen aanwezige keys toe en
     // wist niets, dus zonder dit blijft een vergrendelde tablet hangen nadat
@@ -3157,6 +3162,29 @@ var SHARED_LIJST_KEYS = [
 ];
 var SHARED_ROLLEN = ['jan','kelly','fenna','felix'];
 
+// Waardoor gaat de eerstvolgende gedeelde schrijfactie om? Het logboek legde
+// wel vast DAT een sleutel omging en door welke rol, maar niet of dat uit
+// echt spel kwam of uit een testknop. Daardoor was achteraf niet te zien
+// waarom een vlag al aanstond voordat iemand de bijbehorende scene had
+// gespeeld. Standaard 'spel'; de wrappers hieronder zetten hem tijdelijk om.
+// Puur registratie: geen enkele listener leest dit veld, dus dit kan de
+// gedeelde stand of de sync niet beinvloeden.
+var _sharedBron = 'spel';
+function metSharedBron(bron, fn) {
+  var vorige = _sharedBron;
+  _sharedBron = bron;
+  try { return fn(); } finally { _sharedBron = vorige; }
+}
+// Elke knop uit het testpaneel loopt hierlangs, zodat alles wat eronder
+// wegschrijft als 'debug' in het logboek komt zonder dat elke knop dat zelf
+// hoeft te melden. Let op: alleen het synchrone deel van een knop telt mee.
+// Schrijft een knop pas in een setTimeout of een promise, dan staat de bron
+// alweer terug op 'spel'. Dat is bewust: liever een enkele knop die te
+// bescheiden logt dan een bron die na afloop blijft plakken op echt spel.
+function debugKnopActie(fn) {
+  return function () { return metSharedBron('debug', function () { return fn(); }); };
+}
+
 function setSharedState(key, value) {
   if (SHARED_LIJST_KEYS.indexOf(key) !== -1 && Array.isArray(value)) {
     if (value.length === 0) {
@@ -3185,7 +3213,18 @@ function setSharedState(key, value) {
   }
   // Logboek: leg vast wie wat schreef (bug-forensiek achteraf).
   if (typeof logboekSchrijf === 'function' && !LOGBOEK_NEGEER_KEYS[key]) {
-    logboekSchrijf('shared', { key: key, waarde: value });
+    var regel = { key: key, waarde: value };
+    // Bron en plek alleen bij de niet-schaduw-sleutels. De schaduw-meter tikt
+    // per 10% en is daarmee bijna de helft van alle schrijfacties; die regels
+    // hebben in logboek.html hun eigen kaart en worden daar niet op bron of
+    // plek gelezen. Zo blijft de verbreding beperkt tot de regels die je
+    // achteraf daadwerkelijk uitpluist.
+    if (key.indexOf('schaduw_') !== 0) {
+      regel.bron = _sharedBron;
+      var plek = (typeof logboekPlek === 'function') ? logboekPlek() : null;
+      if (plek) regel.plek = plek;
+    }
+    logboekSchrijf('shared', regel);
   }
 }
 
@@ -3260,6 +3299,64 @@ function logboekPlek() {
     }
   } catch (e) {}
   return null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// STARTSTAND (welke gedeelde sleutels stonden er al?)
+// Het logboek bevat alleen VERANDERINGEN. Een vlag die al aanstond op het
+// moment dat dit tablet aan de sessie koppelde, staat er dus nergens in, en
+// precies die vraag komt op zodra een scene overgeslagen lijkt: stond de vlag
+// er al, of heeft iemand hem tijdens deze ronde gezet? Dit schrijft daarom
+// eenmalig, bij de eerste snapshot per sessie-koppeling, een regel met de
+// sleutels die op dat moment al aanstonden.
+//
+// Bewust zuinig: alleen sleutelNAMEN en geen waarden, zonder de schaduw-
+// sleutels (die tikken per 10% en zeggen niets over verhaalvoortgang), en met
+// een dak op de lijst zodat een tablet dat halverwege het spel herlaadt geen
+// kilobytes wegschrijft. Dat is een handvol regels per ronde.
+// ─────────────────────────────────────────────────────────────────
+var LOGBOEK_STARTSTAND_MAX = 120;
+var _logboekStartstandSessie = null;
+function logboekStartstand(sessieId, data) {
+  // Per sessie-id maar één keer. rondTeamAf herpunt naar de echte sessie, en
+  // die tweede koppeling verdient wel een eigen regel: juist daar wil je zien
+  // of de teamsessie leeg begon of dat er nog data van een vorige ronde stond.
+  if (_logboekStartstandSessie === sessieId) return;
+  _logboekStartstandSessie = sessieId;
+  var sleutels = [];
+  var schaduwSleutels = 0;
+  for (var k in data) {
+    if (!Object.prototype.hasOwnProperty.call(data, k)) continue;
+    if (k.indexOf('schaduw_') === 0) { schaduwSleutels++; continue; }
+    var v = data[k];
+    // Uitgezette en lege waarden zeggen niets: die tellen als "stond niet aan".
+    if (v === false || v === null || v === undefined || v === '') continue;
+    if (Array.isArray(v) && v.length === 0) continue;
+    sleutels.push(k);
+  }
+  sleutels.sort();
+  var payload = {
+    sessie: sessieId,
+    aantal: sleutels.length,
+    schaduwsleutels: schaduwSleutels,
+    leeg: sleutels.length === 0 && schaduwSleutels === 0,
+    sleutels: sleutels.slice(0, LOGBOEK_STARTSTAND_MAX)
+  };
+  if (sleutels.length > LOGBOEK_STARTSTAND_MAX) {
+    payload.meer = sleutels.length - LOGBOEK_STARTSTAND_MAX;
+  }
+  logboekSchrijf('startstand', payload);
+}
+
+// Debugflag bij deze registratie (testpaneel, bij de logboek-knoppen).
+// Dwingt een extra startstand-regel af met de gedeelde stand van dit moment,
+// zodat de registratie te testen is zonder de pagina te herladen, en je
+// midden in een ronde een ijkpunt kunt zetten. Verandert niets aan de
+// gedeelde stand: leest alleen state.shared en schrijft naar de log-tak.
+function debugLogboekStartstand() {
+  _logboekStartstandSessie = null;
+  logboekStartstand(herstelSessieId(), state.shared);
+  if (typeof toonToast === 'function') toonToast('🧾', 'Startstand weggeschreven naar het logboek');
 }
 
 // Hartslag: elke 30s een monster van het huidige scherm. Zo is een speler
@@ -4202,7 +4299,10 @@ function pasHerstelpuntToe(hp) {
     var rol = hp.rol;
     state.personage = rol;
     rolTestFase = false;
-    zetRolBezet(rol, true);   // stond al op bezet; expliciet bevestigen kan geen kwaad
+    // Stond al op bezet; expliciet bevestigen kan geen kwaad. Wel met een
+    // eigen bron in het logboek: een rol die na een crash terugkomt is iets
+    // anders dan een rol die net gekozen wordt, en dat verschil wil je zien.
+    metSharedBron('herstel', function () { zetRolBezet(rol, true); });
 
     state.visited = new Set(herstelSleutels(hp.visited));
     state.visitedLocations = new Set(herstelSleutels(hp.visitedLocations));
@@ -21105,6 +21205,11 @@ function buildDebugPanel() {
     // of zet het loggen aan/uit (staat standaard aan).
     ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
     ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
+    // Debugflag bij de startstand-registratie: schrijf nu een startstand-regel
+    // met de gedeelde stand van dit moment. Zo is de registratie te testen
+    // zonder de pagina te herladen, en kun je midden in een ronde een ijkpunt
+    // in het logboek zetten ("vanaf hier stond dit aan").
+    ['🧾 Startstand nu loggen', function(){ debugLogboekStartstand(); close(); }, true],
     // Verder-lock: de korte pauze voordat je op Verder mag klikken, zodat
     // niemand doorklikt voor de tekst gelezen kan zijn. Tijdens testen wil
     // je juist wel snel door, vandaar deze schakelaar.
@@ -21199,7 +21304,9 @@ function buildDebugPanel() {
         const btn = document.createElement('button');
         btn.className = 'debug-btn';
         btn.textContent = b[0];
-        btn.onclick = b[1];
+        // Via debugKnopActie, zodat elke gedeelde schrijfactie eronder als
+        // 'debug' in het logboek belandt in plaats van als echt spel.
+        btn.onclick = debugKnopActie(b[1]);
         grid.appendChild(btn);
       });
       wrap.appendChild(grid);
@@ -21212,7 +21319,7 @@ function buildDebugPanel() {
       btn.className = 'debug-btn';
       btn.style.marginBottom = '6px';
       btn.textContent = b[0];
-      btn.onclick = b[1];
+      btn.onclick = debugKnopActie(b[1]);
       c.appendChild(btn);
     });
   }
