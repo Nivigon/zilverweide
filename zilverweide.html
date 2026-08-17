@@ -11212,6 +11212,9 @@ function renderH5Gemeentehuis(loc) {
   // "weg" is terwijl hij die jongen hier nooit heeft gezien.
   const robbieAanwezig = !(hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis'));
   const robbieZelfGezien = hasVisited('h5_robbie_gezien');
+  // Eigen pop voor deze plek: kap op, briefje in de hand, mond dichtgenaaid.
+  // Alleen hier, elders in het spel blijft hij de gewone Robbie.
+  const ROBBIE_POP = 'karakters/terugkerend/robbienote-pop.png';
   // Alleen zetten in de branches waar de speler hem daadwerkelijk ziet staan.
   function onthoudRobbie() { if (!robbieZelfGezien) markVisited('h5_robbie_gezien'); }
 
@@ -11226,7 +11229,8 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie. Hij ziet je, en de paniek slaat in zijn ogen. Snel krabbelt hij iets op een briefje en drukt het in je hand.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
+          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie, een kap over zijn hoofd. Hij ziet je, en de paniek slaat in zijn ogen.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          'Hij begint iets te zeggen en stokt. Zijn mond is dichtgenaaid. Dan krabbelt hij haastig op een briefje en drukt het in je hand.',
           { spreker: 'Briefje', tekst: '"Help, herberg. Gaat mis. Burgemeester is er al. Snel!"' }
         ],
         acties: [{ label: 'Naar de herberg', onclick: terug }]
@@ -11273,7 +11277,7 @@ function renderH5Gemeentehuis(loc) {
       if (robbieAanwezig) {
         onthoudRobbie();
         felixDialog = [
-          { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien. Hé, is dat niet die fan van Fenna? Die jongen die overal opduikt waar zij is.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
+          { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien, kap op, een opgevouwen briefje in zijn vuist. In zijn nek twee letters, F en V. Die jongen van Fenna dus. En zijn mond is dichtgenaaid.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
           { tekst: 'Hij houdt de deur in de gaten, niet jou. Een uitkijk die niet doorheeft dat hij er een is. En al die onrust vooraan is prima dekking. Jij hebt de voorkant toch niet nodig.', onShow: function() { verbergNpcPop(); } }
         ];
       } else if (robbieZelfGezien) {
@@ -11353,8 +11357,9 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij de ingang staat een jongen te draaien, half op zijn tenen, ogen op de deur. Hé, is dat niet die fan van Fenna? Die overal opduikt waar zij zingt.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
+          { tekst: 'Bij de ingang staat een jongen te draaien, kap op, half op zijn tenen, ogen op de deur. Twee letters in zijn nek, F en V. Die fan van Fenna, die overal opduikt waar zij zingt.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
           'Hij staat op wacht, al lijkt hij het zelf niet zo te noemen. Hij wacht op iemand. Op haar, waarschijnlijk.',
+          'Hij zegt niets, en dat kan hij ook niet. Zijn mond is dichtgenaaid. In zijn vuist zit een briefje geklemd.',
           { tekst: 'Om je heen dringen dorpelingen samen, mopperend, de sfeer om te snijden. Toch is dit niet waar het vanavond echt losbarst. Je houdt de jongen even in de gaten en loopt dan door.', onShow: function() { verbergNpcPop(); } }
         ]
       });
@@ -11382,8 +11387,8 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, gespannen, met zijn blik strak op de ingang. Hé, is dat niet die fan van Fenna?', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
-          'Je kijkt nog eens. Hij wacht duidelijk op iemand, en hij is bang dat die niet op tijd komt. Je onthoudt hem.',
+          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, kap op, met zijn blik strak op de ingang. Twee letters in zijn nek, F en V. Die fan van Fenna.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          'Je kijkt nog eens. Zijn mond is dichtgenaaid en hij houdt een briefje vast. Hij wacht duidelijk op iemand, en hij is bang dat die niet op tijd komt. Je onthoudt hem.',
           { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan.', onShow: function() { verbergNpcPop(); } },
           'Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
         ]
@@ -17481,7 +17486,9 @@ function toonNummer7Overleg() {
       // kennen Jan, Kelly en Felix hem alleen van het stemscherm, en later bij
       // het gemeentehuis moeten ze hem kunnen herkennen als hij daar op Fenna
       // staat te wachten.
-      { tekst: 'Even later is ze terug, met een jongen naast zich die nauwelijks stil kan blijven staan. Hij kijkt jullie een voor een aan alsof hij niet gelooft dat hij hier mag zijn.', onShow: function() { setTimeout(function(){ toonNpcPop(robbiePop()); }, 200); } },
+      // Bewust de gewone pop en niet robbiePop(): dit scherm hoort voor alle
+      // vier de rollen hetzelfde te zijn, ook op Fenna's tablet.
+      { tekst: 'Even later is ze terug, met een jongen naast zich die nauwelijks stil kan blijven staan. Hij kijkt jullie een voor een aan alsof hij niet gelooft dat hij hier mag zijn.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/terugkerend/robbie-pop.png'); }, 200); } },
       { spreker: 'Robbie Kweekel', tekst: '"Robbie. Robbie Kweekel, van Nummer 5. Als Fenna-Vivi\u00e8nne iets vraagt, doe ik het."' },
       { tekst: 'Hij loopt vast richting de voordeur en haalt diep adem. Onthoud dat gezicht. Waar hij opduikt, zoekt hij haar.', onShow: function() { verbergNpcPop(); } }
     ],
