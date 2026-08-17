@@ -1743,10 +1743,14 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 </div>
 
 <!-- ══ TOAST ══ -->
+<!-- Het kopje stond hier vast op "Verkregen", want de toast begon als
+     itemmelding. Hij wordt inmiddels ook gebruikt voor blokkades ("Wacht op
+     Felix"), en daar las "Verkregen" als onzin. toonToast() zet het kopje nu
+     zelf: standaard nog Verkregen, en per melding aanpasbaar. -->
 <div id="spel-toast">
   <span class="spel-toast-icon" id="spel-toast-icon">📦</span>
   <div class="spel-toast-body">
-    <div class="spel-toast-titel">Verkregen</div>
+    <div class="spel-toast-titel" id="spel-toast-titel">Verkregen</div>
     <div class="spel-toast-tekst" id="spel-toast-tekst"></div>
   </div>
   <button id="spel-toast-sluit" onclick="sluitToast()">✕</button>
@@ -1866,14 +1870,17 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
      want staat de zon fel dan is elk scherm daarna al slecht leesbaar,
      ook de tabletmodus-vraag zelf.
 
-     Dit scherm schaalt NIET mee met de stand. Het wordt getoond voordat
-     er gekozen is, dus het moet in volle zon te lezen zijn, ook als de
-     speler straks donker kiest. Vandaar de eigen felle kleuren in plaats
-     van de tokens.
+     Zolang er nog niets gekozen is schaalt dit scherm NIET mee met de
+     stand: het wordt getoond voordat de speler heeft geantwoord, dus het
+     moet in volle zon te lezen zijn, ook als hij straks donker kiest.
+     Vandaar de eigen felle kleuren in plaats van de tokens.
 
-     Tikken past de stand meteen toe en je blijft staan: het zien van het
-     verschil is hier de bevestiging. Kies je verkeerd, dan merk je dat
-     onmiddellijk in plaats van drie schermen verderop. -->
+     Zodra er getikt is (klasse gekozen op het scherm) schakelt het over op
+     de gewone tokens, en verandert de hele opmaak dus mee met de stand die
+     net gekozen is. Dat is het punt van dit scherm: je blijft staan, tikt
+     heen en weer tussen licht en donker, en houdt wat het beste leest. Een
+     tablet met een onthouden keuze staat meteen in die stand, want
+     markeerDaglichtKeuze zet de klasse dan al bij het openen. -->
 <style>
   #screen-daglicht.screen { padding: 0; }
   #screen-daglicht .dl-wrap {
@@ -1915,6 +1922,35 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     color: #fdefc0; cursor: pointer; border-radius: 2px; text-transform: uppercase;
   }
   #screen-daglicht.gekozen .dl-knop { display: inline-block; }
+
+  /* ── Na de keuze: het scherm in de gekozen stand ──────────────────
+     Alles hierboven staat op vaste felle kleuren, want voor de keuze
+     weten we niet in wat voor licht de tablet ligt. Zodra er getikt is
+     nemen de tokens het over, en dan verandert dit scherm dus zichtbaar
+     mee met licht of donker. Zo kan de speler heen en weer tikken en
+     kiezen wat het beste leest, in plaats van het verschil pas drie
+     schermen later te zien.
+
+     Volgorde telt: de selectie-opmaak van een kaart staat onderaan,
+     anders wint de algemene kaartregel hierboven op ID-gewicht. */
+  #screen-daglicht.gekozen .dl-titel,
+  #screen-daglicht.gekozen .dl-keuze-kop { color: var(--gold); }
+  #screen-daglicht.gekozen .dl-orn { color: var(--gold-dim); }
+  #screen-daglicht.gekozen .dl-uitleg,
+  #screen-daglicht.gekozen .dl-keuze-sub { color: var(--parchment); }
+  #screen-daglicht.gekozen .dl-uitleg { font-weight: var(--tekstgewicht); }
+  #screen-daglicht.gekozen .dl-keuze {
+    border-width: var(--randbreedte);
+    border-color: rgba(var(--goudrgb), calc(.45 * var(--lijn)));
+  }
+  #screen-daglicht.gekozen .dl-keuze.gekozen {
+    border-color: var(--gold);
+    background: rgba(var(--goudrgb), calc(.16 * var(--vlak)));
+    box-shadow: 0 0 16px rgba(var(--goudrgb), calc(.3 * var(--vlak)));
+  }
+  #screen-daglicht.gekozen .dl-knop {
+    border-width: var(--randbreedte); border-color: var(--gold); color: var(--gold);
+  }
   @media (max-height: 560px) {
     #screen-daglicht .dl-orn { display: none; }
   }
@@ -1923,7 +1959,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <div class="dl-wrap">
     <div class="dl-titel">Hoe is het licht?</div>
     <div class="dl-orn">✦ &nbsp; voor we beginnen &nbsp; ✦</div>
-    <p class="dl-uitleg">Kijk even om je heen. Sta je in de zon of in een lichte ruimte, dan zet het spel zichzelf feller zodat je alles kunt lezen. Je ziet het verschil meteen als je kiest.</p>
+    <p class="dl-uitleg">Kijk even om je heen. Sta je in de zon of in een lichte ruimte, dan zet het spel zichzelf feller zodat je alles kunt lezen. Tik beide standen rustig aan, dit scherm verandert meteen mee, en houd wat het beste leest.</p>
     <div class="dl-keuzes">
       <button type="button" class="dl-keuze" id="dl-keuze-licht" onclick="kiesDaglicht(true)">
         <div class="dl-keuze-icoon">☀</div>
@@ -5992,6 +6028,11 @@ function startBegin() {
 // Staat bewust voor de tabletmodus. De vervolgstap reist mee tot aan
 // toonTabletModus, precies zoals die hem daarna doorgeeft aan de namen.
 var _daglichtVervolg = null;
+// Is er in deze sessie op een van de twee kaarten getikt. Naast de opslag,
+// want op een tablet met geblokkeerde localStorage (privé-stand) blijft
+// daglichtOnthouden() false en zou het scherm na het tikken terugvallen naar
+// "nog niets gekozen": geen Verder-knop en geen zichtbaar verschil.
+var _daglichtGetikt = false;
 
 function toonDaglichtKeuze(vervolg) {
   _daglichtVervolg = (typeof vervolg === 'function') ? vervolg : toonTeamKeuze;
@@ -6006,7 +6047,7 @@ function daglichtOnthouden() {
   try { return localStorage.getItem('zw_daglicht') !== null; } catch (e) { return false; }
 }
 function markeerDaglichtKeuze() {
-  var toon = daglichtOnthouden();
+  var toon = daglichtOnthouden() || _daglichtGetikt;
   var scherm = document.getElementById('screen-daglicht');
   if (scherm) scherm.classList.toggle('gekozen', toon);
   var licht = document.getElementById('dl-keuze-licht');
@@ -6015,9 +6056,12 @@ function markeerDaglichtKeuze() {
   if (donker) donker.classList.toggle('gekozen', toon && !window._daglichtModus);
 }
 
-// Tikken zet de stand meteen om, zodat de speler het verschil ziet, en
-// laat de Verder-knop verschijnen. Pas die knop stuurt door.
+// Tikken zet de stand meteen om en je blijft staan: het scherm zelf schakelt
+// mee (zie de CSS bij screen-daglicht), dus de speler ziet het verschil hier
+// en kan heen en weer tikken. De Verder-knop verschijnt erbij, en pas die
+// knop stuurt door.
 function kiesDaglicht(aan) {
+  _daglichtGetikt = true;
   zetDaglichtModus(aan);
   var scherm = document.getElementById('screen-daglicht');
   if (scherm) scherm.classList.add('gekozen');
@@ -9252,7 +9296,7 @@ function renderH2FelixKamer(loc) {
             '<span class="code-label">Lees deze code voor aan Felix: ' + VASTZIT_SCENARIOS.felix_hd2.code + '</span>' +
           '</div>' +
           wachtStrook('Wacht op Felix, hij voert de code in. Je kunt hier nog niet weg.'),
-        onBack: function () { toonToast('🔒', 'Wacht op Felix, hij voert de code in'); }
+        onBack: function () { toonToast('', 'Wacht op Felix, hij voert de code in', 'Wachten'); }
       });
     }
 
@@ -9277,7 +9321,7 @@ function renderH2FelixKamer(loc) {
           ? [{ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix }]
           : [],
         extra: outfitBeide ? '' : h2WachtLeest(),
-        onBack: function () { toonToast('🔒', 'Felix wacht op die vermomming'); }
+        onBack: function () { toonToast('', 'Felix wacht op die vermomming', 'Wachten'); }
       });
       speelH2Outfitgesprek();
       return naOutfitgesprek;
@@ -9296,7 +9340,7 @@ function renderH2FelixKamer(loc) {
             '<input class="code-input" id="code-h2-munten" type="text" placeholder="Code..." maxlength="10" oninput="checkH2MuntenCode(this.value)">' +
             '<div class="code-error" id="code-h2-munten-msg"></div>' +
           '</div>',
-        onBack: function () { toonToast('🔒', 'Voer eerst de code in die Felix je voorleest'); }
+        onBack: function () { toonToast('', 'Voer eerst de code in die Felix je voorleest', 'Wachten'); }
       });
     }
 
@@ -9324,7 +9368,7 @@ function renderH2FelixKamer(loc) {
         extra: muntenBeide
           ? wachtStrook('Wacht op Felix, hij geeft het zakje door.')
           : h2WachtLeest(),
-        onBack: function () { toonToast('🔒', 'Wacht op Felix, hij geeft het zakje door'); }
+        onBack: function () { toonToast('', 'Wacht op Felix, hij geeft het zakje door', 'Wachten'); }
       });
       speelH2Muntengesprek();
       return naMuntengesprek;
@@ -15879,7 +15923,7 @@ function fennaGeeftSpijker() {
   // de klik. Dan niet overhandigen (Fenna zou zonder terugknop wachten op
   // iemand die er niet is), maar het scherm verversen en even melden.
   if (!janIsBijToren()) {
-    if (typeof toonToast === 'function') toonToast('🗼', 'Jan staat niet meer bij de toren. Wacht tot hij er weer is.');
+    if (typeof toonToast === 'function') toonToast('🗼', 'Jan staat niet meer bij de toren. Wacht tot hij er weer is.', 'Wachten');
     var locZonderJan = locatiesK1.find(function (l) { return l.id === 'k1_uitkijktoren'; });
     if (locZonderJan) renderK1Uitkijktoren(locZonderJan);
     return;
@@ -16173,7 +16217,7 @@ function goBackFromLocatie() {
   // wordt daar locatieOnbekend gereset en verraadt Nummer 1 zichzelf.
   if (state.personage === 'felix' && state.lastOpenedLocatie === 'h2_felixkamer'
       && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
-    toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.');
+    toonToast('🔒', 'De deur zit op slot. Je moet hier eerst uit zien te komen.', 'Op slot');
     return;
   }
   // Jan blijft bij het gat zolang een overdracht loopt. Beide codemomenten
@@ -16183,11 +16227,11 @@ function goBackFromLocatie() {
   if (state.personage === 'jan' && state.lastOpenedLocatie === 'h2_felixkamer'
       && hasVisited('felix_hd2_vast') && !hasVisited('felix_hd2_vrij')) {
     if (hasVisited('h2_muntengesprek_gezien') && !hasVisited('munten_code_ingevoerd')) {
-      toonToast('🔒', 'Blijf staan tot je het zakje hebt aangenomen');
+      toonToast('', 'Blijf staan tot je het zakje hebt aangenomen', 'Wachten');
       return;
     }
     if (hasVisited('h2_outfitgesprek_gezien') && !hasVisited('felix_code_ingevoerd')) {
-      toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd');
+      toonToast('', 'Wacht tot Felix de code heeft ingevoerd', 'Wachten');
       return;
     }
   }
@@ -16196,18 +16240,18 @@ function goBackFromLocatie() {
   // afspraak als Jan bij H2 (die wacht daar al op felix_code_ingevoerd).
   if (state.personage === 'jan' && state.lastOpenedLocatie === 'k1_dorpsput'
       && hasVisited('jan_kelly_code_gezien') && !hasVisited('kelly_gered')) {
-    toonToast('🔒', 'Blijf bij de put tot Kelly de code heeft ingevoerd');
+    toonToast('🔒', 'Blijf bij de put tot Kelly de code heeft ingevoerd', 'Wachten');
     return;
   }
   if (state.personage === 'kelly' && state.lastOpenedLocatie === 'dd8_stiltevijver'
       && hasVisited('kelly_vijver_code_gezien')
       && hasVisited('fenna_vijver_vast') && !hasVisited('fenna_vijver_vrij')) {
-    toonToast('🔒', 'Blijf bij het meisje tot Fenna de code heeft ingevoerd');
+    toonToast('🔒', 'Blijf bij het meisje tot Fenna de code heeft ingevoerd', 'Wachten');
     return;
   }
   if (state.personage === 'fenna' && state.lastOpenedLocatie === 'k1_uitkijktoren'
       && hasVisited('fenna_spijker_gegeven') && !hasVisited('toren_code_ingevoerd')) {
-    toonToast('🔒', 'Blijf bij Jan tot hij de code heeft ingevoerd');
+    toonToast('🔒', 'Blijf bij Jan tot hij de code heeft ingevoerd', 'Wachten');
     return;
   }
   // Fenna verlaat Naald en Masker zonder spijker: haar jurk blijft haken
@@ -19584,15 +19628,28 @@ function sluitMelding() { sluitLade(); }
 
 // ══ TOAST ══
 var _toastTimer = null;
-function toonToast(emoji, naam) {
+// Derde argument: het kopje boven de melding. Weglaten geeft "Verkregen", de
+// stand waarin het kopje hier jarenlang vast stond, dus alle bestaande
+// aanroepen blijven hetzelfde. Een lege string laat het kopje helemaal weg.
+function toonToast(emoji, naam, kopje) {
   clearTimeout(_toastTimer);
   const el = document.getElementById('spel-toast');
   const balk = document.getElementById('spel-toast-balk');
   const iconEl = document.getElementById('spel-toast-icon');
+  const kopEl = document.getElementById('spel-toast-titel');
+  const kop = (kopje === undefined || kopje === null) ? 'Verkregen' : String(kopje);
+  if (kopEl) {
+    kopEl.textContent = kop;
+    kopEl.style.display = kop ? '' : 'none';
+  }
   if (typeof ITEM_AFBEELDINGEN !== 'undefined' && ITEM_AFBEELDINGEN[naam]) {
     iconEl.innerHTML = '<img src="' + ITEM_AFBEELDINGEN[naam] + '" alt="" style="width:1.8rem;height:1.8rem;object-fit:contain;vertical-align:middle">';
+    iconEl.style.display = '';
   } else {
-    iconEl.textContent = emoji;
+    iconEl.textContent = emoji || '';
+    // Een lege emoji betekent bewust geen icoon. Dan ook het vak ervoor weg,
+    // anders houdt de flex-gap een gat over en staat de tekst scheef.
+    iconEl.style.display = emoji ? '' : 'none';
   }
   document.getElementById('spel-toast-tekst').textContent = naam.replace(' 🔑','');
   el.classList.remove('zichtbaar','aftellen');
