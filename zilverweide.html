@@ -2987,6 +2987,7 @@ var _extraHulpVorige = null;
 // Hoeveel spelers stonden er bij de vorige snapshot in de herberg? Zodra dat
 // getal naar nul zakt, mag een wachtende Dorendael-finale-popup alsnog komen.
 var _herbergAanwezigVorig = 0;
+var _h2GesprekGemeld = {};
 function verwerkBinnengekomenShared(data) {
   var eersteSnapshot = !_verhaalSnapshotGehad;
   if (eersteSnapshot) _verhaalInitieleSnapshotBezig = true;
@@ -3019,6 +3020,21 @@ function verwerkBinnengekomenShared(data) {
         }
       }
     }
+    // Klaar-met-lezen van het gat-gesprek: dit zijn losse sleutels, geen
+    // visited-vlaggen, dus ze lopen niet mee in de lus hierboven. Alleen bij
+    // een ECHTE wijziging hertekenen, anders zou elke snapshot het scherm
+    // opnieuw opbouwen.
+    var _gesprekNu = {};
+    for (var gkKey in data) {
+      if (gkKey.indexOf('h2_gesprek_') === 0 && data[gkKey]) _gesprekNu[gkKey] = true;
+    }
+    // Vergelijken op aanwezigheid, niet bijhouden wat er ooit binnenkwam: een
+    // testknop die de sleutel wist haalt hem helemaal uit de snapshot, en dan
+    // komt hij in een for-in-lus nooit meer langs.
+    Object.keys(_gesprekNu).concat(Object.keys(_h2GesprekGemeld)).forEach(function (k) {
+      if (!!_gesprekNu[k] !== !!_h2GesprekGemeld[k]) h2FlagBinnen = true;
+    });
+    _h2GesprekGemeld = _gesprekNu;
     // Leesvlaggen van andere tablets: teller en (open) missie-paneel meteen
     // bijwerken zodat de leestaak-teller live oploopt.
     for (var lvKey in data) {
@@ -8902,6 +8918,38 @@ function h2Scene(opts) {
 const H2_MUNTEN_CODE = 'XXX';
 const H2_SCHIM_POP = 'karakters/dorendael/schim.jpeg';
 
+// Beide tablets spelen hetzelfde gesprek, ieder in zijn eigen leestempo. Wie
+// klaar is zet zijn eigen sleutel in de sessie, en de overdracht die op het
+// gesprek volgt (het zakje, de vermomming) gaat pas open als beide sleutels
+// er staan. Zo bepaalt niemands kliksnelheid het tempo van de ander, en staan
+// ze toch tegelijk bij het codemoment.
+//
+// Een sleutel PER ROL, geen lijst: twee tablets die tegelijk in dezelfde lijst
+// schrijven verliezen elkaars update. Dat was de hang op het wachtscherm van
+// de intro, en die fout maken we hier niet nog eens.
+var H2_GESPREK_MUNTEN = 'h2_gesprek_munten';
+var H2_GESPREK_OUTFIT = 'h2_gesprek_outfit';
+
+function h2EigenRol() { return (state.personage === 'jan') ? 'jan' : 'felix'; }
+function h2AnderNaam() { return (state.personage === 'jan') ? 'Felix' : 'Jan'; }
+function h2GesprekKlaar(prefix, rol) { return !!getSharedState(prefix + '_klaar_' + rol); }
+function h2ZetGesprekKlaar(prefix) {
+  if (!prefix) return;
+  var rol = h2EigenRol();
+  if (!h2GesprekKlaar(prefix, rol)) setSharedState(prefix + '_klaar_' + rol, true);
+}
+function h2BeideKlaar(prefix) {
+  return h2GesprekKlaar(prefix, 'jan') && h2GesprekKlaar(prefix, 'felix');
+}
+
+// Wachtregel onder een scene. Altijd met de naam van de ander erin: zonder
+// naam leest een stilstaand scherm als een storing, met naam weet je dat er
+// iemand anders aan zet is.
+function h2Wacht(tekst) {
+  return '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">' + tekst + '</p>';
+}
+function h2WachtLeest() { return h2Wacht('Wacht op ' + h2AnderNaam() + '. Die leest nog mee.'); }
+
 // Hartslag-patroon, gelijk aan jan_bij_toren. Vertrek wordt als waarde 0
 // geschreven en niet als null: null wist de sleutel uit Firebase, terwijl de
 // merge op het andere tablet alleen toevoegt en nooit wist. Felix zou de
@@ -9019,8 +9067,14 @@ function h2GesprekStappen(regels) {
   });
 }
 
-function h2SpeelGesprek(vlag, regels) {
-  markVisited(vlag);
+var _h2GesprekGepland = null;
+function h2SpeelGesprek(vlag, regels, prefix) {
+  // Al gelezen (ook in een eerdere ronde op dit tablet): dan niet opnieuw
+  // starten, maar wel meteen melden dat deze kant klaar is. Anders wacht de
+  // ander op een gesprek dat hier nooit meer speelt.
+  if (hasVisited(vlag)) { h2ZetGesprekKlaar(prefix); return; }
+  if (_h2GesprekGepland === vlag) return;
+  _h2GesprekGepland = vlag;
   h2SchaduwPauze(true);
   stopFelixGatWatch();
   // Een tik wachten voor de dialoog echt opgaat. Deze gesprekken starten
@@ -9033,14 +9087,18 @@ function h2SpeelGesprek(vlag, regels) {
   // hele gesprek te klikken. De tablet die het gesprek via een binnenkomende
   // vlag kreeg had er geen last van: daar volgt geen showScreen op.
   setTimeout(function () {
-    // In de tussentijd weggelopen? Dan hoort het gesprek hier niet meer.
+    _h2GesprekGepland = null;
+    // In de tussentijd weggelopen? Dan hoort het gesprek hier niet meer, en
+    // blijft de vlag bewust uit: wie terugkomt krijgt het alsnog te lezen.
     var scherm = document.getElementById('screen-locatie');
     if (state.lastOpenedLocatie !== 'h2_felixkamer') return;
     if (!scherm || !scherm.classList.contains('active')) return;
+    markVisited(vlag);
     h2PopOpzet();
     toonPopDialoog(h2GesprekStappen(regels), function () {
       var cp = document.getElementById('char-pop');
       if (cp) cp.style.display = '';
+      h2ZetGesprekKlaar(prefix);
       h2Herteken();
     });
   }, 140);
@@ -9050,13 +9108,10 @@ function h2SpeelGesprek(vlag, regels) {
 function speelH2Muntengesprek() {
   h2SpeelGesprek('h2_muntengesprek_gezien', [
     { wie: 'jan',   tekst: '"Felix? Ben jij dat daarbinnen?"' },
-    { wie: 'felix', tekst: '"Jan. Goddank. Waar ben ik eigenlijk, man?"' },
-    { wie: 'jan',   tekst: '"In een huis in de Heer Donatuslaan. Hoe krijgen we jou hieruit?"' },
-    { wie: 'felix', tekst: '"Niet via dit gat. Ik pas er nooit door, en jij komt er net bij. Dus jij doet de benen, ik doe de mond."' },
-    { wie: 'felix', tekst: '"Ik heb hier een zakje munten gevonden. Haal daar een outfit mee bij Naald en Masker, in het Kraaienkwartier."' },
-    { wie: 'jan',   tekst: '"Een outfit. Natuurlijk. En dan?"' },
-    { wie: 'felix', tekst: '"Dan klets ik mezelf hier wel uit."' }
-  ]);
+    { wie: 'felix', tekst: '"Jan. Goddank. En nee, ik weet niet waar ik ben."' },
+    { wie: 'jan',   tekst: '"Een huis in de Heer Donatuslaan. Hoe krijg ik je eruit?"' },
+    { wie: 'felix', tekst: '"Niet door dit gat. Ik heb hier munten gevonden: haal er een outfit mee bij Naald en Masker, in het Kraaienkwartier."' }
+  ], H2_GESPREK_MUNTEN);
 }
 
 // Het outfitgesprek: Jan is terug met de vermomming.
@@ -9064,10 +9119,8 @@ function speelH2Outfitgesprek() {
   h2SpeelGesprek('h2_outfitgesprek_gezien', [
     { wie: 'felix', tekst: '"Jan? Zeg me dat je hem hebt."' },
     { wie: 'jan',   tekst: '"Ik heb hem. Madeleine pakte hem van de plank alsof ze me verwachtte."' },
-    { wie: 'felix', tekst: '"Dat deed ze ook. Prop hem door het gat."' },
-    { wie: 'jan',   tekst: '"En dan ben je eruit?"' },
-    { wie: 'felix', tekst: '"Dan begint het pas. Blijf nog even staan, ik heb iets van je nodig."' }
-  ]);
+    { wie: 'felix', tekst: '"Dat deed ze ook. Prop hem door het gat en blijf staan, ik heb nog iets van je nodig."' }
+  ], H2_GESPREK_OUTFIT);
 }
 
 // Het afscheid, nadat Felix de outfit-code heeft ingevoerd.
@@ -9075,7 +9128,7 @@ function speelH2Afscheid() {
   h2SpeelGesprek('h2_afscheid_gezien', [
     { wie: 'felix', tekst: '"Hebbes. Ga nu maar, Jan. Wat hierna komt kun je beter niet zien."' },
     { wie: 'jan',   tekst: '"Ik hoor het wel als het misgaat."' }
-  ]);
+  ], null);
 }
 
 // Jan typt de code die Felix hem voorleest. Pas daarmee neemt hij het
@@ -9167,9 +9220,7 @@ function renderH2FelixKamer(loc) {
     const outfitGeleverd  = hasVisited('jan_outfit_geleverd');
     const outfitCodeIn    = hasVisited('felix_code_ingevoerd');
 
-    const wachtStrook = function (tekst) {
-      return '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">' + tekst + '</p>';
-    };
+    const wachtStrook = h2Wacht;
 
     // 1. Felix heeft de outfit-code ingevoerd: eerst het gedeelde afscheid,
     //    dan mag Jan weg. De vloek loopt vanaf hier weer.
@@ -9185,7 +9236,7 @@ function renderH2FelixKamer(loc) {
         extra: wachtStrook('Felix heeft de code ingevoerd. Je kunt nu verder.') +
           '<div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><button class="btn" onclick="janVerderNaCode()">Verder</button></div>'
       });
-      if (!hasVisited('h2_afscheid_gezien')) speelH2Afscheid();
+      speelH2Afscheid();
       return naAfscheid;
     }
 
@@ -9200,8 +9251,8 @@ function renderH2FelixKamer(loc) {
           '<div class="code-section">' +
             '<span class="code-label">Lees deze code voor aan Felix: ' + VASTZIT_SCENARIOS.felix_hd2.code + '</span>' +
           '</div>' +
-          wachtStrook('Wacht tot Felix de code heeft ingevoerd. Je kunt hier nog niet weg.'),
-        onBack: function () { toonToast('🔒', 'Wacht tot Felix de code heeft ingevoerd'); }
+          wachtStrook('Wacht op Felix, hij voert de code in. Je kunt hier nog niet weg.'),
+        onBack: function () { toonToast('🔒', 'Wacht op Felix, hij voert de code in'); }
       });
     }
 
@@ -9214,14 +9265,21 @@ function renderH2FelixKamer(loc) {
         setSharedState('vflag_jan_outfit_bij_gat', true);
       }
       h2SchaduwPauze(true);
+      // De knop komt pas als beiden het gesprek uit hebben. Anders duwt de
+      // snelste klikker de vermomming door het gat terwijl de ander nog leest,
+      // en mist die het hele moment.
+      const outfitBeide = h2BeideKlaar(H2_GESPREK_OUTFIT);
       const naOutfitgesprek = h2Scene({
         container: document.getElementById('locatie-content'),
         titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
         dialog: ['Je hebt de bundel onder je arm. Achter de muur is het stil, maar je weet dat hij er is.'],
-        acties: [{ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix }],
+        acties: outfitBeide
+          ? [{ label: 'Prop de vermomming door het gat', onclick: janLevertOutfitAanFelix }]
+          : [],
+        extra: outfitBeide ? '' : h2WachtLeest(),
         onBack: function () { toonToast('🔒', 'Felix wacht op die vermomming'); }
       });
-      if (!hasVisited('h2_outfitgesprek_gezien')) speelH2Outfitgesprek();
+      speelH2Outfitgesprek();
       return naOutfitgesprek;
     }
 
@@ -9258,14 +9316,17 @@ function renderH2FelixKamer(loc) {
     //    tot hij het zakje door het gat duwt.
     if (felixKlaar) {
       h2SchaduwPauze(true);
+      const muntenBeide = h2BeideKlaar(H2_GESPREK_MUNTEN);
       const naMuntengesprek = h2Scene({
         container: document.getElementById('locatie-content'),
         titel: loc.naam, sub: loc.sub, image: felixKamerImage(),
         dialog: ['Aan de andere kant hoor je hem rommelen.'],
-        extra: wachtStrook('Wacht tot Felix het zakje doorgeeft.'),
-        onBack: function () { toonToast('🔒', 'Blijf staan tot Felix het zakje doorgeeft'); }
+        extra: muntenBeide
+          ? wachtStrook('Wacht op Felix, hij geeft het zakje door.')
+          : h2WachtLeest(),
+        onBack: function () { toonToast('🔒', 'Wacht op Felix, hij geeft het zakje door'); }
       });
-      if (!hasVisited('h2_muntengesprek_gezien')) speelH2Muntengesprek();
+      speelH2Muntengesprek();
       return naMuntengesprek;
     }
 
@@ -9359,7 +9420,7 @@ function renderH2FelixKamer(loc) {
         ],
         acties: [{ label: '\u2726 Vermom', onclick: felixVermomEscape }]
       });
-      if (!hasVisited('h2_afscheid_gezien')) speelH2Afscheid();
+      speelH2Afscheid();
       return felixNaAfscheid;
     }
 
@@ -9389,9 +9450,11 @@ function renderH2FelixKamer(loc) {
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: ['Weer een schaduw voor het gat. En deze keer draagt hij iets.'],
-        extra: '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Jan de vermomming doorgeeft.</p>'
+        extra: h2BeideKlaar(H2_GESPREK_OUTFIT)
+          ? h2Wacht('Wacht op Jan, hij propt de vermomming door het gat.')
+          : h2WachtLeest()
       });
-      if (!hasVisited('h2_outfitgesprek_gezien')) speelH2Outfitgesprek();
+      speelH2Outfitgesprek();
       return felixNaOutfitgesprek;
     }
 
@@ -9411,7 +9474,7 @@ function renderH2FelixKamer(loc) {
           '<div class="code-section">' +
             '<span class="code-label">Lees deze code voor aan Jan: ' + H2_MUNTEN_CODE + '</span>' +
           '</div>' +
-          '<p style="text-align:center;font-style:italic;color:var(--mist);margin:1rem 0 .5rem">Wacht tot Jan de code heeft ingevoerd.</p>'
+          h2Wacht('Wacht op Jan, hij voert de code in.')
       });
     }
 
@@ -9430,6 +9493,7 @@ function renderH2FelixKamer(loc) {
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
         dialog: ['Het zakje is weg. Nu is het wachten. Als hij terugkomt, kun je eruit.'],
+        extra: h2Wacht('Wacht op Jan, hij haalt de vermomming.'),
         acties: [{ label: '\ud83e\ude9c Klim op het kratje', onclick: startFelixSpiek }]
       });
     }
@@ -9439,6 +9503,9 @@ function renderH2FelixKamer(loc) {
     if (hasVisited('felix_klaar_voor_jan') && janHier) {
       h2SchaduwPauze(true);
       startFelixGatWatch(true);
+      // Zelfde poortje als aan Jans kant: pas doorgeven als beiden het
+      // gesprek uit hebben.
+      const muntenBeideF = h2BeideKlaar(H2_GESPREK_MUNTEN);
       const felixNaMuntengesprek = h2Scene({
         container: document.getElementById('locatie-content'),
         titel: titelTeTonen, sub: subTeTonen, image: felixKamerImage(),
@@ -9446,9 +9513,12 @@ function renderH2FelixKamer(loc) {
           'Een schaduw voor het gat in de muur. Groot genoeg om erbij te kunnen, en met de juiste lengte. Eindelijk iemand aan de goede kant van de muur.',
           'Je vist het zakje uit je zak. Nu maar hopen dat hij er met die lange arm bij kan.'
         ],
-        acties: [{ label: '\u2726 Geef het zakje door het gat', onclick: felixGeefMuntenAanJan }]
+        acties: muntenBeideF
+          ? [{ label: '\u2726 Geef het zakje door het gat', onclick: felixGeefMuntenAanJan }]
+          : [],
+        extra: muntenBeideF ? '' : h2WachtLeest()
       });
-      if (!hasVisited('h2_muntengesprek_gezien')) speelH2Muntengesprek();
+      speelH2Muntengesprek();
       return felixNaMuntengesprek;
     }
 
@@ -21540,9 +21610,10 @@ function buildDebugPanel() {
       // Solo testen zonder tweede tablet: doet alsof Jans tablet het
       // gat-scherm toont, zodat Felix' overdracht-knop verschijnt.
       ['🕳️ Jan staat bij het gat (aan/uit)', function(){ setSharedState('debug_jan_bij_gat', getSharedState('debug_jan_bij_gat') ? false : true); close(); h2refresh(); }, true, 'Felix H2'],
-      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ ['felix_munten_gevonden','felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd','jan_heeft_munten','h2_muntengesprek_gezien'].forEach(markVisited); ['felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['🤝 Jan heeft de munten aangenomen (shortcut)', function(){ ['felix_munten_gevonden','felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd','jan_heeft_munten','h2_muntengesprek_gezien'].forEach(markVisited); ['felix_klaar_voor_jan','felix_munten_aan_jan','munten_code_ingevoerd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); ['jan','felix'].forEach(function(r){ setSharedState(H2_GESPREK_MUNTEN + '_klaar_' + r, true); }); if (state.personage === 'jan' && !state.inventory.find(function(i){ return i.naam === ITEMS.zakjeMunten.naam; })) geefItem(ITEMS.zakjeMunten.emoji, ITEMS.zakjeMunten.naam); if (state.personage === 'felix') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.zakjeMunten.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['💬 Beide gat-gesprekken gelezen', function(){ ['jan','felix'].forEach(function(r){ setSharedState(H2_GESPREK_MUNTEN + '_klaar_' + r, true); setSharedState(H2_GESPREK_OUTFIT + '_klaar_' + r, true); }); markVisited('h2_muntengesprek_gezien'); markVisited('h2_outfitgesprek_gezien'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🗝️ Jan hoort/bezoekt Felix', function(){ markVisited('jan_bezocht_felix'); close(); h2refresh(); }, true, 'Felix H2'],
-      ['👘 Jan levert de vermomming (shortcut)', function(){ ['jan_outfit_gekocht','jan_outfit_bij_gat','h2_outfitgesprek_gezien','jan_outfit_geleverd'].forEach(markVisited); ['jan_outfit_bij_gat','jan_outfit_geleverd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); if (state.personage === 'jan') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.felixOutfit.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
+      ['👘 Jan levert de vermomming (shortcut)', function(){ ['jan_outfit_gekocht','jan_outfit_bij_gat','h2_outfitgesprek_gezien','jan_outfit_geleverd'].forEach(markVisited); ['jan_outfit_bij_gat','jan_outfit_geleverd'].forEach(function(f){ setSharedState('vflag_' + f, true); }); ['jan','felix'].forEach(function(r){ setSharedState(H2_GESPREK_OUTFIT + '_klaar_' + r, true); }); if (state.personage === 'jan') { state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.felixOutfit.naam; }); updateInventoryBar(); } close(); h2refresh(); }, true, 'Felix H2'],
       ['✦ Code ingevoerd (outfit valt bij Felix)', function(){ simuleerFelixCode(); close(); h2refresh(); }, true, 'Felix H2'],
       ['✅ Felix vrij (vermomd als Liu-Yen)', function(){ markVisited('felix_hd2_vrij'); close(); h2refresh(); }, true, 'Felix H2'],
       ['🚪 Geheime deur Nummer 1 (bonuskamer)', function(){ close(); openKamer1Bonus(); }, true, 'Felix H2'],
@@ -21973,6 +22044,12 @@ function debugFelixWeerVastInH2() {
    'jan_outfit_geleverd'].forEach(function (f) {
     setSharedState('vflag_' + f, null);
     setSharedState(f, null);
+  });
+  // Klaar-met-lezen van beide gat-gesprekken terug naar nul, voor allebei de
+  // rollen. Blijft er een staan, dan denkt de ander dat hij al gelezen heeft.
+  ['jan', 'felix'].forEach(function (r) {
+    setSharedState(H2_GESPREK_MUNTEN + '_klaar_' + r, null);
+    setSharedState(H2_GESPREK_OUTFIT + '_klaar_' + r, null);
   });
   // Aanwezigheid bij het gat en de solo-testsleutel terug naar nul.
   setSharedState('jan_bij_gat', 0);
