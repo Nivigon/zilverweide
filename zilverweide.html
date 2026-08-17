@@ -14071,6 +14071,10 @@ function zetSceneHotspot(opts) {
     hs.appendChild(stof);
   }
 
+  // De tel van het kloppen. Staat als variabele op het element, zodat de
+  // animatie en het geluid dat erbij hoort dezelfde bron hebben.
+  if (opts.telMs) hs.style.setProperty('--sv-tel', opts.telMs + 'ms');
+
   if (window.getComputedStyle(box).position === 'static') box.style.position = 'relative';
   // Onderkant vastzetten: dan snijdt cover alleen de bovenkant weg en blijft
   // wat onderin de afbeelding staat altijd in beeld (en dus aanklikbaar).
@@ -14121,44 +14125,58 @@ function vondstWeigert(hs) {
   setTimeout(function () { hs.classList.remove('sv-weigert'); }, 780);
 }
 
-// Een zichtbaar voorwerp uit een scène-afbeelding oppakken: gloed en rook
-// doven, en een kopie van het beeld vliegt naar de rugzak-knop. De kopie hangt
-// aan de body, want .sc-image heeft overflow:hidden en zou de vlucht anders
-// bij de rand van de afbeelding afknippen.
-function vondstNaarRugzak(hs) {
+// Een zichtbaar voorwerp verdwijnt van de scène-afbeelding: het vervaagt ter
+// plekke, met de gloed mee, en de rook waaiert nog even uit. Ook gebruikt voor
+// wie te laat tikt, zodat de bloem daar niet hard van het scherm knalt.
+function vondstVervaagt(hs) {
   if (!hs) return;
-  var beeld = hs.querySelector('.sv-beeld');
-  var vanaf = (beeld || hs).getBoundingClientRect();
   hs.style.pointerEvents = 'none';
   hs.classList.add('sv-weg');
-  setTimeout(function () { if (hs.parentNode) hs.parentNode.removeChild(hs); }, 500);
+  setTimeout(function () { if (hs.parentNode) hs.parentNode.removeChild(hs); }, 620);
+}
 
-  var doel = document.querySelector('#inv-bar .inv-knop');
-  if (!beeld || !doel || !vanaf.width) return;
-  var naar = doel.getBoundingClientRect();
-  if (!naar.width) return;   // rugzak-balk niet in beeld: geen vlucht
-
-  var vlieger = document.createElement('img');
-  vlieger.className = 'sv-vlieger';
-  vlieger.src = beeld.src;
-  vlieger.alt = '';
-  vlieger.setAttribute('aria-hidden', 'true');
-  vlieger.style.left   = vanaf.left + 'px';
-  vlieger.style.top    = vanaf.top + 'px';
-  vlieger.style.width  = vanaf.width + 'px';
-  vlieger.style.height = vanaf.height + 'px';
-  document.body.appendChild(vlieger);
-  var dx = (naar.left + naar.width / 2) - (vanaf.left + vanaf.width / 2);
-  var dy = (naar.top + naar.height / 2) - (vanaf.top + vanaf.height / 2);
-  // Twee frames wachten: anders zet de browser begin- en eindstand in één keer
-  // en zie je geen vlucht, alleen een sprong.
-  requestAnimationFrame(function () {
-    requestAnimationFrame(function () {
-      vlieger.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.16) rotate(-14deg)';
-      vlieger.style.opacity   = '.15';
+// ══════════════════════════════════════════════════════════════════
+// EEN VONDST DIE MAAR ÉÉN SPELER KAN KRIJGEN
+// ══════════════════════════════════════════════════════════════════
+// Eerst de gedeelde stand lezen en dan schrijven laat een gaatje open: tussen
+// die twee stappen kan een andere tablet hetzelfde doen, en dan winnen ze
+// allebei. Firebase lost dat op met een transactie: je stuurt geen waarde maar
+// een functie die de server met de actuele waarde uitvoert, en die opnieuw
+// draait als iemand je net voor was. De volgorde valt dus op de server.
+//
+// Zonder Firebase (los testen, geen sessie) of bij een netwerkfout valt hij
+// terug op de oude lokale controle. Bewuste keuze: een zeldzame dubbele vondst
+// is minder erg dan een quest die vastloopt op een verplicht voorwerp.
+function claimGedeeldeVondst(sleutel, waarde, opGewonnen, opTeLaat) {
+  function lokaal() {
+    if (getSharedState(sleutel)) { opTeLaat(); return; }
+    setSharedState(sleutel, waarde);
+    opGewonnen();
+  }
+  if (getSharedState(sleutel)) { opTeLaat(); return; }   // al bekend: geen ronde nodig
+  if (!firebaseSharedBeschikbaar() || !_sharedDbRef) { lokaal(); return; }
+  try {
+    _sharedDbRef.child(sleutel).transaction(function (huidig) {
+      if (huidig) return;      // undefined teruggeven breekt af zonder te schrijven
+      return waarde;
+    }, function (fout, gelukt, snap) {
+      if (fout) { lokaal(); return; }
+      if (gelukt) {
+        // Nog een keer langs setSharedState: zelfde waarde, maar zo komt de
+        // schrijfactie ook in het logboek terecht.
+        setSharedState(sleutel, waarde);
+        opGewonnen();
+        return;
+      }
+      // Afgeketst: een teamgenoot was eerder. Diens waarde meteen lokaal
+      // overnemen, dan hoeft de snapshot-listener er niet op ingehaald te worden.
+      var vanAnder = snap && typeof snap.val === 'function' ? snap.val() : true;
+      state.shared[sleutel] = vanAnder;
+      opTeLaat();
     });
-  });
-  setTimeout(function () { if (vlieger.parentNode) vlieger.parentNode.removeChild(vlieger); }, 900);
+  } catch (e) {
+    lokaal();
+  }
 }
 
 function renderK1Groenteboer(loc) {
@@ -21574,6 +21592,10 @@ function buildDebugPanel() {
       // Zet de bloesem terug op de molenruïne zonder de rest van de quest te
       // resetten, zodat het plukken los te testen is.
       ['🌸 Bloesem terug op de molen', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem', null); state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.donderbloesem.naam; }); updateInventoryBar(); close(); }, true, 'H7 Apotheker'],
+      // Slot-test: twee claims tegelijk vanaf deze tablet. Werkt de transactie,
+      // dan meldt hij precies een winnaar en een verliezer. Twee tablets echt
+      // binnen een paar honderd ms laten tikken lukt met de hand niet.
+      ['🔒 Slot-test (2 claims tegelijk)', function(){ setSharedState('ing_donderbloesem', null); var uit = []; function klaar(w){ uit.push(w); if (uit.length < 2) return; var winst = uit.filter(function(x){ return x === 'gewonnen'; }).length; toonToast(winst === 1 ? '✅' : '⚠️', winst === 1 ? 'Slot werkt: 1 winnaar, 1 te laat' : 'Slot lekt: ' + winst + ' winnaars'); } claimGedeeldeVondst('ing_donderbloesem', 'verzameld', function(){ klaar('gewonnen'); }, function(){ klaar('telaat'); }); claimGedeeldeVondst('ing_donderbloesem', 'verzameld', function(){ klaar('gewonnen'); }, function(){ klaar('telaat'); }); close(); }, true, 'H7 Apotheker'],
       ['📿 + Kraal verzameld', function(){ setSharedState('ing_kraal', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['🖤 + Rouwstof verzameld', function(){ setSharedState('ing_rouwstof', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['✅ Alle 3 ingeleverd', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem','ingeleverd'); setSharedState('ing_kraal','ingeleverd'); setSharedState('ing_rouwstof','ingeleverd'); close(); }, true, 'H7 Apotheker'],
@@ -22840,6 +22862,7 @@ function startMolenSfeer() {
 }
 function stopMolenSfeer() {
   schaduwPauze(false, 'molensfeer');   // Schaduw mag weer
+  stopBloesemPuls();                   // de tel van de Donderbloesem mag nooit doortikken
   if (_molenEerie) {
     try { _molenEerie.pause(); _molenEerie.currentTime = 0; } catch (e) {}
     _molenEerie = null;
@@ -22893,14 +22916,9 @@ function renderDd6Bord(loc) {
   const drukKnop  = { label: 'Loop naar de molen', onclick: function(){ dempMuziek(); startMolenScene(loc); } };
   const terugKnop = { label: '← Loop terug', onclick: goBackFromLocatie, stijl: 'blood' };
 
-  // Anti-Schaduw quest: Donderbloesem groeit BIJ de molen (verbrande grond).
-  // Bij het bord alleen een teaser-regel; plukken kan pas in de molen-scene.
-  const bloesemActief = getSharedState('apotheker_quest_actief') && !getSharedState('ing_donderbloesem');
-  function metBloesem(basisActies) { return basisActies; }
-  // Teaser-regel bij het bord: wijst richting de molen.
-  const bloesemRegel = bloesemActief
-    ? { spreker: 'Verteller', tekst: 'Verderop, bij de molen zelf, meen je tussen de verkoolde grond iets bleeks te zien groeien. Donderbloesem? Daarvoor moet je wel het pad af.' }
-    : null;
+  // Anti-Schaduw quest: bij het bord verraadt niets de Donderbloesem. Hij groeit
+  // pas verderop, op de ruine zelf, en het spoor ernaartoe loopt via de hint van
+  // de apotheker: een plek die ooit in vlammen opging.
 
   // ── Na Heer Donatuslaan: neutrale beschrijving, molen-scene blijft intact ──
   if (hasVisited('sintdonatuslaan_unlocked')) {
@@ -22908,8 +22926,7 @@ function renderDd6Bord(loc) {
     const dialogNaHD = [
       'Een houten bord op een paaltje: VERBODEN TOEGANG. Het pad ligt er stil bij.'
     ];
-    if (bloesemRegel) dialogNaHD.push(bloesemRegel);
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null, dialog: dialogNaHD, acties: metBloesem([drukKnop, terugKnop]) });
+    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null, dialog: dialogNaHD, acties: [drukKnop, terugKnop] });
   }
 
   if (p === 'fenna') {
@@ -22938,8 +22955,7 @@ function renderDd6Bord(loc) {
     dialog.push('Ze glimlacht. Haar tanden zijn niet helemaal recht.');
     dialog.push({ spreker: 'Mevr. van Wallingen', tekst: "Vooral niet voor zo'n jong ding als jij. Pas op, meisje." });
     dialog.push({ spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Ze komt hier vaker. Waarom zou iemand hier graag komen.' });
-    if (bloesemRegel) dialog.push(bloesemRegel);
-    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null, dialog: dialog, acties: metBloesem([drukKnop, terugKnop]) });
+    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null, dialog: dialog, acties: [drukKnop, terugKnop] });
   }
 
   if (p === 'jan') {
@@ -22950,7 +22966,7 @@ function renderDd6Bord(loc) {
         { spreker: 'Jan', tekst: '*(in gedachten)* Verboden toegang. Altijd een goede reden om juist te gaan.' },
         'Er hangt iets in de lucht. Niet alleen de geur — iets in de stilte. Geen vogels. Geen krekels. Niets.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Het is hier te stil. Veel te stil voor een bos.' }
-      ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
+      ], acties: [drukKnop, terugKnop] });
   }
 
   if (p === 'kelly') {
@@ -22960,7 +22976,7 @@ function renderDd6Bord(loc) {
         { spreker: 'Kelly', tekst: '*(in gedachten)* Verboden toegang. Maar mensen verbieden vaak juist de plekken waar antwoorden liggen.' },
         'Ze kijkt naar de molen in de verte. De zwarte vlekken op de wanden.',
         { spreker: 'Kelly', tekst: '*(in gedachten)* Daar is iets gebeurd. Iets ergs. Ik moet weten wat.' }
-      ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
+      ], acties: [drukKnop, terugKnop] });
   }
 
   if (p === 'felix') {
@@ -22973,14 +22989,14 @@ function renderDd6Bord(loc) {
         'Felix nadert het bord en scant — gewoonte van vroeger. Geen mensen in zicht. Geen verse sporen op het pad.',
         { spreker: 'Felix', tekst: '*(in gedachten)* Een bord met VERBODEN is een uitnodiging voor mannen zoals ik. Of voor idioten. Tegenwoordig is het verschil moeilijker te zien.' },
         eigen
-      ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
+      ], acties: [drukKnop, terugKnop] });
   }
 
   // fallback
   return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: null,
     dialog: [
       'Een houten bord: VERBODEN TOEGANG — DE OUDE MOLEN. Achter de kromme bomen ligt de molen, half ingestort, zwartgeblakerd.'
-    ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
+    ], acties: [drukKnop, terugKnop] });
 }
 
 // Anti-Schaduw quest: de Donderbloesem staat als voorwerp op de molenru\u00efne en
@@ -22995,6 +23011,7 @@ function renderDd6Bord(loc) {
 // rook aan en levert dezelfde tik de bloesem op.
 function molenBloesemHotspot() {
   if (getSharedState('ing_donderbloesem')) return;   // geplukt of al ingeleverd
+  var actief = !!getSharedState('apotheker_quest_actief');
   zetSceneHotspot({
     sleutel: 'donderbloesem',
     bevat: 'molenruine', natBreedte: 1280, natHoogte: 720,
@@ -23002,7 +23019,8 @@ function molenBloesemHotspot() {
     marge: 26,          // extra klikruimte rondom, voor vingers op een tablet
     ankerOnder: true,   // de bloesem staat onderin, die mag nooit weggesneden worden
     beeld: 'items/donderbloesemitem.png',
-    sluimert: !getSharedState('apotheker_quest_actief'),
+    telMs: BLOESEM_TEL_MS,
+    sluimert: !actief,
     // De vlag wordt hier pas bij de tik gelezen, niet bij het opbouwen van de
     // sc\u00e8ne: een teamgenoot kan de quest starten terwijl jij in de molen staat.
     onKlik: function (el) {
@@ -23010,11 +23028,55 @@ function molenBloesemHotspot() {
       else { vondstWeigert(el); speelBloesemPluk(0.22); }
     }
   });
+  // Klopt hij, dan klinkt hij ook. In de sluimerstand blijft hij stil.
+  if (actief) startBloesemPuls(); else stopBloesemPuls();
 }
 
-// Korte klank bij het aanraken van de bloesem. Geritsel van de doolhof-set:
-// droog, kort, en het botst niet met de hartslag en de ambient van de
-// molen-sc\u00e8ne. E\u00e9n plek om te wisselen als er ooit een eigen sample komt.
+// \u2500\u2500 De tel van de Donderbloesem \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+// donderbloesem.mp3 duurt 1,93 seconden. Op een tel van 3,4 seconden houdt dat
+// ongeveer anderhalve seconde stilte over: hoorbaar als ritme, en het blijft
+// weg van de hartslag die tegelijk oploopt. De animatie draait op dezelfde tel
+// (zetSceneHotspot zet hem als --sv-tel), dus beeld en geluid lopen gelijk.
+var BLOESEM_TEL_MS  = 3400;
+var BLOESEM_PULS_SFX = 'geluid/molengeluid/donderbloesem.mp3';
+var _bloesemPulsTimer = null;
+
+function startBloesemPuls() {
+  stopBloesemPuls();
+  function tik() {
+    // Onderweg alsnog geplukt of van het scherm verdwenen: meteen stoppen, ook
+    // als niemand het netjes heeft afgesloten.
+    if (getSharedState('ing_donderbloesem') ||
+        !document.querySelector('.scene-hotspot[data-hotspot="donderbloesem"]')) {
+      stopBloesemPuls();
+      return;
+    }
+    try {
+      if (!window._bloesemPulsGeluid) {
+        window._bloesemPulsGeluid = new Audio(BLOESEM_PULS_SFX);
+        window._bloesemPulsGeluid.volume = 0.4;
+      }
+      window._bloesemPulsGeluid.currentTime = 0;
+      window._bloesemPulsGeluid.play().catch(function () {});
+    } catch (e) {}
+  }
+  tik();
+  _bloesemPulsTimer = setInterval(tik, BLOESEM_TEL_MS);
+}
+
+function stopBloesemPuls() {
+  if (_bloesemPulsTimer) { clearInterval(_bloesemPulsTimer); _bloesemPulsTimer = null; }
+  try {
+    if (window._bloesemPulsGeluid) {
+      window._bloesemPulsGeluid.pause();
+      window._bloesemPulsGeluid.currentTime = 0;
+    }
+  } catch (e) {}
+}
+
+// Korte klank bij het aanraken van de bloesem zonder dat je hem krijgt.
+// Geritsel van de doolhof-set: droog, kort, en het botst niet met de hartslag
+// en de ambient van de molen-sc\u00e8ne.
 var BLOESEM_PLUK_SFX = 'geluid/doolhof/ws-geritsel-1.mp3';
 function speelBloesemPluk(volume) {
   try {
@@ -23027,23 +23089,28 @@ function speelBloesemPluk(volume) {
   } catch (e) {}
 }
 
-// Anti-Schaduw quest: Donderbloesem plukken IN de molen-scene (timer
-// loopt door, dus een korte toast in plaats van een lade). Race-
-// condition-vrij: eerste speler wint, de rest ziet een korte melding.
+// Anti-Schaduw quest: Donderbloesem plukken IN de molen-scene (timer loopt
+// door, dus een korte toast in plaats van een lade). Wie wint wordt op de
+// server beslist, zie claimGedeeldeVondst: twee tablets kunnen hem niet allebei
+// pakken, ook niet als ze op dezelfde seconde tikken. Het beeld wacht daar niet
+// op, de bloesem vervaagt meteen; hij verdwijnt toch, wie er ook wint.
 function molenPlukDonderbloesem(el) {
-  if (getSharedState('ing_donderbloesem')) {
-    // Tweede tik, of een teamgenoot was net eerder: de bloesem gaat hier
-    // sowieso van het scherm. Heb je hem zelf, dan verder zwijgen; alleen wie
-    // hem niet heeft hoort dat een teamgenoot hem voor was.
-    if (el && el.parentNode) el.parentNode.removeChild(el);
-    var zelfInTas = !!state.inventory.find(function (i) { return i.naam === ITEMS.donderbloesem.naam; });
-    if (!zelfInTas) toonToast('\u2139\ufe0f', 'Al verzameld door een teamgenoot');
-    return;
-  }
-  setSharedState('ing_donderbloesem', 'verzameld');
-  speelBloesemPluk();
-  vondstNaarRugzak(el);
-  geefItem(ITEMS.donderbloesem.emoji, ITEMS.donderbloesem.naam);
+  stopBloesemPuls();
+  vondstVervaagt(el);
+  var zelfInTas = function () {
+    return !!state.inventory.find(function (i) { return i.naam === ITEMS.donderbloesem.naam; });
+  };
+  claimGedeeldeVondst('ing_donderbloesem', 'verzameld',
+    function () {
+      speelBloesemPluk();
+      geefItem(ITEMS.donderbloesem.emoji, ITEMS.donderbloesem.naam);
+    },
+    function () {
+      // Heb je hem zelf al (tweede tik), dan verder zwijgen. Alleen wie hem
+      // niet heeft hoort dat een teamgenoot eerder was.
+      if (!zelfInTas()) toonToast('\u2139\ufe0f', 'Al verzameld door een teamgenoot');
+    }
+  );
 }
 
 // ── FASE B — de getimede molen-scène ─────────────────────────────────
@@ -23127,7 +23194,7 @@ function renderMolenContent(loc, p) {
   // dus alleen een regel die je blik die kant op stuurt. Eerste speler wint.
   const bloesemHier = getSharedState('apotheker_quest_actief') && !getSharedState('ing_donderbloesem');
   const bloesemMolenRegel = bloesemHier
-    ? { spreker: 'Verteller', tekst: 'Tussen de verkoolde grond, vlak bij je voeten, groeit iets grilligs. Kleine bleke bloemen. Donderbloesem.' }
+    ? { spreker: 'Verteller', tekst: 'Links van je, bij de voet van de oude spiegel, groeit iets grilligs uit de verkoolde grond. Kleine zwarte bloemen op bleke stelen. Donderbloesem.' }
     : null;
   function molenDialog(arr) { return bloesemMolenRegel ? arr.concat([bloesemMolenRegel]) : arr; }
 
@@ -26636,7 +26703,7 @@ function toonStemmenStil(stil) {
     radial-gradient(closest-side,
       rgba(8,5,12,.3) 0%, rgba(8,5,12,.7) 32%,
       rgba(9,7,14,.5) 52%, rgba(10,8,16,.22) 72%, rgba(10,8,16,0) 100%);
-  animation:svAuraAdem 4.6s ease-in-out infinite alternate;
+  animation:svAuraKlopt var(--sv-tel, 3400ms) ease-in-out infinite;
 }
 .scene-hotspot-vondst .sv-rook{
   left:50%; top:52%; width:260%; height:230%;
@@ -26661,6 +26728,36 @@ function toonStemmenStil(stil) {
          drop-shadow(0 0 16px rgba(120,140,180,.34))
          drop-shadow(0 5px 7px rgba(0,0,0,.85));
   animation:svBeeldWiegt 6.2s ease-in-out infinite alternate;
+}
+/* ── Kloppen op de tel ─────────────────────────────────────────────
+   Zolang het voorwerp meetelt klopt het: het zwelt op, zakt terug en houdt
+   dan even stil. Beweging is hier de aanwijzing, niet meer licht. Op een
+   fel scherm in de zon valt een donkere gloed weg, een beweging niet, en
+   het oog gaat vanzelf naar wat beweegt. De tel komt uit --sv-tel, die
+   zetSceneHotspot zet, zodat beeld en geluid uit dezelfde bron komen. */
+.scene-hotspot-vondst:not(.sv-sluimer) .sv-beeld{
+  animation:svBeeldKlopt var(--sv-tel, 3400ms) ease-in-out infinite;
+}
+.scene-hotspot-vondst:not(.sv-sluimer) .sv-stof{
+  animation:svAsemt var(--sv-tel, 3400ms) ease-out infinite;
+}
+@keyframes svAuraKlopt{
+  0%  { transform:translate(-50%,-50%) scale(.88); opacity:.72; }
+  22% { transform:translate(-50%,-50%) scale(1.2); opacity:1; }
+  55% { transform:translate(-50%,-50%) scale(.94); opacity:.8; }
+  100%{ transform:translate(-50%,-50%) scale(.88); opacity:.72; }
+}
+@keyframes svBeeldKlopt{
+  0%  { transform:scale(1)    rotate(-1.2deg); }
+  13% { transform:scale(1.16) rotate(1.4deg); }
+  36% { transform:scale(1.01) rotate(-.5deg); }
+  100%{ transform:scale(1)    rotate(-1.2deg); }
+}
+@keyframes svAsemt{
+  0%  { opacity:0;   transform:translateX(-50%) translateY(10%)  scale(.45); }
+  18% { opacity:.5; }
+  58% { opacity:0;   transform:translateX(-50%) translateY(-28%) scale(1.35); }
+  100%{ opacity:0;   transform:translateX(-50%) translateY(-28%) scale(1.35); }
 }
 /* ── Sluimerstand ──────────────────────────────────────────────────
    Het voorwerp hoort al bij het decor voordat het ertoe doet, zodat er later
@@ -26723,10 +26820,6 @@ function toonStemmenStil(stil) {
   -webkit-mask-image:radial-gradient(ellipse at 50% 78%, #000 34%, rgba(0,0,0,.55) 62%, transparent 92%);
           mask-image:radial-gradient(ellipse at 50% 78%, #000 34%, rgba(0,0,0,.55) 62%, transparent 92%);
 }
-@keyframes svAuraAdem{
-  from{ transform:translate(-50%,-50%) scale(.92); opacity:.82; }
-  to  { transform:translate(-50%,-50%) scale(1.1);  opacity:1; }
-}
 @keyframes svRookDrift{
   from{ transform:translate(-50%,-50%) rotate(0deg)   scale(1); }
   50% { transform:translate(-46%,-54%) rotate(180deg) scale(1.14); }
@@ -26736,27 +26829,20 @@ function toonStemmenStil(stil) {
   from{ transform:rotate(-1.4deg); }
   to  { transform:rotate(1.4deg); }
 }
-/* Opgepakt: gloed en rook doven, het voorwerp zakt weg. */
+/* Opgepakt: het voorwerp vervaagt ter plekke. De gloed dooft mee en de rook
+   waaiert nog even uit, zodat er iets achterblijft van waar het stond. */
 .scene-hotspot-vondst.sv-weg .sv-aura,
 .scene-hotspot-vondst.sv-weg .sv-rook,
+.scene-hotspot-vondst.sv-weg .sv-stof,
 .scene-hotspot-vondst.sv-weg .sv-beeld{
   animation:none;
   opacity:0;
-  transition:opacity .42s ease, transform .42s ease;
+  transition:opacity .55s ease, transform .55s ease;
 }
+.scene-hotspot-vondst.sv-weg .sv-beeld{ transform:scale(.9); }
 .scene-hotspot-vondst.sv-weg .sv-aura{ transform:translate(-50%,-50%) scale(1.5); }
 .scene-hotspot-vondst.sv-weg .sv-rook{ transform:translate(-50%,-62%) scale(1.7); }
-
-/* Kopie van het voorwerp die naar de rugzak-knop vliegt (zie vondstNaarRugzak).
-   Hangt aan de body, dus buiten de afbeelding die overflow:hidden heeft. */
-.sv-vlieger{
-  position:fixed; z-index:9000; pointer-events:none;
-  object-fit:contain;
-  filter:brightness(.9) drop-shadow(0 0 10px rgba(163,180,214,.5));
-  /* De vlucht blijft zichtbaar en dooft pas vlak bij de rugzak-knop; zou de
-     doorzichtigheid meteen meelopen, dan zie je alleen een flits. */
-  transition:transform .72s cubic-bezier(.35,.03,.4,1), opacity .28s ease .44s;
-}
+.scene-hotspot-vondst.sv-weg::after{ opacity:0; transition:opacity .55s ease; }
 
 /* Kraai die op een scène-afbeelding zit (positie via inline top/right). */
 .scene-kraai{
