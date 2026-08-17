@@ -7841,9 +7841,46 @@ function begeleiderExtraHulp() {
   begeleiderRenderPaneel();
 }
 
+// Testapparaten in hetzelfde laatje zetten. De teamlobby is normaal de enige
+// plek waar tablets samen op een sessie uitkomen (zie rondTeamAf), en de
+// snelstart slaat die over. Zonder dit houdt elk apparaat de sessie die het
+// toevallig nog onthouden had, en zien twee testapparaten elkaar niet: de een
+// schrijft in het ene laatje, de ander leest uit het andere, en dan wacht
+// iedereen eeuwig op iemand die er nooit komt.
+//
+// Herpunten mag hier, precies zoals de teamlobby het doet: alles wat gedeelde
+// stand leest gaat via _sharedSessieId, ook de schaduw-brug en het
+// herstelpunt, dus die volgen mee.
+function zetSnelstartSessie(sid) {
+  if (typeof initSharedFirebase !== 'function') return;
+  initSharedFirebase(sid, true);
+  try { localStorage.setItem('zw_sessie', sid); } catch (e) {}
+  var ind = document.getElementById('sessie-indicator');
+  if (ind) ind.textContent = 'sessie: ' + sid;
+  if (typeof logboekSchrijf === 'function') {
+    logboekSchrijf('sessie', { actie: 'snelstart_sessie', sessie: sid });
+  }
+}
+
 // TIJDELIJK (testmodus): snelstart vanaf het splash-scherm. Start ook de
 // achtergrondmuziek, die normaal pas bij "Begin" aangaat.
 function debugSnelstart(p) {
+  // Eerst de sessie, want alles hieronder (rol_bezet, de reset, de rolkeuze)
+  // schrijft al in de gedeelde stand en moet in het juiste laatje landen.
+  // Een expliciete ?sessie= in de URL blijft leidend: dat is de sluiproute
+  // van de begeleider en die weet wat hij doet.
+  var _huidigeSessie = (typeof herstelSessieId === 'function') ? herstelSessieId() : 'test';
+  if (!window._sessieOverride && _huidigeSessie !== 'test') {
+    // Eenmalig per apparaat: daarna staat 'test' in localStorage en komt deze
+    // vraag niet meer terug. Annuleren blijft mogelijk, want via deze knoppen
+    // stap je na een crash ook een lopende teamsessie weer binnen, en dan mag
+    // een testsessie die niet zomaar wegkapen.
+    var naarTest = confirm(
+      'Dit apparaat onthoudt nog sessie "' + _huidigeSessie + '".\n\n' +
+      'OK = testsessie "test" gebruiken, zodat testapparaten elkaar zien.\n' +
+      'Annuleren = in "' + _huidigeSessie + '" blijven (herstel na een crash).');
+    if (naarTest) zetSnelstartSessie('test');
+  }
   // Kaart-introductie overslaan als het schuifje uit staat.
   if (!window._snelstartIntroAan) markVisited('overworld_intro_gezien');
   var m = document.getElementById('bg-music');
@@ -9276,6 +9313,21 @@ function renderH2FelixKamer(loc) {
 
   if (felixVast) {
     const janHier = janIsBijGat();
+
+    // Vangnet: Jans schermen wachten op deze drie vlaggen, maar ze worden maar
+    // een keer gedeeld, op het moment dat Felix de stap zet. Is de sessie
+    // daarna gereset, of kwam die ene schrijfactie niet aan, dan staat Felix
+    // hier met de munten in zijn zak terwijl Jan tot in de eeuwigheid "kom
+    // straks terug" ziet. Bij elke render bijschrijven wat lokaal al waar is
+    // en in de sessie ontbreekt. Zelfde patroon als aan Jans kant bij
+    // jan_bezocht_felix en jan_outfit_bij_gat. Vlaggen die een testknop
+    // bewust terugdraait komen hier niet terug: die wist ook de lokale kant.
+    ['felix_klaar_voor_jan', 'felix_munten_aan_jan', 'felix_code_ingevoerd']
+      .forEach(function (f) {
+        if (hasVisited(f) && !getSharedState('vflag_' + f)) {
+          setSharedState('vflag_' + f, true);
+        }
+      });
 
     // F5/F6: zodra de code is ingevoerd, valt de outfit door het gat en kan
     // Felix zich vermommen. Eerst het gedeelde afscheid, zodat Jan en Felix
