@@ -10532,13 +10532,14 @@ function renderH3Slagerij(loc) {
 }
 // ══ H4: De Kerk ════════════════════════════════════════════════════
 // Binnenkant van de kerk. Zolang de heksengok van Heer Donatuslaan nog niet
-// gemaakt is brandt binnen nog het kaarslicht; daarna is het er donker.
+// gemaakt is hangt er nog kaarslicht (kerkbinnenna.jpg); daarna is het er
+// donker (kerkbinnenna2.jpg).
 // Buitenkant blijft kerk.jpeg en het kerkdoolhof houdt zijn eigen afbeelding.
 function kerkBinnenAfbeelding() {
   var naGok = state.tobbeGokOpgelost || !!getSharedState('tobbe_gok_opgelost');
   return naGok
     ? 'locaties/heerdonatuslaan/kerkbinnenna2.jpg'
-    : 'locaties/heerdonatuslaan/kerkbinnen.jpg';
+    : 'locaties/heerdonatuslaan/kerkbinnenna.jpg';
 }
 // ══ H4: De Kerk ═══════════════════════════════════════════════════════
 // Priscilla (de non) en Tobbe (agressief, achterin). Kelly's archiefpad
