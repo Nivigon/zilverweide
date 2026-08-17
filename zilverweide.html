@@ -9023,12 +9023,27 @@ function h2SpeelGesprek(vlag, regels) {
   markVisited(vlag);
   h2SchaduwPauze(true);
   stopFelixGatWatch();
-  h2PopOpzet();
-  toonPopDialoog(h2GesprekStappen(regels), function () {
-    var cp = document.getElementById('char-pop');
-    if (cp) cp.style.display = '';
-    h2Herteken();
-  });
+  // Een tik wachten voor de dialoog echt opgaat. Deze gesprekken starten
+  // vanuit de renderer van H2, en bij het OPENEN van een locatie draait die
+  // renderer nog voor showScreen (zie openHeerDonatuslaanLocatie). Het
+  // vangnet in showScreen sluit elke openstaande pop-dialoog, dus degene die
+  // binnenloopt zag zijn eigen gesprek meteen weer verdwijnen. Wat overbleef
+  // was een kale scene zonder tekst en zonder knoppen, want h2PopOpzet had de
+  // scene er al voor leeggeruimd, en de ander stond in zijn eentje door het
+  // hele gesprek te klikken. De tablet die het gesprek via een binnenkomende
+  // vlag kreeg had er geen last van: daar volgt geen showScreen op.
+  setTimeout(function () {
+    // In de tussentijd weggelopen? Dan hoort het gesprek hier niet meer.
+    var scherm = document.getElementById('screen-locatie');
+    if (state.lastOpenedLocatie !== 'h2_felixkamer') return;
+    if (!scherm || !scherm.classList.contains('active')) return;
+    h2PopOpzet();
+    toonPopDialoog(h2GesprekStappen(regels), function () {
+      var cp = document.getElementById('char-pop');
+      if (cp) cp.style.display = '';
+      h2Herteken();
+    });
+  }, 140);
 }
 
 // Het muntengesprek: Jan komt bij het gat terwijl Felix iets te bieden heeft.
