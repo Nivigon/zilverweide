@@ -4011,6 +4011,9 @@ const VISITED_FLAGS = {
   jan_slagerij_gevlucht:      'Jan is uit de achterkamer van de slagerij gevlucht',
   kerk_non_weg:               'H4 Kerk: de non is weg nadat Kelly het archief heeft gedaan',
   fenna_gemeentehuis:         'H5: Fenna heeft bij het gemeentehuis Robbie getroffen',
+  // Persoonlijk, bewust NIET gedeeld: alleen wie Robbie daar zelf zag staan,
+  // mag later tekst krijgen waarin hij "weg" is.
+  h5_robbie_gezien:           'H5: deze speler heeft Robbie zelf bij het gemeentehuis zien staan',
   fenna_wallingen_ontmoet:    'Fenna heeft Mevr. van Wallingen bij het bord al eens ontmoet',
   fenna_herberg_gedaan:       'Fenna heeft de herberg-scene (boze menigte / climax) gespeeld',
   felix_kantoor:              'H5: Felix heeft de drie voorwerpen in het kantoor gevonden',
@@ -11202,7 +11205,15 @@ function renderH5Gemeentehuis(loc) {
   function ga(n) { renderH5Gemeentehuis(Object.assign({}, loc, { _stap: n })); }
   function terug() { if (typeof goBackFromLocatie === 'function') goBackFromLocatie(); }
 
+  // Wereldfeit: staat Robbie hier nog? Hij vertrekt zodra Fenna hem heeft
+  // getroffen. Los daarvan staat de persoonlijke vraag of DEZE speler hem hier
+  // ooit zelf heeft zien staan. Zonder dat onderscheid kreeg iemand die hier
+  // voor het eerst komt nadat Fenna langs is geweest tekst over een jongen die
+  // "weg" is terwijl hij die jongen hier nooit heeft gezien.
   const robbieAanwezig = !(hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis'));
+  const robbieZelfGezien = hasVisited('h5_robbie_gezien');
+  // Alleen zetten in de branches waar de speler hem daadwerkelijk ziet staan.
+  function onthoudRobbie() { if (!robbieZelfGezien) markVisited('h5_robbie_gezien'); }
 
   // ───────────────────────────────────────────── FENNA ──
   if (p === 'fenna') {
@@ -11258,16 +11269,25 @@ function renderH5Gemeentehuis(loc) {
       });
     }
     if (stap === 0) {
+      var felixDialog;
+      if (robbieAanwezig) {
+        onthoudRobbie();
+        felixDialog = [
+          { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien. Hé, is dat niet die fan van Fenna? Die jongen die overal opduikt waar zij is.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
+          { tekst: 'Hij houdt de deur in de gaten, niet jou. Een uitkijk die niet doorheeft dat hij er een is. En al die onrust vooraan is prima dekking. Jij hebt de voorkant toch niet nodig.', onShow: function() { verbergNpcPop(); } }
+        ];
+      } else if (robbieZelfGezien) {
+        felixDialog = [
+          'De uitkijk is weg. De dorpelingen dringen nog wel samen vooraan, gespannen, de sfeer om te snijden, maar jij hebt de voorkant toch niet nodig.'
+        ];
+      } else {
+        felixDialog = [
+          'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Iedereen kijkt naar de deur, niemand kijkt opzij. Prima dekking, en jij hebt de voorkant toch niet nodig.'
+        ];
+      }
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
-        dialog: robbieAanwezig
-          ? [
-              { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien. Hé, is dat niet die fan van Fenna? Die jongen die overal opduikt waar zij is.', onShow: function() { toonNpcPop('karakters/terugkerend/robbie-pop.png'); } },
-              { tekst: 'Hij houdt de deur in de gaten, niet jou. Een uitkijk die niet doorheeft dat hij er een is. En al die onrust vooraan is prima dekking. Jij hebt de voorkant toch niet nodig.', onShow: function() { verbergNpcPop(); } }
-            ]
-          : [
-              'De uitkijk is weg. De dorpelingen dringen nog wel samen vooraan, gespannen, de sfeer om te snijden, maar jij hebt de voorkant toch niet nodig.'
-            ],
+        dialog: felixDialog,
         acties: [{ label: 'Zoek een andere weg naar binnen', onclick: function () { ga(1); } }]
       });
     }
@@ -11329,6 +11349,7 @@ function renderH5Gemeentehuis(loc) {
   // ─────────────────────────────────────────────── JAN ──
   if (p === 'jan') {
     if (robbieAanwezig) {
+      onthoudRobbie();
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
@@ -11338,10 +11359,18 @@ function renderH5Gemeentehuis(loc) {
         ]
       });
     }
+    if (robbieZelfGezien) {
+      return renderLocatieScene({
+        container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        dialog: [
+          'De jongen die er net nog stond is weg. De dorpelingen staan er nog, net zo gespannen, de sfeer om te snijden. Je loopt door.'
+        ]
+      });
+    }
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
       dialog: [
-        'De jongen die er net nog stond is weg. De dorpelingen staan er nog, net zo gespannen, de sfeer om te snijden. Je loopt door.'
+        'Bij de ingang dringen dorpelingen samen, mopperend, de sfeer om te snijden. Toch is dit niet waar het vanavond echt losbarst. Je kijkt de gezichten langs, ziet niemand die je zoekt, en loopt door.'
       ]
     });
   }
@@ -11349,6 +11378,7 @@ function renderH5Gemeentehuis(loc) {
   // ───────────────────────────────────────────── KELLY ──
   if (p === 'kelly') {
     if (robbieAanwezig) {
+      onthoudRobbie();
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
@@ -11359,10 +11389,23 @@ function renderH5Gemeentehuis(loc) {
         ]
       });
     }
+    if (robbieZelfGezien) {
+      return renderLocatieScene({
+        container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
+        dialog: [
+          'De jongen is weg, maar de dorpelingen dringen nog samen en de spanning hangt er zwaar. En terwijl je verder wilt lopen, zie je in je ooghoek een schim bewegen tussen de kerk en het gemeentehuis.',
+          'Je blijft staan. Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
+        ]
+      });
+    }
+    // Kelly is hier nog nooit geweest en heeft Robbie hier dus ook nooit zien
+    // staan. Geen verwijzing naar een jongen, wel het schim-moment: dat is
+    // haar aanwijzing en die mag ze niet mislopen.
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
       dialog: [
-        'De jongen is weg, maar de dorpelingen dringen nog samen en de spanning hangt er zwaar. En terwijl je verder wilt lopen, zie je in je ooghoek een schim bewegen tussen de kerk en het gemeentehuis.',
+        'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Je leest de gezichten, maar er is niemand bij die je iets zegt.',
+        'En dan, terwijl je verder wilt lopen, zie je in je ooghoek een schim bewegen tussen de kerk en het gemeentehuis.',
         'Je blijft staan. Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
       ]
     });
@@ -21694,6 +21737,10 @@ function buildDebugPanel() {
       ['\ud83d\udcd6 Alle 4 rozen gelezen (4/4)', function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }, !boekDoorIedereenGelezen('rozen'), 'H4 Kerk'],
       ['\ud83d\udd04 Reset leestaak rozen (0/4)', function(){ debugResetLeestaak('rozen'); close(); }, telBoekLezers('rozen') > 0, 'H4 Kerk'],
       ['🏛️ Fenna bij gemeentehuis geweest', function(){ markVisited('fenna_gemeentehuis'); setSharedState('fenna_gemeentehuis', true); close(); }, true, 'H5 Gemeentehuis'],
+      // Persoonlijke vlag: hiermee test je het verschil tussen "ik zag die
+      // jongen hier staan en nu is hij weg" en "ik kom hier voor het eerst".
+      ['👤 Robbie hier zelf gezien (eigen vlag)', function(){ markVisited('h5_robbie_gezien'); close(); }, !hasVisited('h5_robbie_gezien'), 'H5 Gemeentehuis'],
+      ['🔄 Vergeet dat ik Robbie hier zag', function(){ state.visited.delete('h5_robbie_gezien'); close(); }, hasVisited('h5_robbie_gezien'), 'H5 Gemeentehuis'],
       // Het kerkarchief is normaal alleen te bereiken door het kerkdoolhof uit
       // te spelen. Deze knop zet je op de scène erna, zodat je die los kunt
       // testen (onder andere de schaduw-pauze en de terugknop daar).
