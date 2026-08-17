@@ -2509,6 +2509,7 @@ var GELUID_NAMEN = {
   'fout.mp3':             'fout antwoord',
   'doolhofarchief.mp3':   'doolhofmuziek archief',
   'doolhofkerk.mp3':      'doolhofmuziek kerk',
+  'kerkkoor.mp3':         'kerkkoor, binnen in de kerk',
   'ws-muziek.mp3':        'woud-doolhof muziek',
   'schaduwstart.mp3':     'vloek-onboarding, loop',
   'schaduwstartdrop.mp3': 'vloek-onboarding, drop',
@@ -5870,6 +5871,8 @@ function showScreen(id) {
   // werkt op naam, dus dit heft alleen de kamer-pauze op, niet die van een
   // ander onderdeel).
   if (id !== 'screen-locatie' && typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
+  // Zelfde voor het kerkkoor: buiten screen-locatie sta je niet meer in de kerk.
+  if (id !== 'screen-locatie' && typeof stopKerkKoor === 'function') stopKerkKoor();
   if (id !== 'screen-locatie' && typeof schaduwPauze === 'function') schaduwPauze(false, 'geheimekamer');
 
   if (id !== 'screen-locatie' && huidigDoolhof) {
@@ -9996,6 +9999,41 @@ function stopGeheimeKamerMuziek() {
   fadeMuziekIn();
 }
 
+// ── Kerkkoor: koorloop zolang een speler binnen in de kerk (H4) staat.
+// Zelfde patroon als de geheime-kamer-muziek: de achtergrondmuziek gaat op
+// pauze en komt met een zachte fade terug zodra de kerk verlaten wordt (via
+// showScreen, via goBackFromLocatie of via een scene die zijn eigen geluid
+// meebrengt). Het mp3-bestand mag ontbreken; dan blijft het simpelweg stil.
+var _kerkKoorAudio = null;
+var KERK_KOOR_VOLUME = MUZIEK_VOLUME * 0.8;   // 80% van het normale muziekniveau
+function startKerkKoor() {
+  if (!_kerkKoorAudio) {
+    _kerkKoorAudio = new Audio('geluid/heerdonatuslaan/kerk/kerkkoor.mp3');
+    _kerkKoorAudio.loop = true;
+    _kerkKoorAudio.addEventListener('error', function() {
+      console.warn('kerkkoor.mp3 niet gevonden op geluid/heerdonatuslaan/kerk/kerkkoor.mp3');
+    });
+  }
+  _kerkKoorAudio.volume = KERK_KOOR_VOLUME;
+  if (!_kerkKoorAudio.paused) return;   // speelt al, niet opnieuw beginnen
+  var bg = document.getElementById('bg-music');
+  if (bg) { try { bg.pause(); } catch (e) {} }
+  try {
+    _kerkKoorAudio.currentTime = 0;
+    _kerkKoorAudio.play().catch(function(e) { console.warn('kerkkoor.mp3 afspelen mislukt:', e); });
+  } catch (e) { console.warn('kerkkoor.mp3 fout:', e); }
+}
+
+// Stop het koor en laat de achtergrondmuziek zacht terugkomen. Geef false mee
+// als de volgende scene meteen zijn eigen geluid start (kerkdoolhof,
+// kerkkelder): die zet de muziek zelf stil, en dan hoeft hij niet eerst nog
+// even op te komen.
+function stopKerkKoor(hervatMuziek) {
+  if (!_kerkKoorAudio || _kerkKoorAudio.paused) return;
+  try { _kerkKoorAudio.pause(); _kerkKoorAudio.currentTime = 0; } catch (e) {}
+  if (hervatMuziek !== false) fadeMuziekIn();
+}
+
 function h3StartHartslag() {
   h3StopHartslag();
   _h3AchterActief = true;
@@ -10493,6 +10531,15 @@ function renderH3Slagerij(loc) {
   });
 }
 // ══ H4: De Kerk ════════════════════════════════════════════════════
+// Binnenkant van de kerk. Zolang de heksengok van Heer Donatuslaan nog niet
+// gemaakt is brandt binnen nog het kaarslicht; daarna is het er donker.
+// Buitenkant blijft kerk.jpeg en het kerkdoolhof houdt zijn eigen afbeelding.
+function kerkBinnenAfbeelding() {
+  var naGok = state.tobbeGokOpgelost || !!getSharedState('tobbe_gok_opgelost');
+  return naGok
+    ? 'locaties/heerdonatuslaan/kerkbinnenna2.jpg'
+    : 'locaties/heerdonatuslaan/kerkbinnen.jpg';
+}
 // ══ H4: De Kerk ═══════════════════════════════════════════════════════
 // Priscilla (de non) en Tobbe (agressief, achterin). Kelly's archiefpad
 // leidt naar het boek "Over de Rozen" en unlockt dat voor iedereen.
@@ -10518,6 +10565,11 @@ function renderH4Kerk(loc) {
     });
   }
 
+  // Vanaf hier staat de speler binnen: het koor aan, achtergrondmuziek op
+  // pauze. Idempotent, dus elke volgende render binnen de kerk laat de loop
+  // gewoon doorlopen.
+  startKerkKoor();
+
   // Na Tobbe-gok: Priscilla met dichtgenaaide mond, gebaart naar beneden → kelder.
   if (state.tobbeGokOpgelost && !state.kerkkelderGezien) {
     if (stap === 0) {
@@ -10533,7 +10585,7 @@ function renderH4Kerk(loc) {
     // Binnen: Priscilla met dichtgenaaide mond
     verbergNpcPop();
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
         { tekst: 'Priscilla staat bij het altaar. Haar mond is dichtgenaaid. Ze kan niet spreken.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/heerdonatuslaan/priscillagenaaid-pop.png'); }, 200); } },
         'Ze kijkt je aan met grote ogen. Haar blik gaat naar beneden. Herhaaldelijk. Dringend.',
@@ -10549,7 +10601,7 @@ function renderH4Kerk(loc) {
   if (nonWeg) {
     verbergNpcPop();
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
         'De kerk is stil en leeg. De kaarsen branden nog, maar Priscilla is nergens te bekennen.',
         'Het voelt alsof er net iemand is weggegaan.'
@@ -10560,7 +10612,7 @@ function renderH4Kerk(loc) {
   // ─────────────────────────────────────────── KELLY ──
   if (p === 'kelly') {
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
         'Priscilla staat al bij het altaar als je binnenkomt, en kijkt op alsof je iets hebt verstoord wat nog niemand had opgemerkt.',
         { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
@@ -10584,7 +10636,7 @@ function renderH4Kerk(loc) {
     if (stap === 1) {
       verbergNpcPop();
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+        container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
         dialog: [
           'Je stapt de kerk in. Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, in de laatste bank, een jongetje, alleen.'
         ],
@@ -10596,7 +10648,7 @@ function renderH4Kerk(loc) {
     }
     // stap === 2: Fenna bij Priscilla
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Bij de non', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Bij de non', image: kerkBinnenAfbeelding(),
       dialog: [
         { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
         'Je opent je mond om te reageren, maar ze is je voor.',
@@ -10618,7 +10670,7 @@ function renderH4Kerk(loc) {
     if (stap === 1) {
       verbergNpcPop();
       return renderLocatieScene({
-        container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+        container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
         dialog: [
           'Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, alleen op een bankje, een jongetje.'
         ],
@@ -10654,7 +10706,7 @@ function renderH4Kerk(loc) {
       dialog.push('Je haalt je schouders op, maar het steekt meer dan je laat zien.');
     }
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Bij de non', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Bij de non', image: kerkBinnenAfbeelding(),
       dialog: dialog,
       acties: [
         { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); felixNaarTobbe(); } },
@@ -10666,7 +10718,7 @@ function renderH4Kerk(loc) {
   // ─────────────────────────────────────────── JAN ──
   if (p === 'jan') {
     return renderLocatieScene({
-      container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+      container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
         'Priscilla kijkt op zodra je binnenkomt, klaar voor de aanval.',
         { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
@@ -10683,7 +10735,7 @@ function renderH4Kerk(loc) {
 
   // Fallback
   return renderLocatieScene({
-    container: cont, titel: loc.naam, sub: 'Binnen', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
     dialog: ['De kerk.']
   });
 }
@@ -10766,6 +10818,10 @@ function startKerkDoolhof() {
     }
   });
   huidigDoolhof.mount();
+  // Koor uit voordat de doolhofmuziek begint. Bewust mét hervatten: zo staat
+  // de hoofdmuziek weer aan op het moment dat startDoolhofMuziek kijkt of hij
+  // hem moet pauzeren, en komt hij na het doolhof vanzelf weer terug.
+  stopKerkKoor();
   startDoolhofMuziek('geluid/doolhof/doolhofkerk.mp3');
   // Monkey-patch _heksReset: fullscreen non-pop overlay bij elke fout.
   const origHeksReset = huidigDoolhof._heksReset.bind(huidigDoolhof);
@@ -10893,7 +10949,7 @@ function fennaNaarTobbe() {
   const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
   verbergNpcPop();
   renderLocatieScene({
-    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: kerkBinnenAfbeelding(),
     sprekerPops: Object.assign({}, SPREKER_POPS, { 'Tobbe': 'karakters/terugkerend/tobbeaggressief-pop.png' }),
     dialog: [
       'Naarmate je dichterbij komt, hoor je het. Een melodietje, zacht neuri\u00ebn. Bijna te mooi voor een kind van zijn leeftijd.',
@@ -10925,7 +10981,7 @@ function felixNaarTobbe() {
     openingRegel = { spreker: 'Felix', tekst: '"H\u00e9. Alles goed met je?"' };
   }
   renderLocatieScene({
-    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: kerkBinnenAfbeelding(),
     sprekerPops: Object.assign({}, SPREKER_POPS, { 'Tobbe': 'karakters/terugkerend/tobbeaggressief-pop.png' }),
     dialog: [
       'Je gaat naast hem zitten. Hij zegt niets, dus jij begint.',
@@ -15930,6 +15986,10 @@ function goBackFromLocatie() {
   // de hoofdmuziek niet kort dubbel met de kamer-loop speelt.
   if (typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
   schaduwPauze(false, 'geheimekamer');
+  // De kerk verlaten: koor uit, hoofdmuziek komt met een zachte fade terug.
+  // Ook dit staat vóór het bgm-vangnet hieronder, zodat de hoofdmuziek niet
+  // kort dubbel met de koorloop speelt.
+  if (typeof stopKerkKoor === 'function') stopKerkKoor();
   // Vangnet: als de hoofdmuziek om wat voor reden dan ook gepauzeerd is,
   // hervat hem nu (ongeacht welke module hem had stilgezet).
   var bgm = document.getElementById('bg-music');
@@ -19799,6 +19859,10 @@ function openKerkKelderAanloop() {
     setSharedState('kerk_kelder_aanwezig', aanwezig);
   }
 
+  // Je staat nog binnen in de kerk, dus het koor loopt door. Idempotent, en
+  // nodig voor de debugknop die hier rechtstreeks binnenkomt.
+  startKerkKoor();
+
   var alleVier = aanwezig.length >= 4;
   var dialog = [
     'Een smalle stenen trap voert naar beneden. Koude lucht stijgt op uit het donker.'
@@ -19816,7 +19880,7 @@ function openKerkKelderAanloop() {
     container: cont,
     titel: 'De Kerkkelder',
     sub: 'Heer Donatuslaan, onder de kerk',
-    image: 'locaties/heerdonatuslaan/kerk.jpeg',
+    image: kerkBinnenAfbeelding(),
     dialog: dialog,
     geenTerug: true,
     acties: acties,
@@ -20057,6 +20121,7 @@ var KK_PROLOOG = [
 ];
 
 function kerkkelderCinematic() {
+  stopKerkKoor(false);
   dempMuziek();
   kkStartLoop('_kkAchtergrond', 'kk-ambience.mp3', KK_BG_VOLUME);
   var el = kkOverlayEl();
@@ -21322,6 +21387,11 @@ function buildDebugPanel() {
       // te spelen. Deze knop zet je op de scène erna, zodat je die los kunt
       // testen (onder andere de schaduw-pauze en de terugknop daar).
       ['📕 Kerkarchief (na doolhof)', function(){ close(); debugOpenKerkArchief(); }, true, 'H4 Kerk'],
+      // Het kerkkoor los aan- en uitzetten, zodat het volume te horen is
+      // zonder eerst naar binnen te lopen. Uit zetten haalt de
+      // achtergrondmuziek weer terug, net als het verlaten van de kerk.
+      ['🎵 Kerkkoor aan', function(){ startKerkKoor(); close(); }, true, 'H4 Kerk'],
+      ['🔇 Kerkkoor uit', function(){ stopKerkKoor(); close(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
