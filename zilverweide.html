@@ -17476,7 +17476,14 @@ function toonNummer7Overleg() {
       { spreker: 'Felix', tekst: '"Mevrouw van Wallingen had zo gek nog niet gedacht. Als iemand die man aan de voordeur bezighoudt, kan een ander achterom een kijkje nemen."' },
       'Dat zou kunnen werken. Maar wie houdt hem dan bezig?',
       { spreker: 'Fenna-Vivi\u00e8nne', tekst: '"Robbie. Een fan van mij. Die heeft al beloofd te helpen als het nodig is. Ik ga hem even halen."' },
-      'Jullie kijken elkaar aan. Dit gaan we doen. Iedereen knikt. Fenna glipt weg om Robbie op te halen.'
+      'Jullie kijken elkaar aan. Dit gaan we doen. Iedereen knikt. Fenna glipt weg om Robbie op te halen.',
+      // Robbie krijgt hier een gezicht voor het hele team. Zonder dit moment
+      // kennen Jan, Kelly en Felix hem alleen van het stemscherm, en later bij
+      // het gemeentehuis moeten ze hem kunnen herkennen als hij daar op Fenna
+      // staat te wachten.
+      { tekst: 'Even later is ze terug, met een jongen naast zich die nauwelijks stil kan blijven staan. Hij kijkt jullie een voor een aan alsof hij niet gelooft dat hij hier mag zijn.', onShow: function() { setTimeout(function(){ toonNpcPop(robbiePop()); }, 200); } },
+      { spreker: 'Robbie Kweekel', tekst: '"Robbie. Robbie Kweekel, van Nummer 5. Als Fenna-Vivi\u00e8nne iets vraagt, doe ik het."' },
+      { tekst: 'Hij loopt vast richting de voordeur en haalt diep adem. Onthoud dat gezicht. Waar hij opduikt, zoekt hij haar.', onShow: function() { verbergNpcPop(); } }
     ],
     acties: [{ label: 'Verder \u2192', onclick: toonNummer7AvaScene }]
   });
@@ -21554,6 +21561,9 @@ function buildDebugPanel() {
       ['🏠 Alle 4 bij Nummer 7',     function(){ setSharedState('nummer7_aanwezig', ['jan','kelly','fenna','felix']); close(); }, state.heksOpgelost, 'Finale'],
       ['🗳️ Alle 4 in het stemscherm (heks-gok)', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, true); }); close(); }, !state.heksOpgelost, 'Finale'],
       ['↩️ Reset stemscherm-aanwezigheid', function(){ SHARED_ROLLEN.forEach(function(r){ setSharedState('gok_aanwezig_kraaienkwartier__' + r, false); }); close(); }, true, 'Finale'],
+      // Rechtstreeks naar het groepsoverleg voor Nummer 7, waar Fenna Robbie
+      // ophaalt en het hele team hem voor het eerst van dichtbij ziet.
+      ['🗣️ Overleg voor Nummer 7 (Robbie)', function(){ close(); toonNummer7Overleg(); }, true, 'Finale'],
       ['🎬 Start K6-aanloop nu',     function(){ close(); toonNummer7Filmpje(); }, !k6FinaleContainer && !hasVisited('nummer7_filmpje_gezien'), 'Finale'],
       ['⏭️ K6-aanloop overslaan',    function(){ close(); beeindigK6Finale(); }, !!k6FinaleContainer, 'Finale'],
       ['😱 K6-sprong testen (heks)', function(){ close(); debugK6Sprong(); }, !k6FinaleContainer, 'Finale'],
