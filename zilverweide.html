@@ -13929,8 +13929,8 @@ function zetKraaiOpScene(container, src, opts) {
 // 16:9 afwijkt en cover dus iets wegsnijdt. Bij draaien of formaatwissel
 // wordt het opnieuw geplaatst.
 //
-// Het gebied is volledig onzichtbaar: geen randje, geen gloed, niets dat
-// verraadt dat er iets te halen valt. Het vignet over de afbeelding heeft
+// Het gebied is standaard volledig onzichtbaar: geen randje, geen gloed, niets
+// dat verraadt dat er iets te halen valt. Het vignet over de afbeelding heeft
 // pointer-events:none, dus de klik komt gewoon aan.
 //
 // `ankerOnder: true` zet de afbeelding met de onderkant vast in plaats van
@@ -13938,6 +13938,16 @@ function zetKraaiOpScene(container, src, opts) {
 // is 16:9 met een maximumhoogte, en op brede of lage schermen wordt het
 // daardoor breder dan 16:9. Cover snijdt dan boven en onder evenveel weg, en
 // precies dat onderste stuk kan het hele doelwit uit beeld duwen.
+//
+// `sleutel` houdt meerdere klikgebieden in dezelfde scène uit elkaar. Zonder
+// sleutel heet een gebied 'standaard'; een tweede aanroep met dezelfde sleutel
+// vervangt het oude gebied, andere sleutels blijven staan. De molenruïne heeft
+// er twee: de verborgen naaldenpop en de zichtbare Donderbloesem.
+//
+// `beeld` zet een voorwerp bovenop de achtergrond, met zwarte gloed en rook
+// eromheen (zie .scene-hotspot-vondst in de stylesheet). Dan zijn x1..y2 de
+// randen van het voorwerp zelf en maakt `marge` het klikgebied daaromheen
+// groter, zodat een vinger op een tablet hem ook raakt.
 //
 //   zetSceneHotspot({ bevat:'nummer2voorkamer', natBreedte:1280, natHoogte:720,
 //                     x1:450, y1:529, x2:570, y2:625, ankerOnder:true,
@@ -13953,12 +13963,14 @@ function zetSceneHotspot(opts) {
     try { bg = window.getComputedStyle(box).backgroundImage || ''; } catch (e) {}
     if (bg.indexOf(opts.bevat) === -1) return;
   }
-  var oud = box.querySelector('.scene-hotspot');
+  var sleutel = opts.sleutel || 'standaard';
+  var oud = box.querySelector('.scene-hotspot[data-hotspot="' + sleutel + '"]');
   if (oud && oud.parentNode) oud.parentNode.removeChild(oud);
 
   var hs = document.createElement('button');
   hs.type = 'button';
   hs.className = 'scene-hotspot';
+  hs.setAttribute('data-hotspot', sleutel);
   hs.setAttribute('aria-hidden', 'true');
   hs.tabIndex = -1;
   hs.onclick = function (e) {
@@ -13966,6 +13978,32 @@ function zetSceneHotspot(opts) {
     e.stopPropagation();
     if (typeof opts.onKlik === 'function') opts.onKlik(hs);
   };
+
+  // Zichtbaar voorwerp: gloed en rook onder het beeld, beeld erbovenop, en een
+  // stofwolk die alleen opstuift als je het voorwerp aanraakt terwijl het nog
+  // niet van jou kan zijn (zie vondstWeigert).
+  var beeldEl = null;
+  var marge = opts.beeld ? (opts.marge || 0) : 0;
+  if (opts.beeld) {
+    hs.classList.add('scene-hotspot-vondst');
+    if (opts.sluimert) hs.classList.add('sv-sluimer');
+    var aura = document.createElement('span');
+    aura.className = 'sv-aura';
+    var rook = document.createElement('span');
+    rook.className = 'sv-rook';
+    var stof = document.createElement('span');
+    stof.className = 'sv-stof';
+    beeldEl = document.createElement('img');
+    beeldEl.className = 'sv-beeld';
+    beeldEl.src = opts.beeld;
+    beeldEl.alt = '';
+    beeldEl.draggable = false;
+    hs.appendChild(aura);
+    hs.appendChild(rook);
+    hs.appendChild(beeldEl);
+    hs.appendChild(stof);
+  }
+
   if (window.getComputedStyle(box).position === 'static') box.style.position = 'relative';
   // Onderkant vastzetten: dan snijdt cover alleen de bovenkant weg en blijft
   // wat onderin de afbeelding staat altijd in beeld (en dus aanklikbaar).
@@ -13987,14 +14025,73 @@ function zetSceneHotspot(opts) {
     var offX = (bw - opts.natBreedte * schaal) / 2;
     var offY = (bh - opts.natHoogte * schaal);
     if (!opts.ankerOnder) offY = offY / 2;   // standaard: gecentreerd
-    hs.style.left   = (offX + opts.x1 * schaal) + 'px';
-    hs.style.top    = (offY + opts.y1 * schaal) + 'px';
-    hs.style.width  = ((opts.x2 - opts.x1) * schaal) + 'px';
-    hs.style.height = ((opts.y2 - opts.y1) * schaal) + 'px';
+    hs.style.left   = (offX + (opts.x1 - marge) * schaal) + 'px';
+    hs.style.top    = (offY + (opts.y1 - marge) * schaal) + 'px';
+    hs.style.width  = ((opts.x2 - opts.x1) + 2 * marge) * schaal + 'px';
+    hs.style.height = ((opts.y2 - opts.y1) + 2 * marge) * schaal + 'px';
+    if (beeldEl) {
+      // Het beeld vult precies x1..y2; de marge eromheen is alleen klikbaar.
+      // Breedte en hoogte moeten er echt op staan: een absoluut geplaatste img
+      // met alleen left/top/right/bottom blijft op zijn eigen formaat staan.
+      var m = marge * schaal;
+      beeldEl.style.left   = m + 'px';
+      beeldEl.style.top    = m + 'px';
+      beeldEl.style.width  = ((opts.x2 - opts.x1) * schaal) + 'px';
+      beeldEl.style.height = ((opts.y2 - opts.y1) * schaal) + 'px';
+    }
   }
   requestAnimationFrame(plaats);
   window.addEventListener('resize', plaats);
   return hs;
+}
+
+// Aangeraakt terwijl het voorwerp nog niet van jou kan zijn: het schrikt terug
+// en er stuift wat as op. Geen tekst, geen melding; de scène heeft al genoeg
+// woorden. De klasse gaat er weer af zodat het bij elke tik opnieuw speelt.
+function vondstWeigert(hs) {
+  if (!hs || hs.classList.contains('sv-weigert')) return;
+  hs.classList.add('sv-weigert');
+  setTimeout(function () { hs.classList.remove('sv-weigert'); }, 780);
+}
+
+// Een zichtbaar voorwerp uit een scène-afbeelding oppakken: gloed en rook
+// doven, en een kopie van het beeld vliegt naar de rugzak-knop. De kopie hangt
+// aan de body, want .sc-image heeft overflow:hidden en zou de vlucht anders
+// bij de rand van de afbeelding afknippen.
+function vondstNaarRugzak(hs) {
+  if (!hs) return;
+  var beeld = hs.querySelector('.sv-beeld');
+  var vanaf = (beeld || hs).getBoundingClientRect();
+  hs.style.pointerEvents = 'none';
+  hs.classList.add('sv-weg');
+  setTimeout(function () { if (hs.parentNode) hs.parentNode.removeChild(hs); }, 500);
+
+  var doel = document.querySelector('#inv-bar .inv-knop');
+  if (!beeld || !doel || !vanaf.width) return;
+  var naar = doel.getBoundingClientRect();
+  if (!naar.width) return;   // rugzak-balk niet in beeld: geen vlucht
+
+  var vlieger = document.createElement('img');
+  vlieger.className = 'sv-vlieger';
+  vlieger.src = beeld.src;
+  vlieger.alt = '';
+  vlieger.setAttribute('aria-hidden', 'true');
+  vlieger.style.left   = vanaf.left + 'px';
+  vlieger.style.top    = vanaf.top + 'px';
+  vlieger.style.width  = vanaf.width + 'px';
+  vlieger.style.height = vanaf.height + 'px';
+  document.body.appendChild(vlieger);
+  var dx = (naar.left + naar.width / 2) - (vanaf.left + vanaf.width / 2);
+  var dy = (naar.top + naar.height / 2) - (vanaf.top + vanaf.height / 2);
+  // Twee frames wachten: anders zet de browser begin- en eindstand in één keer
+  // en zie je geen vlucht, alleen een sprong.
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      vlieger.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(.16) rotate(-14deg)';
+      vlieger.style.opacity   = '.15';
+    });
+  });
+  setTimeout(function () { if (vlieger.parentNode) vlieger.parentNode.removeChild(vlieger); }, 900);
 }
 
 function renderK1Groenteboer(loc) {
@@ -21407,6 +21504,9 @@ function buildDebugPanel() {
       ['⚗️ Quest actief (apotheker)', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('apotheker_bezocht', true); close(); }, true, 'H7 Apotheker'],
       ['👁️ Apotheker bezocht (unlock Schaduw-vak)', function(){ setSharedState('apotheker_bezocht', true); close(); }, true, 'H7 Apotheker'],
       ['🌸 + Donderbloesem verzameld', function(){ setSharedState('ing_donderbloesem', 'verzameld'); close(); }, true, 'H7 Apotheker'],
+      // Zet de bloesem terug op de molenruïne zonder de rest van de quest te
+      // resetten, zodat het plukken los te testen is.
+      ['🌸 Bloesem terug op de molen', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem', null); state.inventory = state.inventory.filter(function(i){ return i.naam !== ITEMS.donderbloesem.naam; }); updateInventoryBar(); close(); }, true, 'H7 Apotheker'],
       ['📿 + Kraal verzameld', function(){ setSharedState('ing_kraal', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['🖤 + Rouwstof verzameld', function(){ setSharedState('ing_rouwstof', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['✅ Alle 3 ingeleverd', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem','ingeleverd'); setSharedState('ing_kraal','ingeleverd'); setSharedState('ing_rouwstof','ingeleverd'); close(); }, true, 'H7 Apotheker'],
@@ -22816,33 +22916,66 @@ function renderDd6Bord(loc) {
     ].concat(bloesemRegel ? [bloesemRegel] : []), acties: metBloesem([drukKnop, terugKnop]) });
 }
 
-// De scene-engine geeft de aangeklikte knop niet mee aan de handler, dus
-// zoeken we hem hier zelf op. Zonder dit bleef de plukknop na het plukken
-// staan en gaf een tweede tik de melding dat een teamgenoot de bloesem al
-// had, terwijl je hem net zelf in je tas had gestopt.
-function molenBloesemKnop() {
-  var knoppen = document.querySelectorAll('#locatie-content .sc-actie-btn');
-  for (var i = 0; i < knoppen.length; i++) {
-    if (knoppen[i].textContent.indexOf('Donderbloesem') !== -1) return knoppen[i];
-  }
-  return null;
+// Anti-Schaduw quest: de Donderbloesem staat als voorwerp op de molenru\u00efne en
+// wordt geplukt door hem aan te raken (zie molenBloesemHotspot). Co\u00f6rdinaten
+// zijn pixels in molenruine.jpeg (1280 x 720): links onderin, tussen het puin
+// bij de voet van de spiegel. De naaldenpop zit rechtsonder in dezelfde sc\u00e8ne,
+// vandaar de eigen sleutel.
+// De bloesem staat er vanaf het eerste bezoek, ook als de quest nog niet loopt.
+// Zo duikt er later niets uit het niets op voor wie hier al eerder was. Zolang
+// de apotheker er niet om gevraagd heeft, sluimert hij: geen gloed, geen rook,
+// en een tik laat hem alleen terugschrikken. Zodra de quest loopt gaan gloed en
+// rook aan en levert dezelfde tik de bloesem op.
+function molenBloesemHotspot() {
+  if (getSharedState('ing_donderbloesem')) return;   // geplukt of al ingeleverd
+  zetSceneHotspot({
+    sleutel: 'donderbloesem',
+    bevat: 'molenruine', natBreedte: 1280, natHoogte: 720,
+    x1: 260, y1: 562, x2: 344, y2: 690,
+    marge: 26,          // extra klikruimte rondom, voor vingers op een tablet
+    ankerOnder: true,   // de bloesem staat onderin, die mag nooit weggesneden worden
+    beeld: 'items/donderbloesemitem.png',
+    sluimert: !getSharedState('apotheker_quest_actief'),
+    // De vlag wordt hier pas bij de tik gelezen, niet bij het opbouwen van de
+    // sc\u00e8ne: een teamgenoot kan de quest starten terwijl jij in de molen staat.
+    onKlik: function (el) {
+      if (getSharedState('apotheker_quest_actief')) molenPlukDonderbloesem(el);
+      else { vondstWeigert(el); speelBloesemPluk(0.22); }
+    }
+  });
+}
+
+// Korte klank bij het aanraken van de bloesem. Geritsel van de doolhof-set:
+// droog, kort, en het botst niet met de hartslag en de ambient van de
+// molen-sc\u00e8ne. E\u00e9n plek om te wisselen als er ooit een eigen sample komt.
+var BLOESEM_PLUK_SFX = 'geluid/doolhof/ws-geritsel-1.mp3';
+function speelBloesemPluk(volume) {
+  try {
+    if (!window._bloesemPlukGeluid) {
+      window._bloesemPlukGeluid = new Audio(BLOESEM_PLUK_SFX);
+    }
+    window._bloesemPlukGeluid.volume = typeof volume === 'number' ? volume : 0.5;
+    window._bloesemPlukGeluid.currentTime = 0;
+    window._bloesemPlukGeluid.play().catch(function () {});
+  } catch (e) {}
 }
 
 // Anti-Schaduw quest: Donderbloesem plukken IN de molen-scene (timer
 // loopt door, dus een korte toast in plaats van een lade). Race-
 // condition-vrij: eerste speler wint, de rest ziet een korte melding.
-function molenPlukDonderbloesem(btn) {
-  var knop = btn || molenBloesemKnop();
-  if (knop) knop.style.display = 'none';
+function molenPlukDonderbloesem(el) {
   if (getSharedState('ing_donderbloesem')) {
-    // Heb je de bloesem zelf, dan was dit een tweede tik op een knop die nog
-    // stond: knop weg en verder zwijgen. Alleen wie hem niet heeft, hoort dat
-    // een teamgenoot hem voor was.
+    // Tweede tik, of een teamgenoot was net eerder: de bloesem gaat hier
+    // sowieso van het scherm. Heb je hem zelf, dan verder zwijgen; alleen wie
+    // hem niet heeft hoort dat een teamgenoot hem voor was.
+    if (el && el.parentNode) el.parentNode.removeChild(el);
     var zelfInTas = !!state.inventory.find(function (i) { return i.naam === ITEMS.donderbloesem.naam; });
     if (!zelfInTas) toonToast('\u2139\ufe0f', 'Al verzameld door een teamgenoot');
     return;
   }
   setSharedState('ing_donderbloesem', 'verzameld');
+  speelBloesemPluk();
+  vondstNaarRugzak(el);
   geefItem(ITEMS.donderbloesem.emoji, ITEMS.donderbloesem.naam);
 }
 
@@ -22912,28 +23045,24 @@ function renderMolenWacht(loc) {
 function renderMolenContent(loc, p) {
   const cont = document.getElementById('locatie-content');
 
-  // Elke molen-scène krijgt het verborgen klikgebied op de pop met de
-  // naalden mee (zie molenNaaldHotspot). Daarom loopt het renderen hier via
+  // Elke molen-scène krijgt de twee klikgebieden op de afbeelding mee: de
+  // verborgen pop met de naalden (molenNaaldHotspot) en de zichtbare
+  // Donderbloesem (molenBloesemHotspot). Daarom loopt het renderen hier via
   // molenScene in plaats van rechtstreeks via renderLocatieScene.
   function molenScene(opts) {
     renderLocatieScene(opts);
     molenNaaldHotspot();
+    molenBloesemHotspot();
   }
 
-  // Anti-Schaduw quest: de Donderbloesem groeit hier, tussen het puin.
-  // Plukken kan tijdens de scene (timer loopt door). Eerste speler wint.
+  // Anti-Schaduw quest: de Donderbloesem groeit hier, tussen het puin. Je plukt
+  // hem door hem op de afbeelding aan te raken (de timer loopt gewoon door),
+  // dus alleen een regel die je blik die kant op stuurt. Eerste speler wint.
   const bloesemHier = getSharedState('apotheker_quest_actief') && !getSharedState('ing_donderbloesem');
   const bloesemMolenRegel = bloesemHier
     ? { spreker: 'Verteller', tekst: 'Tussen de verkoolde grond, vlak bij je voeten, groeit iets grilligs. Kleine bleke bloemen. Donderbloesem.' }
     : null;
-  const bloesemMolenKnop = bloesemHier
-    ? { label: '\ud83c\udf38 Pluk de Donderbloesem (snel!)', onclick: function() { molenPlukDonderbloesem(null); } }
-    : null;
   function molenDialog(arr) { return bloesemMolenRegel ? arr.concat([bloesemMolenRegel]) : arr; }
-  function molenActies(arr) {
-    if (!bloesemMolenKnop) return arr || null;
-    return (arr || []).concat([bloesemMolenKnop]);
-  }
 
   if (p === 'fenna') {
     return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
@@ -22945,7 +23074,7 @@ function renderMolenContent(loc, p) {
         { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* O god. Iemand is hier gestorven. Lang geleden — of niet zo lang. Ik kan het niet zien.' },
         'Voetstappen, dichterbij. Het silhouet beweegt nu wél.',
         { spreker: 'Fenna-Viviènne', tekst: '*(in gedachten)* Wegwezen. Dit was ooit iemand. En dat "iets" daar — leeft nog.' }
-      ]), acties: molenActies(null) });
+      ]), acties: null });
   }
 
   if (p === 'jan') {
@@ -22959,7 +23088,7 @@ function renderMolenContent(loc, p) {
         { spreker: 'Jan', tekst: '*(in gedachten)* Iemand is hier doodgegaan. Misschien meer dan één. Is dit waar de heks woont?' },
         'Voetstappen, dichterbij. Iets ademt.',
         { spreker: 'Jan', tekst: '*(in gedachten)* Wegwezen.' }
-      ]), acties: molenActies(null) });
+      ]), acties: null });
   }
 
   if (p === 'kelly') {
@@ -22979,7 +23108,7 @@ function renderMolenContent(loc, p) {
               : '*(in gedachten)* Het doosje is hier al lang weg. Er is hier niets meer te halen.' },
           'Voetstappen, dichterbij. Iets ademt.',
           { spreker: 'Kelly', tekst: '*(in gedachten)* Wegwezen.' }
-        ]), acties: molenActies(null) });
+        ]), acties: null });
     }
     return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
       dialog: molenDialog([
@@ -22996,7 +23125,7 @@ function renderMolenContent(loc, p) {
             renderMolenKellyDeel2(loc);
           }
         }
-      ].concat(bloesemMolenKnop ? [bloesemMolenKnop] : []) });
+      ] });
   }
 
   if (p === 'felix') {
@@ -23012,11 +23141,11 @@ function renderMolenContent(loc, p) {
         { spreker: 'Felix', tekst: '*(in gedachten)* Iemand is hier vermoord. Of meerdere mensen. Is dit waar de heks haar werk doet?' },
         'Voetstappen achter hem. Heel dichtbij nu.',
         slot
-      ]), acties: molenActies(null) });
+      ]), acties: null });
   }
 
   return molenScene({ container: cont, titel: loc.naam, sub: 'De oude molen', image: null,
-    dialog: molenDialog(['Tussen het puin beweegt iets groots. Voetstappen, dichterbij. Wegwezen.']), acties: molenActies(null) });
+    dialog: molenDialog(['Tussen het puin beweegt iets groots. Voetstappen, dichterbij. Wegwezen.']), acties: null });
 }
 
 // Rest van Kelly's molen-tekst, ná het pakken van het muziekdoosje.
@@ -23034,6 +23163,7 @@ function renderMolenKellyDeel2(loc) {
       { spreker: 'Kelly', tekst: '*(in gedachten)* Wegwezen. NU. Maar dit doosje neem ik mee. En die molen... hier moet ooit over geschreven zijn. Het archief. Daar zoek ik verder.' }
     ] });
   molenNaaldHotspot();
+  molenBloesemHotspot();
 }
 
 // App-tekst bij ontwaken (per personage), getoond ná de fade-naar-licht.
@@ -26413,6 +26543,152 @@ function toonStemmenStil(stil) {
   padding:0; margin:0; border:none; background:none;
   cursor:pointer; -webkit-tap-highlight-color:transparent;
   appearance:none; -webkit-appearance:none;
+}
+
+/* ── Zichtbaar voorwerp in een klikgebied (zetSceneHotspot met `beeld`) ──
+   Drie lagen: een zwarte gloed die ademt, een rooksliert die er langzaam
+   omheen draait, en het voorwerp zelf. De gloed haalt de drukke achtergrond
+   weg achter het voorwerp, dat is wat hem leesbaar maakt in het donker; de
+   koele rand op het beeld zet hem daarna pas echt vooruit. Alleen transform
+   en opacity animeren, zodat een tablet er niet op inzakt. */
+.scene-hotspot-vondst .sv-aura,
+.scene-hotspot-vondst .sv-rook,
+.scene-hotspot-vondst .sv-stof,
+.scene-hotspot-vondst .sv-beeld{
+  position:absolute; pointer-events:none;
+}
+.scene-hotspot-vondst .sv-aura{
+  left:50%; top:55%; width:230%; height:200%;
+  transform:translate(-50%,-50%);
+  /* Twee lagen over elkaar: koel licht vlak achter de bloesem, en daaronder
+     de zwarte gloed die pas op halve straal dichtslaat. Zou het zwart ook in
+     het midden dicht zijn, dan valt een donkere bloem er compleet in weg. */
+  background:
+    radial-gradient(closest-side,
+      rgba(146,166,205,.3) 0%, rgba(120,140,180,.15) 22%, rgba(120,140,180,0) 44%),
+    radial-gradient(closest-side,
+      rgba(8,5,12,.3) 0%, rgba(8,5,12,.7) 32%,
+      rgba(9,7,14,.5) 52%, rgba(10,8,16,.22) 72%, rgba(10,8,16,0) 100%);
+  animation:svAuraAdem 4.6s ease-in-out infinite alternate;
+}
+.scene-hotspot-vondst .sv-rook{
+  left:50%; top:52%; width:260%; height:230%;
+  transform:translate(-50%,-50%);
+  background:url('fog.png') center/cover no-repeat;
+  /* fog.png is een donkere textuur met alleen vorm in het alfakanaal, bedoeld
+     voor de schaduw-module. Hier moet het bleke rook zijn, vandaar het
+     opstoken. Screen-blending helpt niet: het klikgebied heeft een eigen
+     z-index en dus een eigen stapelcontext, dus zou de rook alleen met de
+     gloed eronder blenden en niet met de ruïne erachter. */
+  filter:grayscale(1) brightness(2.5);
+  opacity:.3;
+  -webkit-mask-image:radial-gradient(closest-side, #000 18%, rgba(0,0,0,.45) 52%, transparent 78%);
+          mask-image:radial-gradient(closest-side, #000 18%, rgba(0,0,0,.45) 52%, transparent 78%);
+  animation:svRookDrift 22s linear infinite;
+}
+.scene-hotspot-vondst .sv-beeld{
+  /* plaats en formaat komen uit zetSceneHotspot */
+  object-fit:contain; object-position:center bottom;
+  filter:brightness(.82) saturate(.78)
+         drop-shadow(0 0 6px rgba(178,196,231,.5))
+         drop-shadow(0 0 16px rgba(120,140,180,.34))
+         drop-shadow(0 5px 7px rgba(0,0,0,.85));
+  animation:svBeeldWiegt 6.2s ease-in-out infinite alternate;
+}
+/* ── Sluimerstand ──────────────────────────────────────────────────
+   Het voorwerp hoort al bij het decor voordat het ertoe doet, zodat er later
+   niets uit het niets opduikt voor wie hier al eerder was. Dus geen gloed en
+   geen rook: alleen een klein beetje schaduw eronder zodat het niet als een
+   sticker op de achtergrond ligt. Zodra het voorwerp meetelt gaan gloed en
+   rook aan, en dat is dan het signaal: er verschijnt niets nieuws, wat er al
+   stond wordt belangrijk. */
+.scene-hotspot-vondst.sv-sluimer .sv-aura{
+  background:radial-gradient(closest-side,
+    rgba(8,5,12,.24) 0%, rgba(9,7,14,.3) 40%, rgba(10,8,16,.1) 70%, rgba(10,8,16,0) 100%);
+  animation:none; opacity:.9;
+}
+.scene-hotspot-vondst.sv-sluimer .sv-rook{ display:none; }
+.scene-hotspot-vondst.sv-sluimer .sv-beeld{
+  filter:brightness(.5) saturate(.5) drop-shadow(0 4px 6px rgba(0,0,0,.85));
+}
+
+/* ── Terugschrikken bij een tik die nog niets oplevert ──────────────
+   De bloem zwiept weg van de vinger en er stuift as op. Kort, en zonder een
+   letter tekst. */
+.scene-hotspot-vondst.sv-weigert .sv-beeld{
+  animation:svBeeldSchrikt .66s ease-out;
+}
+.scene-hotspot-vondst .sv-stof{
+  left:50%; bottom:-10%; width:165%; height:62%;
+  transform:translateX(-50%); opacity:0;
+  background:url('fog.png') center/cover no-repeat;
+  filter:grayscale(1) brightness(2.9);
+  -webkit-mask-image:radial-gradient(closest-side, #000 16%, rgba(0,0,0,.4) 50%, transparent 74%);
+          mask-image:radial-gradient(closest-side, #000 16%, rgba(0,0,0,.4) 50%, transparent 74%);
+}
+.scene-hotspot-vondst.sv-weigert .sv-stof{
+  animation:svStofPluim .78s ease-out;
+}
+@keyframes svBeeldSchrikt{
+  0%  { transform:rotate(0deg); }
+  16% { transform:rotate(-5.5deg); }
+  36% { transform:rotate(4.5deg); }
+  56% { transform:rotate(-2.8deg); }
+  78% { transform:rotate(1.4deg); }
+  100%{ transform:rotate(0deg); }
+}
+@keyframes svStofPluim{
+  0%  { opacity:0;   transform:translateX(-50%) translateY(10%) scale(.42); }
+  18% { opacity:.72; }
+  55% { opacity:.5; }
+  100%{ opacity:0;   transform:translateX(-50%) translateY(-34%) scale(1.45); }
+}
+
+/* Voet in de schaduw: het onderste stuk van steel en gloed loopt weg in het
+   donker, anders staat de vondst als een sticker op de achtergrond geplakt. */
+.scene-hotspot-vondst::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(9,7,12,0) 42%, rgba(9,7,12,.5) 74%, rgba(9,7,12,.88) 100%);
+  /* Zonder dit masker zie je de rechte hoeken van het klikvlak als een donker
+     blokje op de achtergrond, vooral in de sluimerstand waar geen gloed
+     overheen ligt. */
+  -webkit-mask-image:radial-gradient(ellipse at 50% 78%, #000 34%, rgba(0,0,0,.55) 62%, transparent 92%);
+          mask-image:radial-gradient(ellipse at 50% 78%, #000 34%, rgba(0,0,0,.55) 62%, transparent 92%);
+}
+@keyframes svAuraAdem{
+  from{ transform:translate(-50%,-50%) scale(.92); opacity:.82; }
+  to  { transform:translate(-50%,-50%) scale(1.1);  opacity:1; }
+}
+@keyframes svRookDrift{
+  from{ transform:translate(-50%,-50%) rotate(0deg)   scale(1); }
+  50% { transform:translate(-46%,-54%) rotate(180deg) scale(1.14); }
+  to  { transform:translate(-50%,-50%) rotate(360deg) scale(1); }
+}
+@keyframes svBeeldWiegt{
+  from{ transform:rotate(-1.4deg); }
+  to  { transform:rotate(1.4deg); }
+}
+/* Opgepakt: gloed en rook doven, het voorwerp zakt weg. */
+.scene-hotspot-vondst.sv-weg .sv-aura,
+.scene-hotspot-vondst.sv-weg .sv-rook,
+.scene-hotspot-vondst.sv-weg .sv-beeld{
+  animation:none;
+  opacity:0;
+  transition:opacity .42s ease, transform .42s ease;
+}
+.scene-hotspot-vondst.sv-weg .sv-aura{ transform:translate(-50%,-50%) scale(1.5); }
+.scene-hotspot-vondst.sv-weg .sv-rook{ transform:translate(-50%,-62%) scale(1.7); }
+
+/* Kopie van het voorwerp die naar de rugzak-knop vliegt (zie vondstNaarRugzak).
+   Hangt aan de body, dus buiten de afbeelding die overflow:hidden heeft. */
+.sv-vlieger{
+  position:fixed; z-index:9000; pointer-events:none;
+  object-fit:contain;
+  filter:brightness(.9) drop-shadow(0 0 10px rgba(163,180,214,.5));
+  /* De vlucht blijft zichtbaar en dooft pas vlak bij de rugzak-knop; zou de
+     doorzichtigheid meteen meelopen, dan zie je alleen een flits. */
+  transition:transform .72s cubic-bezier(.35,.03,.4,1), opacity .28s ease .44s;
 }
 
 /* Kraai die op een scène-afbeelding zit (positie via inline top/right). */
