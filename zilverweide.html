@@ -2509,6 +2509,7 @@ var GELUID_NAMEN = {
   'fout.mp3':             'fout antwoord',
   'doolhofarchief.mp3':   'doolhofmuziek archief',
   'doolhofkerk.mp3':      'doolhofmuziek kerk',
+  'kerkkoor.mp3':         'kerkkoor, binnen in de kerk',
   'ws-muziek.mp3':        'woud-doolhof muziek',
   'schaduwstart.mp3':     'vloek-onboarding, loop',
   'schaduwstartdrop.mp3': 'vloek-onboarding, drop',
@@ -5870,6 +5871,8 @@ function showScreen(id) {
   // werkt op naam, dus dit heft alleen de kamer-pauze op, niet die van een
   // ander onderdeel).
   if (id !== 'screen-locatie' && typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
+  // Zelfde voor het kerkkoor: buiten screen-locatie sta je niet meer in de kerk.
+  if (id !== 'screen-locatie' && typeof stopKerkKoor === 'function') stopKerkKoor();
   if (id !== 'screen-locatie' && typeof schaduwPauze === 'function') schaduwPauze(false, 'geheimekamer');
 
   if (id !== 'screen-locatie' && huidigDoolhof) {
@@ -9996,6 +9999,41 @@ function stopGeheimeKamerMuziek() {
   fadeMuziekIn();
 }
 
+// ── Kerkkoor: koorloop zolang een speler binnen in de kerk (H4) staat.
+// Zelfde patroon als de geheime-kamer-muziek: de achtergrondmuziek gaat op
+// pauze en komt met een zachte fade terug zodra de kerk verlaten wordt (via
+// showScreen, via goBackFromLocatie of via een scene die zijn eigen geluid
+// meebrengt). Het mp3-bestand mag ontbreken; dan blijft het simpelweg stil.
+var _kerkKoorAudio = null;
+var KERK_KOOR_VOLUME = MUZIEK_VOLUME * 0.8;   // 80% van het normale muziekniveau
+function startKerkKoor() {
+  if (!_kerkKoorAudio) {
+    _kerkKoorAudio = new Audio('geluid/heerdonatuslaan/kerk/kerkkoor.mp3');
+    _kerkKoorAudio.loop = true;
+    _kerkKoorAudio.addEventListener('error', function() {
+      console.warn('kerkkoor.mp3 niet gevonden op geluid/heerdonatuslaan/kerk/kerkkoor.mp3');
+    });
+  }
+  _kerkKoorAudio.volume = KERK_KOOR_VOLUME;
+  if (!_kerkKoorAudio.paused) return;   // speelt al, niet opnieuw beginnen
+  var bg = document.getElementById('bg-music');
+  if (bg) { try { bg.pause(); } catch (e) {} }
+  try {
+    _kerkKoorAudio.currentTime = 0;
+    _kerkKoorAudio.play().catch(function(e) { console.warn('kerkkoor.mp3 afspelen mislukt:', e); });
+  } catch (e) { console.warn('kerkkoor.mp3 fout:', e); }
+}
+
+// Stop het koor en laat de achtergrondmuziek zacht terugkomen. Geef false mee
+// als de volgende scene meteen zijn eigen geluid start (kerkdoolhof,
+// kerkkelder): die zet de muziek zelf stil, en dan hoeft hij niet eerst nog
+// even op te komen.
+function stopKerkKoor(hervatMuziek) {
+  if (!_kerkKoorAudio || _kerkKoorAudio.paused) return;
+  try { _kerkKoorAudio.pause(); _kerkKoorAudio.currentTime = 0; } catch (e) {}
+  if (hervatMuziek !== false) fadeMuziekIn();
+}
+
 function h3StartHartslag() {
   h3StopHartslag();
   _h3AchterActief = true;
@@ -10527,6 +10565,11 @@ function renderH4Kerk(loc) {
     });
   }
 
+  // Vanaf hier staat de speler binnen: het koor aan, achtergrondmuziek op
+  // pauze. Idempotent, dus elke volgende render binnen de kerk laat de loop
+  // gewoon doorlopen.
+  startKerkKoor();
+
   // Na Tobbe-gok: Priscilla met dichtgenaaide mond, gebaart naar beneden → kelder.
   if (state.tobbeGokOpgelost && !state.kerkkelderGezien) {
     if (stap === 0) {
@@ -10775,6 +10818,10 @@ function startKerkDoolhof() {
     }
   });
   huidigDoolhof.mount();
+  // Koor uit voordat de doolhofmuziek begint. Bewust mét hervatten: zo staat
+  // de hoofdmuziek weer aan op het moment dat startDoolhofMuziek kijkt of hij
+  // hem moet pauzeren, en komt hij na het doolhof vanzelf weer terug.
+  stopKerkKoor();
   startDoolhofMuziek('geluid/doolhof/doolhofkerk.mp3');
   // Monkey-patch _heksReset: fullscreen non-pop overlay bij elke fout.
   const origHeksReset = huidigDoolhof._heksReset.bind(huidigDoolhof);
@@ -15939,6 +15986,10 @@ function goBackFromLocatie() {
   // de hoofdmuziek niet kort dubbel met de kamer-loop speelt.
   if (typeof stopGeheimeKamerMuziek === 'function') stopGeheimeKamerMuziek();
   schaduwPauze(false, 'geheimekamer');
+  // De kerk verlaten: koor uit, hoofdmuziek komt met een zachte fade terug.
+  // Ook dit staat vóór het bgm-vangnet hieronder, zodat de hoofdmuziek niet
+  // kort dubbel met de koorloop speelt.
+  if (typeof stopKerkKoor === 'function') stopKerkKoor();
   // Vangnet: als de hoofdmuziek om wat voor reden dan ook gepauzeerd is,
   // hervat hem nu (ongeacht welke module hem had stilgezet).
   var bgm = document.getElementById('bg-music');
@@ -19808,6 +19859,10 @@ function openKerkKelderAanloop() {
     setSharedState('kerk_kelder_aanwezig', aanwezig);
   }
 
+  // Je staat nog binnen in de kerk, dus het koor loopt door. Idempotent, en
+  // nodig voor de debugknop die hier rechtstreeks binnenkomt.
+  startKerkKoor();
+
   var alleVier = aanwezig.length >= 4;
   var dialog = [
     'Een smalle stenen trap voert naar beneden. Koude lucht stijgt op uit het donker.'
@@ -20066,6 +20121,7 @@ var KK_PROLOOG = [
 ];
 
 function kerkkelderCinematic() {
+  stopKerkKoor(false);
   dempMuziek();
   kkStartLoop('_kkAchtergrond', 'kk-ambience.mp3', KK_BG_VOLUME);
   var el = kkOverlayEl();
@@ -21331,6 +21387,11 @@ function buildDebugPanel() {
       // te spelen. Deze knop zet je op de scène erna, zodat je die los kunt
       // testen (onder andere de schaduw-pauze en de terugknop daar).
       ['📕 Kerkarchief (na doolhof)', function(){ close(); debugOpenKerkArchief(); }, true, 'H4 Kerk'],
+      // Het kerkkoor los aan- en uitzetten, zodat het volume te horen is
+      // zonder eerst naar binnen te lopen. Uit zetten haalt de
+      // achtergrondmuziek weer terug, net als het verlaten van de kerk.
+      ['🎵 Kerkkoor aan', function(){ startKerkKoor(); close(); }, true, 'H4 Kerk'],
+      ['🔇 Kerkkoor uit', function(){ stopKerkKoor(); close(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
