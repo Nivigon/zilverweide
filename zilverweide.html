@@ -1080,6 +1080,14 @@ body.k6finale-actief .finale-btn{display:none !important;}
    naast je eigen portret. Zonder deze mask zou de jpeg als rechthoekige foto
    naast een uitgeknipte pop hangen. */
 .pop-img[src$="schim.jpeg"]{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* Jan en Felix hebben inmiddels elk een eigen silhouet (janschaduw-pop en
+   felixschaduw-pop), dus bij het gat staat de ander als zijn eigen gedaante
+   naast je in plaats van als algemene schim. Die PNG's zijn bijna zwart en
+   vielen weg tegen een donkere scene, dus krijgt de gedaante koud randlicht
+   (drop-shadow volgt de alpha-rand) plus een lichte waas erachter (de
+   background schijnt door de transparante delen van de PNG). De pop-dialoog
+   zet zelf een filter in de inline stijl, vandaar !important. */
+.pop-img.pop-gedaante{filter:drop-shadow(0 0 3px rgba(198,214,236,.8)) drop-shadow(0 0 18px rgba(120,150,190,.4)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) !important;background:radial-gradient(ellipse 58% 52% at 50% 55%,rgba(160,185,215,.22),rgba(150,175,205,.08) 55%,transparent 72%)}
 /* Midden-pop (Sybille in de slotscene): horizontaal gecentreerd in plaats
    van rechts, zodat zij en de roos samen het middelpunt vormen. */
 #pf-pop.pf-midden{left:50%;right:auto;transform:translateX(-50%)}
@@ -8963,7 +8971,12 @@ function h2Scene(opts) {
 // versie. Nu telt alleen of Jans tablet dit scherm nu echt toont.
 // ══════════════════════════════════════════════════════════════════
 const H2_MUNTEN_CODE = 'XXX';
-const H2_SCHIM_POP = 'karakters/dorendael/schim.jpeg';
+// Bij het gat horen Jan en Felix elkaar wel, maar zien ze elkaar niet: op
+// elk tablet staat de ander als silhouet van zichzelf naast je eigen portret.
+const H2_SCHADUW_POPS = {
+  jan:   'karakters/spelers/janschaduw-pop.png',
+  felix: 'karakters/spelers/felixschaduw-pop.png'
+};
 
 // Beide tablets spelen hetzelfde gesprek, ieder in zijn eigen leestempo. Wie
 // klaar is zet zijn eigen sleutel in de sessie, en de overdracht die op het
@@ -9104,12 +9117,14 @@ function h2GesprekStappen(regels) {
   var namen = { jan: 'Jan', felix: 'Felix' };
   var links = null, rechts = null;
   return regels.map(function (r) {
+    var eigen = (r.wie === eigenRol);
     var data = {
-      img:  (r.wie === eigenRol) ? eigenImg : H2_SCHIM_POP,
+      img:  eigen ? eigenImg : H2_SCHADUW_POPS[r.wie],
       naam: namen[r.wie],
-      tekst: r.tekst
+      tekst: r.tekst,
+      gedaante: !eigen
     };
-    if (r.wie === eigenRol) links = data; else rechts = data;
+    if (eigen) links = data; else rechts = data;
     return { links: links, rechts: rechts };
   });
 }
@@ -18007,6 +18022,9 @@ function toonPopDialoog(stappen, callback) {
       img.style.height = g.height;
       img.style.maxHeight = g.maxHeight;
       img.style.bottom = g.marginBottom;
+      // Een gedaante (het silhouet van iemand die je hoort maar niet ziet)
+      // krijgt randlicht en waas mee, zie .pop-gedaante in de CSS.
+      img.classList.toggle('pop-gedaante', !!data.gedaante);
       img.src = data.img;
       el.style.opacity = '1';
     } else {
