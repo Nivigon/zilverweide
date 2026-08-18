@@ -11286,14 +11286,24 @@ function renderH5Gemeentehuis(loc) {
     const herbergGedaan = hasVisited('fenna_herberg_gedaan') || getSharedState('fenna_herberg_gedaan');
 
     if (!alGeweest) {
-      markVisited('fenna_gemeentehuis');
-      setSharedState('fenna_gemeentehuis', true);
+      // De vlag gaat pas om zodra het briefje echt in beeld komt, niet al bij
+      // het openen van dit scherm. Robbie verdwijnt hierop voor het hele team,
+      // en dat mag niet gebeuren door een misklik: dan zou hij voor iedereen
+      // weg zijn terwijl Fenna zelf de tekst van het briefje nooit gelezen
+      // heeft. Verlaat ze de scene eerder, dan speelt hij gewoon opnieuw.
+      // De actieknoppen verschijnen pas na de laatste dialoogregel, dus deze
+      // regel is niet over te slaan via "Naar de herberg".
+      var pakBriefje = function () {
+        if (hasVisited('fenna_gemeentehuis') || getSharedState('fenna_gemeentehuis')) return;
+        markVisited('fenna_gemeentehuis');
+        setSharedState('fenna_gemeentehuis', true);
+      };
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
           { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie, een kap over zijn hoofd. Hij ziet je, en de paniek slaat in zijn ogen.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
           'Hij begint iets te zeggen en stokt. Zijn mond is dichtgenaaid. Dan krabbelt hij haastig op een briefje en drukt het in je hand.',
-          { spreker: 'Briefje', tekst: '"Help, herberg. Gaat mis. Burgemeester is er al. Snel!"' }
+          { spreker: 'Briefje', tekst: '"Help, herberg. Gaat mis. Burgemeester is er al. Snel!"', onShow: pakBriefje }
         ],
         acties: [{ label: 'Naar de herberg', onclick: terug }]
       });
