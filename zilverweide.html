@@ -8886,6 +8886,11 @@ function h2GeheimeDeurHotspot() {
 // vastzit-gate in showScreen houdt een opgesloten speler gewoon binnen,
 // mocht die hier ooit komen). Het opruimen van muziek en schaduwpauze
 // gebeurt in showScreen zodra je screen-locatie verlaat.
+// Twee versies van dezelfde kamer: met de crystal op het altaar, en met een
+// leeg altaar zodra hij gepakt is.
+const KAMER1_MET_CRYSTAL    = 'locaties/heerdonatuslaan/kamer1bonus.jpeg';
+const KAMER1_ZONDER_CRYSTAL = 'locaties/heerdonatuslaan/kamer1bonusgeencrystal.jpg';
+
 function openKamer1Bonus() {
   verbergNpcPop();
   var gepakt   = !!getSharedState('crystal_gepakt');
@@ -8910,7 +8915,7 @@ function openKamer1Bonus() {
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel: '', sub: '',
-    image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
+    image: gepakt ? KAMER1_ZONDER_CRYSTAL : KAMER1_MET_CRYSTAL,
     dialog: dialog
   });
   // Ook echt naar het locatie-scherm: via de testknop kan deze functie
@@ -8927,23 +8932,65 @@ function openKamer1Bonus() {
 }
 
 // Klikgebied op de gebroken crystal op het altaar (kamer1bonus.jpeg,
-// 1280 x 720). Bij een klik pak je hem op.
+// 1280 x 720). Bij een klik pak je hem op. De bevat-check noemt de
+// bestandsnaam voluit: de lege variant heet kamer1bonusgeencrystal.jpg en
+// zou anders ook op een kale padcheck matchen.
 function kamer1CrystalHotspot() {
   zetSceneHotspot({
-    bevat: 'heerdonatuslaan/kamer1bonus',
+    bevat: 'kamer1bonus.jpeg',
     natBreedte: 1280, natHoogte: 720,
     x1: 580, y1: 343, x2: 682, y2: 410,
     onKlik: pakKamer1Crystal
   });
 }
 
-// De crystal oppakken. Gedeelde vlag zodat teamgenoten de lege plek zien;
-// daarna de kamer opnieuw tonen (altaar leeg, klikgebied weg).
+// Overvloeier tussen de twee kamerbeelden. De scene-afbeelding is een
+// background-image op .sc-image, dus de nieuwe versie komt als extra laag
+// erbovenop en fade't in; daarna neemt de her-render het beeld over, zodat
+// er geen sprong te zien is. Eerst preloaden, anders fade je naar een nog
+// leeg vlak. Bewust kort (450ms): de crystal zit meteen in je rugzak.
+function kamer1Crossfade(naarBeeld, klaar) {
+  var box = document.querySelector('#locatie-content .sc-image');
+  if (!box) { klaar(); return; }
+  var cs = window.getComputedStyle(box);
+  if (cs.position === 'static') box.style.position = 'relative';
+  var laag = document.createElement('div');
+  // Bewust GEEN z-index: het vignet van .sc-image::after wordt na alle
+  // kinderen getekend en blijft zo over de nieuwe laag heen liggen. Met een
+  // z-index eroverheen zou het beeld tijdens de overvloeier onvignetteerd
+  // zijn en aan het eind ineens donkerder worden.
+  laag.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0;' +
+    'transition:opacity .45s ease;background-image:url("' + naarBeeld + '");' +
+    'background-size:' + cs.backgroundSize + ';background-position:' + cs.backgroundPosition +
+    ';background-repeat:no-repeat';
+  box.appendChild(laag);
+  var pre = new Image();
+  pre.onload = pre.onerror = function () {
+    void laag.offsetWidth;
+    laag.style.opacity = '1';
+    setTimeout(klaar, 480);
+  };
+  pre.src = naarBeeld;
+}
+
+// De crystal oppakken. Gedeelde vlag zodat teamgenoten de lege plek zien.
+// Het klikgebied gaat meteen weg (anders tik je er tijdens de overvloeier
+// nog eens op), het beeld vloeit over naar het lege altaar en pas daarna
+// tekent de kamer zichzelf opnieuw met de bijbehorende tekst.
 function pakKamer1Crystal() {
   if (getSharedState('crystal_gepakt')) return;
   setSharedState('crystal_gepakt', true);
   addInventory(ITEMS.crystal.emoji, ITEMS.crystal.naam, true);
-  openKamer1Bonus();
+  document.querySelectorAll('#locatie-content .sc-image .scene-hotspot')
+    .forEach(function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
+  kamer1Crossfade(KAMER1_ZONDER_CRYSTAL, function () {
+    // Tijdens de overvloeier weggeklikt? Dan de kamer niet alsnog terugtoveren.
+    var box = document.querySelector('#locatie-content .sc-image');
+    var bg = '';
+    try { bg = box ? (window.getComputedStyle(box).backgroundImage || '') : ''; } catch (e) {}
+    if (bg.indexOf('kamer1bonus') === -1) return;
+    openKamer1Bonus();
+  });
 }
 
 // Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
