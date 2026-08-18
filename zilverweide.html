@@ -4853,11 +4853,15 @@ var KK_EIGEN_TAKEN = {
   ],
   fenna: [
     { label: 'het lied voor Robbie', check: function () { return !!getSharedState('kk_sleutel_robbie'); } },
-    // De roestige spijker afgeven aan Jan. Waar ze die vond maakt niet uit. Is
-    // de torencode al ingevoerd, dan is de overdracht per definitie geweest:
-    // die vlag is gedeeld, dus dit klopt ook als Jan hem invoerde.
+    // De roestige spijker afgeven aan Jan. Waar ze die vond maakt niet uit.
+    // Staat de torencode al ingevoerd, of ligt de Kromme Spijker er al, dan
+    // heeft de overdracht per definitie plaatsgevonden: zonder haar spijker
+    // komt Jan de toren niet in en zonder toren is er geen Kromme Spijker.
+    // Beide zijn gedeeld, dus dit klopt ook als Jan het op zijn tablet deed.
     { label: 'de spijker aan Jan geven', check: function () {
-        return hasVisited('fenna_spijker_gegeven') || hasVisited('toren_code_ingevoerd');
+        return hasVisited('fenna_spijker_gegeven')
+            || hasVisited('toren_code_ingevoerd')
+            || !!getSharedState('kk_sleutel_speld');
       } }
   ],
   felix: [
