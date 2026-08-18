@@ -11277,6 +11277,11 @@ function renderH5Gemeentehuis(loc) {
   // Eigen pop voor deze plek: kap op, briefje in de hand, mond dichtgenaaid.
   // Alleen hier, elders in het spel blijft hij de gewone Robbie.
   const ROBBIE_POP = 'karakters/terugkerend/robbienote-pop.png';
+  // De pop moet in een setTimeout. openHeerDonatuslaanLocatie rendert eerst de
+  // scene en roept daarna pas showScreen aan, en showScreen haalt voor elke
+  // locatie zonder vaste NPC de pop weg met verbergNpcPop(true). Een pop die
+  // synchroon in de eerste dialoogregel gezet wordt, is daardoor meteen weer
+  // onzichtbaar. Zelfde patroon als bij de andere NPC-pops in het spel.
   // Alleen zetten in de branches waar de speler hem daadwerkelijk ziet staan.
   function onthoudRobbie() { if (!robbieZelfGezien) markVisited('h5_robbie_gezien'); }
 
@@ -11301,7 +11306,7 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie, een kap over zijn hoofd. Hij ziet je, en de paniek slaat in zijn ogen.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Buiten staat Robbie, een kap over zijn hoofd. Hij ziet je, en de paniek slaat in zijn ogen.', onShow: function() { setTimeout(function(){ toonNpcPop(ROBBIE_POP); }, 200); } },
           'Hij begint iets te zeggen en stokt. Zijn mond is dichtgenaaid. Dan krabbelt hij haastig op een briefje en drukt het in je hand.',
           { spreker: 'Briefje', tekst: '"Help, herberg. Gaat mis. Burgemeester is er al. Snel!"', onShow: pakBriefje }
         ],
@@ -11349,7 +11354,7 @@ function renderH5Gemeentehuis(loc) {
       if (robbieAanwezig) {
         onthoudRobbie();
         felixDialog = [
-          { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien, kap op, een opgevouwen briefje in zijn vuist. In zijn nek twee letters, F en V. Die jongen van Fenna dus. En zijn mond is dichtgenaaid.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          { tekst: 'Bij de ingang dringen dorpelingen samen, gespannen, de sfeer om te snijden. Tussen hen staat iemand te draaien, kap op, een opgevouwen briefje in zijn vuist. In zijn nek twee letters, F en V. Die jongen van Fenna dus. En zijn mond is dichtgenaaid.', onShow: function() { setTimeout(function(){ toonNpcPop(ROBBIE_POP); }, 200); } },
           { tekst: 'Hij houdt de deur in de gaten, niet jou. Een uitkijk die niet doorheeft dat hij er een is. En al die onrust vooraan is prima dekking. Jij hebt de voorkant toch niet nodig.', onShow: function() { verbergNpcPop(); } }
         ];
       } else if (robbieZelfGezien) {
@@ -11429,7 +11434,7 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij de ingang staat een jongen te draaien, kap op, half op zijn tenen, ogen op de deur. Twee letters in zijn nek, F en V. Die fan van Fenna, die overal opduikt waar zij zingt.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          { tekst: 'Bij de ingang staat een jongen te draaien, kap op, half op zijn tenen, ogen op de deur. Twee letters in zijn nek, F en V. Die fan van Fenna, die overal opduikt waar zij zingt.', onShow: function() { setTimeout(function(){ toonNpcPop(ROBBIE_POP); }, 200); } },
           'Hij staat op wacht, al lijkt hij het zelf niet zo te noemen. Hij wacht op iemand. Op haar, waarschijnlijk.',
           'Hij zegt niets, en dat kan hij ook niet. Zijn mond is dichtgenaaid. In zijn vuist zit een briefje geklemd.',
           { tekst: 'Om je heen dringen dorpelingen samen, mopperend, de sfeer om te snijden. Toch is dit niet waar het vanavond echt losbarst. Je houdt de jongen even in de gaten en loopt dan door.', onShow: function() { verbergNpcPop(); } }
@@ -11459,7 +11464,7 @@ function renderH5Gemeentehuis(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Bij de ingang', image: 'locaties/heerdonatuslaan/gemeentehuis.jpeg',
         dialog: [
-          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, kap op, met zijn blik strak op de ingang. Twee letters in zijn nek, F en V. Die fan van Fenna.', onShow: function() { toonNpcPop(ROBBIE_POP); } },
+          { tekst: 'Bij het gemeentehuis dringen dorpelingen samen, de sfeer om te snijden. Tussen hen staat een jongen bij de deur, kap op, met zijn blik strak op de ingang. Twee letters in zijn nek, F en V. Die fan van Fenna.', onShow: function() { setTimeout(function(){ toonNpcPop(ROBBIE_POP); }, 200); } },
           'Je kijkt nog eens. Zijn mond is dichtgenaaid en hij houdt een briefje vast. Hij wacht duidelijk op iemand, en hij is bang dat die niet op tijd komt. Je onthoudt hem.',
           { tekst: 'En dan, in je ooghoek, beweegt er een schim tussen de kerk en het gemeentehuis. Je blijft staan.', onShow: function() { verbergNpcPop(); } },
           'Ging die nu bij het gemeentehuis naar binnen, of bij de kerk? Je weet het niet zeker. Hoe langer je erover nadenkt, hoe minder zeker je wordt.'
