@@ -4949,7 +4949,6 @@ function checkEigenDeelRond() {
 // terug is op straat.
 function toonEigenDeelPopup() {
   if (state.eigenDeelPopupGetoond) return;
-  if (state.debugSkipBezig) return;
   var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorpsplein'].some(function (id) {
     var el = document.getElementById(id);
     return el && el.classList.contains('active');
@@ -4977,18 +4976,67 @@ function speelEigenDeelPopup() {
   );
 }
 
-// Testmodus: wat mist deze rol nog voor "jouw deel is rond"? Alleen de eigen
-// rol, want alleen daarvan is de taaklijst bekend op deze tablet.
-function debugEigenDeelStatus() {
-  if (verhaalFaseZone() !== 'kraaienkwartier') {
-    if (typeof toonToast === 'function') toonToast('\ud83d\udccb', 'De melding bestaat alleen in het Kraaienkwartier.');
-    return;
+// Waarom staat de melding uit? Geeft null als hij juist aan hoort te staan.
+// Puur voor het debug-paneel: dit is de plek waar een testsessie zichzelf
+// verklaart, zodat niemand hoeft te raden waarom er niets gebeurt.
+function eigenDeelReden() {
+  if (!state.personage) return 'er is nog geen rol gekozen';
+  var fase = verhaalFaseZone();
+  if (fase !== 'kraaienkwartier') {
+    return 'de verhaal-fase staat op ' + (faseWeergaveNaam(fase) || 'geen wijk') +
+           '. De melding bestaat voorlopig alleen in het Kraaienkwartier. Een eerdere skip naar een volgende wijk zet die fase gedeeld vooruit, en hij gaat nooit vanzelf terug.';
   }
+  if (!KK_EIGEN_TAKEN[state.personage]) return 'voor deze rol staat geen taaklijst';
   var open = eigenDeelTakenOpen();
-  var tekst = open.length ? ('Nog open: ' + open.join(', ')) : 'Alle eigen taken rond';
-  if (!open.length && kkFinaleFaseBezig()) tekst += ', maar de wijkfinale is gevallen, dus de melding zwijgt';
-  tekst += ' \u00b7 ' + (state.eigenDeelPopupGetoond ? 'popup al gehad' : 'popup nog niet gehad');
-  if (typeof toonToast === 'function') toonToast('\ud83d\udccb', tekst);
+  if (open.length) return 'er staat nog iets open: ' + open.join(', ');
+  if (kkFinaleFaseBezig()) return 'de wijkfinale is al gevallen. Dan is het podium de richting, dus zwijgt de melding.';
+  return null;
+}
+
+// Testmodus: volledige stand van de "jouw deel is rond"-melding. Als lade en
+// niet als toast, want er staan te veel dingen in om in een balkje te passen.
+function debugEigenDeelStatus() {
+  var reden = eigenDeelReden();
+  var fase = verhaalFaseZone();
+  var open = (state.personage && KK_EIGEN_TAKEN[state.personage] && fase === 'kraaienkwartier')
+    ? eigenDeelTakenOpen() : null;
+  var rustigeSchermen = ['screen-overworld', 'screen-kwartier1', 'screen-dorpsplein'];
+  var opRustigScherm = rustigeSchermen.some(function (id) {
+    var el = document.getElementById(id);
+    return el && el.classList.contains('active');
+  });
+  function regel(kop, waarde) {
+    return '<div style="display:flex;gap:.6rem;padding:.3rem 0;border-top:1px solid rgba(var(--goudrgb),calc(.12 * var(--lijn)))">' +
+           '<span style="flex:0 0 9rem;font-family:Cinzel,serif;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold-dim)">' + kop + '</span>' +
+           '<span style="flex:1 1 auto;min-width:0;font-size:.9rem;color:var(--parchment)">' + waarde + '</span></div>';
+  }
+  var html = '<div style="text-align:left">';
+  html += regel('Rol', state.personage || 'geen');
+  html += regel('Verhaal-fase', faseWeergaveNaam(fase) || 'nog geen');
+  html += regel('Eigen taken', open === null ? 'niet van toepassing' : (open.length ? 'nog open: ' + open.join(', ') : 'allemaal rond'));
+  html += regel('Wijkfinale', kkFinaleFaseBezig() ? 'gevallen (melding zwijgt)' : 'nog niet');
+  html += regel('Popup', state.eigenDeelPopupGetoond ? 'al gehad' : 'nog niet gehad');
+  html += regel('Dit scherm', opRustigScherm ? 'popup mag hier verschijnen' : 'popup wacht tot je op de kaart of op straat staat');
+  html += regel('Melding nu', reden ? 'uit, want ' + reden : 'aan');
+  html += '</div>';
+  toonLade('\ud83d\udccb  Stand van de klaar-melding', html, 'Sluiten', null);
+}
+
+// Testmodus: de gedeelde verhaal-fase terugzetten naar het Kraaienkwartier.
+// Nodig omdat die fase alleen vooruit gaat: wie in dezelfde sessie een keer
+// naar Dorendael of Heer Donatuslaan geskipt heeft, krijgt de teller en deze
+// melding anders nooit meer op het Kraaienkwartier.
+function debugFaseTerugNaarKraaienkwartier() {
+  setSharedState('verhaal_fase', 'kraaienkwartier');
+  zoneUnlocked.dorendael = false;
+  zoneUnlocked.sintdonatuslaan = false;
+  state.unlockedKwartieren = ['kraaienkwartier'];
+  _eigenDeelVorige = null;
+  if (typeof updateOverworldTiles === 'function') updateOverworldTiles();
+  updateMissieTeller();
+  if (typeof toonToast === 'function') {
+    toonToast('\u21a9\ufe0f', 'Verhaal-fase staat weer op Kraaienkwartier (ook gedeeld).', 'Testmodus');
+  }
 }
 
 // Welke zone bepaalt de teller op dit moment?
@@ -21994,7 +22042,8 @@ function buildDebugPanel() {
       // ── Jouw deel is rond (de eigen-deel-melding)
       ['\u2713 Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
       ['\ud83d\udd04 Reset de klaar-melding', function(){ state.eigenDeelPopupGetoond = false; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
-      ['\ud83d\udccb Status eigen taken tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
+      ['\ud83d\udccb Stand van de melding tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
+      ['\u21a9\ufe0f Verhaal-fase terug naar Kraaienkwartier', function(){ close(); debugFaseTerugNaarKraaienkwartier(); }, verhaalFaseZone() !== 'kraaienkwartier', 'Jouw deel is rond'],
       // ── Verborgen Hand: de stille hulpklok van dit district
       ['⏳ Klok nu laten aflopen',   function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
       ['🔄 Klok en hint resetten',   function(){ debugVhKlokReset('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
@@ -22272,6 +22321,10 @@ function buildDebugPanel() {
       ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }, true, 'Kaart & panelen'],
       ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }, true, 'Kaart & panelen'],
       ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Kaart & panelen'],
+      // Ook hier bereikbaar: als de teller de verkeerde wijk toont sta je
+      // meestal op de kaart en niet in het Kraaienkwartier zelf.
+      ['📋 Stand van de klaar-melding', function(){ close(); debugEigenDeelStatus(); }, true, 'Kaart & panelen'],
+      ['↩️ Verhaal-fase terug naar Kraaienkwartier', function(){ close(); debugFaseTerugNaarKraaienkwartier(); }, verhaalFaseZone() !== 'kraaienkwartier', 'Kaart & panelen'],
       // ── Samenvattingen (recaps zoals ze tussen de wijken verschijnen)
       ['📜 Samenvatting Dorendael (voorbeeld)', function(){ close(); toonRecap('dorendael', null, false); }, true, 'Samenvattingen'],
       ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }, true, 'Samenvattingen'],
