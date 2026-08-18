@@ -17994,6 +17994,19 @@ function toonPopDialoog(stappen, callback) {
   var POP_GROOTTES = {};
   var POP_STANDAARD = { height: '55vh', maxHeight: '480px', marginBottom: '0' };
 
+  // Horizontale correctie voor het RECHTERSLOT, in procenten van de eigen
+  // breedte van de afbeelding. De pop wordt uitgelijnd op de rand van zijn
+  // canvas (right:6vw), niet op de figuur binnen dat canvas. Jans silhouet
+  // heeft rechts een lege marge van bijna 6% en stond daardoor merkbaar
+  // verder naar links dan Felix' silhouet, dat tot tegen de rand doorloopt.
+  // Met deze verschuiving staan hun hoofden op dezelfde plek.
+  // Procenten en geen vh: de pop heeft ook een max-height, en een vaste
+  // vh-waarde zou onder die grens niet meer kloppen. Alleen rechts, want
+  // links is de marge aan de andere kant en daar staan deze silhouetten niet.
+  var POP_VERSCHUIF_RECHTS = {
+    'karakters/spelers/janschaduw-pop.png': '2.8%'
+  };
+
   function maakPop(zijde) {
     const isLinks = zijde === 'links';
     const el = document.createElement('div');
@@ -18001,6 +18014,7 @@ function toonPopDialoog(stappen, callback) {
     // elkaar gepositioneerd, zodat de bubbel-hoogte niet meebeweegt met de
     // afbeeldingshoogte (Jan is groter dan de rest). Beide bubbels staan zo
     // op exact dezelfde hoogte, ongeacht welk personage in beeld is.
+    el.dataset.zijde = zijde;
     el.style.cssText = `position:absolute;top:0;bottom:0;${isLinks ? 'left:0' : 'right:0'};width:50vw;pointer-events:none;transition:opacity .35s ease;opacity:0`;
     el.innerHTML = `
       <div class="pop-bubble" style="position:absolute;bottom:56vh;${isLinks ? 'left:.75rem' : 'right:.5rem'};max-width:min(280px,38vw);background:rgba(13,10,6,.93);border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn)));border-radius:${isLinks ? '8px 8px 8px 2px' : '8px 8px 2px 8px'};padding:.7rem .9rem;pointer-events:auto">
@@ -18087,6 +18101,10 @@ function toonPopDialoog(stappen, callback) {
       // Een gedaante (het silhouet van iemand die je hoort maar niet ziet)
       // krijgt randlicht en waas mee, zie .pop-gedaante in de CSS.
       img.classList.toggle('pop-gedaante', !!data.gedaante);
+      // Altijd zetten, ook als er geen correctie is: hetzelfde img-element
+      // wordt hergebruikt voor elke stap, dus een oude verschuiving moet weg.
+      var dx = (el.dataset.zijde === 'rechts') ? POP_VERSCHUIF_RECHTS[data.img] : null;
+      img.style.transform = dx ? ('translateX(' + dx + ')') : '';
       img.src = data.img;
       el.style.opacity = '1';
     } else {
