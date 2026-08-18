@@ -4832,44 +4832,60 @@ function debugResetLeestaak(boek) {
 // zetten. Gedeelde mijlpalen die van meerdere kanten kunnen komen staan hier
 // niet in, zodat "klaar" nooit te vroeg klopt.
 var KK_EIGEN_TAKEN = {
-  jan: function () {
-    // De Kromme Spijker uit de uitkijktoren. Item of gedeelde spiegelvlag,
-    // net als in KRAAIEN_MISSIE_KEYS: na een herlaad staat soms alleen de vlag.
-    var speld = !!state.inventory.find(function (i) { return i.naam === 'Kromme Spijker'; })
-             || !!getSharedState('kk_sleutel_speld');
+  jan: [
+    // De Kromme Spijker uit de uitkijktoren. Item of gedeelde spiegelvlag, net
+    // als in KRAAIEN_MISSIE_KEYS: na een herlaad staat soms alleen de vlag.
+    { label: 'de Kromme Spijker uit de toren', check: function () {
+        return !!state.inventory.find(function (i) { return i.naam === 'Kromme Spijker'; })
+            || !!getSharedState('kk_sleutel_speld');
+      } },
     // Zit Kelly nog in de put, dan is Jan niet klaar: hij is de enige die haar
     // eruit trekt. Beide vlaggen staan in SHARED_VISITED_FLAGS, dus zijn tablet
     // weet dit ook zonder zelf bij de put geweest te zijn.
-    var kellyVast = hasVisited('kelly_in_put') && !hasVisited('kelly_gered');
-    return speld && !kellyVast;
-  },
-  kelly: function () {
+    { label: 'Kelly uit de put trekken', check: function () {
+        return !(hasVisited('kelly_in_put') && !hasVisited('kelly_gered'));
+      } }
+  ],
+  kelly: [
     // Het dagboek uit de put, gerestaureerd in het archief en door haarzelf
     // uitgelezen. dagboekStapTelt() dekt die hele keten al.
-    return dagboekStapTelt();
-  },
-  fenna: function () {
-    // Robbie's lied, plus de roestige spijker afgegeven aan Jan. Waar ze die
-    // spijker vond maakt niet uit.
-    return !!getSharedState('kk_sleutel_robbie') && hasVisited('fenna_spijker_gegeven');
-  },
-  felix: function () {
+    { label: 'het dagboek herstellen en uitlezen', check: function () { return dagboekStapTelt(); } }
+  ],
+  fenna: [
+    { label: 'het lied voor Robbie', check: function () { return !!getSharedState('kk_sleutel_robbie'); } },
+    // De roestige spijker afgeven aan Jan. Waar ze die vond maakt niet uit. Is
+    // de torencode al ingevoerd, dan is de overdracht per definitie geweest:
+    // die vlag is gedeeld, dus dit klopt ook als Jan hem invoerde.
+    { label: 'de spijker aan Jan geven', check: function () {
+        return hasVisited('fenna_spijker_gegeven') || hasVisited('toren_code_ingevoerd');
+      } }
+  ],
+  felix: [
     // Het plan van Mevr. van Wallingen, alleen los te krijgen als Lucinde.
-    return !!getSharedState('kk_sleutel_wallingen');
-  }
+    { label: 'het plan bij Mevr. van Wallingen', check: function () { return !!getSharedState('kk_sleutel_wallingen'); } }
+  ]
 };
+
+// Wat staat er voor deze speler nog open in het Kraaienkwartier? Lege lijst is
+// "rond". De leestaak hoort erbij, maar pas zodra hij echt openstaat: daarvoor
+// bestaat die taak voor deze speler nog niet.
+function eigenDeelTakenOpen() {
+  var taken = KK_EIGEN_TAKEN[state.personage];
+  if (!taken) return ['onbekende rol'];
+  var open = taken.filter(function (t) { return !t.check(); }).map(function (t) { return t.label; });
+  if (LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage)) {
+    open.push('het dagboek lezen');
+  }
+  return open;
+}
 
 // Heeft deze speler zijn eigen deel van de huidige wijk af? Alleen het
 // Kraaienkwartier is hiervoor uitgewerkt; in andere wijken blijft alles uit.
 function eigenDeelRond() {
   if (!state.personage) return false;
   if (verhaalFaseZone() !== 'kraaienkwartier') return false;
-  var taak = KK_EIGEN_TAKEN[state.personage];
-  if (typeof taak !== 'function' || !taak()) return false;
-  // Het dagboek lezen telt pas mee zodra die leestaak echt openstaat. Daarvoor
-  // bestaat de taak voor deze speler nog niet, en dan is hij gewoon rond.
-  if (LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage)) return false;
-  return true;
+  if (!KK_EIGEN_TAKEN[state.personage]) return false;
+  return eigenDeelTakenOpen().length === 0;
 }
 
 // Is de wijkfinale al gevallen? Vanaf dat moment is de richting het podium en
@@ -4964,14 +4980,15 @@ function speelEigenDeelPopup() {
 // Testmodus: wat mist deze rol nog voor "jouw deel is rond"? Alleen de eigen
 // rol, want alleen daarvan is de taaklijst bekend op deze tablet.
 function debugEigenDeelStatus() {
-  var taak = KK_EIGEN_TAKEN[state.personage];
-  var eigen = (typeof taak === 'function') ? !!taak() : false;
-  var leesOpen = LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage);
-  var regels = [eigen ? 'eigen taken rond' : 'eigen taken nog niet af'];
-  regels.push(leesOpen ? 'dagboek nog lezen' : 'geen open leestaak');
-  if (kkFinaleFaseBezig()) regels.push('wijkfinale gevallen, melding zwijgt');
-  regels.push(state.eigenDeelPopupGetoond ? 'popup al gehad' : 'popup nog niet gehad');
-  if (typeof toonToast === 'function') toonToast('\ud83d\udccb', regels.join(' \u00b7 '));
+  if (verhaalFaseZone() !== 'kraaienkwartier') {
+    if (typeof toonToast === 'function') toonToast('\ud83d\udccb', 'De melding bestaat alleen in het Kraaienkwartier.');
+    return;
+  }
+  var open = eigenDeelTakenOpen();
+  var tekst = open.length ? ('Nog open: ' + open.join(', ')) : 'Alle eigen taken rond';
+  if (!open.length && kkFinaleFaseBezig()) tekst += ', maar de wijkfinale is gevallen, dus de melding zwijgt';
+  tekst += ' \u00b7 ' + (state.eigenDeelPopupGetoond ? 'popup al gehad' : 'popup nog niet gehad');
+  if (typeof toonToast === 'function') toonToast('\ud83d\udccb', tekst);
 }
 
 // Welke zone bepaalt de teller op dit moment?
@@ -21970,7 +21987,9 @@ function buildDebugPanel() {
       // Doet alsof Jans tablet nu het torenscherm toont (aanwezigheids-check
       // van de overhandig-knop), voor solo-testen zonder tweede tablet.
       ['🗼 Jan staat bij de toren (aan/uit)', function(){ setSharedState('debug_jan_bij_toren', getSharedState('debug_jan_bij_toren') ? false : true); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Toren (K3)'],
-      ['🔓 Toren-code ingevoerd (skip overdracht)', function(){ markVisited('toren_code_ingevoerd'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('toren_code_ingevoerd'), 'Toren (K3)'],
+      // Ook Fenna's overhandiging meemarkeren: deze knop slaat de hele
+      // overdracht over, en zonder die vlag blijft haar kant formeel open.
+      ['🔓 Toren-code ingevoerd (skip overdracht)', function(){ markVisited('fenna_spijker_gegeven'); markVisited('toren_code_ingevoerd'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('toren_code_ingevoerd'), 'Toren (K3)'],
       ['📌 + Kromme Spijker (toren)', function(){ debugItem('📌','Kromme Spijker'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Jouw deel is rond (de eigen-deel-melding)
       ['\u2713 Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
