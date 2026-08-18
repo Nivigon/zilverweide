@@ -22474,6 +22474,15 @@ function debugItem(emoji, naam) { addInventory(emoji, naam, false); document.get
 function debugUnlock(zone) { unlockZone(zone); document.getElementById('debug-panel').style.display = 'none'; }
 function debugClear() { state.inventory = []; state.finalePopupGetoond = false; updateInventoryBar(); document.getElementById('debug-panel').style.display = 'none'; }
 
+// Test-skips laten je een wijk binnenlopen zonder dat je ooit bij het bordje
+// aan de ingang hebt gestaan. Zonder dit vraagt de kaart alsnog om de
+// ingangscode (D1, K1, DD1, H1) van een wijk die het spel al als gespeeld
+// behandelt. markEntree schrijft per rol, dus dit verandert niets voor de
+// andere tablets.
+function debugEntreesGedaan(zones) {
+  zones.forEach(function (z) { markEntree(z); });
+}
+
 function debugSkipIntroFilmpje() {
   if (!state.personage) { alert('Selecteer eerst een rol.'); return; }
   zetIntroVergrendeling(false);   // sla je de intro over, dan ook de slotstand
@@ -22486,6 +22495,8 @@ function debugSkipIntroFilmpje() {
   // Ontgrendel beide zones
   zoneUnlocked['dorpsplein'] = true;
   unlockZone('kraaienkwartier');
+  // Geen D1/K1 meer hoeven intikken: deze skip zet je zelf op de kaart.
+  debugEntreesGedaan(['dorpsplein', 'kraaienkwartier']);
   showScreen('screen-overworld');
   updateIndicator('dorpsplein','👥','Dorpsplein');
 }
@@ -22557,6 +22568,8 @@ function debugSkipNaarDorendael() {
   zoneUnlocked['dorpsplein'] = true;
   unlockZone('kraaienkwartier');
   unlockZone('dorendael');
+  // Geen D1/K1/DD1 meer hoeven intikken na deze skip.
+  debugEntreesGedaan(['dorpsplein', 'kraaienkwartier', 'dorendael']);
 
   // Naar de kaart
   state.activeKwartier = null;
@@ -22766,6 +22779,9 @@ function debugSkipNaarHeerDonatuslaan(opties) {
   }
   // HD daadwerkelijk ontgrendelen op de kaart.
   unlockZone('sintdonatuslaan');
+  // Geen H1 meer hoeven intikken (D1/K1/DD1 zijn hierboven al gezet via
+  // debugSkipNaarDorendael).
+  debugEntreesGedaan(['sintdonatuslaan']);
 
   // Wakker-variant: niet via de kaart, maar zoals naVloek het doet. Felix
   // terugzetten op "net wakker", zone alvast op Heer Donatuslaan, en dan met
