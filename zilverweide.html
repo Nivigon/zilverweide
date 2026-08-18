@@ -18121,8 +18121,20 @@ function kiesDorendaelHeks(code) {
   }
 }
 
+// Alternatieve (moeilijkere) codes voor de dorpsplein-locaties. Elke code is
+// een alias voor de canonieke code en wordt hier meteen omgezet, nog vóór de
+// vergrendelingscheck, zodat de alias zich in elke spelfase exact hetzelfde
+// gedraagt als het origineel. De canonieke codes (D2, D3, D4) blijven gewoon
+// werken naast de aliassen.
+const DP_ALT_CODES = {
+  'MD2P':  'D2',   // podium
+  'F3HCR': 'D3',   // dorpsarchief
+  'DN4H':  'D4',   // De Verborgen Hand
+};
+
 function checkDorpspleinLocatie(val) {
   val = val.trim().toUpperCase();
+  if (DP_ALT_CODES[val]) val = DP_ALT_CODES[val];
   // Try both input fields
   const msg = document.getElementById('code-dp-locatie-msg') || document.getElementById('dp-locatie-msg');
   if (!msg) return;
