@@ -1080,6 +1080,14 @@ body.k6finale-actief .finale-btn{display:none !important;}
    naast je eigen portret. Zonder deze mask zou de jpeg als rechthoekige foto
    naast een uitgeknipte pop hangen. */
 .pop-img[src$="schim.jpeg"]{-webkit-mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);mask-image:radial-gradient(ellipse 52% 48% at 50% 46%,#000 38%,transparent 72%);opacity:.92}
+/* Jan en Felix hebben inmiddels elk een eigen silhouet (janschaduw-pop en
+   felixschaduw-pop), dus bij het gat staat de ander als zijn eigen gedaante
+   naast je in plaats van als algemene schim. Die PNG's zijn bijna zwart en
+   vielen weg tegen een donkere scene, dus krijgt de gedaante koud randlicht
+   (drop-shadow volgt de alpha-rand) plus een lichte waas erachter (de
+   background schijnt door de transparante delen van de PNG). De pop-dialoog
+   zet zelf een filter in de inline stijl, vandaar !important. */
+.pop-img.pop-gedaante{filter:drop-shadow(0 0 3px rgba(198,214,236,.8)) drop-shadow(0 0 18px rgba(120,150,190,.4)) drop-shadow(0 8px 20px rgba(0,0,0,.6)) !important;background:radial-gradient(ellipse 58% 52% at 50% 55%,rgba(160,185,215,.22),rgba(150,175,205,.08) 55%,transparent 72%)}
 /* Midden-pop (Sybille in de slotscene): horizontaal gecentreerd in plaats
    van rechts, zodat zij en de roos samen het middelpunt vormen. */
 #pf-pop.pf-midden{left:50%;right:auto;transform:translateX(-50%)}
@@ -8878,6 +8886,11 @@ function h2GeheimeDeurHotspot() {
 // vastzit-gate in showScreen houdt een opgesloten speler gewoon binnen,
 // mocht die hier ooit komen). Het opruimen van muziek en schaduwpauze
 // gebeurt in showScreen zodra je screen-locatie verlaat.
+// Twee versies van dezelfde kamer: met de crystal op het altaar, en met een
+// leeg altaar zodra hij gepakt is.
+const KAMER1_MET_CRYSTAL    = 'locaties/heerdonatuslaan/kamer1bonus.jpeg';
+const KAMER1_ZONDER_CRYSTAL = 'locaties/heerdonatuslaan/kamer1bonusgeencrystal.jpg';
+
 function openKamer1Bonus() {
   verbergNpcPop();
   var gepakt   = !!getSharedState('crystal_gepakt');
@@ -8902,7 +8915,7 @@ function openKamer1Bonus() {
   renderLocatieScene({
     container: document.getElementById('locatie-content'),
     titel: '', sub: '',
-    image: 'locaties/heerdonatuslaan/kamer1bonus.jpeg',
+    image: gepakt ? KAMER1_ZONDER_CRYSTAL : KAMER1_MET_CRYSTAL,
     dialog: dialog
   });
   // Ook echt naar het locatie-scherm: via de testknop kan deze functie
@@ -8919,23 +8932,65 @@ function openKamer1Bonus() {
 }
 
 // Klikgebied op de gebroken crystal op het altaar (kamer1bonus.jpeg,
-// 1280 x 720). Bij een klik pak je hem op.
+// 1280 x 720). Bij een klik pak je hem op. De bevat-check noemt de
+// bestandsnaam voluit: de lege variant heet kamer1bonusgeencrystal.jpg en
+// zou anders ook op een kale padcheck matchen.
 function kamer1CrystalHotspot() {
   zetSceneHotspot({
-    bevat: 'heerdonatuslaan/kamer1bonus',
+    bevat: 'kamer1bonus.jpeg',
     natBreedte: 1280, natHoogte: 720,
     x1: 580, y1: 343, x2: 682, y2: 410,
     onKlik: pakKamer1Crystal
   });
 }
 
-// De crystal oppakken. Gedeelde vlag zodat teamgenoten de lege plek zien;
-// daarna de kamer opnieuw tonen (altaar leeg, klikgebied weg).
+// Overvloeier tussen de twee kamerbeelden. De scene-afbeelding is een
+// background-image op .sc-image, dus de nieuwe versie komt als extra laag
+// erbovenop en fade't in; daarna neemt de her-render het beeld over, zodat
+// er geen sprong te zien is. Eerst preloaden, anders fade je naar een nog
+// leeg vlak. Bewust kort (450ms): de crystal zit meteen in je rugzak.
+function kamer1Crossfade(naarBeeld, klaar) {
+  var box = document.querySelector('#locatie-content .sc-image');
+  if (!box) { klaar(); return; }
+  var cs = window.getComputedStyle(box);
+  if (cs.position === 'static') box.style.position = 'relative';
+  var laag = document.createElement('div');
+  // Bewust GEEN z-index: het vignet van .sc-image::after wordt na alle
+  // kinderen getekend en blijft zo over de nieuwe laag heen liggen. Met een
+  // z-index eroverheen zou het beeld tijdens de overvloeier onvignetteerd
+  // zijn en aan het eind ineens donkerder worden.
+  laag.style.cssText = 'position:absolute;inset:0;pointer-events:none;opacity:0;' +
+    'transition:opacity .45s ease;background-image:url("' + naarBeeld + '");' +
+    'background-size:' + cs.backgroundSize + ';background-position:' + cs.backgroundPosition +
+    ';background-repeat:no-repeat';
+  box.appendChild(laag);
+  var pre = new Image();
+  pre.onload = pre.onerror = function () {
+    void laag.offsetWidth;
+    laag.style.opacity = '1';
+    setTimeout(klaar, 480);
+  };
+  pre.src = naarBeeld;
+}
+
+// De crystal oppakken. Gedeelde vlag zodat teamgenoten de lege plek zien.
+// Het klikgebied gaat meteen weg (anders tik je er tijdens de overvloeier
+// nog eens op), het beeld vloeit over naar het lege altaar en pas daarna
+// tekent de kamer zichzelf opnieuw met de bijbehorende tekst.
 function pakKamer1Crystal() {
   if (getSharedState('crystal_gepakt')) return;
   setSharedState('crystal_gepakt', true);
   addInventory(ITEMS.crystal.emoji, ITEMS.crystal.naam, true);
-  openKamer1Bonus();
+  document.querySelectorAll('#locatie-content .sc-image .scene-hotspot')
+    .forEach(function (el) { if (el.parentNode) el.parentNode.removeChild(el); });
+  kamer1Crossfade(KAMER1_ZONDER_CRYSTAL, function () {
+    // Tijdens de overvloeier weggeklikt? Dan de kamer niet alsnog terugtoveren.
+    var box = document.querySelector('#locatie-content .sc-image');
+    var bg = '';
+    try { bg = box ? (window.getComputedStyle(box).backgroundImage || '') : ''; } catch (e) {}
+    if (bg.indexOf('kamer1bonus') === -1) return;
+    openKamer1Bonus();
+  });
 }
 
 // Elke H2-scène krijgt het verborgen klikgebied op de voordeur mee. De
@@ -8963,7 +9018,12 @@ function h2Scene(opts) {
 // versie. Nu telt alleen of Jans tablet dit scherm nu echt toont.
 // ══════════════════════════════════════════════════════════════════
 const H2_MUNTEN_CODE = 'XXX';
-const H2_SCHIM_POP = 'karakters/dorendael/schim.jpeg';
+// Bij het gat horen Jan en Felix elkaar wel, maar zien ze elkaar niet: op
+// elk tablet staat de ander als silhouet van zichzelf naast je eigen portret.
+const H2_SCHADUW_POPS = {
+  jan:   'karakters/spelers/janschaduw-pop.png',
+  felix: 'karakters/spelers/felixschaduw-pop.png'
+};
 
 // Beide tablets spelen hetzelfde gesprek, ieder in zijn eigen leestempo. Wie
 // klaar is zet zijn eigen sleutel in de sessie, en de overdracht die op het
@@ -9104,12 +9164,14 @@ function h2GesprekStappen(regels) {
   var namen = { jan: 'Jan', felix: 'Felix' };
   var links = null, rechts = null;
   return regels.map(function (r) {
+    var eigen = (r.wie === eigenRol);
     var data = {
-      img:  (r.wie === eigenRol) ? eigenImg : H2_SCHIM_POP,
+      img:  eigen ? eigenImg : H2_SCHADUW_POPS[r.wie],
       naam: namen[r.wie],
-      tekst: r.tekst
+      tekst: r.tekst,
+      gedaante: !eigen
     };
-    if (r.wie === eigenRol) links = data; else rechts = data;
+    if (eigen) links = data; else rechts = data;
     return { links: links, rechts: rechts };
   });
 }
@@ -18007,6 +18069,9 @@ function toonPopDialoog(stappen, callback) {
       img.style.height = g.height;
       img.style.maxHeight = g.maxHeight;
       img.style.bottom = g.marginBottom;
+      // Een gedaante (het silhouet van iemand die je hoort maar niet ziet)
+      // krijgt randlicht en waas mee, zie .pop-gedaante in de CSS.
+      img.classList.toggle('pop-gedaante', !!data.gedaante);
       img.src = data.img;
       el.style.opacity = '1';
     } else {
