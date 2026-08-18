@@ -21565,6 +21565,22 @@ function debugToggleFlesjeVlag() {
   }
 }
 
+// Volgorde van de categorieblokken in het testpaneel. Wat hier niet in staat
+// houdt zijn eigen plek in de knoppenlijst en belandt tussen de twee lijsten
+// in. Wil je iets hoger of lager: verplaats de naam hier, niet de knoppen.
+const DEBUG_CAT_BOVENAAN = ['Start & skips', 'Tempo & dialoog', 'Felix vermomming', 'Team & spelers'];
+const DEBUG_CAT_ONDERAAN = ['Samenvattingen', 'Begeleider & sessie', 'Herstelpunt', 'Logboek', 'Overig'];
+
+// Rangnummer voor de sortering hierboven. De middenmoot krijgt bewust een
+// gelijke score, zodat de stabiele sort hun onderlinge volgorde laat staan.
+function debugCatRang(naam) {
+  const boven = DEBUG_CAT_BOVENAAN.indexOf(naam);
+  if (boven !== -1) return boven - 1000;
+  const onder = DEBUG_CAT_ONDERAAN.indexOf(naam);
+  if (onder !== -1) return onder + 1000;
+  return 0;
+}
+
 function buildDebugPanel() {
   // Op de overworld/kaart tonen we altijd het algemene menu (met de
   // skip-naar-district-knoppen), ongeacht welke wijk je het laatst
@@ -21918,32 +21934,39 @@ function buildDebugPanel() {
   } else {
     label = 'Algemeen';
     btns = [
-      ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }],
-      ['📜 Samenvatting Dorendael (voorbeeld)', function(){ close(); toonRecap('dorendael', null, false); }],
-      ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }],
-      ['📜 Samenvatting kerk (voorbeeld)',      function(){ close(); toonRecap('kerk', null, false); }],
-      ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }],
-      ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }],
-      ['🧑‍🤝‍🧑 Vul namen andere spelers (test)', function(){ debugVulAndereSpelers(); close(); }],
-      ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }],
-      ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }],
-      ['🎬 Podium-finale solo (hele flow)', function(){ close(); debugPodiumFinaleSolo(); }],
-      ['🎭 Plein-finale: heksen-scene', function(){ close(); pleinFinaleIntro(); }],
-      ['🌹 Plein-finale: na de armen',  function(){ close(); pleinFinaleNaArmen(); }],
-      ['🧪 Wissel variant A/B (flesje)', function(){ debugToggleFlesjeVlag(); close(); }],
-      ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }],
-      ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }],
-      ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }],
-      ['🔄 VH-klok Kraaienkwartier resetten',      function(){ debugVhKlokReset('kraaienkwartier'); close(); }],
-      ['⏳ VH-klok Heer Donatuslaan laten aflopen', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }],
-      ['🔄 VH-klok Heer Donatuslaan resetten',      function(){ debugVhKlokReset('sintdonatuslaan'); close(); }],
-      ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }],
-      ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }],
-      ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix'],
-      ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }],
-      ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }],
-      ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }],
-      ['📖 Alle 4 rozen gelezen (4/4)',   function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }],
+      // ── Start & skips: vanaf hier spring je de wijken in.
+      ['⏭️ Skip intro-filmpje',     function(){ debugSkipIntroFilmpje(); close(); }, true, 'Start & skips'],
+      ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }, true, 'Start & skips'],
+      ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }, true, 'Start & skips'],
+      ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix', 'Start & skips'],
+      // ── Team & spelers
+      ['🧑‍🤝‍🧑 Vul namen andere spelers (test)', function(){ debugVulAndereSpelers(); close(); }, true, 'Team & spelers'],
+      ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }, true, 'Team & spelers'],
+      // ── Kaart & panelen
+      ['🗺️ Kaart-uitleg opnieuw',   function(){ close(); state.visited.delete('overworld_intro_gezien'); showScreen('screen-overworld'); }, true, 'Kaart & panelen'],
+      ['✦ Open missie-paneel',       function(){ close(); updateMissieTeller(); var t=document.getElementById('missie-teller'); if(t) t.style.display='flex'; toggleMissiePaneel(); }, true, 'Kaart & panelen'],
+      ['🔊 Geluidsmonitor',         function(){ close(); toggleGeluidsMonitor(); }, true, 'Kaart & panelen'],
+      ['🔄 Reset finale popup',     function(){ state.finalePopupGetoond = false; close(); checkAllTokens(); }, true, 'Kaart & panelen'],
+      // ── Samenvattingen (recaps zoals ze tussen de wijken verschijnen)
+      ['📜 Samenvatting Dorendael (voorbeeld)', function(){ close(); toonRecap('dorendael', null, false); }, true, 'Samenvattingen'],
+      ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }, true, 'Samenvattingen'],
+      ['📜 Samenvatting kerk (voorbeeld)',      function(){ close(); toonRecap('kerk', null, false); }, true, 'Samenvattingen'],
+      // ── Leestaken (boeken die alle vier moeten lezen)
+      ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }, true, 'Leestaken'],
+      ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }, true, 'Leestaken'],
+      ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, true, 'Leestaken'],
+      ['📖 Alle 4 rozen gelezen (4/4)',   function(){ setSharedState('over_de_rozen_beschikbaar', true); debugAlleGelezen('rozen'); close(); }, true, 'Leestaken'],
+      // ── Verborgen Hand
+      ['🔮 Verborgen Hand bezoeken', function(){ close(); openVerborgenHand(); }, true, 'Verborgen Hand'],
+      ['⏳ VH-klok Kraaienkwartier laten aflopen', function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
+      ['🔄 VH-klok Kraaienkwartier resetten',      function(){ debugVhKlokReset('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
+      ['⏳ VH-klok Heer Donatuslaan laten aflopen', function(){ debugVhKlokAflopen('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
+      ['🔄 VH-klok Heer Donatuslaan resetten',      function(){ debugVhKlokReset('sintdonatuslaan'); close(); }, true, 'Verborgen Hand'],
+      // ── Plein-finale
+      ['🎬 Podium-finale solo (hele flow)', function(){ close(); debugPodiumFinaleSolo(); }, true, 'Plein-finale'],
+      ['🎭 Plein-finale: heksen-scene', function(){ close(); pleinFinaleIntro(); }, true, 'Plein-finale'],
+      ['🌹 Plein-finale: na de armen',  function(){ close(); pleinFinaleNaArmen(); }, true, 'Plein-finale'],
+      ['🧪 Wissel variant A/B (flesje)', function(){ debugToggleFlesjeVlag(); close(); }, true, 'Plein-finale'],
     ];
   }
 
@@ -21952,61 +21975,26 @@ function buildDebugPanel() {
   // Heer Donatuslaan, maar in testmodus zijn ze alledrie beschikbaar.)
   var isFelix = state.personage === 'felix';
   btns = btns.concat([
-    ['👵 Kleed om naar Lucinde', function(){ debugVermomFelix('Lucinde'); }, isFelix],
-    ['💃 Kleed om naar Lola',    function(){ addInventory(ITEMS.lolaOutfit.emoji, ITEMS.lolaOutfit.naam, false); debugVermomFelix('Lola'); }, isFelix],
-    ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix],
-    ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming],
+    // ── Felix' vermommingen
+    ['👵 Kleed om naar Lucinde', function(){ debugVermomFelix('Lucinde'); }, isFelix, 'Felix vermomming'],
+    ['💃 Kleed om naar Lola',    function(){ addInventory(ITEMS.lolaOutfit.emoji, ITEMS.lolaOutfit.naam, false); debugVermomFelix('Lola'); }, isFelix, 'Felix vermomming'],
+    ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix, 'Felix vermomming'],
+    ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming, 'Felix vermomming'],
+    // ── Begeleider & sessie
     // Extra hulp van de begeleider: dezelfde gedeelde vlag als de knop in het
     // begeleiderspaneel, zodat de duidelijkere hints solo te testen zijn.
     ['💡 Extra hulp: ' + (extraHulpAan() ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){
       setSharedState('extra_hulp', !extraHulpAan());
       close();
       if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
-    }, true],
-    // Herstelpunt (crash-herstel): forceer een save, kijk wat er staat, of wis.
-    ['💾 Herstelpunt nu opslaan', function(){ schrijfHerstelpuntNu(true); close(); }, true],
-    ['🔎 Herstelpunt in console', function(){ herstelpuntNaarConsole(); close(); }, true],
-    ['🗑️ Herstelpunt wissen (deze rol)', function(){ wisHerstelpunt(state.personage); close(); }, true],
-    // Logboek (sessie-analyse): open de losse analysepagina voor deze sessie,
-    // of zet het loggen aan/uit (staat standaard aan).
-    ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true],
-    ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true],
-    // Debugflag bij de startstand-registratie: schrijf nu een startstand-regel
-    // met de gedeelde stand van dit moment. Zo is de registratie te testen
-    // zonder de pagina te herladen, en kun je midden in een ronde een ijkpunt
-    // in het logboek zetten ("vanaf hier stond dit aan").
-    ['🧾 Startstand nu loggen', function(){ debugLogboekStartstand(); close(); }, true],
-    // Verder-lock: de korte pauze voordat je op Verder mag klikken, zodat
-    // niemand doorklikt voor de tekst gelezen kan zijn. Tijdens testen wil
-    // je juist wel snel door, vandaar deze schakelaar.
-    ['⏱️ Verder-lock: ' + (window._verderLockUit ? 'UIT (klik = aan)' : 'AAN (klik = uit)'), function(){
-      window._verderLockUit = !window._verderLockUit;
-      // Knoppen die nu op slot staan meteen vrijgeven, anders zit je nog
-      // tot drie seconden vast aan de stand van voor het omzetten.
-      if (window._verderLockUit && typeof window.dialoogLockKnop === 'function') {
-        [['.sc-verder-locked','sc-verder-locked'], ['.dh-verder-locked','dh-verder-locked'],
-         ['.lp-verder-locked','lp-verder-locked'], ['.sc-actie-locked','sc-actie-locked']]
-          .forEach(function(p){
-            document.querySelectorAll(p[0]).forEach(function(b){ window.dialoogLockKnop(b, 0, p[1]); });
-          });
-      }
-      close();
-    }, true],
-    // Regels die al in beeld zijn geweest krijgen nog maar 250 ms lock, zodat
-    // terugbladeren niet betekent dat je de hele scene weer uitzit. Bij testen
-    // is dat een valkuil: de tweede keer door dezelfde scene lijkt de lock
-    // kapot. Deze knop wist dat geheugen zodat de volle lock terugkomt.
-    ['🧠 Gelezen-regels vergeten (volle lock terug)', function(){
-      if (window._gelezenDialoogRegels && window._gelezenDialoogRegels.clear) window._gelezenDialoogRegels.clear();
-      close();
-    }, true],
+    }, true, 'Begeleider & sessie'],
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
-    ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true],
+    ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true, 'Begeleider & sessie'],
     // Debugflag bij het opruimen na een reset: doet alsof een ander tablet de
     // sessie zojuist heeft gewist, zodat de lege-snapshot-tak en de melding
     // solo te testen zijn zonder echt iets in Firebase weg te gooien.
-    ['🧪 Doe alsof de sessie elders gewist is', function(){ debugSessieEldersGewist(); close(); }, true],
+    ['🧪 Doe alsof de sessie elders gewist is', function(){ debugSessieEldersGewist(); close(); }, true, 'Begeleider & sessie'],
     // Tabletmodus omzetten zonder opnieuw te beginnen: zo is de duo-weergave
     // (rol-overzicht, begeleiderspaneel) te testen zonder de hele flow over
     // te doen. Bij het aanzetten vullen we zo nodig een tweede testnaam in,
@@ -22025,7 +22013,45 @@ function buildDebugPanel() {
         toonToast('👥', duoTablet() ? 'Tablet staat op 2 spelers' : 'Tablet staat op 1 speler');
       }
       close();
-    }, true],
+    }, true, 'Begeleider & sessie'],
+    // ── Herstelpunt (crash-herstel): forceer een save, kijk wat er staat, of wis.
+    ['💾 Herstelpunt nu opslaan', function(){ schrijfHerstelpuntNu(true); close(); }, true, 'Herstelpunt'],
+    ['🔎 Herstelpunt in console', function(){ herstelpuntNaarConsole(); close(); }, true, 'Herstelpunt'],
+    ['🗑️ Herstelpunt wissen (deze rol)', function(){ wisHerstelpunt(state.personage); close(); }, true, 'Herstelpunt'],
+    // ── Logboek (sessie-analyse): open de losse analysepagina voor deze sessie,
+    // of zet het loggen aan/uit (staat standaard aan).
+    ['📊 Open logboek (analyse)', function(){ window.open('logboek.html?sessie=' + encodeURIComponent(herstelSessieId()), '_blank'); close(); }, true, 'Logboek'],
+    ['📊 Loggen: ' + (LOGBOEK_AAN ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ logboekZetAan(!LOGBOEK_AAN); close(); }, true, 'Logboek'],
+    // Debugflag bij de startstand-registratie: schrijf nu een startstand-regel
+    // met de gedeelde stand van dit moment. Zo is de registratie te testen
+    // zonder de pagina te herladen, en kun je midden in een ronde een ijkpunt
+    // in het logboek zetten ("vanaf hier stond dit aan").
+    ['🧾 Startstand nu loggen', function(){ debugLogboekStartstand(); close(); }, true, 'Logboek'],
+    // ── Tempo & dialoog
+    // Verder-lock: de korte pauze voordat je op Verder mag klikken, zodat
+    // niemand doorklikt voor de tekst gelezen kan zijn. Tijdens testen wil
+    // je juist wel snel door, vandaar deze schakelaar.
+    ['⏱️ Verder-lock: ' + (window._verderLockUit ? 'UIT (klik = aan)' : 'AAN (klik = uit)'), function(){
+      window._verderLockUit = !window._verderLockUit;
+      // Knoppen die nu op slot staan meteen vrijgeven, anders zit je nog
+      // tot drie seconden vast aan de stand van voor het omzetten.
+      if (window._verderLockUit && typeof window.dialoogLockKnop === 'function') {
+        [['.sc-verder-locked','sc-verder-locked'], ['.dh-verder-locked','dh-verder-locked'],
+         ['.lp-verder-locked','lp-verder-locked'], ['.sc-actie-locked','sc-actie-locked']]
+          .forEach(function(p){
+            document.querySelectorAll(p[0]).forEach(function(b){ window.dialoogLockKnop(b, 0, p[1]); });
+          });
+      }
+      close();
+    }, true, 'Tempo & dialoog'],
+    // Regels die al in beeld zijn geweest krijgen nog maar 250 ms lock, zodat
+    // terugbladeren niet betekent dat je de hele scene weer uitzit. Bij testen
+    // is dat een valkuil: de tweede keer door dezelfde scene lijkt de lock
+    // kapot. Deze knop wist dat geheugen zodat de volle lock terugkomt.
+    ['🧠 Gelezen-regels vergeten (volle lock terug)', function(){
+      if (window._gelezenDialoogRegels && window._gelezenDialoogRegels.clear) window._gelezenDialoogRegels.clear();
+      close();
+    }, true, 'Tempo & dialoog'],
   ]);
 
   // Herteken de H2-scène als die open staat (gebruikt door de Heer
@@ -22060,6 +22086,14 @@ function buildDebugPanel() {
       const cat = (b.length >= 4 && b[3]) ? b[3] : 'Overig';
       if (!(cat in groepIndex)) { groepIndex[cat] = groepen.length; groepen.push({ naam: cat, items: [] }); }
       groepen[groepIndex[cat]].items.push(b);
+    });
+    // Daarna nog een keer sorteren op hoe vaak je een groep tijdens het testen
+    // nodig hebt: de verhaallijn-skips en de tempo-schakelaars bovenaan, het
+    // beheerspul (begeleider, herstelpunt, logboek) onderaan. Alles wat in
+    // geen van beide lijsten staat, waaronder de wijk-eigen groepen zoals
+    // "H4 Kerk", blijft in de volgorde van de knoppenlijst en komt ertussen.
+    groepen.sort(function(a, b) {
+      return debugCatRang(a.naam) - debugCatRang(b.naam);
     });
     groepen.forEach(function(g) {
       const wrap = document.createElement('div');
