@@ -775,14 +775,58 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   color:var(--parchment);
   margin:0;
 }
-.missie-paneel-klaar p + p{
-  margin-top:.45rem;
-  font-size:.86rem;
-  color:var(--mist);
+/* De drie richtingen eronder. Een lijst en geen doorlopende zin: drie dingen
+   in een zin lezen als een brok, en dan onthoudt de speler er willekeurig een
+   in plaats van te kiezen. Dezelfde lijst staat in het paneel (kort, want dat
+   is naslag) en in de popup (volledige regels, daar is de ruimte). */
+.klaar-intro{
+  font-family:'Cinzel',serif;
+  font-size:.58rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--gold-dim);
+  margin:.6rem 0 .4rem;
+  text-align:left;          /* de lade centreert zijn inhoud, een lijst niet */
 }
+.klaar-lijst{
+  margin:0;
+  padding:0;
+  list-style:none;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:.36rem;
+}
+.klaar-lijst li{
+  display:flex;
+  gap:.5rem;
+  align-items:baseline;
+  font-family:'Crimson Text',Georgia,serif;
+  font-style:italic;
+  font-size:.86rem;
+  line-height:1.35;
+  color:var(--parchment);
+}
+.klaar-lijst li > span + span{
+  flex:1 1 auto;
+  min-width:0;              /* laat de regel binnen de flex-regel afbreken */
+  overflow-wrap:break-word;
+}
+.klaar-bolletje{
+  flex:0 0 auto;
+  color:#7dbf7d;
+  font-size:.62rem;
+}
+/* Popup-variant: daar staat de volledige regel en is er ruimte voor. */
+.klaar-lijst.groot{gap:.5rem}
+.klaar-lijst.groot li{font-size:.98rem;line-height:1.5}
 @media (max-height:520px){
+  .missie-paneel-klaar{margin-top:.6rem;padding-top:.55rem}
   .missie-paneel-klaar p{font-size:.82rem;line-height:1.35}
-  .missie-paneel-klaar p + p{font-size:.78rem}
+  .klaar-intro{font-size:.54rem;margin:.45rem 0 .3rem}
+  .klaar-lijst{gap:.26rem}
+  .klaar-lijst li{font-size:.78rem;line-height:1.25}
+  .klaar-lijst.groot li{font-size:.88rem;line-height:1.4}
 }
 /* Archieven-lijst bij de archivaris — stijlvolle "kaarten" per stuk. */
 .archief-lijst{display:flex;flex-direction:column;gap:.6rem}
@@ -4842,6 +4886,27 @@ function eigenDeelMeldingActief() {
   return eigenDeelRond() && !kkFinaleFaseBezig();
 }
 
+// De drie richtingen, een bron voor popup en paneel zodat ze niet uit elkaar
+// lopen. In het paneel de korte vorm (naslag: in een oogopslag terugvinden),
+// in de popup de volle regel (daar leest de speler hem voor het eerst).
+var EIGEN_DEEL_RICHTINGEN = [
+  { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
+    lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
+  { kort: 'Speur verder naar wie de heks kan zijn.',
+    lang: 'Speur verder naar wie de heks kan zijn, ook waar je nog niet binnen bent geweest.' },
+  { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
+    lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
+];
+
+// veld = 'kort' (paneel) of 'lang' (popup).
+function eigenDeelLijstHtml(veld, extraKlasse) {
+  var html = '<ul class="klaar-lijst' + (extraKlasse ? ' ' + extraKlasse : '') + '">';
+  EIGEN_DEEL_RICHTINGEN.forEach(function (r) {
+    html += '<li><span class="klaar-bolletje">\u25c6</span><span>' + r[veld] + '</span></li>';
+  });
+  return html + '</ul>';
+}
+
 // null = nog niet gemeten. De eerste meting is de nulmeting en mag nooit laten
 // knipperen, anders knippert de teller na elke herlaad opnieuw.
 var _eigenDeelVorige = null;
@@ -4887,8 +4952,9 @@ function speelEigenDeelPopup() {
   toonLadeVergrendeld(
     '\u2713  Jouw deel is rond',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jij hebt hier gedaan wat jij kon doen.</p>' +
-    '<p style="font-size:.95rem;color:var(--mist);line-height:1.65;margin-top:.75rem;font-style:italic">Help de anderen, speur nog wat rond voor hints over wie de heks is, of ga naar De Verborgen Hand op het dorpsplein voor extra hulp.</p>' +
-    '<p style="font-size:.85rem;color:var(--gold-dim);line-height:1.5;margin-top:.75rem;font-style:italic">Deze tekst blijft staan onder je verhaalscore.</p>',
+    '<div class="klaar-intro" style="margin-top:.9rem">Drie dingen kun je nu nog doen</div>' +
+    eigenDeelLijstHtml('lang', 'groot') +
+    '<p style="font-size:.85rem;color:var(--gold-dim);line-height:1.5;margin-top:.9rem;font-style:italic">Deze drie blijven staan onder je verhaalscore.</p>',
     'Verder \u2192',
     null,
     EIGEN_DEEL_WACHT
@@ -5078,7 +5144,8 @@ function bouwMissiePaneel() {
     html += '<div class="missie-paneel-klaar">' +
               '<div class="missie-paneel-klaar-kop"><span>\u2713</span><span>Jouw deel is rond</span></div>' +
               '<p>Jij hebt hier gedaan wat jij kon doen.</p>' +
-              '<p>Help de anderen, speur nog wat rond voor hints over wie de heks is, of ga naar De Verborgen Hand op het dorpsplein voor extra hulp.</p>' +
+              '<div class="klaar-intro">Drie dingen kun je nu nog doen</div>' +
+              eigenDeelLijstHtml('kort', '') +
             '</div>';
   }
   paneel.innerHTML = html;
