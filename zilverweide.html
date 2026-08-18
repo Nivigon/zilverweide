@@ -21565,6 +21565,22 @@ function debugToggleFlesjeVlag() {
   }
 }
 
+// Volgorde van de categorieblokken in het testpaneel. Wat hier niet in staat
+// houdt zijn eigen plek in de knoppenlijst en belandt tussen de twee lijsten
+// in. Wil je iets hoger of lager: verplaats de naam hier, niet de knoppen.
+const DEBUG_CAT_BOVENAAN = ['Start & skips', 'Tempo & dialoog', 'Felix vermomming', 'Team & spelers'];
+const DEBUG_CAT_ONDERAAN = ['Samenvattingen', 'Begeleider & sessie', 'Herstelpunt', 'Logboek', 'Overig'];
+
+// Rangnummer voor de sortering hierboven. De middenmoot krijgt bewust een
+// gelijke score, zodat de stabiele sort hun onderlinge volgorde laat staan.
+function debugCatRang(naam) {
+  const boven = DEBUG_CAT_BOVENAAN.indexOf(naam);
+  if (boven !== -1) return boven - 1000;
+  const onder = DEBUG_CAT_ONDERAAN.indexOf(naam);
+  if (onder !== -1) return onder + 1000;
+  return 0;
+}
+
 function buildDebugPanel() {
   // Op de overworld/kaart tonen we altijd het algemene menu (met de
   // skip-naar-district-knoppen), ongeacht welke wijk je het laatst
@@ -22070,6 +22086,14 @@ function buildDebugPanel() {
       const cat = (b.length >= 4 && b[3]) ? b[3] : 'Overig';
       if (!(cat in groepIndex)) { groepIndex[cat] = groepen.length; groepen.push({ naam: cat, items: [] }); }
       groepen[groepIndex[cat]].items.push(b);
+    });
+    // Daarna nog een keer sorteren op hoe vaak je een groep tijdens het testen
+    // nodig hebt: de verhaallijn-skips en de tempo-schakelaars bovenaan, het
+    // beheerspul (begeleider, herstelpunt, logboek) onderaan. Alles wat in
+    // geen van beide lijsten staat, waaronder de wijk-eigen groepen zoals
+    // "H4 Kerk", blijft in de volgorde van de knoppenlijst en komt ertussen.
+    groepen.sort(function(a, b) {
+      return debugCatRang(a.naam) - debugCatRang(b.naam);
     });
     groepen.forEach(function(g) {
       const wrap = document.createElement('div');
