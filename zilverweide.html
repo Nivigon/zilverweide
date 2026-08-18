@@ -4839,11 +4839,14 @@ var KK_EIGEN_TAKEN = {
         return !!state.inventory.find(function (i) { return i.naam === 'Kromme Spijker'; })
             || !!getSharedState('kk_sleutel_speld');
       } },
-    // Zit Kelly nog in de put, dan is Jan niet klaar: hij is de enige die haar
-    // eruit trekt. Beide vlaggen staan in SHARED_VISITED_FLAGS, dus zijn tablet
-    // weet dit ook zonder zelf bij de put geweest te zijn.
+    // Kelly uit de put trekken. Jan is de enige die dat kan, en Kelly valt in
+    // elke echte sessie in de put (haar natte dagboek komt daarvandaan). Het is
+    // dus een harde eis: pas klaar als de redding echt geweest is. In een
+    // solo-test zet de "Kelly gered"-debugknop deze vlag. De vlag staat in
+    // SHARED_VISITED_FLAGS, dus Jans tablet weet het ook als hij zelf niet bij
+    // de put stond.
     { label: 'Kelly uit de put trekken', check: function () {
-        return !(hasVisited('kelly_in_put') && !hasVisited('kelly_gered'));
+        return hasVisited('kelly_gered');
       } }
   ],
   kelly: [
@@ -4969,7 +4972,7 @@ function speelEigenDeelPopup() {
   state.eigenDeelPopupGetoond = true;
   bewaarHerstelpunt();
   toonLadeVergrendeld(
-    '\u2713  Jouw deel is rond',
+    '\u2713  Jij bent klaar in dit verhaaldeel',
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jij hebt hier gedaan wat jij kon doen.</p>' +
     '<div class="klaar-intro" style="margin-top:.9rem">Drie dingen kun je nu nog doen</div>' +
     eigenDeelLijstHtml('lang', 'groot') +
@@ -5211,7 +5214,7 @@ function bouwMissiePaneel() {
   // en zwijgt zodra de wijkfinale gevallen is (dan is het podium de richting).
   if (eigenDeelMeldingActief()) {
     html += '<div class="missie-paneel-klaar">' +
-              '<div class="missie-paneel-klaar-kop"><span>\u2713</span><span>Jouw deel is rond</span></div>' +
+              '<div class="missie-paneel-klaar-kop"><span>\u2713</span><span>Jij bent klaar in dit verhaaldeel</span></div>' +
               '<p>Jij hebt hier gedaan wat jij kon doen.</p>' +
               '<div class="klaar-intro">Drie dingen kun je nu nog doen</div>' +
               eigenDeelLijstHtml('kort', '') +
