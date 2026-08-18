@@ -748,6 +748,86 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   from{opacity:0;transform:translateX(-6px);}
   to{opacity:1;transform:translateX(0);}
 }
+/* Jouw eigen deel van de wijk is rond: een rustig groen blok onderin het
+   paneel. Zelfde groen als .status-done op de zone-tegels, zodat "klaar"
+   overal dezelfde kleur heeft. */
+.missie-paneel-klaar{
+  margin-top:.85rem;
+  padding-top:.7rem;
+  border-top:1px solid rgba(125,191,125,.28);
+}
+.missie-paneel-klaar-kop{
+  display:flex;
+  align-items:center;
+  gap:.4rem;
+  font-family:'Cinzel',serif;
+  font-size:.62rem;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:#7dbf7d;
+  margin-bottom:.4rem;
+}
+.missie-paneel-klaar p{
+  font-family:'Crimson Text',Georgia,serif;
+  font-style:italic;
+  font-size:.9rem;
+  line-height:1.45;
+  color:var(--parchment);
+  margin:0;
+}
+/* De drie richtingen eronder. Een lijst en geen doorlopende zin: drie dingen
+   in een zin lezen als een brok, en dan onthoudt de speler er willekeurig een
+   in plaats van te kiezen. Dezelfde lijst staat in het paneel (kort, want dat
+   is naslag) en in de popup (volledige regels, daar is de ruimte). */
+.klaar-intro{
+  font-family:'Cinzel',serif;
+  font-size:.58rem;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  color:var(--gold-dim);
+  margin:.6rem 0 .4rem;
+  text-align:left;          /* de lade centreert zijn inhoud, een lijst niet */
+}
+.klaar-lijst{
+  margin:0;
+  padding:0;
+  list-style:none;
+  text-align:left;
+  display:flex;
+  flex-direction:column;
+  gap:.36rem;
+}
+.klaar-lijst li{
+  display:flex;
+  gap:.5rem;
+  align-items:baseline;
+  font-family:'Crimson Text',Georgia,serif;
+  font-style:italic;
+  font-size:.86rem;
+  line-height:1.35;
+  color:var(--parchment);
+}
+.klaar-lijst li > span + span{
+  flex:1 1 auto;
+  min-width:0;              /* laat de regel binnen de flex-regel afbreken */
+  overflow-wrap:break-word;
+}
+.klaar-bolletje{
+  flex:0 0 auto;
+  color:#7dbf7d;
+  font-size:.62rem;
+}
+/* Popup-variant: daar staat de volledige regel en is er ruimte voor. */
+.klaar-lijst.groot{gap:.5rem}
+.klaar-lijst.groot li{font-size:.98rem;line-height:1.5}
+@media (max-height:520px){
+  .missie-paneel-klaar{margin-top:.6rem;padding-top:.55rem}
+  .missie-paneel-klaar p{font-size:.82rem;line-height:1.35}
+  .klaar-intro{font-size:.54rem;margin:.45rem 0 .3rem}
+  .klaar-lijst{gap:.26rem}
+  .klaar-lijst li{font-size:.78rem;line-height:1.25}
+  .klaar-lijst.groot li{font-size:.88rem;line-height:1.4}
+}
 /* Archieven-lijst bij de archivaris — stijlvolle "kaarten" per stuk. */
 .archief-lijst{display:flex;flex-direction:column;gap:.6rem}
 
@@ -2757,6 +2837,9 @@ const state = {
   // gedeeld feit (heks_beslisser / dorendael_beslisser / hd_beslisser in de
   // sessie), anders denkt elke tablet dat hij de eerste bij het podium is.
   finalePopupGetoond: false,
+  // Eenmalig per speler: de vergrendelde "jouw deel is rond"-popup. Staat in
+  // het herstelpunt, zodat een herlaad hem niet opnieuw toont.
+  eigenDeelPopupGetoond: false,
   // Heer Donatuslaan finale (Tobbe-gok + kerkkelder + podium)
   hdFinalePopupGetoond: false,
   tobbeGokOpgelost: false,
@@ -4188,6 +4271,9 @@ var HERSTEL_VELDEN = [
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
   'janVastInAchterkamer', 'vhTorenTellingGetoond',
   'locatieOnbekend', 'felixAfgepakt',
+  // De "jouw deel is rond"-popup komt maar een keer per speler; zonder dit
+  // veld zou een herlaad hem opnieuw voor de neus zetten.
+  'eigenDeelPopupGetoond',
   // Foute lied-pogingen (per lied) moeten een crash overleven, anders begint
   // de free-pass-teller na een herstart weer op nul.
   'fennaLiedPogingen'
@@ -4724,6 +4810,170 @@ function debugResetLeestaak(boek) {
   }
 }
 
+// ════════════════════════════════════════════════════════════════
+// JOUW DEEL IS ROND (voorlopig alleen het Kraaienkwartier)
+// ────────────────────────────────────────────────────────────────
+// De verhaalscore is een teamscore en zegt niets over de speler zelf. Wie zijn
+// eigen taken in de wijk af heeft, weet daardoor niet of hij wacht of iets
+// vergeet. Deze melding vult dat gat: zodra jouw eigen deel rond is knippert de
+// teller en staat er onderin het paneel wat je nog kunt doen. De eerste keer
+// komt daar een korte vergrendelde popup bij.
+//
+// Het is een BEREKENDE staat, geen vlag die aan blijft staan. Duikt er alsnog
+// iets op voor deze rol (het dagboek dat leesbaar wordt, iemand die vast komt
+// te zitten), dan valt de melding vanzelf weg tot dat ook rond is.
+//
+// Alles hieronder LEEST alleen gedeelde stand. Er gaat niets nieuws naar
+// Firebase, op de eenmalige popup-vlag na, en die is lokaal (herstelpunt).
+// ════════════════════════════════════════════════════════════════
+
+// Wat moet elke rol in het Kraaienkwartier zelf gedaan hebben? Bewust per rol
+// met de hand: de missie-keys zijn teamstappen en zeggen niet wie ze moest
+// zetten. Gedeelde mijlpalen die van meerdere kanten kunnen komen staan hier
+// niet in, zodat "klaar" nooit te vroeg klopt.
+var KK_EIGEN_TAKEN = {
+  jan: function () {
+    // De Kromme Spijker uit de uitkijktoren. Item of gedeelde spiegelvlag,
+    // net als in KRAAIEN_MISSIE_KEYS: na een herlaad staat soms alleen de vlag.
+    var speld = !!state.inventory.find(function (i) { return i.naam === 'Kromme Spijker'; })
+             || !!getSharedState('kk_sleutel_speld');
+    // Zit Kelly nog in de put, dan is Jan niet klaar: hij is de enige die haar
+    // eruit trekt. Beide vlaggen staan in SHARED_VISITED_FLAGS, dus zijn tablet
+    // weet dit ook zonder zelf bij de put geweest te zijn.
+    var kellyVast = hasVisited('kelly_in_put') && !hasVisited('kelly_gered');
+    return speld && !kellyVast;
+  },
+  kelly: function () {
+    // Het dagboek uit de put, gerestaureerd in het archief en door haarzelf
+    // uitgelezen. dagboekStapTelt() dekt die hele keten al.
+    return dagboekStapTelt();
+  },
+  fenna: function () {
+    // Robbie's lied, plus de roestige spijker afgegeven aan Jan. Waar ze die
+    // spijker vond maakt niet uit.
+    return !!getSharedState('kk_sleutel_robbie') && hasVisited('fenna_spijker_gegeven');
+  },
+  felix: function () {
+    // Het plan van Mevr. van Wallingen, alleen los te krijgen als Lucinde.
+    return !!getSharedState('kk_sleutel_wallingen');
+  }
+};
+
+// Heeft deze speler zijn eigen deel van de huidige wijk af? Alleen het
+// Kraaienkwartier is hiervoor uitgewerkt; in andere wijken blijft alles uit.
+function eigenDeelRond() {
+  if (!state.personage) return false;
+  if (verhaalFaseZone() !== 'kraaienkwartier') return false;
+  var taak = KK_EIGEN_TAKEN[state.personage];
+  if (typeof taak !== 'function' || !taak()) return false;
+  // Het dagboek lezen telt pas mee zodra die leestaak echt openstaat. Daarvoor
+  // bestaat de taak voor deze speler nog niet, en dan is hij gewoon rond.
+  if (LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage)) return false;
+  return true;
+}
+
+// Is de wijkfinale al gevallen? Vanaf dat moment is de richting het podium en
+// niet "help de anderen". Dit dekt zowel de speler die als laatste klaar raakt
+// als iemand die zijn leesbeurt pas na de lock doet.
+function kkFinaleFaseBezig() {
+  return alleFinaleCodesVerzameld()
+      || kraaienMissieVoltooid() === KRAAIEN_MISSIE_KEYS.length
+      || !!state.heksOpgelost
+      || !!getSharedState('heks_opgelost');
+}
+
+function eigenDeelMeldingActief() {
+  return eigenDeelRond() && !kkFinaleFaseBezig();
+}
+
+// De drie richtingen, een bron voor popup en paneel zodat ze niet uit elkaar
+// lopen. In het paneel de korte vorm (naslag: in een oogopslag terugvinden),
+// in de popup de volle regel (daar leest de speler hem voor het eerst).
+var EIGEN_DEEL_RICHTINGEN = [
+  { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
+    lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
+  { kort: 'Speur verder naar wie de heks kan zijn.',
+    lang: 'Speur verder naar wie de heks kan zijn, ook waar je nog niet binnen bent geweest.' },
+  { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
+    lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
+];
+
+// veld = 'kort' (paneel) of 'lang' (popup).
+function eigenDeelLijstHtml(veld, extraKlasse) {
+  var html = '<ul class="klaar-lijst' + (extraKlasse ? ' ' + extraKlasse : '') + '">';
+  EIGEN_DEEL_RICHTINGEN.forEach(function (r) {
+    html += '<li><span class="klaar-bolletje">\u25c6</span><span>' + r[veld] + '</span></li>';
+  });
+  return html + '</ul>';
+}
+
+// null = nog niet gemeten. De eerste meting is de nulmeting en mag nooit laten
+// knipperen, anders knippert de teller na elke herlaad opnieuw.
+var _eigenDeelVorige = null;
+var EIGEN_DEEL_WACHT = 7;   // seconden voordat de popup weg mag
+
+// Draait vanuit updateMissieTeller, dus bij elke verandering in vlaggen,
+// inventaris of scherm.
+function checkEigenDeelRond() {
+  var nu = eigenDeelMeldingActief();
+  if (nu && _eigenDeelVorige === false) {
+    // Nieuw voor deze speler: laten knipperen zoals bij een verhaalstap. Dat
+    // moet hier gebeuren, want klaar raken is niet altijd een score-stap (het
+    // dagboek lezen bijvoorbeeld zet de teller niet hoger).
+    window._missieNieuw = true;
+    updateMissieKnipper();
+  }
+  _eigenDeelVorige = nu;
+  if (nu) toonEigenDeelPopup();
+}
+
+// Eenmalig per speler, en alleen op een rustig moment: op de kaart of op een
+// straatscherm, zonder andere melding in beeld. Staat de speler midden in een
+// scene, dan gebeurt er niets en probeert dezelfde check het opnieuw zodra hij
+// terug is op straat.
+function toonEigenDeelPopup() {
+  if (state.eigenDeelPopupGetoond) return;
+  if (state.debugSkipBezig) return;
+  var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorpsplein'].some(function (id) {
+    var el = document.getElementById(id);
+    return el && el.classList.contains('active');
+  });
+  if (!rustig) return;
+  var lade = document.getElementById('spel-lade');
+  if (lade && lade.classList.contains('open')) return;
+  speelEigenDeelPopup();
+}
+
+// De popup zelf. Apart van de poort hierboven, zodat het debug-paneel hem op
+// elk scherm kan laten zien.
+function speelEigenDeelPopup() {
+  state.eigenDeelPopupGetoond = true;
+  bewaarHerstelpunt();
+  toonLadeVergrendeld(
+    '\u2713  Jouw deel is rond',
+    '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Jij hebt hier gedaan wat jij kon doen.</p>' +
+    '<div class="klaar-intro" style="margin-top:.9rem">Drie dingen kun je nu nog doen</div>' +
+    eigenDeelLijstHtml('lang', 'groot') +
+    '<p style="font-size:.85rem;color:var(--gold-dim);line-height:1.5;margin-top:.9rem;font-style:italic">Deze drie blijven staan onder je verhaalscore.</p>',
+    'Verder \u2192',
+    null,
+    EIGEN_DEEL_WACHT
+  );
+}
+
+// Testmodus: wat mist deze rol nog voor "jouw deel is rond"? Alleen de eigen
+// rol, want alleen daarvan is de taaklijst bekend op deze tablet.
+function debugEigenDeelStatus() {
+  var taak = KK_EIGEN_TAKEN[state.personage];
+  var eigen = (typeof taak === 'function') ? !!taak() : false;
+  var leesOpen = LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage);
+  var regels = [eigen ? 'eigen taken rond' : 'eigen taken nog niet af'];
+  regels.push(leesOpen ? 'dagboek nog lezen' : 'geen open leestaak');
+  if (kkFinaleFaseBezig()) regels.push('wijkfinale gevallen, melding zwijgt');
+  regels.push(state.eigenDeelPopupGetoond ? 'popup al gehad' : 'popup nog niet gehad');
+  if (typeof toonToast === 'function') toonToast('\ud83d\udccb', regels.join(' \u00b7 '));
+}
+
 // Welke zone bepaalt de teller op dit moment?
 // Heer Donatuslaan wint van Dorendael, Dorendael van Kraaienkwartier.
 // De teller verschijnt pas zodra Kraaienkwartier echt unlocked is —
@@ -4770,6 +5020,9 @@ function updateMissieTeller() {
   const wrap = document.getElementById('missie-teller');
   const tekst = document.getElementById('missie-teller-tekst');
   if (!wrap || !tekst) return;
+  // Eigen-deel-melding meteen meenemen: die slaat om bij dezelfde
+  // gebeurtenissen die ook de teller bijwerken.
+  checkEigenDeelRond();
   updateMissieKnipper();
   const zone = verhaalFaseZone();
   if (!zone) {
@@ -4883,6 +5136,17 @@ function bouwMissiePaneel() {
               '<span class="missie-paneel-vink">' + vink + '</span>' +
               '<span class="missie-paneel-tekst">' + r.tekst + '</span></div>';
     });
+  }
+  // Jouw eigen deel van deze wijk is rond: rustig groen blok onderin, met waar
+  // je nog nuttig kunt zijn. Verdwijnt zodra er alsnog iets voor jou opduikt,
+  // en zwijgt zodra de wijkfinale gevallen is (dan is het podium de richting).
+  if (eigenDeelMeldingActief()) {
+    html += '<div class="missie-paneel-klaar">' +
+              '<div class="missie-paneel-klaar-kop"><span>\u2713</span><span>Jouw deel is rond</span></div>' +
+              '<p>Jij hebt hier gedaan wat jij kon doen.</p>' +
+              '<div class="klaar-intro">Drie dingen kun je nu nog doen</div>' +
+              eigenDeelLijstHtml('kort', '') +
+            '</div>';
   }
   paneel.innerHTML = html;
 }
@@ -5903,11 +6167,12 @@ function showScreen(id) {
   const appEl = document.getElementById('app');
   if (appEl) appEl.classList.toggle('app-breed', id === 'screen-locatie');
 
-  // Forceer een missie-teller refresh wanneer de speler op de overworld
-  // komt, zodat hij/zij altijd de juiste Story-stand ziet — ook als er
+  // Forceer een missie-teller refresh zodra de speler op de kaart of op een
+  // straatscherm komt, zodat hij altijd de juiste Story-stand ziet, ook als er
   // een debug-skip is gebruikt waarbij niet alle normale update-paden zijn
-  // doorlopen.
-  if (id === 'screen-overworld' && state.personage) {
+  // doorlopen. Het is meteen het moment waarop een wachtende "jouw deel is
+  // rond"-melding alsnog mag verschijnen: na een scene landt de speler hier.
+  if (navigatieSchermen.includes(id) && state.personage) {
     if (typeof updateMissieTeller === 'function') updateMissieTeller();
   }
 
@@ -19940,12 +20205,47 @@ function toonLade(titel, inhoudHtml, knopTekst, callback, afbeelding) {
   document.getElementById('spel-lade-titel').textContent = titel;
   document.getElementById('spel-lade-inhoud').innerHTML = inhoudHtml;
   const knop = document.getElementById('spel-lade-knop');
+  // Vangnet: een vorige aftellende lade (toonLadeVergrendeld) mag nooit een
+  // dode knop of een blijvend slot achterlaten voor de volgende melding.
+  clearInterval(_ladeAftelTimer);
+  _ladeVergrendeld = false;
+  knop.disabled = false;
+  knop.style.opacity = '';
   knop.textContent = (knopTekst || 'Verder \u2192');
   knop._ladeCallback = callback || null;
   document.getElementById('spel-lade').classList.add('open');
   document.getElementById('spel-lade-backdrop').classList.add('open');
 }
+// Lade met een aftellende knop: de melding moet even blijven staan voordat hij
+// weg kan. Zolang de teller loopt reageren de knop en de achtergrond niet.
+var _ladeVergrendeld = false;
+var _ladeAftelTimer = null;
+function toonLadeVergrendeld(titel, inhoudHtml, knopTekst, callback, seconden) {
+  toonLade(titel, inhoudHtml, knopTekst, callback, null);
+  var knop = document.getElementById('spel-lade-knop');
+  if (!knop) return;
+  var basis = knopTekst || 'Verder \u2192';
+  var rest = Math.max(1, seconden || 5);
+  clearInterval(_ladeAftelTimer);
+  _ladeVergrendeld = true;
+  knop.disabled = true;
+  knop.style.opacity = '.45';
+  knop.textContent = basis + '  (' + rest + ')';
+  _ladeAftelTimer = setInterval(function () {
+    rest--;
+    if (rest > 0) { knop.textContent = basis + '  (' + rest + ')'; return; }
+    clearInterval(_ladeAftelTimer);
+    _ladeVergrendeld = false;
+    knop.disabled = false;
+    knop.style.opacity = '';
+    knop.textContent = basis;
+  }, 1000);
+}
+
 function sluitLade() {
+  // Aftellende lade (zie toonLadeVergrendeld): pas weg als de teller op nul
+  // staat. Dit vangt ook de klik op de achtergrond af.
+  if (_ladeVergrendeld) return;
   const knop = document.getElementById('spel-lade-knop');
   const cb = knop._ladeCallback;
   knop._ladeCallback = null;
@@ -21672,6 +21972,10 @@ function buildDebugPanel() {
       ['🗼 Jan staat bij de toren (aan/uit)', function(){ setSharedState('debug_jan_bij_toren', getSharedState('debug_jan_bij_toren') ? false : true); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, true, 'Toren (K3)'],
       ['🔓 Toren-code ingevoerd (skip overdracht)', function(){ markVisited('toren_code_ingevoerd'); close(); if (document.getElementById('screen-locatie').classList.contains('active')) refresh(); }, !hasVisited('toren_code_ingevoerd'), 'Toren (K3)'],
       ['📌 + Kromme Spijker (toren)', function(){ debugItem('📌','Kromme Spijker'); }, !heeftSpeld, 'Toren (K3)'],
+      // ── Jouw deel is rond (de eigen-deel-melding)
+      ['\u2713 Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
+      ['\ud83d\udd04 Reset de klaar-melding', function(){ state.eigenDeelPopupGetoond = false; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
+      ['\ud83d\udccb Status eigen taken tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
       // ── Verborgen Hand: de stille hulpklok van dit district
       ['⏳ Klok nu laten aflopen',   function(){ debugVhKlokAflopen('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
       ['🔄 Klok en hint resetten',   function(){ debugVhKlokReset('kraaienkwartier'); close(); }, true, 'Verborgen Hand'],
@@ -21719,6 +22023,8 @@ function buildDebugPanel() {
         debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
         state.finalePopupGetoond = false;
+        state.eigenDeelPopupGetoond = false;
+        _eigenDeelVorige = null;
         state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Spijker','Roestige Spijker','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
         updateInventoryBar();
         close();
