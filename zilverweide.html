@@ -2603,6 +2603,13 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bglk-tegel-naam { font-family:'Crimson Text',Georgia,serif; font-size:.74rem; color:var(--parchment); text-align:center; line-height:1.12; }
   .bglk-tegel-code { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.1em; color:var(--gold-dim); }
   .bglk-plein-vak { min-width:6.6rem; }
+  /* Dorpsplein als 2x2 vierkant: drie code-locaties plus een terug-knop.
+     De terug-knop krijgt een afwijkende (rose) kleur zodat hij opvalt. */
+  .bglk-plein-grid { grid-template-columns:repeat(2,auto); }
+  .bglk-terug { background:rgba(155,58,74,calc(.16 * var(--vlak))); border-color:rgba(155,58,74,calc(.55 * var(--lijn))); }
+  .bglk-terug:hover { background:rgba(155,58,74,calc(.3 * var(--vlak))); border-color:var(--rose); }
+  .bglk-terug .bglk-tegel-naam { color:var(--rose); }
+  .bglk-terug .bglk-tegel-code { color:var(--rose); opacity:.85; }
   #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
 </style>
@@ -8332,20 +8339,27 @@ function bglBouwKaart() {
   var straatVan = {};
   BGL_KAART_STRATEN.forEach(function (s) { straatVan[s.schermId] = bouwStraat(s); });
 
-  // Dorpsplein als eigen blok, verticaal gestapeld, in het centrum van het kruis.
+  // Dorpsplein als 2x2 vierkant in het centrum van het kruis: drie
+  // code-locaties plus een vierde vak dat terugkeert naar het begeleidersscherm.
   var pleinVakken = '';
-  BGL_DORPSPLEIN.forEach(function (v) {
+  BGL_DORPSPLEIN.forEach(function (v, idx) {
     _bglKaartNamen[v.code] = v.naam;
-    pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
+    var col = (idx % 2) + 1, row = Math.floor(idx / 2) + 1;
+    pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" style="grid-column:' + col + ';grid-row:' + row + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
       '<span class="bglk-tegel-naam">' + v.naam + '</span>' +
       '<span class="bglk-tegel-code">' + v.code + '</span>' +
     '</button>';
   });
+  // Vierde vak van het vierkant: terug naar het begeleidersscherm.
+  pleinVakken += '<button class="bglk-plein-vak bglk-terug" style="grid-column:2;grid-row:2" onclick="begeleiderKaartSluit()">' +
+    '<span class="bglk-tegel-naam">← Begeleider</span>' +
+    '<span class="bglk-tegel-code">terug</span>' +
+  '</button>';
   _bglKaartNamen['D1'] = 'Dorpsplein (ingang)';
   var pleinBlok = '<div class="bglk-straat">' +
     '<div class="bglk-straat-titel">Dorpsplein</div>' +
     '<button class="bglk-ingang" data-code="D1" onclick="bglKaartKies(\'D1\')">ingang: D1</button>' +
-    '<div class="bglk-grid" style="grid-template-columns:auto">' + pleinVakken + '</div>' +
+    '<div class="bglk-grid bglk-plein-grid">' + pleinVakken + '</div>' +
   '</div>';
 
   var wrap = document.getElementById('bgl-kaart-inhoud');
