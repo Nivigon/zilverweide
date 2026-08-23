@@ -15541,6 +15541,12 @@ function renderK1Nummer5(loc) {
       dialog.push({ tekst: 'De deur zwaait open. Robbie Kweekel staat in de opening. Hij ziet jou, en zijn mond blijft openstaan.', onShow: toonRobbie });
       dialog.push({ spreker: 'Robbie Kweekel', tekst: '"Wie ben... wacht. Is dat... FENNA?! Fenna Vivienne?!"' });
       dialog.push({ spreker: 'Robbie Kweekel', tekst: '*(grijpt de deurpost, wordt bleek, dan rood)* "In mijn straat. Voor mijn deur. Kom binnen, kom binnen, ik wist niet dat, ik had, o god."' });
+      // Subtiele hint naar Nummer 7: Robbie kijkt de straat af en grendelt de
+      // deur. Hij maakt zijn zin niet af en praat er meteen overheen. Geen
+      // mechaniek, geen naam, alleen sfeer, zodat Fenna iets meekrijgt van
+      // wat er verderop in de straat speelt.
+      dialog.push('Hij trekt je naar binnen. Voor hij de deur dichtdoet kijkt hij nog even de straat in, naar het laatste huis, waar de rij ophoudt.');
+      dialog.push({ spreker: 'Robbie Kweekel', tekst: '*(schuift de grendel ervoor)* "Niks aan de hand hoor. Ik doe hem gewoon altijd dicht. Sinds..." *(haalt zijn schouders op)* "Ach. Laat maar."' });
       dialog.push('Binnen is het klein en warm. Een vuur dat bijna uit is, een doorgezeten leren stoel, een krukje met een boek en een pijp die nog nasmeult. Buiten kleurt de lucht al roze achter de gordijnen.');
       dialog.push('Boven de schouw hangt een groot geschilderd portret. Een vrouw met rood haar, in een rode jurk, ogen dicht, midden in een noot. Je kijkt er iets te lang naar.');
       dialog.push({ spreker: 'Robbie Kweekel', tekst: '*(volgt je blik, wordt vuurrood)* "Dat is... dat is gewoon een schilderij. Van de markt. Toevallig."' });
@@ -16012,6 +16018,9 @@ function fennaZingtVoorRobbie() {
         toonLade(
           '✦  Robbie staat klaar voor je',
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Als de laatste regel wegsterft, blijft het even helemaal stil.</p>' +
+          // Tweede beat van de hint naar Nummer 7: zijn blik gaat naar het eind
+          // van de straat, precies op het moment dat hij zich aanbiedt.
+          '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Robbie veegt met zijn mouw langs zijn ogen. Dan kijkt hij naar het raam, naar het eind van de straat, en de lach zakt van zijn gezicht.</p>' +
           '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Licht ontroerd zegt Robbie: <em>"Ik sta klaar als jij of je vrienden mij nodig hebben."</em></p>',
           'Verder →',
           // Niet de locatie opnieuw openen: dan kreeg je meteen "Robbie doet
