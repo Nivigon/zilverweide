@@ -26951,12 +26951,15 @@ function firebaseVolleReset() {
       _sharedZelfGewist = false;
       alert('Fout: ' + e.message);
     });
-  // Begeleiderspaneel: de index-vermelding van deze sessie mee opruimen,
-  // anders blijft een geresette sessie als spook in de sessielijst staan.
+  // Begeleiderspaneel: de index-vermelding van deze sessie niet weggooien maar
+  // als afgesloten markeren (zelfde zachte verberg als de Verberg-knop). Zo
+  // blijft een geresette sessie geen spook in de actieve lijst, maar raakt hij
+  // ook nooit verloren: hij is terug te halen via "Verborgen sessies tonen",
+  // net als log en meta die al bewaard blijven.
   // De datum zit in de sessie-id (teamnaam-YYYY-MM-DD-code); een id zonder
   // datum (zoals 'test') staat hooguit onder vandaag.
   var idxDatum = (sessieId.match(/\d{4}-\d{2}-\d{2}/) || [teamDatumSleutel()])[0];
-  firebase.database().ref('sessies_index/' + idxDatum + '/' + sessieId).remove().catch(function () {});
+  firebase.database().ref('sessies_index/' + idxDatum + '/' + sessieId + '/afgesloten').set(true).catch(function () {});
   // Herstelpunten: de spelers-tak gaat met de sessie mee weg; de lokale
   // kopieen ook wissen zodat een oud punt niet als vangnet terugkomt.
   ['jan', 'kelly', 'fenna', 'felix'].forEach(function (r) {
