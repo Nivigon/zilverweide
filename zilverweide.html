@@ -8128,10 +8128,12 @@ function begeleiderRenderPaneel() {
     } else {
       vloekHtml = '<span class="bgl-vloek">geen vloek</span>';
     }
-    var loc = _bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].loc;
-    var locNaam = bglLocNaam(loc);
-    var locHtml = locNaam
-      ? '<div class="bgl-card-loc">📍 nu: ' + begeleiderVeilig(locNaam) + '</div>'
+    var spMeta = _bglMeta.spelers && _bglMeta.spelers[r.id];
+    var loc = spMeta && spMeta.loc;
+    // Specifieke locatie gaat voor; anders de straat/dorpskaart (plek).
+    var plekTekst = bglLocNaam(loc) || (spMeta && spMeta.plek) || '';
+    var locHtml = plekTekst
+      ? '<div class="bgl-card-loc">📍 nu: ' + begeleiderVeilig(plekTekst) + '</div>'
       : '<div class="bgl-card-loc leeg">📍 nu: onderweg</div>';
     cards += '<div class="bgl-card">' +
       '<div class="bgl-card-top">' +
@@ -8345,15 +8347,15 @@ var BGL_STRAAT_LAYOUT = {
   'screen-dorendael': {
     kolommen: 3,
     // Horizontaal, kop (DD5 Het Woud) links. De twee niet-kopse kolommen zijn
-    // boven/onder omgewisseld (DD2<->DD8, DD3<->DD7); de kopse kant (DD4/DD6
-    // naast Het Woud) blijft staan.
-    //   DD4 DD7 DD8
+    // boven/onder omgewisseld (DD2<->DD8, DD3<->DD7). De Oude Molen (DD6) en De
+    // Herberg (DD4) zijn met hun codes van plek gewisseld (kopse kant).
+    //   DD6 DD7 DD8
     //   DD5
-    //   DD6 DD3 DD2
+    //   DD4 DD3 DD2
     pos: {
-      dd4_herberg:{col:1,row:1}, dd7_klokkenmaker:{col:2,row:1}, dd8_stiltevijver:{col:3,row:1},
+      dd6_molen:{col:1,row:1}, dd7_klokkenmaker:{col:2,row:1}, dd8_stiltevijver:{col:3,row:1},
       dd5_woud:{col:1,row:2},
-      dd6_molen:{col:1,row:3}, dd3_nummer10:{col:2,row:3}, dd2_nummer2:{col:3,row:3}
+      dd4_herberg:{col:1,row:3}, dd3_nummer10:{col:2,row:3}, dd2_nummer2:{col:3,row:3}
     }
   },
   'screen-kwartier1': {
@@ -8369,15 +8371,15 @@ var BGL_STRAAT_LAYOUT = {
   'screen-sintdonatuslaan': {
     kolommen: 3,
     // Horizontaal, kop (H5 Het Gemeentehuis) rechts. De twee niet-kopse kolommen
-    // zijn boven/onder omgewisseld (H2<->H8, H3<->H7); de kopse kant (H4/H6
-    // naast het gemeentehuis) blijft staan.
-    //   H8 H7 H4
+    // zijn boven/onder omgewisseld (H2<->H8, H3<->H7). Het Hol (H6) en De Kerk
+    // (H4) zijn met hun codes van plek gewisseld (kopse kant).
+    //   H8 H7 H6
     //            H5
-    //   H2 H3 H6
+    //   H2 H3 H4
     pos: {
-      h8_steegje:{col:1,row:1}, h7_apotheker:{col:2,row:1}, h4_kerk:{col:3,row:1},
+      h8_steegje:{col:1,row:1}, h7_apotheker:{col:2,row:1}, h6_bandieten:{col:3,row:1},
       h5_gemeentehuis:{col:3,row:2},
-      h2_felixkamer:{col:1,row:3}, h3_slagerij:{col:2,row:3}, h6_bandieten:{col:3,row:3}
+      h2_felixkamer:{col:1,row:3}, h3_slagerij:{col:2,row:3}, h4_kerk:{col:3,row:3}
     }
   }
 };
@@ -27067,19 +27069,40 @@ setInterval(spelerHartslag, 25000);
 // shared, dus dit geeft daar geen extra snapshots en raakt de gedeelde
 // spelstand niet. Alleen het begeleiderspaneel leest dit. Er wordt uitsluitend
 // geschreven als er iets verandert, dus een stilstaande tablet stuurt niets.
-var _laatsteAanwezigheid = { loc: undefined, bezochtN: -1 };
+// Waar staat de speler nu, als hij NIET in een specifieke locatie zit maar op
+// een straat-invoerscherm of de dorpskaart? Dan is de straat (of "Dorpskaart")
+// de plek. Bij een specifieke locatie blijft loc leidend en is plek leeg.
+function _spelerHuidigePlek() {
+  if (state.lastOpenedLocatie) return '';
+  var map = {
+    'screen-overworld':       'Dorpskaart',
+    'screen-kwartier1':       'Kraaienkwartier',
+    'screen-dorendael':       'Dorendael',
+    'screen-sintdonatuslaan': 'Heer Donatuslaan',
+    'screen-dorpsplein':      'Dorpsplein'
+  };
+  for (var id in map) {
+    if (!map.hasOwnProperty(id)) continue;
+    var el = document.getElementById(id);
+    if (el && el.classList.contains('active')) return map[id];
+  }
+  return '';
+}
+var _laatsteAanwezigheid = { loc: undefined, bezochtN: -1, plek: undefined };
 function spelerAanwezigheidBroadcast(force) {
   if (!state.personage) return;
   if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
   var loc = state.lastOpenedLocatie || null;
+  var plek = _spelerHuidigePlek();
   var bezochtN = state.visitedLocations ? state.visitedLocations.size : 0;
-  if (!force && loc === _laatsteAanwezigheid.loc && bezochtN === _laatsteAanwezigheid.bezochtN) return;
-  _laatsteAanwezigheid = { loc: loc, bezochtN: bezochtN };
+  if (!force && loc === _laatsteAanwezigheid.loc && bezochtN === _laatsteAanwezigheid.bezochtN &&
+      plek === _laatsteAanwezigheid.plek) return;
+  _laatsteAanwezigheid = { loc: loc, bezochtN: bezochtN, plek: plek };
   var bezocht = {};
   if (state.visitedLocations) state.visitedLocations.forEach(function (id) { bezocht[id] = true; });
   try {
     firebase.database().ref('sessies/' + _sharedSessieId + '/meta/spelers/' + state.personage)
-      .update({ loc: loc, bezocht: bezocht }).catch(function () {});
+      .update({ loc: loc, bezocht: bezocht, plek: plek }).catch(function () {});
   } catch (e) {}
 }
 setInterval(spelerAanwezigheidBroadcast, 4000);
