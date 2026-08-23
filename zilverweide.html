@@ -2576,35 +2576,68 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
      een inlogcode per locatie. Tikken op een tegel toont de code groot. ── */
   #bgl-kaart-overlay { display:none; position:fixed; inset:0; z-index:9600; background:#0d0a06; overflow-y:auto; }
   #bgl-kaart-overlay.open { display:block; }
-  .bglk-wrap { max-width:64rem; margin:0 auto; padding:2.2rem 1.25rem 3rem; }
-  .bglk-code { position:sticky; top:0; z-index:2; text-align:center; margin-bottom:1.5rem; padding:1rem 1.2rem; border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn))); border-radius:10px; background:linear-gradient(180deg,#160f08,rgba(13,10,6,.97)); box-shadow:0 6px 22px rgba(0,0,0,.55); }
-  .bglk-code .naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--parchment); font-size:1.05rem; margin-bottom:.3rem; }
-  .bglk-code .code { font-family:'Cinzel',serif; font-size:clamp(2.4rem,10vw,4.5rem); letter-spacing:.14em; color:var(--gold); line-height:1; }
-  .bglk-code .alt { margin-top:.5rem; font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-dim); }
+  .bglk-wrap { max-width:74rem; margin:0 auto; padding:1rem 1rem 1.3rem; }
+  .bglk-code { position:sticky; top:0; z-index:2; text-align:center; margin-bottom:.9rem; padding:.6rem 1.1rem; border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn))); border-radius:10px; background:linear-gradient(180deg,#160f08,rgba(13,10,6,.97)); box-shadow:0 6px 22px rgba(0,0,0,.55); }
+  .bglk-code .naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--parchment); font-size:.98rem; margin-bottom:.2rem; }
+  .bglk-code .code { font-family:'Cinzel',serif; font-size:clamp(2rem,7vw,3.4rem); letter-spacing:.14em; color:var(--gold); line-height:1; }
+  .bglk-code.dubbel .code { font-size:clamp(1.5rem,5vw,2.7rem); letter-spacing:.08em; }
   .bglk-code.leeg .code { color:var(--gold-dim); font-size:clamp(1rem,4vw,1.4rem); letter-spacing:.06em; }
-  .bglk-straten { display:flex; gap:1.2rem; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
-  .bglk-straat { flex:1 1 15rem; min-width:13rem; max-width:20rem; border:1px solid rgba(var(--goudrgb),calc(.28 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:1rem .9rem 1.3rem; }
-  .bglk-straat-titel { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:.5rem; }
-  .bglk-ingang { display:block; margin:0 auto 1rem; font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); background:rgba(var(--goudrgb),calc(.1 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:20px; padding:.32rem .85rem; cursor:pointer; }
+  /* Kruis/plattegrond: Kraaienkwartier rechtop bovenin het midden, Dorendael
+     en Heer Donatuslaan horizontaal links en rechts met de enkele kop-locatie
+     naar buiten, en het dorpsplein in het centrum ertussen. Zo past alles op
+     een tablet in landscape zonder scrollen. */
+  .bglk-map { display:grid; grid-template-columns:1fr auto 1fr; grid-template-areas:". kraai ." "dorendael plein heer"; gap:.7rem 1rem; align-items:start; justify-items:center; }
+  .bglk-area-kraai { grid-area:kraai; }
+  .bglk-area-dorendael { grid-area:dorendael; justify-self:end; }
+  .bglk-area-plein { grid-area:plein; }
+  .bglk-area-heer { grid-area:heer; justify-self:start; }
+  .bglk-straat { border:1px solid rgba(var(--goudrgb),calc(.28 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:.55rem .65rem .7rem; }
+  .bglk-straat-titel { font-family:'Cinzel',serif; font-size:.64rem; letter-spacing:.13em; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:.4rem; }
+  .bglk-ingang { display:block; margin:0 auto .5rem; font-family:'Cinzel',serif; font-size:.56rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); background:rgba(var(--goudrgb),calc(.1 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:20px; padding:.26rem .7rem; cursor:pointer; }
   .bglk-ingang:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.18 * var(--vlak))); }
   .bglk-ingang.gekozen { border-color:var(--gold); box-shadow:0 0 10px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
-  .bglk-grid { display:grid; gap:.5rem; justify-content:center; }
-  .bglk-tegel, .bglk-plein-vak { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.55rem .4rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
+  .bglk-grid { display:grid; gap:.35rem; justify-content:center; }
+  .bglk-tegel, .bglk-plein-vak { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.15rem; min-width:4.9rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.4rem .35rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
   .bglk-tegel:hover, .bglk-plein-vak:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.14 * var(--vlak))); }
   .bglk-tegel.gekozen, .bglk-plein-vak.gekozen { border-color:var(--gold); box-shadow:0 0 14px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
-  .bglk-tegel-naam { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); text-align:center; line-height:1.18; }
-  .bglk-tegel-code { font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.12em; color:var(--gold-dim); }
-  .bglk-plein { margin-top:1.8rem; }
-  .bglk-plein-vakken { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
-  .bglk-plein-vak { flex:1 1 12rem; max-width:16rem; padding:1rem .6rem; }
-  .bglk-plein-vak .bglk-tegel-naam { font-size:1rem; }
+  .bglk-tegel-naam { font-family:'Crimson Text',Georgia,serif; font-size:.74rem; color:var(--parchment); text-align:center; line-height:1.12; }
+  .bglk-tegel-code { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.1em; color:var(--gold-dim); }
+  .bglk-plein-vak { min-width:6.6rem; }
+  /* Dorpsplein als 2x2 vierkant: drie code-locaties plus een terug-knop.
+     De terug-knop krijgt een afwijkende (rose) kleur zodat hij opvalt. */
+  .bglk-plein-grid { grid-template-columns:repeat(2,auto); }
+  .bglk-terug { background:rgba(155,58,74,calc(.16 * var(--vlak))); border-color:rgba(155,58,74,calc(.55 * var(--lijn))); }
+  .bglk-terug:hover { background:rgba(155,58,74,calc(.3 * var(--vlak))); border-color:var(--rose); }
+  .bglk-terug .bglk-tegel-naam { color:var(--rose); }
+  .bglk-terug .bglk-tegel-code { color:var(--rose); opacity:.85; }
+  /* Aanwezigheid: kleine speler-portretjes op een tegel. Fel met gouden gloed =
+     de speler is daar nu (verse hartslag); gedimd = daar eerder geweest. Puur
+     informatie voor de begeleider, dus geen muisinteractie. */
+  .bglk-aanw { position:absolute; top:2px; right:2px; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:1px; max-width:70%; pointer-events:none; }
+  .bglk-chip { width:15px; height:15px; border-radius:50%; background-size:cover; background-position:center top; background-repeat:no-repeat; background-color:var(--ash); border:1px solid rgba(0,0,0,.55); }
+  .bglk-chip.hier { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 7px rgba(var(--goudrgb),calc(.9 * var(--schaduwdiepte))); }
+  .bglk-chip.geweest { opacity:.42; filter:grayscale(.5); }
   #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
+  /* Grote, vaste Bevestig-knop aan de rechterkant van het begeleiderspaneel.
+     Standaard verborgen; verschijnt (met een zachte puls om de aandacht te
+     trekken) zodra er onbevestigde wijzigingen zijn. */
+  .bgl-bevestig-balk { display:none; position:fixed; right:.9rem; top:50%; transform:translateY(-50%); z-index:9520; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; width:7.6rem; min-height:7.6rem; padding:1rem .7rem; border-radius:14px; border:2px solid var(--gold); background:linear-gradient(180deg,#2a1e0b,#1a1206); color:var(--gold); font-family:'Cinzel',serif; cursor:pointer; box-shadow:0 0 26px rgba(var(--goudrgb),calc(.55 * var(--schaduwdiepte))); animation:bglBevestigPuls 1.8s ease-in-out infinite; }
+  .bgl-bevestig-balk.actief { display:flex; }
+  .bgl-bevestig-balk:hover { background:linear-gradient(180deg,#3a2a10,#241809); }
+  .bgl-bevestig-balk.opgeslagen { border-color:#6faf5a; color:#bfe6ac; box-shadow:0 0 26px rgba(111,175,90,.55); animation:none; }
+  .bgl-bevestig-groot { font-size:1.12rem; letter-spacing:.04em; line-height:1.1; text-align:center; }
+  .bgl-bevestig-sub { font-family:'Crimson Text',Georgia,serif; font-size:.72rem; line-height:1.2; text-align:center; color:var(--parchment); opacity:.85; }
+  @keyframes bglBevestigPuls { 0%,100% { box-shadow:0 0 18px rgba(var(--goudrgb),calc(.4 * var(--schaduwdiepte))); } 50% { box-shadow:0 0 30px rgba(var(--goudrgb),calc(.85 * var(--schaduwdiepte))); } }
+  .bgl-gewijzigd { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); align-self:center; }
 </style>
 <div id="begeleider-overlay">
   <div class="bgl-wrap" id="begeleider-inhoud"></div>
 </div>
 <button id="begeleider-sluit" onclick="begeleiderSluit()" title="Sluiten">✕</button>
+<!-- Grote, vaste Bevestig-knop rechts: verschijnt zodra er onbevestigde
+     wijzigingen zijn en stuurt ze in één keer naar de tablets. -->
+<button id="bgl-bevestig-balk" class="bgl-bevestig-balk" onclick="begeleiderBevestigAlles()"></button>
 
 <div id="bgl-kaart-overlay">
   <div class="bglk-wrap" id="bgl-kaart-inhoud"></div>
@@ -3834,6 +3867,38 @@ function debugSimuleerTeam() {
       }
     }
   } catch (e) {}
+}
+
+// Debugflag voor de aanwezigheids-portretjes op de begeleiderskaart: schrijf
+// voorbeeldposities voor de vier rollen (huidige locatie + bezochte locaties)
+// naar meta/spelers/<rol>, met een verse hartslag zodat de 'hier nu'-gloed
+// zichtbaar wordt. Zo is de kaart solo te testen zonder vier echte tablets.
+function debugSimuleerAanwezigheid() {
+  if (typeof firebase === 'undefined' || !firebase.database) {
+    if (typeof toonToast === 'function') toonToast('🧭', 'Geen Firebase actief');
+    return;
+  }
+  var sid = herstelSessieId();
+  if (!sid) {
+    if (typeof toonToast === 'function') toonToast('🧭', 'Geen sessie actief');
+    return;
+  }
+  var voorbeeld = {
+    jan:   { loc: 'k1_uitkijktoren',  bezocht: ['k1_dorpsput', 'k1_uitkijktoren', 'k1_nummer7'] },
+    kelly: { loc: 'dd8_stiltevijver', bezocht: ['dd5_woud', 'dd8_stiltevijver'] },
+    fenna: { loc: 'h5_gemeentehuis',  bezocht: ['h4_kerk', 'h5_gemeentehuis'] },
+    felix: { loc: null,               bezocht: ['k1_naaldmasker', 'h8_steegje', 'dorpsarchief'] }
+  };
+  Object.keys(voorbeeld).forEach(function (rol) {
+    var v = voorbeeld[rol];
+    var bezocht = {};
+    v.bezocht.forEach(function (id) { bezocht[id] = true; });
+    try {
+      firebase.database().ref('sessies/' + sid + '/meta/spelers/' + rol)
+        .update({ loc: v.loc, bezocht: bezocht, hb: gedeeldeTijdNu() }).catch(function () {});
+    } catch (e) {}
+  });
+  if (typeof toonToast === 'function') toonToast('🧭', 'Voorbeeldposities gezet, open de kaart');
 }
 
 // Listener en vernieuw-timer loskoppelen. De eigen keuze wissen we hier
@@ -7710,6 +7775,7 @@ var BGL_TEMPO_OPTIES = [
 ];
 
 var _bglOpen = false;
+var _bglKaartOpen = false;   // staat het kaart-en-codes-overlay open
 var _bglIngelogd = false;
 var _bglIndexRef = null;   // listener op sessies_index/<vandaag>
 var _bglSharedRef = null;  // listener op shared van de gekozen sessie
@@ -7774,6 +7840,8 @@ function begeleiderSluit() {
   _bglSid = null;
   _bglPending = {};
   _bglAutoOpen = true;
+  _bglBevestigBezig = false;
+  bglBevestigBalkUpdate();
 }
 
 function begeleiderRenderWachtwoord() {
@@ -7917,7 +7985,7 @@ function begeleiderKiesSessie(sid) {
     _bglSharedRef = firebase.database().ref('sessies/' + sid + '/shared');
     _bglMetaRef = firebase.database().ref('sessies/' + sid + '/meta');
     _bglSharedRef.on('value', function (snap) { _bglShared = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
-    _bglMetaRef.on('value', function (snap) { _bglMeta = (snap && snap.val()) || {}; begeleiderRenderPaneel(); });
+    _bglMetaRef.on('value', function (snap) { _bglMeta = (snap && snap.val()) || {}; begeleiderRenderPaneel(); if (_bglKaartOpen) bglUpdateAanwezigheid(); });
   } catch (e) { console.warn('begeleider: sessie-listener mislukt:', e); }
   begeleiderRenderPaneel();
 }
@@ -7932,6 +8000,8 @@ function begeleiderTerugNaarLijst() {
   _bglSid = null;
   _bglPending = {};
   _bglAutoOpen = false;   // niet meteen weer dezelfde sessie in springen
+  _bglBevestigBezig = false;
+  bglBevestigBalkUpdate();
   begeleiderRenderSessieLijst();
 }
 
@@ -8005,6 +8075,7 @@ function begeleiderRenderPaneel() {
   _bglRenderUitgesteld = false;
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
   var html =
+    '<div style="text-align:left;margin-bottom:.5rem"><button class="bgl-knopje" onclick="begeleiderKaartOpen()">🗺 Kaart en codes</button></div>' +
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
     '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
     begeleiderTijdenHtml() +
@@ -8064,7 +8135,7 @@ function begeleiderRenderPaneel() {
         '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
         '<span class="ssi-schuif"></span>' +
       '</label>' +
-      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="display:' + (pending ? '' : 'none') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+      '<span class="bgl-gewijzigd" id="bgl-gewijzigd-' + r.id + '" style="display:' + (pending ? '' : 'none') + '">● niet bevestigd</span>' +
     '</div>';
   });
   var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
@@ -8080,12 +8151,13 @@ function begeleiderRenderPaneel() {
       'Werkt direct, voor het hele team.</div>' +
   '</div>' +
     begeleiderMissieHtml() +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
-    'alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler nadat je op de grote ' +
+    'Bevestig-knop rechts drukt; die verschijnt zodra er iets openstaat en verstuurt alles in één keer. ' +
+    'Alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
-    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderKaartOpen()">🗺 Kaart en codes</button></div>' +
-    '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
+  bglBevestigBalkUpdate();
 }
 
 // Eenmalig: zodra een keuzelijst in het paneel wordt losgelaten (focusout,
@@ -8203,17 +8275,65 @@ var BGL_ALT_CODES = {
   K7:'LKW6K', DD6:'NL4M', H3:'R3GLS',
   D2:'MD2P', D3:'F3HCR', D4:'DN4H'
 };
-// De drie straten, gekoppeld aan de layout van de beginnerskaart.
-// De ingangscodes (ZONE_HOOFDCODE) staan boven elke straatkaart.
+// De drie straten. De ingangscodes (ZONE_HOOFDCODE) staan boven elke
+// straatkaart. Volgorde en stand staan los van de spelerskaart
+// (BEGINNER_KAARTEN): op het begeleidersscherm vormen ze samen een
+// plattegrond. Dorendael links, Kraaienkwartier midden, Heer Donatuslaan
+// rechts; het dorpsplein komt in het centrum ertussen (zie bglBouwKaart).
 var BGL_KAART_STRATEN = [
-  { schermId:'screen-kwartier1',       titel:'Kraaienkwartier', ingang:'K1' },
-  { schermId:'screen-dorendael',       titel:'Dorendael',       ingang:'DD1' },
-  { schermId:'screen-sintdonatuslaan', titel:'Heer Donatuslaan', ingang:'H1' }
+  { schermId:'screen-dorendael',       titel:'Dorendael',        ingang:'DD1' },
+  { schermId:'screen-kwartier1',       titel:'Kraaienkwartier',  ingang:'K1'  },
+  { schermId:'screen-sintdonatuslaan', titel:'Heer Donatuslaan', ingang:'H1'  }
 ];
+// Tegel-posities voor het begeleidersscherm, losgekoppeld van de
+// spelerskaart. Kraaienkwartier staat rechtop (kop K5 boven). Dorendael en
+// Heer Donatuslaan zijn een kwartslag gedraaid zodat hun enkele kop-locatie
+// naar buiten wijst: Het Woud (DD5) naar links, Het Gemeentehuis (H5) naar
+// rechts. Namen komen uit BEGINNER_KAARTEN, hier alleen de plek.
+var BGL_STRAAT_LAYOUT = {
+  'screen-dorendael': {
+    kolommen: 3,
+    // Horizontaal, kop (DD5 Het Woud) links, DD2/DD8 aan de rechter (ingang) kant.
+    //   DD4 DD3 DD2
+    //   DD5
+    //   DD6 DD7 DD8
+    pos: {
+      dd4_herberg:{col:1,row:1}, dd3_nummer10:{col:2,row:1}, dd2_nummer2:{col:3,row:1},
+      dd5_woud:{col:1,row:2},
+      dd6_molen:{col:1,row:3}, dd7_klokkenmaker:{col:2,row:3}, dd8_stiltevijver:{col:3,row:3}
+    }
+  },
+  'screen-kwartier1': {
+    kolommen: 3,
+    // Rechtop, kop (K5 De Dorpsput) bovenin, K2/K8 onderaan bij de ingang.
+    pos: {
+      k1_dorpsput:{col:2,row:1},
+      k1_nachtenwens:{col:1,row:2}, k1_nummer7:{col:3,row:2},
+      k1_uitkijktoren:{col:1,row:3}, k1_nummer5:{col:3,row:3},
+      k1_groenteboer:{col:1,row:4}, k1_naaldmasker:{col:3,row:4}
+    }
+  },
+  'screen-sintdonatuslaan': {
+    kolommen: 3,
+    // Horizontaal, kop (H5 Het Gemeentehuis) rechts, H2/H8 aan de linker (ingang) kant.
+    //   H2 H3 H4
+    //            H5
+    //   H8 H7 H6
+    pos: {
+      h2_felixkamer:{col:1,row:1}, h3_slagerij:{col:2,row:1}, h4_kerk:{col:3,row:1},
+      h5_gemeentehuis:{col:3,row:2},
+      h8_steegje:{col:1,row:3}, h7_apotheker:{col:2,row:3}, h6_bandieten:{col:3,row:3}
+    }
+  }
+};
 // De drie code-locaties op het dorpsplein.
+// locId koppelt een plein-vak aan de locatie-id die de speler-tablet als
+// state.lastOpenedLocatie gebruikt, zodat de aanwezigheids-portretjes ook op
+// het plein kloppen. Alleen het Dorpsarchief heeft nu zo'n eigen locatie-id;
+// het podium en de verborgen hand zijn scene-momenten zonder vaste id.
 var BGL_DORPSPLEIN = [
   { naam:'Het Podium (Toneel)', code:'D2' },
-  { naam:'Het Dorpsarchief',    code:'D3' },
+  { naam:'Het Dorpsarchief',    code:'D3', locId:'dorpsarchief' },
   { naam:'De Verborgen Hand',   code:'D4' }
 ];
 var _bglKaartNamen = {};   // code -> mooie naam, voor het grote code-vak
@@ -8223,11 +8343,13 @@ function begeleiderKaartOpen() {
   if (!ov) return;
   bglBouwKaart();
   ov.classList.add('open');
+  _bglKaartOpen = true;
 }
 
 function begeleiderKaartSluit() {
   var ov = document.getElementById('bgl-kaart-overlay');
   if (ov) ov.classList.remove('open');
+  _bglKaartOpen = false;
 }
 
 // Tik op een tegel: toon de code groot in het vaste vak bovenaan en licht de
@@ -8237,11 +8359,12 @@ function bglKaartKies(code) {
   if (disp) {
     var naam = _bglKaartNamen[code] || '';
     var alt = BGL_ALT_CODES[code];
-    disp.className = 'bglk-code';
+    // Locaties met twee geldige codes tonen ze allebei, gescheiden door een
+    // schuine streep (bijv. K7 / LKW6K), zodat de begeleider beide kan lezen.
+    disp.className = 'bglk-code' + (alt ? ' dubbel' : '');
     disp.innerHTML =
       (naam ? '<div class="naam">' + naam + '</div>' : '') +
-      '<div class="code">' + code + '</div>' +
-      (alt ? '<div class="alt">ook geldig: ' + alt + '</div>' : '');
+      '<div class="code">' + code + (alt ? ' / ' + alt : '') + '</div>';
   }
   var vakken = document.querySelectorAll('#bgl-kaart-overlay .bglk-tegel, #bgl-kaart-overlay .bglk-plein-vak, #bgl-kaart-overlay .bglk-ingang');
   Array.prototype.forEach.call(vakken, function (t) {
@@ -8251,47 +8374,114 @@ function bglKaartKies(code) {
 
 function bglBouwKaart() {
   _bglKaartNamen = {};
-  var straten = '';
-  BGL_KAART_STRATEN.forEach(function (s) {
-    var cfg = BEGINNER_KAARTEN[s.schermId];
-    if (!cfg) return;
+  // Namen per locatie-id uit de spelerskaart halen; die blijft de enige bron.
+  var naamVanId = {};
+  Object.keys(BEGINNER_KAARTEN).forEach(function (sid) {
+    BEGINNER_KAARTEN[sid].tegels.forEach(function (t) { naamVanId[t.id] = t.naam; });
+  });
+
+  function bouwStraat(s) {
+    var lay = BGL_STRAAT_LAYOUT[s.schermId];
+    if (!lay) return '';
     var tegels = '';
-    cfg.tegels.forEach(function (t) {
-      var code = BGL_LOC_CODES[t.id] || '?';
-      _bglKaartNamen[code] = t.naam;
-      tegels += '<button class="bglk-tegel" data-code="' + code + '" style="grid-column:' + t.col + ';grid-row:' + t.row + '" onclick="bglKaartKies(\'' + code + '\')">' +
-        '<span class="bglk-tegel-naam">' + t.naam + '</span>' +
+    Object.keys(lay.pos).forEach(function (id) {
+      var p = lay.pos[id];
+      var code = BGL_LOC_CODES[id] || '?';
+      var naam = naamVanId[id] || id;
+      _bglKaartNamen[code] = naam;
+      tegels += '<button class="bglk-tegel" data-code="' + code + '" style="grid-column:' + p.col + ';grid-row:' + p.row + '" onclick="bglKaartKies(\'' + code + '\')">' +
+        '<span class="bglk-aanw" data-for="' + id + '"></span>' +
+        '<span class="bglk-tegel-naam">' + naam + '</span>' +
         '<span class="bglk-tegel-code">' + code + '</span>' +
       '</button>';
     });
     _bglKaartNamen[s.ingang] = s.titel + ' (ingang)';
-    straten += '<div class="bglk-straat">' +
+    return '<div class="bglk-straat">' +
       '<div class="bglk-straat-titel">' + s.titel + '</div>' +
       '<button class="bglk-ingang" data-code="' + s.ingang + '" onclick="bglKaartKies(\'' + s.ingang + '\')">ingang: ' + s.ingang + '</button>' +
-      '<div class="bglk-grid" style="grid-template-columns:repeat(' + (cfg.kolommen || 3) + ',auto)">' + tegels + '</div>' +
+      '<div class="bglk-grid" style="grid-template-columns:repeat(' + (lay.kolommen || 3) + ',auto)">' + tegels + '</div>' +
     '</div>';
-  });
+  }
+
+  var straatVan = {};
+  BGL_KAART_STRATEN.forEach(function (s) { straatVan[s.schermId] = bouwStraat(s); });
+
+  // Dorpsplein als 2x2 vierkant in het centrum van het kruis: drie
+  // code-locaties plus een vierde vak dat terugkeert naar het begeleidersscherm.
   var pleinVakken = '';
-  BGL_DORPSPLEIN.forEach(function (v) {
+  BGL_DORPSPLEIN.forEach(function (v, idx) {
     _bglKaartNamen[v.code] = v.naam;
-    pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
+    var col = (idx % 2) + 1, row = Math.floor(idx / 2) + 1;
+    pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" style="grid-column:' + col + ';grid-row:' + row + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
+      '<span class="bglk-aanw" data-for="' + (v.locId || '') + '"></span>' +
       '<span class="bglk-tegel-naam">' + v.naam + '</span>' +
       '<span class="bglk-tegel-code">' + v.code + '</span>' +
     '</button>';
   });
+  // Vierde vak van het vierkant: terug naar het begeleidersscherm.
+  pleinVakken += '<button class="bglk-plein-vak bglk-terug" style="grid-column:2;grid-row:2" onclick="begeleiderKaartSluit()">' +
+    '<span class="bglk-tegel-naam">← Begeleider</span>' +
+    '<span class="bglk-tegel-code">terug</span>' +
+  '</button>';
   _bglKaartNamen['D1'] = 'Dorpsplein (ingang)';
+  var pleinBlok = '<div class="bglk-straat">' +
+    '<div class="bglk-straat-titel">Dorpsplein</div>' +
+    '<button class="bglk-ingang" data-code="D1" onclick="bglKaartKies(\'D1\')">ingang: D1</button>' +
+    '<div class="bglk-grid bglk-plein-grid">' + pleinVakken + '</div>' +
+  '</div>';
+
   var wrap = document.getElementById('bgl-kaart-inhoud');
   if (!wrap) return;
   wrap.innerHTML =
     '<div class="bgl-titel">Kaart en codes</div>' +
     '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>' +
     '<div class="bglk-code leeg" id="bgl-kaart-code"><div class="code">Tik een locatie...</div></div>' +
-    '<div class="bglk-straten">' + straten + '</div>' +
-    '<div class="bglk-plein">' +
-      '<div class="bglk-straat-titel">Dorpsplein</div>' +
-      '<button class="bglk-ingang" data-code="D1" onclick="bglKaartKies(\'D1\')">ingang: D1</button>' +
-      '<div class="bglk-plein-vakken">' + pleinVakken + '</div>' +
+    '<div class="bglk-map">' +
+      '<div class="bglk-area-kraai">' + (straatVan['screen-kwartier1'] || '') + '</div>' +
+      '<div class="bglk-area-dorendael">' + (straatVan['screen-dorendael'] || '') + '</div>' +
+      '<div class="bglk-area-plein">' + pleinBlok + '</div>' +
+      '<div class="bglk-area-heer">' + (straatVan['screen-sintdonatuslaan'] || '') + '</div>' +
     '</div>';
+  bglUpdateAanwezigheid();
+}
+
+// Speler-portretjes per rol voor de aanwezigheidsmerkjes op de kaart.
+var BGL_ROL_PORTRET = {
+  jan:   'karakters/spelers/jan.jpg',
+  kelly: 'karakters/spelers/kelly.jpg',
+  fenna: 'karakters/spelers/fenna.jpg',
+  felix: 'karakters/spelers/felix.jpg'
+};
+
+// Zet op elke tegel de portretjes van spelers die daar nu zijn (fel, gouden
+// gloed) of eerder geweest zijn (gedimd). Leest alleen meta/spelers/<rol>:
+// loc (huidige locatie), bezocht (map van locatie-ids) en hb (hartslag, voor
+// de vers-check). Verandert niets aan de gedeelde stand.
+function bglUpdateAanwezigheid() {
+  var overlay = document.getElementById('bgl-kaart-overlay');
+  if (!overlay) return;
+  var spelers = (_bglMeta && _bglMeta.spelers) || {};
+  var nu = (typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now();
+  var containers = overlay.querySelectorAll('.bglk-aanw');
+  Array.prototype.forEach.call(containers, function (cont) {
+    var id = cont.getAttribute('data-for');
+    if (!id) { cont.innerHTML = ''; return; }
+    var chips = '';
+    BEGELEIDER_ROLLEN.forEach(function (r) {
+      var sp = spelers[r.id];
+      if (!sp) return;
+      var hb = (typeof sp.hb === 'number' && isFinite(sp.hb)) ? sp.hb : null;
+      var vers = hb !== null && (nu - hb) / 1000 < 150;
+      var hier = vers && sp.loc === id;
+      var geweest = !!(sp.bezocht && sp.bezocht[id]);
+      if (!hier && !geweest) return;
+      var portret = BGL_ROL_PORTRET[r.id] || '';
+      chips += '<span class="bglk-chip ' + (hier ? 'hier' : 'geweest') + '"' +
+        ' title="' + r.naam + (hier ? ' is hier nu' : ' is hier geweest') + '"' +
+        ' style="background-image:url(' + portret + ')"></span>';
+    });
+    cont.innerHTML = chips;
+  });
 }
 
 // De verbinding-bolletjes moeten ook verouderen als er GEEN data meer
@@ -8300,6 +8490,9 @@ function bglBouwKaart() {
 // dit een openstaande keuzelijst dichtklapt.
 setInterval(function () {
   if (_bglOpen && _bglSid) begeleiderRenderPaneel();
+  // Ook de kaart ververst, zodat een 'hier nu'-portretje vanzelf naar 'geweest'
+  // zakt als de hartslag van die tablet verouderd raakt (tablet uit, wifi weg).
+  if (_bglKaartOpen) bglUpdateAanwezigheid();
 }, 10000);
 
 // Eén keuzelijst (snelheid of tempo) voor een rol, met de pending-stand
@@ -8323,20 +8516,22 @@ function begeleiderZetPending(rol, veld, waarde) {
   else p[veld] = waarde;
   if (Object.keys(p).length) _bglPending[rol] = p;
   else delete _bglPending[rol];
-  // display in plaats van visibility: een onzichtbare knop hield anders
+  // display in plaats van visibility: een onzichtbare markering hield anders
   // zijn plek in de flex-regel bezet en duwde de regel een stuk hoger.
-  var knop = document.getElementById('bgl-bevestig-' + rol);
-  if (knop) knop.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
+  var mark = document.getElementById('bgl-gewijzigd-' + rol);
+  if (mark) mark.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
+  // Niet het hele paneel herteken (dat klapt een openstaande keuzelijst dicht);
+  // alleen de grote Bevestig-knop rechts bijwerken.
+  bglBevestigBalkUpdate();
 }
 
-function begeleiderBevestig(rol) {
-  var p = _bglPending[rol];
-  if (!p || !_bglSid) return;
-  delete _bglPending[rol];
+// Schrijft de nog niet bevestigde wijzigingen van één rol naar de gedeelde
+// stand. Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt.
+function _bglSchrijfPending(rol, p) {
+  if (!p) return;
   var fout = function (e) { console.warn('begeleider: schrijven mislukt:', e); };
   try {
     var basis = firebase.database().ref('sessies/' + _bglSid + '/shared');
-    // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt zo.
     if (p.hasOwnProperty('beginner')) {
       _bglShared['beginner_modus_' + rol] = !!p.beginner;
       basis.child('beginner_modus_' + rol).set(!!p.beginner).catch(fout);
@@ -8363,7 +8558,62 @@ function begeleiderBevestig(rol) {
       }
     });
   } catch (e) { fout(e); }
+}
+
+// Alle openstaande wijzigingen (van alle rollen) in één keer bevestigen. Dit
+// is de actie achter de grote Bevestig-knop rechts.
+function begeleiderBevestigAlles() {
+  if (!_bglSid) return;
+  var rollen = Object.keys(_bglPending);
+  if (!rollen.length) return;
+  rollen.forEach(function (rol) {
+    var p = _bglPending[rol];
+    delete _bglPending[rol];
+    _bglSchrijfPending(rol, p);
+  });
+  bglBevestigMelding(rollen.length);
   begeleiderRenderPaneel();
+}
+
+// Naam van een rol voor de knop-tekst.
+function _bglRolNaam(id) {
+  for (var i = 0; i < BEGELEIDER_ROLLEN.length; i++) {
+    if (BEGELEIDER_ROLLEN[i].id === id) return BEGELEIDER_ROLLEN[i].naam;
+  }
+  return id;
+}
+
+// Werk de grote Bevestig-knop bij: verbergen als er niets openstaat, anders
+// tonen met het aantal en de namen van de rollen die nog wachten.
+var _bglBevestigBezig = false;   // laat de 'opgeslagen'-melding even staan
+function bglBevestigBalkUpdate() {
+  var balk = document.getElementById('bgl-bevestig-balk');
+  if (!balk) return;
+  if (_bglBevestigBezig) return;
+  var rollen = Object.keys(_bglPending);
+  if (!rollen.length || !_bglSid || !_bglOpen) {
+    balk.className = 'bgl-bevestig-balk';
+    return;
+  }
+  var namen = rollen.map(function (id) { return begeleiderVeilig(_bglRolNaam(id)); }).join(', ');
+  balk.className = 'bgl-bevestig-balk actief';
+  balk.innerHTML =
+    '<span class="bgl-bevestig-groot">✓ Bevestig</span>' +
+    '<span class="bgl-bevestig-sub">' + rollen.length + ' wijziging' + (rollen.length > 1 ? 'en' : '') +
+      '<br>' + namen + '</span>';
+}
+
+// Duidelijke bevestiging na het opslaan: de knop wordt kort groen met
+// 'Opgeslagen', daarna verbergt hij zichzelf (of toont weer wat nog openstaat).
+function bglBevestigMelding(n) {
+  var balk = document.getElementById('bgl-bevestig-balk');
+  if (!balk) return;
+  _bglBevestigBezig = true;
+  balk.className = 'bgl-bevestig-balk actief opgeslagen';
+  balk.innerHTML =
+    '<span class="bgl-bevestig-groot">✓ Opgeslagen</span>' +
+    '<span class="bgl-bevestig-sub">' + n + ' wijziging' + (n > 1 ? 'en' : '') + ' verstuurd</span>';
+  setTimeout(function () { _bglBevestigBezig = false; bglBevestigBalkUpdate(); }, 1600);
 }
 
 // Team-pauzeknop: alle vier de schaduw-meters in één keer stil (of weer
@@ -22543,6 +22793,10 @@ function buildDebugPanel() {
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true, 'Begeleider & sessie'],
+    // Debugflag voor de aanwezigheids-portretjes op de begeleiderskaart: zet
+    // voorbeeldposities voor alle vier de rollen (huidige locatie + bezocht)
+    // in meta, zodat de kaart solo te testen is zonder vier echte tablets.
+    ['🧭 Simuleer spelerposities (kaart)', function(){ debugSimuleerAanwezigheid(); close(); }, true, 'Begeleider & sessie'],
     // Debugflag bij het opruimen na een reset: doet alsof een ander tablet de
     // sessie zojuist heeft gewist, zodat de lege-snapshot-tak en de melding
     // solo te testen zijn zonder echt iets in Firebase weg te gooien.
@@ -26725,6 +26979,30 @@ function spelerHartslag() {
   } catch (e) {}
 }
 setInterval(spelerHartslag, 25000);
+
+// ── Aanwezigheid voor het begeleidersscherm ─────────────────────────
+// Waar is deze speler nu (state.lastOpenedLocatie) en waar is hij geweest
+// (state.visitedLocations). Gaat naar meta/spelers/<rol>/loc en /bezocht,
+// bewust in meta net als de hartslag: de spelers-tablets luisteren alleen op
+// shared, dus dit geeft daar geen extra snapshots en raakt de gedeelde
+// spelstand niet. Alleen het begeleiderspaneel leest dit. Er wordt uitsluitend
+// geschreven als er iets verandert, dus een stilstaande tablet stuurt niets.
+var _laatsteAanwezigheid = { loc: undefined, bezochtN: -1 };
+function spelerAanwezigheidBroadcast(force) {
+  if (!state.personage) return;
+  if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
+  var loc = state.lastOpenedLocatie || null;
+  var bezochtN = state.visitedLocations ? state.visitedLocations.size : 0;
+  if (!force && loc === _laatsteAanwezigheid.loc && bezochtN === _laatsteAanwezigheid.bezochtN) return;
+  _laatsteAanwezigheid = { loc: loc, bezochtN: bezochtN };
+  var bezocht = {};
+  if (state.visitedLocations) state.visitedLocations.forEach(function (id) { bezocht[id] = true; });
+  try {
+    firebase.database().ref('sessies/' + _sharedSessieId + '/meta/spelers/' + state.personage)
+      .update({ loc: loc, bezocht: bezocht }).catch(function () {});
+  } catch (e) {}
+}
+setInterval(spelerAanwezigheidBroadcast, 4000);
 
 // Test: laat de fluisteringen snel achter elkaar komen, zodat je het
 // overlap-moment met het kraken makkelijk kunt uitlokken. De meter en de
