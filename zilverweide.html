@@ -27142,31 +27142,34 @@ setInterval(spelerHartslag, 25000);
 // shared, dus dit geeft daar geen extra snapshots en raakt de gedeelde
 // spelstand niet. Alleen het begeleiderspaneel leest dit. Er wordt uitsluitend
 // geschreven als er iets verandert, dus een stilstaande tablet stuurt niets.
-// Waar staat de speler nu, als hij NIET in een specifieke locatie zit maar op
-// een straat-invoerscherm of de dorpskaart? Dan is de straat (of "Dorpskaart")
-// de plek. Bij een specifieke locatie blijft loc leidend en is plek leeg.
-function _spelerHuidigePlek() {
-  if (state.lastOpenedLocatie) return '';
-  var map = {
-    'screen-overworld':       'Dorpskaart',
-    'screen-kwartier1':       'Kraaienkwartier',
-    'screen-dorendael':       'Dorendael',
-    'screen-sintdonatuslaan': 'Heer Donatuslaan',
-    'screen-dorpsplein':      'Dorpsplein'
-  };
-  for (var id in map) {
-    if (!map.hasOwnProperty(id)) continue;
+// Straat-/kaartschermen: staat de speler hierop, dan zit hij per definitie NIET
+// in een specifieke locatie (ook al staat state.lastOpenedLocatie nog op de
+// laatst bezochte plek; die wordt niet overal genulld). Op zo'n scherm is de
+// straat (of "Dorpskaart") de plek en is loc leeg. Dit voorkomt dat de kaart
+// "bij de toren" blijft tonen nadat de speler terug naar de straat is gelopen.
+var _bglNavSchermen = {
+  'screen-overworld':       'Dorpskaart',
+  'screen-kwartier1':       'Kraaienkwartier',
+  'screen-dorendael':       'Dorendael',
+  'screen-sintdonatuslaan': 'Heer Donatuslaan',
+  'screen-dorpsplein':      'Dorpsplein'
+};
+function _spelerNavPlek() {
+  for (var id in _bglNavSchermen) {
+    if (!_bglNavSchermen.hasOwnProperty(id)) continue;
     var el = document.getElementById(id);
-    if (el && el.classList.contains('active')) return map[id];
+    if (el && el.classList.contains('active')) return _bglNavSchermen[id];
   }
-  return '';
+  return null;
 }
 var _laatsteAanwezigheid = { loc: undefined, bezochtN: -1, plek: undefined };
 function spelerAanwezigheidBroadcast(force) {
   if (!state.personage) return;
   if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
-  var loc = state.lastOpenedLocatie || null;
-  var plek = _spelerHuidigePlek();
+  var navPlek = _spelerNavPlek();
+  var loc, plek;
+  if (navPlek) { loc = null; plek = navPlek; }                     // op straat/kaart
+  else { loc = state.lastOpenedLocatie || null; plek = ''; }        // in een locatie of scene
   var bezochtN = state.visitedLocations ? state.visitedLocations.size : 0;
   if (!force && loc === _laatsteAanwezigheid.loc && bezochtN === _laatsteAanwezigheid.bezochtN &&
       plek === _laatsteAanwezigheid.plek) return;
