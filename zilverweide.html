@@ -2584,7 +2584,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bglk-code.leeg .code { color:var(--gold-dim); font-size:clamp(1rem,4vw,1.4rem); letter-spacing:.06em; }
   .bglk-straten { display:flex; gap:1.2rem; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
   .bglk-straat { flex:1 1 15rem; min-width:13rem; max-width:20rem; border:1px solid rgba(var(--goudrgb),calc(.28 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:1rem .9rem 1.3rem; }
-  .bglk-straat-titel { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:1rem; }
+  .bglk-straat-titel { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:.5rem; }
+  .bglk-ingang { display:block; margin:0 auto 1rem; font-family:'Cinzel',serif; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--gold); background:rgba(var(--goudrgb),calc(.1 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:20px; padding:.32rem .85rem; cursor:pointer; }
+  .bglk-ingang:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.18 * var(--vlak))); }
+  .bglk-ingang.gekozen { border-color:var(--gold); box-shadow:0 0 10px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
   .bglk-grid { display:grid; gap:.5rem; justify-content:center; }
   .bglk-tegel, .bglk-plein-vak { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.55rem .4rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
   .bglk-tegel:hover, .bglk-plein-vak:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.14 * var(--vlak))); }
@@ -8201,10 +8204,11 @@ var BGL_ALT_CODES = {
   D2:'MD2P', D3:'F3HCR', D4:'DN4H'
 };
 // De drie straten, gekoppeld aan de layout van de beginnerskaart.
+// De ingangscodes (ZONE_HOOFDCODE) staan boven elke straatkaart.
 var BGL_KAART_STRATEN = [
-  { schermId:'screen-kwartier1',       titel:'Kraaienkwartier' },
-  { schermId:'screen-dorendael',       titel:'Dorendael' },
-  { schermId:'screen-sintdonatuslaan', titel:'Heer Donatuslaan' }
+  { schermId:'screen-kwartier1',       titel:'Kraaienkwartier', ingang:'K1' },
+  { schermId:'screen-dorendael',       titel:'Dorendael',       ingang:'DD1' },
+  { schermId:'screen-sintdonatuslaan', titel:'Heer Donatuslaan', ingang:'H1' }
 ];
 // De drie code-locaties op het dorpsplein.
 var BGL_DORPSPLEIN = [
@@ -8239,7 +8243,7 @@ function bglKaartKies(code) {
       '<div class="code">' + code + '</div>' +
       (alt ? '<div class="alt">ook geldig: ' + alt + '</div>' : '');
   }
-  var vakken = document.querySelectorAll('#bgl-kaart-overlay .bglk-tegel, #bgl-kaart-overlay .bglk-plein-vak');
+  var vakken = document.querySelectorAll('#bgl-kaart-overlay .bglk-tegel, #bgl-kaart-overlay .bglk-plein-vak, #bgl-kaart-overlay .bglk-ingang');
   Array.prototype.forEach.call(vakken, function (t) {
     t.classList.toggle('gekozen', t.getAttribute('data-code') === code);
   });
@@ -8260,8 +8264,10 @@ function bglBouwKaart() {
         '<span class="bglk-tegel-code">' + code + '</span>' +
       '</button>';
     });
+    _bglKaartNamen[s.ingang] = s.titel + ' (ingang)';
     straten += '<div class="bglk-straat">' +
       '<div class="bglk-straat-titel">' + s.titel + '</div>' +
+      '<button class="bglk-ingang" data-code="' + s.ingang + '" onclick="bglKaartKies(\'' + s.ingang + '\')">ingang: ' + s.ingang + '</button>' +
       '<div class="bglk-grid" style="grid-template-columns:repeat(' + (cfg.kolommen || 3) + ',auto)">' + tegels + '</div>' +
     '</div>';
   });
@@ -8273,6 +8279,7 @@ function bglBouwKaart() {
       '<span class="bglk-tegel-code">' + v.code + '</span>' +
     '</button>';
   });
+  _bglKaartNamen['D1'] = 'Dorpsplein (ingang)';
   var wrap = document.getElementById('bgl-kaart-inhoud');
   if (!wrap) return;
   wrap.innerHTML =
@@ -8282,6 +8289,7 @@ function bglBouwKaart() {
     '<div class="bglk-straten">' + straten + '</div>' +
     '<div class="bglk-plein">' +
       '<div class="bglk-straat-titel">Dorpsplein</div>' +
+      '<button class="bglk-ingang" data-code="D1" onclick="bglKaartKies(\'D1\')">ingang: D1</button>' +
       '<div class="bglk-plein-vakken">' + pleinVakken + '</div>' +
     '</div>';
 }
