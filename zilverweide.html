@@ -2570,11 +2570,43 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-sessieknop { display:block; width:100%; box-sizing:border-box; text-align:left; margin-bottom:.5rem; font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.05em; color:var(--gold); background:rgba(0,0,0,.35); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:6px; padding:.85rem 1rem; cursor:pointer; }
   #begeleider-sluit { position:fixed; top:.7rem; right:1rem; z-index:9501; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #begeleider-overlay.open ~ #begeleider-sluit { display:block; }
+
+  /* ── Begeleiderskaart: drie straatkaarten naast elkaar plus het dorpsplein,
+     zelfde tegelvorm als de beginnerskaart maar met alle namen zichtbaar en
+     een inlogcode per locatie. Tikken op een tegel toont de code groot. ── */
+  #bgl-kaart-overlay { display:none; position:fixed; inset:0; z-index:9600; background:#0d0a06; overflow-y:auto; }
+  #bgl-kaart-overlay.open { display:block; }
+  .bglk-wrap { max-width:64rem; margin:0 auto; padding:2.2rem 1.25rem 3rem; }
+  .bglk-code { position:sticky; top:0; z-index:2; text-align:center; margin-bottom:1.5rem; padding:1rem 1.2rem; border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn))); border-radius:10px; background:linear-gradient(180deg,#160f08,rgba(13,10,6,.97)); box-shadow:0 6px 22px rgba(0,0,0,.55); }
+  .bglk-code .naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--parchment); font-size:1.05rem; margin-bottom:.3rem; }
+  .bglk-code .code { font-family:'Cinzel',serif; font-size:clamp(2.4rem,10vw,4.5rem); letter-spacing:.14em; color:var(--gold); line-height:1; }
+  .bglk-code .alt { margin-top:.5rem; font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold-dim); }
+  .bglk-code.leeg .code { color:var(--gold-dim); font-size:clamp(1rem,4vw,1.4rem); letter-spacing:.06em; }
+  .bglk-straten { display:flex; gap:1.2rem; align-items:flex-start; justify-content:center; flex-wrap:wrap; }
+  .bglk-straat { flex:1 1 15rem; min-width:13rem; max-width:20rem; border:1px solid rgba(var(--goudrgb),calc(.28 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:1rem .9rem 1.3rem; }
+  .bglk-straat-titel { font-family:'Cinzel',serif; font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; color:var(--gold); text-align:center; margin-bottom:1rem; }
+  .bglk-grid { display:grid; gap:.5rem; justify-content:center; }
+  .bglk-tegel, .bglk-plein-vak { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.3rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.55rem .4rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
+  .bglk-tegel:hover, .bglk-plein-vak:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.14 * var(--vlak))); }
+  .bglk-tegel.gekozen, .bglk-plein-vak.gekozen { border-color:var(--gold); box-shadow:0 0 14px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
+  .bglk-tegel-naam { font-family:'Crimson Text',Georgia,serif; font-size:.85rem; color:var(--parchment); text-align:center; line-height:1.18; }
+  .bglk-tegel-code { font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.12em; color:var(--gold-dim); }
+  .bglk-plein { margin-top:1.8rem; }
+  .bglk-plein-vakken { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
+  .bglk-plein-vak { flex:1 1 12rem; max-width:16rem; padding:1rem .6rem; }
+  .bglk-plein-vak .bglk-tegel-naam { font-size:1rem; }
+  #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
+  #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
 </style>
 <div id="begeleider-overlay">
   <div class="bgl-wrap" id="begeleider-inhoud"></div>
 </div>
 <button id="begeleider-sluit" onclick="begeleiderSluit()" title="Sluiten">✕</button>
+
+<div id="bgl-kaart-overlay">
+  <div class="bglk-wrap" id="bgl-kaart-inhoud"></div>
+</div>
+<button id="bgl-kaart-sluit" onclick="begeleiderKaartSluit()" title="Kaart sluiten">✕</button>
 
 <!-- Doolhof-engine (zit in losse bestanden: doolhof-engine.js + doolhof.css) -->
 <script src="technischefiles/doolhof-engine.js"></script>
@@ -5977,6 +6009,7 @@ const kraaiLocaties = {
   'K5': { naam: 'De Dorpsput' },
   'K6': { naam: 'Nummer 7' },
   'K7': { naam: 'Nummer 5 — Robbie Kweekel' },
+  'LKW6K': { naam: 'Nummer 5 — Robbie Kweekel' },   // alternatieve code voor K7
   'K8': { naam: 'Naald en Masker' },
 };
 const zoneUnlocked = { dorpsplein:true, kraaienkwartier:false, dorendael:false, sintdonatuslaan:false };
@@ -6146,6 +6179,7 @@ const dorendaelCodeToId = {
   'DD4': 'dd4_herberg',
   'DD5': 'dd5_woud',
   'DD6': 'dd6_molen',
+  'NL4M': 'dd6_molen',   // alternatieve code voor DD6 (De Oude Molen)
   'DD7': 'dd7_klokkenmaker',
   'DD8': 'dd8_stiltevijver',
 };
@@ -6164,6 +6198,7 @@ const locatiesHeerDonatuslaan = [
 const heerDonatuslaanCodeToId = {
   'H2': 'h2_felixkamer',
   'H3': 'h3_slagerij',
+  'R3GLS': 'h3_slagerij',   // alternatieve code voor H3 (Slagerij Verstilt)
   'H4': 'h4_kerk',
   'H5': 'h5_gemeentehuis',
   'H6': 'h6_bandieten',
@@ -8045,7 +8080,8 @@ function begeleiderRenderPaneel() {
     '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
     'alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
-    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderKaartOpen()">🗺 Kaart en codes</button></div>' +
+    '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
 }
 
@@ -8138,6 +8174,116 @@ function begeleiderMissieHtml() {
   open.forEach(function (s) { html += '<div class="bgl-missie">○ ' + s.tekst + '</div>'; });
   af.forEach(function (s) { html += '<div class="bgl-missie af">✓ ' + s.tekst + '</div>'; });
   return html + '</div>';
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BEGELEIDERSKAART: alle inlogcodes in een oogopslag
+// Drie straatkaarten naast elkaar (zelfde tegelvorm en plek als de
+// beginnerskaart die de speler ziet), maar met alle namen zichtbaar en de
+// inlogcode per locatie. Plus drie vakjes voor het dorpsplein. Tikken op een
+// tegel toont de code groot, zodat de begeleider hem kan voorlezen. Alleen
+// lezen: dit scherm schrijft niets naar de gedeelde stand.
+// ─────────────────────────────────────────────────────────────────
+// Inlogcode per locatie-id. Afgeleid van de bordjescodes (K2-K8, DD2-DD8,
+// H2-H8). Blijft in de pas met kraaiLocaties, dorendaelCodeToId en
+// heerDonatuslaanCodeToId hierboven.
+var BGL_LOC_CODES = {
+  k1_groenteboer:'K2', k1_uitkijktoren:'K3', k1_nachtenwens:'K4', k1_dorpsput:'K5',
+  k1_nummer7:'K6', k1_nummer5:'K7', k1_naaldmasker:'K8',
+  dd2_nummer2:'DD2', dd3_nummer10:'DD3', dd4_herberg:'DD4', dd5_woud:'DD5',
+  dd6_molen:'DD6', dd7_klokkenmaker:'DD7', dd8_stiltevijver:'DD8',
+  h2_felixkamer:'H2', h3_slagerij:'H3', h4_kerk:'H4', h5_gemeentehuis:'H5',
+  h6_bandieten:'H6', h7_apotheker:'H7', h8_steegje:'H8'
+};
+// Alternatieve (moeilijkere) codes die naast de bordjescode geldig zijn.
+var BGL_ALT_CODES = {
+  K7:'LKW6K', DD6:'NL4M', H3:'R3GLS',
+  D2:'MD2P', D3:'F3HCR', D4:'DN4H'
+};
+// De drie straten, gekoppeld aan de layout van de beginnerskaart.
+var BGL_KAART_STRATEN = [
+  { schermId:'screen-kwartier1',       titel:'Kraaienkwartier' },
+  { schermId:'screen-dorendael',       titel:'Dorendael' },
+  { schermId:'screen-sintdonatuslaan', titel:'Heer Donatuslaan' }
+];
+// De drie code-locaties op het dorpsplein.
+var BGL_DORPSPLEIN = [
+  { naam:'Het Podium (Toneel)', code:'D2' },
+  { naam:'Het Dorpsarchief',    code:'D3' },
+  { naam:'De Verborgen Hand',   code:'D4' }
+];
+var _bglKaartNamen = {};   // code -> mooie naam, voor het grote code-vak
+
+function begeleiderKaartOpen() {
+  var ov = document.getElementById('bgl-kaart-overlay');
+  if (!ov) return;
+  bglBouwKaart();
+  ov.classList.add('open');
+}
+
+function begeleiderKaartSluit() {
+  var ov = document.getElementById('bgl-kaart-overlay');
+  if (ov) ov.classList.remove('open');
+}
+
+// Tik op een tegel: toon de code groot in het vaste vak bovenaan en licht de
+// gekozen tegel op.
+function bglKaartKies(code) {
+  var disp = document.getElementById('bgl-kaart-code');
+  if (disp) {
+    var naam = _bglKaartNamen[code] || '';
+    var alt = BGL_ALT_CODES[code];
+    disp.className = 'bglk-code';
+    disp.innerHTML =
+      (naam ? '<div class="naam">' + naam + '</div>' : '') +
+      '<div class="code">' + code + '</div>' +
+      (alt ? '<div class="alt">ook geldig: ' + alt + '</div>' : '');
+  }
+  var vakken = document.querySelectorAll('#bgl-kaart-overlay .bglk-tegel, #bgl-kaart-overlay .bglk-plein-vak');
+  Array.prototype.forEach.call(vakken, function (t) {
+    t.classList.toggle('gekozen', t.getAttribute('data-code') === code);
+  });
+}
+
+function bglBouwKaart() {
+  _bglKaartNamen = {};
+  var straten = '';
+  BGL_KAART_STRATEN.forEach(function (s) {
+    var cfg = BEGINNER_KAARTEN[s.schermId];
+    if (!cfg) return;
+    var tegels = '';
+    cfg.tegels.forEach(function (t) {
+      var code = BGL_LOC_CODES[t.id] || '?';
+      _bglKaartNamen[code] = t.naam;
+      tegels += '<button class="bglk-tegel" data-code="' + code + '" style="grid-column:' + t.col + ';grid-row:' + t.row + '" onclick="bglKaartKies(\'' + code + '\')">' +
+        '<span class="bglk-tegel-naam">' + t.naam + '</span>' +
+        '<span class="bglk-tegel-code">' + code + '</span>' +
+      '</button>';
+    });
+    straten += '<div class="bglk-straat">' +
+      '<div class="bglk-straat-titel">' + s.titel + '</div>' +
+      '<div class="bglk-grid" style="grid-template-columns:repeat(' + (cfg.kolommen || 3) + ',auto)">' + tegels + '</div>' +
+    '</div>';
+  });
+  var pleinVakken = '';
+  BGL_DORPSPLEIN.forEach(function (v) {
+    _bglKaartNamen[v.code] = v.naam;
+    pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
+      '<span class="bglk-tegel-naam">' + v.naam + '</span>' +
+      '<span class="bglk-tegel-code">' + v.code + '</span>' +
+    '</button>';
+  });
+  var wrap = document.getElementById('bgl-kaart-inhoud');
+  if (!wrap) return;
+  wrap.innerHTML =
+    '<div class="bgl-titel">Kaart en codes</div>' +
+    '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>' +
+    '<div class="bglk-code leeg" id="bgl-kaart-code"><div class="code">Tik een locatie...</div></div>' +
+    '<div class="bglk-straten">' + straten + '</div>' +
+    '<div class="bglk-plein">' +
+      '<div class="bglk-straat-titel">Dorpsplein</div>' +
+      '<div class="bglk-plein-vakken">' + pleinVakken + '</div>' +
+    '</div>';
 }
 
 // De verbinding-bolletjes moeten ook verouderen als er GEEN data meer
@@ -8969,6 +9115,7 @@ function openKraaiLocatie(code) {
   const codeToId = {
     'K2':'k1_groenteboer','K3':'k1_uitkijktoren','K4':'k1_nachtenwens',
     'K5':'k1_dorpsput','K6':'k1_nummer7','K7':'k1_nummer5','K8':'k1_naaldmasker',
+    'LKW6K':'k1_nummer5',   // alternatieve code voor K7 (Nummer 5)
   };
   const id = codeToId[code];
   if (id) openLocatie(id);
