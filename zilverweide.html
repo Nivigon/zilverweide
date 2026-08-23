@@ -2593,13 +2593,23 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-kaart-inline .bglk-code { position:static; }
   .bgl-tempnote { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.8rem; text-align:center; margin:-.2rem 0 .7rem; opacity:.8; }
   /* Kaart + knoppen-rail naast elkaar (stap 2). */
-  .bgl-mid { display:flex; gap:.7rem; align-items:stretch; margin-bottom:1.1rem; }
+  .bgl-mid { display:flex; gap:.7rem; align-items:flex-start; margin-bottom:1.1rem; }
   .bgl-mid .bgl-kaart-inline { flex:1; min-width:0; margin-bottom:0; }
   .bgl-rail { flex:0 0 auto; width:5rem; display:flex; flex-direction:column; gap:.5rem; }
-  .bgl-railknop { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2rem; padding:.5rem .3rem; border-radius:10px; border:1px solid var(--gold-dim); background:linear-gradient(180deg,#241a09,#160f06); color:var(--gold); font-family:'Cinzel',serif; font-size:.54rem; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; }
+  .bgl-railknop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; padding:.7rem .3rem; border-radius:10px; border:1px solid var(--gold-dim); background:linear-gradient(180deg,#241a09,#160f06); color:var(--gold); font-family:'Cinzel',serif; font-size:.54rem; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; }
   .bgl-railknop:hover { border-color:var(--gold); background:linear-gradient(180deg,#33260d,#1c130a); }
-  .bgl-railknop .ic { font-size:1.15rem; }
-  @media (max-width:680px) { .bgl-mid { flex-direction:column; } .bgl-rail { width:100%; flex-direction:row; } }
+  .bgl-railknop .ic { font-size:1.25rem; }
+  @media (max-width:680px) { .bgl-mid { flex-direction:column; } .bgl-rail { width:100%; flex-direction:row; } .bgl-railknop { flex:1; } }
+  /* Spelhulp-paneel: rij per optie met een segmented control rechts. */
+  .bgl-hulp-row { display:flex; align-items:center; gap:.8rem; padding:.7rem .2rem; border-bottom:1px solid rgba(var(--goudrgb),calc(.14 * var(--lijn))); flex-wrap:wrap; }
+  .bgl-hulp-row:last-of-type { border-bottom:none; }
+  .bgl-hulp-row .ic { font-size:1.3rem; flex:0 0 auto; }
+  .bgl-hulp-row .ht { flex:1; min-width:9rem; }
+  .bgl-hulp-row .ht .t { font-family:'Crimson Text',Georgia,serif; font-size:1rem; color:var(--parchment); }
+  .bgl-hulp-row .ht .d { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:.82rem; color:var(--mist); }
+  .bgl-seg { display:flex; border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:6px; overflow:hidden; flex:0 0 auto; }
+  .bgl-seg button { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.06em; color:var(--gold-dim); background:transparent; border:none; padding:.42rem .8rem; cursor:pointer; }
+  .bgl-seg button.on { background:rgba(var(--goudrgb),calc(.25 * var(--vlak))); color:var(--gold); }
   /* Rail-panelen (Schaduw/Hulp/Verhaal/Tijden) als modaal venster. */
   .bgl-modal-scrim { display:none; position:fixed; inset:0; z-index:9550; background:rgba(5,4,2,.72); align-items:center; justify-content:center; padding:1.2rem; }
   .bgl-modal-scrim.open { display:flex; }
@@ -8778,20 +8788,56 @@ function begeleiderSchaduwPaneelHtml() {
 }
 function begeleiderOpenSchaduw() { bglModalOpen(begeleiderSchaduwPaneelHtml()); }
 
-// Spelhulp: toren-hints (werkt direct). Uitgebreide, uitbreidbare versie volgt
-// in stap 3.
+// Spelhulp: uitbreidbare lijst van team-hulp-opties. Elke optie beschrijft
+// zichzelf (label, uitleg, keuzes, hoe hij de huidige waarde leest en zet),
+// zodat er later een optie bij kan zonder de rest te raken: voeg gewoon een
+// item aan BGL_HULP_OPTIES toe. Alle opties werken direct (geen Bevestig).
+var BGL_HULP_OPTIES = [
+  {
+    id: 'toren',
+    ic: '🗼',
+    titel: 'Toren-hints',
+    uitleg: 'Jans hints vanaf de uitkijktoren. Makkelijker: noemt met zoveel woorden wie er iets mee kan.',
+    keuzes: [ { w: false, label: 'Normaal' }, { w: true, label: 'Makkelijker' } ],
+    huidig: function () { return _bglShared.extra_hulp === true; },
+    zet: function (v) {
+      _bglShared.extra_hulp = v;
+      try {
+        firebase.database().ref('sessies/' + _bglSid + '/shared').child('extra_hulp').set(v)
+          .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+      } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+    }
+  }
+];
+function begeleiderHulpZet(id, waarde) {
+  if (!_bglSid) return;
+  var o = null;
+  for (var i = 0; i < BGL_HULP_OPTIES.length; i++) { if (BGL_HULP_OPTIES[i].id === id) o = BGL_HULP_OPTIES[i]; }
+  if (!o) return;
+  var v = waarde === 'true' ? true : (waarde === 'false' ? false : waarde);
+  o.zet(v);
+  begeleiderRenderPaneel();   // dashboard bijwerken op de achtergrond
+  begeleiderOpenHulp();       // paneel opnieuw vullen met de nieuwe stand
+}
 function begeleiderOpenHulp() {
-  var hulpAan = _bglShared.extra_hulp === true;
+  var rows = '';
+  BGL_HULP_OPTIES.forEach(function (o) {
+    var cur = o.huidig();
+    var seg = '<div class="bgl-seg">' + o.keuzes.map(function (k) {
+      return '<button class="' + (k.w === cur ? 'on' : '') + '" onclick="begeleiderHulpZet(\'' + o.id + '\', \'' + k.w + '\')">' +
+        k.label + '</button>';
+    }).join('') + '</div>';
+    rows += '<div class="bgl-hulp-row">' +
+      '<span class="ic">' + o.ic + '</span>' +
+      '<div class="ht"><div class="t">' + o.titel + '</div><div class="d">' + o.uitleg + '</div></div>' +
+      seg +
+    '</div>';
+  });
   bglModalOpen(
     '<div class="bgl-titel">💡 Spelhulp</div>' +
     '<div class="bgl-sub">✦ &nbsp; werkt direct voor het hele team &nbsp; ✦</div>' +
-    '<div class="bgl-blok"><div class="bgl-kopje">Toren-hints</div>' +
-      '<div class="bgl-info" style="margin:0 0 .6rem">Jans hints vanaf de uitkijktoren. Makkelijk: noemt ' +
-        'met zoveel woorden wie er iets mee kan. Staat nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>.</div>' +
-      '<div style="text-align:center"><button class="bgl-knopje" onclick="begeleiderExtraHulp();begeleiderOpenHulp()">' +
-        (hulpAan ? 'Terug naar normaal' : 'Maak makkelijker') + '</button></div>' +
-    '</div>' +
-    '<div class="bgl-info">Meer hulp-opties komen hier later bij (stap 3).</div>'
+    rows +
+    '<div class="bgl-info" style="margin-top:.8rem">Dit paneel is uitbreidbaar: extra hulp-opties kunnen hier later bij.</div>'
   );
 }
 
