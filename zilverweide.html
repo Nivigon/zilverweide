@@ -2572,8 +2572,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   #begeleider-overlay.open ~ #begeleider-sluit { display:block; }
   /* ── Begeleider-dashboard (stap 1): personagekaarten + ingebedde kaart.
      In dashboard-modus mag het paneel breder zijn dan de smalle leeslijst. */
-  body.bgl-dash-actief #begeleider-inhoud { max-width:76rem; }
-  .bgl-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:.55rem; margin-bottom:1.1rem; }
+  body.bgl-dash-actief #begeleider-inhoud { max-width:76rem; padding:1rem 1.1rem 1.2rem; }
+  .bgl-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:.5rem; margin-bottom:.6rem; }
   @media (max-width:680px) { .bgl-cards { grid-template-columns:repeat(2,1fr); } }
   .bgl-card { border:1px solid rgba(var(--goudrgb),calc(.32 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:.6rem .65rem; }
   .bgl-card-top { display:flex; gap:.55rem; align-items:center; }
@@ -2588,12 +2588,17 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-card-togs { display:flex; gap:1rem; margin-top:.5rem; padding-top:.45rem; border-top:1px solid rgba(var(--goudrgb),calc(.14 * var(--lijn))); }
   .bgl-card-togs .ssi-toggle { margin-bottom:0; }
   .bgl-card-gewijzigd { display:block; margin-top:.4rem; font-family:'Cinzel',serif; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); }
-  .bgl-kaart-inline { border:1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.25); padding:.8rem .9rem; margin-bottom:1.1rem; }
+  .bgl-kaart-inline { border:1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.25); padding:.6rem .7rem; margin-bottom:0; }
   .bgl-kaart-inline .bglk-wrap { max-width:none; padding:0; margin:0; }
-  .bgl-kaart-inline .bglk-code { position:static; }
+  /* Code in de lege hoek van het kruis (dashboard): geen balk, netjes in de cel. */
+  .bgl-kaart-inline .bglk-map .bglk-code { position:static; margin:0; align-self:center; width:100%; box-shadow:none; background:linear-gradient(180deg,rgba(22,15,8,.9),rgba(13,10,6,.55)); }
+  .bgl-kaart-inline .bglk-map .bglk-code .code { font-size:clamp(1.3rem,2.8vw,2rem); }
+  .bgl-kaart-inline .bglk-map .bglk-code.dubbel .code { font-size:clamp(1.05rem,2.2vw,1.6rem); }
   .bgl-tempnote { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.8rem; text-align:center; margin:-.2rem 0 .7rem; opacity:.8; }
   /* Kaart + knoppen-rail naast elkaar (stap 2). */
-  .bgl-mid { display:flex; gap:.7rem; align-items:flex-start; margin-bottom:1.1rem; }
+  body.bgl-dash-actief .bgl-titel { margin-bottom:.1rem; font-size:1.2rem; }
+  body.bgl-dash-actief .bgl-sub { margin-bottom:.6rem; }
+  .bgl-mid { display:flex; gap:.7rem; align-items:flex-start; margin-bottom:.6rem; }
   .bgl-mid .bgl-kaart-inline { flex:1; min-width:0; margin-bottom:0; }
   .bgl-rail { flex:0 0 auto; width:5rem; display:flex; flex-direction:column; gap:.5rem; }
   .bgl-railknop { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; padding:.7rem .3rem; border-radius:10px; border:1px solid var(--gold-dim); background:linear-gradient(180deg,#241a09,#160f06); color:var(--gold); font-family:'Cinzel',serif; font-size:.54rem; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; }
@@ -8206,10 +8211,8 @@ function begeleiderRenderPaneel() {
         '<button class="bgl-railknop" onclick="begeleiderOpenTijden()"><span class="ic">⏱</span>Tijden</button>' +
       '</div>' +
     '</div>' +
-    '<div class="bgl-info">Wijzigingen per speler (Beginner, Licht/Donker) en de schaduw-instellingen ' +
-    'gaan pas naar de tablet nadat je op de grote Bevestig-knop rechts drukt. De team-pauze en de spelhulp ' +
-    'werken direct. Alle wijzigingen komen stil binnen: de speler krijgt geen melding.</div>' +
-    '<div style="text-align:center;margin-top:1.2rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+    '<div class="bgl-info" style="margin:.2rem 0 0;font-size:.82rem">Wijzigingen per speler en schaduw gaan pas naar de tablet na Bevestig (rechts). Team-pauze en spelhulp werken direct.' +
+      ' &nbsp;·&nbsp; <button class="bgl-knopje" style="vertical-align:middle" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
   // Kaart en codes ingebed in het dashboard (inline: zonder eigen titel/terug).
   bglBouwKaart('bgl-dash-kaart-inhoud', true);
@@ -8496,13 +8499,19 @@ function bglBouwKaart(doelId, inline) {
     '<div class="bglk-grid bglk-plein-grid">' + pleinVakken + '</div>' +
   '</div>';
 
+  // Het grote code-vak. In het losse overlay staat het als balk bovenaan; in
+  // het ingebedde dashboard komt het in de lege hoek linksboven naast
+  // Kraaienkwartier (grid-cel col1/row1), zodat er geen aparte balk nodig is.
+  var codeVak = '<div class="bglk-code leeg" id="bgl-kaart-code"' +
+    (inline ? ' style="grid-column:1;grid-row:1"' : '') +
+    '><div class="code">Tik een locatie...</div></div>';
   var wrap = document.getElementById(doelId || 'bgl-kaart-inhoud');
   if (!wrap) return;
   wrap.innerHTML =
     (inline ? '' : '<div class="bgl-titel">Kaart en codes</div>' +
-      '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>') +
-    '<div class="bglk-code leeg" id="bgl-kaart-code"><div class="code">Tik een locatie...</div></div>' +
+      '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>' + codeVak) +
     '<div class="bglk-map">' +
+      (inline ? codeVak : '') +
       '<div class="bglk-area-kraai">' + (straatVan['screen-kwartier1'] || '') + '</div>' +
       '<div class="bglk-area-dorendael">' + (straatVan['screen-dorendael'] || '') + '</div>' +
       '<div class="bglk-area-plein">' + pleinBlok + '</div>' +
