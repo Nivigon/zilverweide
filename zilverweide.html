@@ -8293,14 +8293,16 @@ var BGL_KAART_STRATEN = [
 var BGL_STRAAT_LAYOUT = {
   'screen-dorendael': {
     kolommen: 3,
-    // Horizontaal, kop (DD5 Het Woud) links, DD2/DD8 aan de rechter (ingang) kant.
-    //   DD4 DD3 DD2
+    // Horizontaal, kop (DD5 Het Woud) links. De twee niet-kopse kolommen zijn
+    // boven/onder omgewisseld (DD2<->DD8, DD3<->DD7); de kopse kant (DD4/DD6
+    // naast Het Woud) blijft staan.
+    //   DD4 DD7 DD8
     //   DD5
-    //   DD6 DD7 DD8
+    //   DD6 DD3 DD2
     pos: {
-      dd4_herberg:{col:1,row:1}, dd3_nummer10:{col:2,row:1}, dd2_nummer2:{col:3,row:1},
+      dd4_herberg:{col:1,row:1}, dd7_klokkenmaker:{col:2,row:1}, dd8_stiltevijver:{col:3,row:1},
       dd5_woud:{col:1,row:2},
-      dd6_molen:{col:1,row:3}, dd7_klokkenmaker:{col:2,row:3}, dd8_stiltevijver:{col:3,row:3}
+      dd6_molen:{col:1,row:3}, dd3_nummer10:{col:2,row:3}, dd2_nummer2:{col:3,row:3}
     }
   },
   'screen-kwartier1': {
@@ -8315,14 +8317,16 @@ var BGL_STRAAT_LAYOUT = {
   },
   'screen-sintdonatuslaan': {
     kolommen: 3,
-    // Horizontaal, kop (H5 Het Gemeentehuis) rechts, H2/H8 aan de linker (ingang) kant.
-    //   H2 H3 H4
+    // Horizontaal, kop (H5 Het Gemeentehuis) rechts. De twee niet-kopse kolommen
+    // zijn boven/onder omgewisseld (H2<->H8, H3<->H7); de kopse kant (H4/H6
+    // naast het gemeentehuis) blijft staan.
+    //   H8 H7 H4
     //            H5
-    //   H8 H7 H6
+    //   H2 H3 H6
     pos: {
-      h2_felixkamer:{col:1,row:1}, h3_slagerij:{col:2,row:1}, h4_kerk:{col:3,row:1},
+      h8_steegje:{col:1,row:1}, h7_apotheker:{col:2,row:1}, h4_kerk:{col:3,row:1},
       h5_gemeentehuis:{col:3,row:2},
-      h8_steegje:{col:1,row:3}, h7_apotheker:{col:2,row:3}, h6_bandieten:{col:3,row:3}
+      h2_felixkamer:{col:1,row:3}, h3_slagerij:{col:2,row:3}, h6_bandieten:{col:3,row:3}
     }
   }
 };
