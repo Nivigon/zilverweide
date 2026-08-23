@@ -2592,6 +2592,25 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-kaart-inline .bglk-wrap { max-width:none; padding:0; margin:0; }
   .bgl-kaart-inline .bglk-code { position:static; }
   .bgl-tempnote { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.8rem; text-align:center; margin:-.2rem 0 .7rem; opacity:.8; }
+  /* Kaart + knoppen-rail naast elkaar (stap 2). */
+  .bgl-mid { display:flex; gap:.7rem; align-items:stretch; margin-bottom:1.1rem; }
+  .bgl-mid .bgl-kaart-inline { flex:1; min-width:0; margin-bottom:0; }
+  .bgl-rail { flex:0 0 auto; width:5rem; display:flex; flex-direction:column; gap:.5rem; }
+  .bgl-railknop { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2rem; padding:.5rem .3rem; border-radius:10px; border:1px solid var(--gold-dim); background:linear-gradient(180deg,#241a09,#160f06); color:var(--gold); font-family:'Cinzel',serif; font-size:.54rem; letter-spacing:.05em; text-transform:uppercase; cursor:pointer; }
+  .bgl-railknop:hover { border-color:var(--gold); background:linear-gradient(180deg,#33260d,#1c130a); }
+  .bgl-railknop .ic { font-size:1.15rem; }
+  @media (max-width:680px) { .bgl-mid { flex-direction:column; } .bgl-rail { width:100%; flex-direction:row; } }
+  /* Rail-panelen (Schaduw/Hulp/Verhaal/Tijden) als modaal venster. */
+  .bgl-modal-scrim { display:none; position:fixed; inset:0; z-index:9550; background:rgba(5,4,2,.72); align-items:center; justify-content:center; padding:1.2rem; }
+  .bgl-modal-scrim.open { display:flex; }
+  .bgl-modal-box { position:relative; width:min(46rem,94vw); max-height:92vh; overflow:auto; border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn))); border-radius:14px; background:linear-gradient(180deg,#17110a,#0d0a06); box-shadow:0 12px 44px rgba(0,0,0,.6); padding:1.2rem 1.3rem; }
+  .bgl-modal-x { position:absolute; top:.4rem; right:.6rem; background:none; border:none; color:var(--gold-dim); font-size:1.35rem; cursor:pointer; }
+  .bgl-sp-row { display:flex; align-items:center; gap:.6rem; padding:.6rem 0; border-bottom:1px solid rgba(var(--goudrgb),calc(.14 * var(--lijn))); flex-wrap:wrap; }
+  .bgl-sp-row:last-of-type { border-bottom:none; }
+  .bgl-sp-portret { width:38px; height:38px; border-radius:50%; object-fit:cover; object-position:center top; border:1px solid var(--gold); flex:0 0 auto; background:var(--ash); }
+  .bgl-sp-wie { width:7.5rem; }
+  .bgl-sp-wie .n { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); }
+  .bgl-sp-wie .r { font-family:'Cinzel',serif; font-size:.52rem; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-dim); }
 
   /* ── Begeleiderskaart: drie straatkaarten naast elkaar plus het dorpsplein,
      zelfde tegelvorm als de beginnerskaart maar met alle namen zichtbaar en
@@ -2660,6 +2679,8 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
 <!-- Grote, vaste Bevestig-knop rechts: verschijnt zodra er onbevestigde
      wijzigingen zijn en stuurt ze in één keer naar de tablets. -->
 <button id="bgl-bevestig-balk" class="bgl-bevestig-balk" onclick="begeleiderBevestigAlles()"></button>
+<!-- Modaal venster voor de rail-panelen (Schaduw / Hulp / Verhaal / Tijden). -->
+<div id="bgl-modal" class="bgl-modal-scrim"><div class="bgl-modal-box"><button class="bgl-modal-x" onclick="bglModalSluit()" title="Sluiten">✕</button><div id="bgl-modal-inhoud"></div></div></div>
 
 <div id="bgl-kaart-overlay">
   <div class="bglk-wrap" id="bgl-kaart-inhoud"></div>
@@ -8162,51 +8183,23 @@ function begeleiderRenderPaneel() {
     '</div>';
   });
 
-  // ── Tijdelijke bediening. Deze blijft hier werken tot stap 2/3 hem naar de
-  //    knoppen (Schaduw / Hulp) verhuist. ──
-  var tempControls = '';
-  BEGELEIDER_ROLLEN.forEach(function (r) {
-    var p = _bglPending[r.id] || {};
-    var pauzeAan = p.hasOwnProperty('pauze') ? p.pauze : (_bglShared['schaduw_pauze_' + r.id] === true);
-    tempControls += '<div class="bgl-subregel">' +
-      '<span class="bgl-rol">' + r.naam + '</span>' +
-      '<span class="bgl-mini">Schaduw</span>' + begeleiderSelect(r.id, 'snelheid', BGL_SNELHEID_OPTIES) +
-      '<span class="bgl-mini">Chaos-knoppen</span>' + begeleiderSelect(r.id, 'tempo', BGL_TEMPO_OPTIES) +
-      '<label class="ssi-toggle" title="Schaduw-meter van deze speler stilzetten">' +
-        '<span class="ssi-label">Pauze</span>' +
-        '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
-        '<span class="ssi-schuif"></span>' +
-      '</label>' +
-    '</div>';
-  });
-  var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
-    return _bglShared['schaduw_pauze_' + r.id] === true;
-  });
-  var hulpAan = _bglShared.extra_hulp === true;
-
   var html =
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
     '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
-    begeleiderTijdenHtml() +
     '<div class="bgl-cards">' + cards + '</div>' +
-    '<div class="bgl-kaart-inline"><div class="bglk-wrap" id="bgl-dash-kaart-inhoud"></div></div>' +
-    '<div class="bgl-blok">' +
-      '<div class="bgl-kopje">Bediening (verhuist in de volgende stap naar knoppen)</div>' +
-      '<div class="bgl-tempnote">Schaduw per speler, team-pauze en spelhulp krijgen in stap 2/3 een eigen knop rechts.</div>' +
-      tempControls +
-      '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
-        (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
-      '<div style="text-align:center;margin-top:.5rem"><button class="bgl-knopje" onclick="begeleiderExtraHulp()">' +
-        (hulpAan ? '💡 Toren hints moeilijker maken' : '💡 Toren hints makkelijker maken') + '</button></div>' +
-      '<div class="bgl-info" style="margin-bottom:0">Toren-hints staan nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>. ' +
-        'Werkt direct, voor het hele team.</div>' +
+    '<div class="bgl-mid">' +
+      '<div class="bgl-kaart-inline"><div class="bglk-wrap" id="bgl-dash-kaart-inhoud"></div></div>' +
+      '<div class="bgl-rail">' +
+        '<button class="bgl-railknop" onclick="begeleiderOpenSchaduw()"><span class="ic">🌑</span>Schaduw</button>' +
+        '<button class="bgl-railknop" onclick="begeleiderOpenHulp()"><span class="ic">💡</span>Hulp</button>' +
+        '<button class="bgl-railknop" onclick="begeleiderOpenVerhaal()"><span class="ic">📜</span>Verhaal</button>' +
+        '<button class="bgl-railknop" onclick="begeleiderOpenTijden()"><span class="ic">⏱</span>Tijden</button>' +
+      '</div>' +
     '</div>' +
-    begeleiderMissieHtml() +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler nadat je op de grote ' +
-    'Bevestig-knop rechts drukt; die verschijnt zodra er iets openstaat en verstuurt alles in één keer. ' +
-    'Alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
-    'de speler krijgt geen melding.</div>' +
-    '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
+    '<div class="bgl-info">Wijzigingen per speler (Beginner, Licht/Donker) en de schaduw-instellingen ' +
+    'gaan pas naar de tablet nadat je op de grote Bevestig-knop rechts drukt. De team-pauze en de spelhulp ' +
+    'werken direct. Alle wijzigingen komen stil binnen: de speler krijgt geen melding.</div>' +
+    '<div style="text-align:center;margin-top:1.2rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
   // Kaart en codes ingebed in het dashboard (inline: zonder eigen titel/terug).
   bglBouwKaart('bgl-dash-kaart-inhoud', true);
@@ -8733,6 +8726,86 @@ function begeleiderExtraHulp() {
       .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
   } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
   begeleiderRenderPaneel();
+}
+
+// ── Rail-panelen (stap 2): één modaal venster dat per knop gevuld wordt. ──
+function bglModalOpen(html) {
+  var m = document.getElementById('bgl-modal');
+  var inh = document.getElementById('bgl-modal-inhoud');
+  if (!m || !inh) return;
+  inh.innerHTML = html;
+  m.classList.add('open');
+}
+function bglModalSluit() {
+  var m = document.getElementById('bgl-modal');
+  if (m) m.classList.remove('open');
+}
+
+// Schaduw per speler: snelheid, chaos-tempo en pauze bij elkaar, plus team-
+// pauze en Bevestig. Gebruikt dezelfde pending/Bevestig-flow als de kaarten.
+function begeleiderSchaduwPaneelHtml() {
+  var rows = '';
+  BEGELEIDER_ROLLEN.forEach(function (r) {
+    var naam = _bglShared['speler_naam_' + r.id] ||
+      (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || r.naam;
+    var p = _bglPending[r.id] || {};
+    var pauzeAan = p.hasOwnProperty('pauze') ? p.pauze : (_bglShared['schaduw_pauze_' + r.id] === true);
+    rows += '<div class="bgl-sp-row">' +
+      '<img class="bgl-sp-portret" src="' + (BGL_ROL_PORTRET[r.id] || '') + '" alt="">' +
+      '<div class="bgl-sp-wie"><div class="n">' + begeleiderVeilig(naam) + '</div>' +
+        '<div class="r">' + r.naam + ' · ' + (BGL_ROL_OMSCHRIJVING[r.id] || '') + '</div></div>' +
+      '<span class="bgl-mini">Schaduw</span>' + begeleiderSelect(r.id, 'snelheid', BGL_SNELHEID_OPTIES) +
+      '<span class="bgl-mini">Chaos</span>' + begeleiderSelect(r.id, 'tempo', BGL_TEMPO_OPTIES) +
+      '<label class="ssi-toggle" title="Schaduw-meter van deze speler stilzetten">' +
+        '<span class="ssi-label">Pauze</span>' +
+        '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
+        '<span class="ssi-schuif"></span>' +
+      '</label>' +
+    '</div>';
+  });
+  var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
+    return _bglShared['schaduw_pauze_' + r.id] === true;
+  });
+  return '<div class="bgl-titel">🌑 Schaduw regelen</div>' +
+    '<div class="bgl-sub">✦ &nbsp; per speler &nbsp; ✦</div>' +
+    rows +
+    '<div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap;margin-top:1rem">' +
+      '<button class="bgl-knopje" onclick="begeleiderPauzeAlles();begeleiderOpenSchaduw()">' +
+        (allesGepauzeerd ? '▶ Hele team hervatten' : '⏸ Hele team pauzeren') + '</button>' +
+      '<button class="bgl-knopje" onclick="begeleiderBevestigAlles();bglModalSluit()">✓ Bevestig wijzigingen</button>' +
+    '</div>' +
+    '<div class="bgl-info" style="margin-top:.7rem">Snelheid en chaos-tempo gaan pas naar de tablet na Bevestig; de team-pauze werkt direct.</div>';
+}
+function begeleiderOpenSchaduw() { bglModalOpen(begeleiderSchaduwPaneelHtml()); }
+
+// Spelhulp: toren-hints (werkt direct). Uitgebreide, uitbreidbare versie volgt
+// in stap 3.
+function begeleiderOpenHulp() {
+  var hulpAan = _bglShared.extra_hulp === true;
+  bglModalOpen(
+    '<div class="bgl-titel">💡 Spelhulp</div>' +
+    '<div class="bgl-sub">✦ &nbsp; werkt direct voor het hele team &nbsp; ✦</div>' +
+    '<div class="bgl-blok"><div class="bgl-kopje">Toren-hints</div>' +
+      '<div class="bgl-info" style="margin:0 0 .6rem">Jans hints vanaf de uitkijktoren. Makkelijk: noemt ' +
+        'met zoveel woorden wie er iets mee kan. Staat nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>.</div>' +
+      '<div style="text-align:center"><button class="bgl-knopje" onclick="begeleiderExtraHulp();begeleiderOpenHulp()">' +
+        (hulpAan ? 'Terug naar normaal' : 'Maak makkelijker') + '</button></div>' +
+    '</div>' +
+    '<div class="bgl-info">Meer hulp-opties komen hier later bij (stap 3).</div>'
+  );
+}
+
+function begeleiderOpenVerhaal() {
+  bglModalOpen('<div class="bgl-titel">📜 Verhaal-voortgang</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    begeleiderMissieHtml());
+}
+
+function begeleiderOpenTijden() {
+  var t = begeleiderTijdenHtml();
+  bglModalOpen('<div class="bgl-titel">⏱ Tijden</div>' +
+    '<div class="bgl-sub">✦ &nbsp; richttijden en werkelijke tijden &nbsp; ✦</div>' +
+    (t || '<div class="bgl-info">Nog geen tijden bekend; die verschijnen zodra het team van start gaat.</div>'));
 }
 
 // Testapparaten in hetzelfde laatje zetten. De teamlobby is normaal de enige
