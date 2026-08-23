@@ -2619,11 +2619,25 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bglk-chip.geweest { opacity:.42; filter:grayscale(.5); }
   #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
+  /* Grote, vaste Bevestig-knop aan de rechterkant van het begeleiderspaneel.
+     Standaard verborgen; verschijnt (met een zachte puls om de aandacht te
+     trekken) zodra er onbevestigde wijzigingen zijn. */
+  .bgl-bevestig-balk { display:none; position:fixed; right:.9rem; top:50%; transform:translateY(-50%); z-index:9520; flex-direction:column; align-items:center; justify-content:center; gap:.25rem; width:7.6rem; min-height:7.6rem; padding:1rem .7rem; border-radius:14px; border:2px solid var(--gold); background:linear-gradient(180deg,#2a1e0b,#1a1206); color:var(--gold); font-family:'Cinzel',serif; cursor:pointer; box-shadow:0 0 26px rgba(var(--goudrgb),calc(.55 * var(--schaduwdiepte))); animation:bglBevestigPuls 1.8s ease-in-out infinite; }
+  .bgl-bevestig-balk.actief { display:flex; }
+  .bgl-bevestig-balk:hover { background:linear-gradient(180deg,#3a2a10,#241809); }
+  .bgl-bevestig-balk.opgeslagen { border-color:#6faf5a; color:#bfe6ac; box-shadow:0 0 26px rgba(111,175,90,.55); animation:none; }
+  .bgl-bevestig-groot { font-size:1.12rem; letter-spacing:.04em; line-height:1.1; text-align:center; }
+  .bgl-bevestig-sub { font-family:'Crimson Text',Georgia,serif; font-size:.72rem; line-height:1.2; text-align:center; color:var(--parchment); opacity:.85; }
+  @keyframes bglBevestigPuls { 0%,100% { box-shadow:0 0 18px rgba(var(--goudrgb),calc(.4 * var(--schaduwdiepte))); } 50% { box-shadow:0 0 30px rgba(var(--goudrgb),calc(.85 * var(--schaduwdiepte))); } }
+  .bgl-gewijzigd { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); align-self:center; }
 </style>
 <div id="begeleider-overlay">
   <div class="bgl-wrap" id="begeleider-inhoud"></div>
 </div>
 <button id="begeleider-sluit" onclick="begeleiderSluit()" title="Sluiten">✕</button>
+<!-- Grote, vaste Bevestig-knop rechts: verschijnt zodra er onbevestigde
+     wijzigingen zijn en stuurt ze in één keer naar de tablets. -->
+<button id="bgl-bevestig-balk" class="bgl-bevestig-balk" onclick="begeleiderBevestigAlles()"></button>
 
 <div id="bgl-kaart-overlay">
   <div class="bglk-wrap" id="bgl-kaart-inhoud"></div>
@@ -7826,6 +7840,8 @@ function begeleiderSluit() {
   _bglSid = null;
   _bglPending = {};
   _bglAutoOpen = true;
+  _bglBevestigBezig = false;
+  bglBevestigBalkUpdate();
 }
 
 function begeleiderRenderWachtwoord() {
@@ -7984,6 +8000,8 @@ function begeleiderTerugNaarLijst() {
   _bglSid = null;
   _bglPending = {};
   _bglAutoOpen = false;   // niet meteen weer dezelfde sessie in springen
+  _bglBevestigBezig = false;
+  bglBevestigBalkUpdate();
   begeleiderRenderSessieLijst();
 }
 
@@ -8117,7 +8135,7 @@ function begeleiderRenderPaneel() {
         '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
         '<span class="ssi-schuif"></span>' +
       '</label>' +
-      '<button class="bgl-knopje" id="bgl-bevestig-' + r.id + '" style="display:' + (pending ? '' : 'none') + '" onclick="begeleiderBevestig(\'' + r.id + '\')">Bevestig</button>' +
+      '<span class="bgl-gewijzigd" id="bgl-gewijzigd-' + r.id + '" style="display:' + (pending ? '' : 'none') + '">● niet bevestigd</span>' +
     '</div>';
   });
   var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
@@ -8133,11 +8151,13 @@ function begeleiderRenderPaneel() {
       'Werkt direct, voor het hele team.</div>' +
   '</div>' +
     begeleiderMissieHtml() +
-    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler na Bevestig; ' +
-    'alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
+    '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler nadat je op de grote ' +
+    'Bevestig-knop rechts drukt; die verschijnt zodra er iets openstaat en verstuurt alles in één keer. ' +
+    'Alleen de team-pauzeknop en de extra hulp werken direct. Alle wijzigingen komen stil binnen: ' +
     'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
+  bglBevestigBalkUpdate();
 }
 
 // Eenmalig: zodra een keuzelijst in het paneel wordt losgelaten (focusout,
@@ -8496,20 +8516,22 @@ function begeleiderZetPending(rol, veld, waarde) {
   else p[veld] = waarde;
   if (Object.keys(p).length) _bglPending[rol] = p;
   else delete _bglPending[rol];
-  // display in plaats van visibility: een onzichtbare knop hield anders
+  // display in plaats van visibility: een onzichtbare markering hield anders
   // zijn plek in de flex-regel bezet en duwde de regel een stuk hoger.
-  var knop = document.getElementById('bgl-bevestig-' + rol);
-  if (knop) knop.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
+  var mark = document.getElementById('bgl-gewijzigd-' + rol);
+  if (mark) mark.style.display = _bglPending.hasOwnProperty(rol) ? '' : 'none';
+  // Niet het hele paneel herteken (dat klapt een openstaande keuzelijst dicht);
+  // alleen de grote Bevestig-knop rechts bijwerken.
+  bglBevestigBalkUpdate();
 }
 
-function begeleiderBevestig(rol) {
-  var p = _bglPending[rol];
-  if (!p || !_bglSid) return;
-  delete _bglPending[rol];
+// Schrijft de nog niet bevestigde wijzigingen van één rol naar de gedeelde
+// stand. Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt.
+function _bglSchrijfPending(rol, p) {
+  if (!p) return;
   var fout = function (e) { console.warn('begeleider: schrijven mislukt:', e); };
   try {
     var basis = firebase.database().ref('sessies/' + _bglSid + '/shared');
-    // Optimistisch alvast lokaal bijwerken; de snapshot-echo bevestigt zo.
     if (p.hasOwnProperty('beginner')) {
       _bglShared['beginner_modus_' + rol] = !!p.beginner;
       basis.child('beginner_modus_' + rol).set(!!p.beginner).catch(fout);
@@ -8536,7 +8558,62 @@ function begeleiderBevestig(rol) {
       }
     });
   } catch (e) { fout(e); }
+}
+
+// Alle openstaande wijzigingen (van alle rollen) in één keer bevestigen. Dit
+// is de actie achter de grote Bevestig-knop rechts.
+function begeleiderBevestigAlles() {
+  if (!_bglSid) return;
+  var rollen = Object.keys(_bglPending);
+  if (!rollen.length) return;
+  rollen.forEach(function (rol) {
+    var p = _bglPending[rol];
+    delete _bglPending[rol];
+    _bglSchrijfPending(rol, p);
+  });
+  bglBevestigMelding(rollen.length);
   begeleiderRenderPaneel();
+}
+
+// Naam van een rol voor de knop-tekst.
+function _bglRolNaam(id) {
+  for (var i = 0; i < BEGELEIDER_ROLLEN.length; i++) {
+    if (BEGELEIDER_ROLLEN[i].id === id) return BEGELEIDER_ROLLEN[i].naam;
+  }
+  return id;
+}
+
+// Werk de grote Bevestig-knop bij: verbergen als er niets openstaat, anders
+// tonen met het aantal en de namen van de rollen die nog wachten.
+var _bglBevestigBezig = false;   // laat de 'opgeslagen'-melding even staan
+function bglBevestigBalkUpdate() {
+  var balk = document.getElementById('bgl-bevestig-balk');
+  if (!balk) return;
+  if (_bglBevestigBezig) return;
+  var rollen = Object.keys(_bglPending);
+  if (!rollen.length || !_bglSid || !_bglOpen) {
+    balk.className = 'bgl-bevestig-balk';
+    return;
+  }
+  var namen = rollen.map(function (id) { return begeleiderVeilig(_bglRolNaam(id)); }).join(', ');
+  balk.className = 'bgl-bevestig-balk actief';
+  balk.innerHTML =
+    '<span class="bgl-bevestig-groot">✓ Bevestig</span>' +
+    '<span class="bgl-bevestig-sub">' + rollen.length + ' wijziging' + (rollen.length > 1 ? 'en' : '') +
+      '<br>' + namen + '</span>';
+}
+
+// Duidelijke bevestiging na het opslaan: de knop wordt kort groen met
+// 'Opgeslagen', daarna verbergt hij zichzelf (of toont weer wat nog openstaat).
+function bglBevestigMelding(n) {
+  var balk = document.getElementById('bgl-bevestig-balk');
+  if (!balk) return;
+  _bglBevestigBezig = true;
+  balk.className = 'bgl-bevestig-balk actief opgeslagen';
+  balk.innerHTML =
+    '<span class="bgl-bevestig-groot">✓ Opgeslagen</span>' +
+    '<span class="bgl-bevestig-sub">' + n + ' wijziging' + (n > 1 ? 'en' : '') + ' verstuurd</span>';
+  setTimeout(function () { _bglBevestigBezig = false; bglBevestigBalkUpdate(); }, 1600);
 }
 
 // Team-pauzeknop: alle vier de schaduw-meters in één keer stil (of weer
