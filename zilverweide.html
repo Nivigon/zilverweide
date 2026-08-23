@@ -110,6 +110,10 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn{display:inline-block;font-family:'Cinzel',serif;font-size:.9rem;letter-spacing:.12em;padding:.8rem 2rem;border:1px solid var(--gold-dim);background:transparent;color:var(--gold);cursor:pointer;transition:all .2s;border-radius:2px;text-transform:uppercase}
 .btn:hover{background:rgba(var(--goudrgb),calc(.1 * var(--vlak)));border-color:var(--gold)}
 .btn:active{transform:scale(.98)}
+/* Hulp-knop: gevraagd-staat (groen, zacht pulserend). */
+#hulp-knop:hover{border-color:var(--parchment)}
+#hulp-knop.hulp-gevraagd{border-color:#6faf5a;background:rgba(111,175,90,.2);color:#c8ecb4;animation:hulpKnopPuls 1.4s ease-in-out infinite}
+@keyframes hulpKnopPuls{0%,100%{box-shadow:0 0 0 rgba(111,175,90,0)}50%{box-shadow:0 0 14px rgba(111,175,90,.6)}}
 .btn-full{display:block;width:100%;text-align:center;margin-top:1rem}
 .btn-blood{border-color:var(--blood);color:#d4826e}
 .btn-blood:hover{background:rgba(139,26,26,.15);border-color:#a52020}
@@ -1864,6 +1868,10 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
     <span id="missie-teller-tekst">Verhaal: 0 / 4</span>
     <div id="missie-paneel" onclick="event.stopPropagation()"></div>
   </div>
+  <!-- Hulp-knop: de speler vraagt de begeleider om hulp. Gouden outline naast
+       de verhaalscore; wordt groen zodra de vraag verstuurd is en gaat vanzelf
+       terug zodra de begeleider hem afmeldt (via de gedeelde stand). -->
+  <button id="hulp-knop" onclick="spelerVraagHulp()" title="Vraag de begeleider om hulp" style="display:none;flex:0 0 auto;align-items:center;gap:.4rem;padding:.4rem .85rem;border:2px solid var(--gold);border-radius:50px;background:rgba(var(--goudrgb),calc(.14 * var(--vlak)));font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px)">Hulp vragen</button>
   <!-- Eén knop, breder dan voorheen: naam van het personage, een streepje en
        daarna de rol ("Felix - Voormalig spion"). De verhaalscore hiernaast
        schuift vanzelf mee naar links, want de cluster is een flexrij die
@@ -2615,6 +2623,19 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-seg { display:flex; border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:6px; overflow:hidden; flex:0 0 auto; }
   .bgl-seg button { font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.06em; color:var(--gold-dim); background:transparent; border:none; padding:.42rem .8rem; cursor:pointer; }
   .bgl-seg button.on { background:rgba(var(--goudrgb),calc(.25 * var(--vlak))); color:var(--gold); }
+  /* Hulpvraag: oplichtende personagekaart, band, rail-badge en vragenlijst. */
+  .bgl-card.hulp { border-color:#e0a33a; box-shadow:0 0 0 1px #e0a33a, 0 0 16px rgba(224,163,58,.55); animation:bglHulpPuls 1.3s ease-in-out infinite; }
+  @keyframes bglHulpPuls { 0%,100% { box-shadow:0 0 0 1px #e0a33a, 0 0 8px rgba(224,163,58,.4); } 50% { box-shadow:0 0 0 1px #e0a33a, 0 0 22px rgba(224,163,58,.85); } }
+  .bgl-card-hulpband { display:block; width:100%; margin-bottom:.5rem; background:#e0a33a; color:#1a1206; font-family:'Cinzel',serif; font-size:.6rem; letter-spacing:.06em; text-transform:uppercase; font-weight:700; text-align:center; border:none; border-radius:6px; padding:.3rem; cursor:pointer; }
+  .bgl-card-hulpband:hover { background:#f0b64a; }
+  .bgl-railknop.hulp { border-color:#e0a33a; color:#f4d488; box-shadow:0 0 12px rgba(224,163,58,.5); animation:bglHulpPuls 1.3s ease-in-out infinite; }
+  .bgl-rail-badge { position:absolute; top:.25rem; right:.35rem; min-width:1.05rem; height:1.05rem; padding:0 .2rem; border-radius:50px; background:#c23b2a; color:#fff; font-family:'Cinzel',serif; font-size:.62rem; display:flex; align-items:center; justify-content:center; }
+  .bgl-railknop { position:relative; }
+  .bgl-hulpvragen { border:1px solid rgba(224,163,58,.45); border-radius:8px; background:rgba(224,163,58,.08); padding:.6rem .8rem; margin-bottom:1rem; }
+  .bgl-hulpvraag-row { display:flex; align-items:center; gap:.6rem; padding:.35rem 0; }
+  .bgl-hulpvraag-row img { width:34px; height:34px; border-radius:50%; object-fit:cover; object-position:center top; border:1px solid var(--gold); }
+  .bgl-hulpvraag-row .wie { flex:1; font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1rem; color:var(--parchment); }
+  .bgl-hulpvraag-row .rol { font-family:'Cinzel',serif; font-style:normal; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase; color:var(--gold-dim); }
   /* Rail-panelen (Schaduw/Hulp/Verhaal/Tijden) als modaal venster. */
   .bgl-modal-scrim { display:none; position:fixed; inset:0; z-index:9550; background:rgba(5,4,2,.72); align-items:center; justify-content:center; padding:1.2rem; }
   .bgl-modal-scrim.open { display:flex; }
@@ -3210,6 +3231,9 @@ function initSharedFirebase(sessieId, versGedeeld) {
     // Binnengekomen wereldstatus verwerken: verhaal-flags, gok-statussen,
     // teller en toast op ALLE tablets.
     verwerkBinnengekomenShared(data);
+    // Hulp-knop bijwerken: als de begeleider de vraag afmeldt (shared -> false)
+    // moet deze tablet dat meteen tonen.
+    if (typeof hulpKnopBijwerken === 'function') hulpKnopBijwerken();
     // Bolletje rood: er zit data in Firebase
     var btn = document.getElementById('firebase-reset-btn');
     if (btn) { btn.textContent = '🔴'; btn.title = 'Firebase bevat data (klik om te resetten)'; }
@@ -5246,7 +5270,33 @@ function kraaienMissieVoltooid() {
   return KRAAIEN_MISSIE_KEYS.filter(function(k) { return k.check(); }).length;
 }
 
+// ── Speler vraagt de begeleider om hulp ─────────────────────────────
+// Zet (of wist) hulp_gevraagd_<rol> in de gedeelde stand. Staat in shared,
+// niet in meta: de bevestiging van de begeleider (afmelden) moet terug naar
+// deze tablet komen, en spelers-tablets luisteren op shared. De vraag raakt
+// de gameplay verder niet; het is puur een seintje voor het begeleiderspaneel.
+function spelerVraagHulp() {
+  if (!state.personage) return;
+  var key = 'hulp_gevraagd_' + state.personage;
+  var aan = !!getSharedState(key);
+  setSharedState(key, aan ? false : gedeeldeTijdNu());   // opnieuw tikken = annuleren
+  hulpKnopBijwerken();
+}
+function hulpKnopBijwerken() {
+  var knop = document.getElementById('hulp-knop');
+  if (!knop) return;
+  if (!state.personage) { knop.style.display = 'none'; return; }
+  knop.style.display = 'flex';
+  var aan = !!getSharedState('hulp_gevraagd_' + state.personage);
+  knop.classList.toggle('hulp-gevraagd', aan);
+  knop.textContent = aan ? 'Hulp gevraagd' : 'Hulp vragen';
+  knop.title = aan
+    ? 'De begeleider is gewaarschuwd. Tik om je vraag in te trekken.'
+    : 'Vraag de begeleider om hulp';
+}
+
 function updateMissieTeller() {
+  if (typeof hulpKnopBijwerken === 'function') hulpKnopBijwerken();
   const wrap = document.getElementById('missie-teller');
   const tekst = document.getElementById('missie-teller-tekst');
   if (!wrap || !tekst) return;
@@ -8171,7 +8221,9 @@ function begeleiderRenderPaneel() {
     var locHtml = plekTekst
       ? '<div class="bgl-card-loc">📍 nu: ' + begeleiderVeilig(plekTekst) + '</div>'
       : '<div class="bgl-card-loc leeg">📍 nu: onderweg</div>';
-    cards += '<div class="bgl-card">' +
+    var hulpGevraagd = !!_bglShared['hulp_gevraagd_' + r.id];
+    cards += '<div class="bgl-card' + (hulpGevraagd ? ' hulp' : '') + '">' +
+      (hulpGevraagd ? '<button class="bgl-card-hulpband" onclick="begeleiderHulpAf(\'' + r.id + '\')">vraagt hulp — tik om af te melden</button>' : '') +
       '<div class="bgl-card-top">' +
         '<img class="bgl-card-portret" src="' + (BGL_ROL_PORTRET[r.id] || '') + '" alt="">' +
         '<div class="bgl-card-wie">' +
@@ -8198,6 +8250,8 @@ function begeleiderRenderPaneel() {
     '</div>';
   });
 
+  var hulpAantal = BEGELEIDER_ROLLEN.filter(function (r) { return !!_bglShared['hulp_gevraagd_' + r.id]; }).length;
+  var hulpBadge = hulpAantal ? '<span class="bgl-rail-badge">' + hulpAantal + '</span>' : '';
   var html =
     '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
     '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
@@ -8206,7 +8260,7 @@ function begeleiderRenderPaneel() {
       '<div class="bgl-kaart-inline"><div class="bglk-wrap" id="bgl-dash-kaart-inhoud"></div></div>' +
       '<div class="bgl-rail">' +
         '<button class="bgl-railknop" onclick="begeleiderOpenSchaduw()"><span class="ic">🌑</span>Schaduw</button>' +
-        '<button class="bgl-railknop" onclick="begeleiderOpenHulp()"><span class="ic">💡</span>Hulp</button>' +
+        '<button class="bgl-railknop' + (hulpAantal ? ' hulp' : '') + '" onclick="begeleiderOpenHulp()"><span class="ic">💡</span>Hulp' + hulpBadge + '</button>' +
         '<button class="bgl-railknop" onclick="begeleiderOpenVerhaal()"><span class="ic">📜</span>Verhaal</button>' +
         '<button class="bgl-railknop" onclick="begeleiderOpenTijden()"><span class="ic">⏱</span>Tijden</button>' +
       '</div>' +
@@ -8828,7 +8882,36 @@ function begeleiderHulpZet(id, waarde) {
   begeleiderRenderPaneel();   // dashboard bijwerken op de achtergrond
   begeleiderOpenHulp();       // paneel opnieuw vullen met de nieuwe stand
 }
+// Een speler meldt zich af als geholpen: hulp_gevraagd_<rol> op false zetten.
+// Waarde-write (niet wissen) zodat het via shared terugkomt op de speler-tablet.
+function begeleiderHulpAf(rol) {
+  if (!_bglSid) return;
+  _bglShared['hulp_gevraagd_' + rol] = false;
+  try {
+    firebase.database().ref('sessies/' + _bglSid + '/shared').child('hulp_gevraagd_' + rol).set(false)
+      .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+  begeleiderRenderPaneel();
+  if (document.getElementById('bgl-modal') && document.getElementById('bgl-modal').classList.contains('open')) begeleiderOpenHulp();
+}
+
 function begeleiderOpenHulp() {
+  // Open hulpvragen bovenaan, met een afmeld-knop per speler.
+  var vragen = BEGELEIDER_ROLLEN.filter(function (r) { return !!_bglShared['hulp_gevraagd_' + r.id]; });
+  var vraagHtml = '';
+  if (vragen.length) {
+    vraagHtml = '<div class="bgl-hulpvragen"><div class="bgl-kopje" style="color:#f0b64a;border-color:rgba(224,163,58,.4)">Openstaande hulpvragen (' + vragen.length + ')</div>';
+    vragen.forEach(function (r) {
+      var naam = _bglShared['speler_naam_' + r.id] ||
+        (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || r.naam;
+      vraagHtml += '<div class="bgl-hulpvraag-row">' +
+        '<img src="' + (BGL_ROL_PORTRET[r.id] || '') + '" alt="">' +
+        '<span class="wie">' + begeleiderVeilig(naam) + ' <span class="rol">(' + r.naam + ')</span></span>' +
+        '<button class="bgl-knopje" onclick="begeleiderHulpAf(\'' + r.id + '\')">Afmelden</button>' +
+      '</div>';
+    });
+    vraagHtml += '</div>';
+  }
   var rows = '';
   BGL_HULP_OPTIES.forEach(function (o) {
     var cur = o.huidig();
@@ -8845,6 +8928,7 @@ function begeleiderOpenHulp() {
   bglModalOpen(
     '<div class="bgl-titel">💡 Spelhulp</div>' +
     '<div class="bgl-sub">✦ &nbsp; werkt direct voor het hele team &nbsp; ✦</div>' +
+    vraagHtml +
     rows +
     '<div class="bgl-info" style="margin-top:.8rem">Dit paneel is uitbreidbaar: extra hulp-opties kunnen hier later bij.</div>'
   );
@@ -23007,6 +23091,7 @@ function buildDebugPanel() {
     // voorbeeldposities voor alle vier de rollen (huidige locatie + bezocht)
     // in meta, zodat de kaart solo te testen is zonder vier echte tablets.
     ['🧭 Simuleer spelerposities (kaart)', function(){ debugSimuleerAanwezigheid(); close(); }, true, 'Begeleider & sessie'],
+    ['🆘 Simuleer hulpvraag (Kelly)', function(){ var k='hulp_gevraagd_kelly'; setSharedState(k, getSharedState(k)?false:gedeeldeTijdNu()); close(); }, true, 'Begeleider & sessie'],
     // Debugflag bij het opruimen na een reset: doet alsof een ander tablet de
     // sessie zojuist heeft gewist, zodat de lege-snapshot-tak en de melding
     // solo te testen zijn zonder echt iets in Firebase weg te gooien.
