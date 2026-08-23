@@ -2570,6 +2570,28 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bgl-sessieknop { display:block; width:100%; box-sizing:border-box; text-align:left; margin-bottom:.5rem; font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.05em; color:var(--gold); background:rgba(0,0,0,.35); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:6px; padding:.85rem 1rem; cursor:pointer; }
   #begeleider-sluit { position:fixed; top:.7rem; right:1rem; z-index:9501; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #begeleider-overlay.open ~ #begeleider-sluit { display:block; }
+  /* ── Begeleider-dashboard (stap 1): personagekaarten + ingebedde kaart.
+     In dashboard-modus mag het paneel breder zijn dan de smalle leeslijst. */
+  body.bgl-dash-actief #begeleider-inhoud { max-width:76rem; }
+  .bgl-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:.55rem; margin-bottom:1.1rem; }
+  @media (max-width:680px) { .bgl-cards { grid-template-columns:repeat(2,1fr); } }
+  .bgl-card { border:1px solid rgba(var(--goudrgb),calc(.32 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.35); padding:.6rem .65rem; }
+  .bgl-card-top { display:flex; gap:.55rem; align-items:center; }
+  .bgl-card-portret { width:44px; height:44px; border-radius:50%; object-fit:cover; object-position:center top; border:1px solid var(--gold); flex:0 0 auto; background:var(--ash); }
+  .bgl-card-wie { min-width:0; flex:1; }
+  .bgl-card-naam { font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:1.05rem; color:var(--parchment); line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .bgl-card-naam.leeg { color:var(--mist); }
+  .bgl-card-rol { font-family:'Cinzel',serif; font-size:.56rem; letter-spacing:.09em; text-transform:uppercase; color:var(--gold-dim); margin-top:.1rem; }
+  .bgl-card-status { display:flex; align-items:center; gap:.4rem; margin-top:.45rem; flex-wrap:wrap; }
+  .bgl-card-loc { margin-top:.3rem; font-family:'Crimson Text',Georgia,serif; font-style:italic; font-size:.85rem; color:var(--gold); }
+  .bgl-card-loc.leeg { color:var(--mist); opacity:.7; }
+  .bgl-card-togs { display:flex; gap:1rem; margin-top:.5rem; padding-top:.45rem; border-top:1px solid rgba(var(--goudrgb),calc(.14 * var(--lijn))); }
+  .bgl-card-togs .ssi-toggle { margin-bottom:0; }
+  .bgl-card-gewijzigd { display:block; margin-top:.4rem; font-family:'Cinzel',serif; font-size:.55rem; letter-spacing:.08em; text-transform:uppercase; color:var(--rose); }
+  .bgl-kaart-inline { border:1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn))); border-radius:10px; background:rgba(0,0,0,.25); padding:.8rem .9rem; margin-bottom:1.1rem; }
+  .bgl-kaart-inline .bglk-wrap { max-width:none; padding:0; margin:0; }
+  .bgl-kaart-inline .bglk-code { position:static; }
+  .bgl-tempnote { font-family:'Crimson Text',Georgia,serif; font-style:italic; color:var(--mist); font-size:.8rem; text-align:center; margin:-.2rem 0 .7rem; opacity:.8; }
 
   /* ── Begeleiderskaart: drie straatkaarten naast elkaar plus het dorpsplein,
      zelfde tegelvorm als de beginnerskaart maar met alle namen zichtbaar en
@@ -7834,7 +7856,7 @@ function begeleiderSluit() {
   _bglOpen = false;
   var ov = document.getElementById('begeleider-overlay');
   if (ov) ov.classList.remove('open');
-  if (document.body) document.body.classList.remove('bgl-open');
+  if (document.body) { document.body.classList.remove('bgl-open'); document.body.classList.remove('bgl-dash-actief'); }
   begeleiderStopSessieListeners();
   if (_bglIndexRef) { try { _bglIndexRef.off(); } catch (e) {} _bglIndexRef = null; }
   _bglSid = null;
@@ -7847,6 +7869,7 @@ function begeleiderSluit() {
 function begeleiderRenderWachtwoord() {
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
+  document.body.classList.remove('bgl-dash-actief');
   c.innerHTML =
     '<div class="bgl-titel">Begeleider</div>' +
     '<div class="bgl-sub">✦ &nbsp; toegang &nbsp; ✦</div>' +
@@ -7926,6 +7949,7 @@ function begeleiderRenderSessieLijst() {
   if (!_bglOpen || _bglSid) return;
   var c = document.getElementById('begeleider-inhoud');
   if (!c) return;
+  document.body.classList.remove('bgl-dash-actief');
   var sids = begeleiderSessiesGesorteerd();
   var zichtbaar = sids.filter(function (sid) { return !begeleiderIsVerborgen(sid); });
   var verborgen = sids.filter(function (sid) { return begeleiderIsVerborgen(sid); });
@@ -8073,13 +8097,12 @@ function begeleiderRenderPaneel() {
     return;
   }
   _bglRenderUitgesteld = false;
+  document.body.classList.add('bgl-dash-actief');
   var team = (_bglMeta && _bglMeta.team) || _bglSid;
-  var html =
-    '<div style="text-align:left;margin-bottom:.5rem"><button class="bgl-knopje" onclick="begeleiderKaartOpen()">🗺 Kaart en codes</button></div>' +
-    '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
-    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
-    begeleiderTijdenHtml() +
-    '<div class="bgl-blok">';
+
+  // ── Personagekaarten: naam, rol, verbinding, vloek-status (met %), waar de
+  //    speler nu is, en per-speler Beginner + Licht/Donker. ──
+  var cards = '';
   BEGELEIDER_ROLLEN.forEach(function (r) {
     var naam = _bglShared['speler_naam_' + r.id] ||
       (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].naam) || '';
@@ -8088,46 +8111,63 @@ function begeleiderRenderPaneel() {
     var p = _bglPending[r.id] || {};
     var checked = p.hasOwnProperty('beginner') ? p.beginner : (_bglShared['beginner_modus_' + r.id] === true);
     var dagAan = p.hasOwnProperty('daglicht') ? p.daglicht : (_bglShared['daglicht_modus_' + r.id] === true);
-    // Twee spelers op een gedeelde tablet: naast de namen een 👥-merkje, zodat
-    // het aantal ook zichtbaar blijft als de namen niet helemaal passen.
     var duoRol = _bglShared['tablet_spelers_' + r.id] === 2 ||
       (_bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].aantal === 2);
-    var naamHtml = naam
-      ? '<span class="bgl-naam">' + begeleiderVeilig(naam) + '</span>' +
-        (duoRol ? '<span class="bgl-duo">👥 2</span>' : '')
-      : '<span class="bgl-naam leeg">' + (bezet ? '(naam onbekend)' : 'nog niet gekozen') + '</span>';
-    // Schaduw-status van deze speler: vastzitten (met de code, zodat de
-    // begeleider desnoods kan voorzeggen) gaat boven vervloekt-met-meter.
+    var naamTekst = naam ? begeleiderVeilig(naam) : (bezet ? '(naam onbekend)' : 'nog niet gekozen');
+    // Schaduw-status: vastzitten (met code om te kunnen voorzeggen) gaat boven
+    // vervloekt-met-meter; anders geen vloek.
     var lock = _bglShared['schaduw_lock_' + r.id];
     var st = _bglShared['schaduw_status_' + r.id];
     var vloekHtml;
     if (lock && lock.code) {
-      vloekHtml = '<span class="bgl-vloek vast">⛓ zit vast · code ' + begeleiderVeilig(lock.code) + '</span>';
+      vloekHtml = '<span class="bgl-vloek vast">⛓ vast · code ' + begeleiderVeilig(lock.code) + '</span>';
     } else if (st && st.vervloekt) {
-      vloekHtml = '<span class="bgl-vloek aan">🌑 vloek · meter ' +
+      vloekHtml = '<span class="bgl-vloek aan">🌑 vloek · ' +
         (typeof st.meter === 'number' ? st.meter : 0) + '%' +
         (st.pauze ? ' · ⏸' : '') + '</span>';
     } else {
       vloekHtml = '<span class="bgl-vloek">geen vloek</span>';
     }
+    var loc = _bglMeta.spelers && _bglMeta.spelers[r.id] && _bglMeta.spelers[r.id].loc;
+    var locNaam = bglLocNaam(loc);
+    var locHtml = locNaam
+      ? '<div class="bgl-card-loc">📍 nu: ' + begeleiderVeilig(locNaam) + '</div>'
+      : '<div class="bgl-card-loc leeg">📍 nu: onderweg</div>';
+    cards += '<div class="bgl-card">' +
+      '<div class="bgl-card-top">' +
+        '<img class="bgl-card-portret" src="' + (BGL_ROL_PORTRET[r.id] || '') + '" alt="">' +
+        '<div class="bgl-card-wie">' +
+          '<div class="bgl-card-naam' + (naam ? '' : ' leeg') + '">' + naamTekst +
+            (duoRol ? ' <span class="bgl-duo">👥 2</span>' : '') + '</div>' +
+          '<div class="bgl-card-rol">' + r.naam + ' · ' + (BGL_ROL_OMSCHRIJVING[r.id] || '') + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="bgl-card-status">' + begeleiderConnHtml(r.id) + vloekHtml + '</div>' +
+      locHtml +
+      '<div class="bgl-card-togs">' +
+        '<label class="ssi-toggle" title="Beginner modus voor deze speler">' +
+          '<span class="ssi-label">Beginner</span>' +
+          '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'beginner\', this.checked)">' +
+          '<span class="ssi-schuif"></span>' +
+        '</label>' +
+        '<label class="ssi-toggle" title="Licht/donker (daglichtmodus) voor deze speler">' +
+          '<span class="ssi-label">' + (dagAan ? '🌙 Donker' : '☀ Licht') + '</span>' +
+          '<input type="checkbox"' + (dagAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'daglicht\', this.checked)">' +
+          '<span class="ssi-schuif"></span>' +
+        '</label>' +
+      '</div>' +
+      '<span class="bgl-card-gewijzigd" id="bgl-gewijzigd-' + r.id + '" style="display:' + (pending ? '' : 'none') + '">● niet bevestigd</span>' +
+    '</div>';
+  });
+
+  // ── Tijdelijke bediening. Deze blijft hier werken tot stap 2/3 hem naar de
+  //    knoppen (Schaduw / Hulp) verhuist. ──
+  var tempControls = '';
+  BEGELEIDER_ROLLEN.forEach(function (r) {
+    var p = _bglPending[r.id] || {};
     var pauzeAan = p.hasOwnProperty('pauze') ? p.pauze : (_bglShared['schaduw_pauze_' + r.id] === true);
-    html += '<div class="bgl-regel">' +
-      begeleiderConnHtml(r.id) +
+    tempControls += '<div class="bgl-subregel">' +
       '<span class="bgl-rol">' + r.naam + '</span>' +
-      naamHtml +
-      vloekHtml +
-      '<label class="ssi-toggle" title="Beginner modus voor deze speler">' +
-        '<span class="ssi-label">Beginner</span>' +
-        '<input type="checkbox"' + (checked ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'beginner\', this.checked)">' +
-        '<span class="ssi-schuif"></span>' +
-      '</label>' +
-      '<label class="ssi-toggle" title="Daglichtmodus (feller beeld) voor deze speler">' +
-        '<span class="ssi-label">Daglicht</span>' +
-        '<input type="checkbox"' + (dagAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'daglicht\', this.checked)">' +
-        '<span class="ssi-schuif"></span>' +
-      '</label>' +
-    '</div>' +
-    '<div class="bgl-subregel">' +
       '<span class="bgl-mini">Schaduw</span>' + begeleiderSelect(r.id, 'snelheid', BGL_SNELHEID_OPTIES) +
       '<span class="bgl-mini">Chaos-knoppen</span>' + begeleiderSelect(r.id, 'tempo', BGL_TEMPO_OPTIES) +
       '<label class="ssi-toggle" title="Schaduw-meter van deze speler stilzetten">' +
@@ -8135,21 +8175,30 @@ function begeleiderRenderPaneel() {
         '<input type="checkbox"' + (pauzeAan ? ' checked' : '') + ' onchange="begeleiderZetPending(\'' + r.id + '\', \'pauze\', this.checked)">' +
         '<span class="ssi-schuif"></span>' +
       '</label>' +
-      '<span class="bgl-gewijzigd" id="bgl-gewijzigd-' + r.id + '" style="display:' + (pending ? '' : 'none') + '">● niet bevestigd</span>' +
     '</div>';
   });
   var allesGepauzeerd = BEGELEIDER_ROLLEN.every(function (r) {
     return _bglShared['schaduw_pauze_' + r.id] === true;
   });
   var hulpAan = _bglShared.extra_hulp === true;
-  html += '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
-    (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
-    '<div style="text-align:center;margin-top:.5rem"><button class="bgl-knopje" onclick="begeleiderExtraHulp()">' +
-      (hulpAan ? '💡 Toren hints moeilijker maken' : '💡 Toren hints makkelijker maken') + '</button></div>' +
-    '<div class="bgl-info" style="margin-bottom:0">Staat nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>. ' +
-      'Makkelijk: Jans hints vanaf de uitkijktoren noemen met zoveel woorden wie er iets mee kan. ' +
-      'Werkt direct, voor het hele team.</div>' +
-  '</div>' +
+
+  var html =
+    '<div class="bgl-titel">' + begeleiderVeilig(team) + '</div>' +
+    '<div class="bgl-sub">✦ &nbsp; fase: ' + begeleiderFaseTekst() + ' &nbsp; ✦</div>' +
+    begeleiderTijdenHtml() +
+    '<div class="bgl-cards">' + cards + '</div>' +
+    '<div class="bgl-kaart-inline"><div class="bglk-wrap" id="bgl-dash-kaart-inhoud"></div></div>' +
+    '<div class="bgl-blok">' +
+      '<div class="bgl-kopje">Bediening (verhuist in de volgende stap naar knoppen)</div>' +
+      '<div class="bgl-tempnote">Schaduw per speler, team-pauze en spelhulp krijgen in stap 2/3 een eigen knop rechts.</div>' +
+      tempControls +
+      '<div style="text-align:center;margin-top:.6rem"><button class="bgl-knopje" onclick="begeleiderPauzeAlles()">' +
+        (allesGepauzeerd ? '▶ Schaduw hele team hervatten' : '⏸ Schaduw hele team pauzeren') + '</button></div>' +
+      '<div style="text-align:center;margin-top:.5rem"><button class="bgl-knopje" onclick="begeleiderExtraHulp()">' +
+        (hulpAan ? '💡 Toren hints moeilijker maken' : '💡 Toren hints makkelijker maken') + '</button></div>' +
+      '<div class="bgl-info" style="margin-bottom:0">Toren-hints staan nu op <b>' + (hulpAan ? 'makkelijk' : 'normaal') + '</b>. ' +
+        'Werkt direct, voor het hele team.</div>' +
+    '</div>' +
     begeleiderMissieHtml() +
     '<div class="bgl-info">Een wijziging gaat pas naar de tablet van de speler nadat je op de grote ' +
     'Bevestig-knop rechts drukt; die verschijnt zodra er iets openstaat en verstuurt alles in één keer. ' +
@@ -8157,6 +8206,8 @@ function begeleiderRenderPaneel() {
     'de speler krijgt geen melding.</div>' +
     '<div style="text-align:center;margin-top:1.4rem"><button class="bgl-knopje" onclick="begeleiderTerugNaarLijst()">← Andere sessie</button></div>';
   c.innerHTML = html;
+  // Kaart en codes ingebed in het dashboard (inline: zonder eigen titel/terug).
+  bglBouwKaart('bgl-dash-kaart-inhoud', true);
   bglBevestigBalkUpdate();
 }
 
@@ -8370,13 +8421,16 @@ function bglKaartKies(code) {
       (naam ? '<div class="naam">' + naam + '</div>' : '') +
       '<div class="code">' + code + (alt ? ' / ' + alt : '') + '</div>';
   }
-  var vakken = document.querySelectorAll('#bgl-kaart-overlay .bglk-tegel, #bgl-kaart-overlay .bglk-plein-vak, #bgl-kaart-overlay .bglk-ingang');
+  var vakken = document.querySelectorAll('.bglk-tegel, .bglk-plein-vak, .bglk-ingang');
   Array.prototype.forEach.call(vakken, function (t) {
     t.classList.toggle('gekozen', t.getAttribute('data-code') === code);
   });
 }
 
-function bglBouwKaart() {
+// doelId: in welke container de kaart komt (standaard het losse overlay).
+// inline: ingebed in het dashboard, dan zonder eigen titel en zonder de
+// terug-naar-begeleider-knop (die hoort alleen bij het losse overlay).
+function bglBouwKaart(doelId, inline) {
   _bglKaartNamen = {};
   // Namen per locatie-id uit de spelerskaart halen; die blijft de enige bron.
   var naamVanId = {};
@@ -8422,11 +8476,14 @@ function bglBouwKaart() {
       '<span class="bglk-tegel-code">' + v.code + '</span>' +
     '</button>';
   });
-  // Vierde vak van het vierkant: terug naar het begeleidersscherm.
-  pleinVakken += '<button class="bglk-plein-vak bglk-terug" style="grid-column:2;grid-row:2" onclick="begeleiderKaartSluit()">' +
-    '<span class="bglk-tegel-naam">← Begeleider</span>' +
-    '<span class="bglk-tegel-code">terug</span>' +
-  '</button>';
+  // Vierde vak van het vierkant: terug naar het begeleidersscherm. Alleen in
+  // het losse overlay; ingebed in het dashboard is er niets om te sluiten.
+  if (!inline) {
+    pleinVakken += '<button class="bglk-plein-vak bglk-terug" style="grid-column:2;grid-row:2" onclick="begeleiderKaartSluit()">' +
+      '<span class="bglk-tegel-naam">← Begeleider</span>' +
+      '<span class="bglk-tegel-code">terug</span>' +
+    '</button>';
+  }
   _bglKaartNamen['D1'] = 'Dorpsplein (ingang)';
   var pleinBlok = '<div class="bglk-straat">' +
     '<div class="bglk-straat-titel">Dorpsplein</div>' +
@@ -8434,11 +8491,11 @@ function bglBouwKaart() {
     '<div class="bglk-grid bglk-plein-grid">' + pleinVakken + '</div>' +
   '</div>';
 
-  var wrap = document.getElementById('bgl-kaart-inhoud');
+  var wrap = document.getElementById(doelId || 'bgl-kaart-inhoud');
   if (!wrap) return;
   wrap.innerHTML =
-    '<div class="bgl-titel">Kaart en codes</div>' +
-    '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>' +
+    (inline ? '' : '<div class="bgl-titel">Kaart en codes</div>' +
+      '<div class="bgl-sub">✦ &nbsp; tik een locatie voor de code &nbsp; ✦</div>') +
     '<div class="bglk-code leeg" id="bgl-kaart-code"><div class="code">Tik een locatie...</div></div>' +
     '<div class="bglk-map">' +
       '<div class="bglk-area-kraai">' + (straatVan['screen-kwartier1'] || '') + '</div>' +
@@ -8456,17 +8513,36 @@ var BGL_ROL_PORTRET = {
   fenna: 'karakters/spelers/fenna.jpg',
   felix: 'karakters/spelers/felix.jpg'
 };
+// Rol-omschrijving voor de personagekaart in het dashboard.
+var BGL_ROL_OMSCHRIJVING = {
+  jan: 'slotenmaker', kelly: 'onderzoeker', fenna: 'diva', felix: 'spion'
+};
+// Locatie-id (state.lastOpenedLocatie op de speler-tablet) omzetten naar een
+// leesbare naam. Zelfde bron als de kaart (BEGINNER_KAARTEN + dorpsplein).
+function bglLocNaam(id) {
+  if (!id) return '';
+  for (var sid in BEGINNER_KAARTEN) {
+    if (!BEGINNER_KAARTEN.hasOwnProperty(sid)) continue;
+    var t = BEGINNER_KAARTEN[sid].tegels;
+    for (var i = 0; i < t.length; i++) { if (t[i].id === id) return t[i].naam; }
+  }
+  for (var j = 0; j < BGL_DORPSPLEIN.length; j++) {
+    if (BGL_DORPSPLEIN[j].locId === id) return BGL_DORPSPLEIN[j].naam;
+  }
+  var extra = { dorpsarchief: 'Het Dorpsarchief' };
+  return extra[id] || id;
+}
 
 // Zet op elke tegel de portretjes van spelers die daar nu zijn (fel, gouden
 // gloed) of eerder geweest zijn (gedimd). Leest alleen meta/spelers/<rol>:
 // loc (huidige locatie), bezocht (map van locatie-ids) en hb (hartslag, voor
 // de vers-check). Verandert niets aan de gedeelde stand.
 function bglUpdateAanwezigheid() {
-  var overlay = document.getElementById('bgl-kaart-overlay');
-  if (!overlay) return;
   var spelers = (_bglMeta && _bglMeta.spelers) || {};
   var nu = (typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now();
-  var containers = overlay.querySelectorAll('.bglk-aanw');
+  // Zowel het losse kaart-overlay als de ingebedde dashboard-kaart.
+  var containers = document.querySelectorAll('.bglk-aanw');
+  if (!containers.length) return;
   Array.prototype.forEach.call(containers, function (cont) {
     var id = cont.getAttribute('data-for');
     if (!id) { cont.innerHTML = ''; return; }
