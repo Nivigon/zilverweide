@@ -6182,13 +6182,19 @@ const unlockCodes = {
 const kraaiLocaties = {
   'K1': { naam: 'Het Kraaienkwartier', intro: true },
   'K2': { naam: 'Stoop de Groenteboer' },
+  'P2TS': { naam: 'Stoop de Groenteboer' },         // alternatieve code voor K2
   'K3': { naam: 'De Uitkijktoren' },
+  'NR3T': { naam: 'De Uitkijktoren' },              // alternatieve code voor K3
   'K4': { naam: 'De Nachtenwens' },
+  'S4NW': { naam: 'De Nachtenwens' },               // alternatieve code voor K4
   'K5': { naam: 'De Dorpsput' },
+  'P5T': { naam: 'De Dorpsput' },                   // alternatieve code voor K5
   'K6': { naam: 'Nummer 7' },
+  'N6VZ': { naam: 'Nummer 7' },                     // alternatieve code voor K6
   'K7': { naam: 'Nummer 5 — Robbie Kweekel' },
   'LKW6K': { naam: 'Nummer 5 — Robbie Kweekel' },   // alternatieve code voor K7
   'K8': { naam: 'Naald en Masker' },
+  'D8RD': { naam: 'Naald en Masker' },              // alternatieve code voor K8
 };
 const zoneUnlocked = { dorpsplein:true, kraaienkwartier:false, dorendael:false, sintdonatuslaan:false };
 let activeZone = 'dorpsplein';
@@ -6353,13 +6359,19 @@ const locatiesDorendael = [
 
 const dorendaelCodeToId = {
   'DD2': 'dd2_nummer2',
+  'T2RB': 'dd2_nummer2',    // alternatieve code voor DD2 (Nummer 2)
   'DD3': 'dd3_nummer10',
+  'N3T': 'dd3_nummer10',    // alternatieve code voor DD3 (Nummer 10)
   'DD4': 'dd4_herberg',
+  'G4RB': 'dd4_herberg',    // alternatieve code voor DD4 (De Herberg)
   'DD5': 'dd5_woud',
+  'D5W': 'dd5_woud',        // alternatieve code voor DD5 (Het Woud)
   'DD6': 'dd6_molen',
   'NL4M': 'dd6_molen',   // alternatieve code voor DD6 (De Oude Molen)
   'DD7': 'dd7_klokkenmaker',
+  'KL7K': 'dd7_klokkenmaker', // alternatieve code voor DD7 (De Klokkenmaker)
   'DD8': 'dd8_stiltevijver',
+  'R8VV': 'dd8_stiltevijver', // alternatieve code voor DD8 (De Stiltevijver)
 };
 
 // ══ HEER DONATUSLAAN LOCATIES ══
@@ -6375,13 +6387,19 @@ const locatiesHeerDonatuslaan = [
 
 const heerDonatuslaanCodeToId = {
   'H2': 'h2_felixkamer',
+  'X2LF': 'h2_felixkamer',   // alternatieve code voor H2 (Nummer 1)
   'H3': 'h3_slagerij',
   'R3GLS': 'h3_slagerij',   // alternatieve code voor H3 (Slagerij Verstilt)
   'H4': 'h4_kerk',
+  'K4RK': 'h4_kerk',         // alternatieve code voor H4 (De Kerk)
   'H5': 'h5_gemeentehuis',
+  'TNM5G': 'h5_gemeentehuis', // alternatieve code voor H5 (Het Gemeentehuis)
   'H6': 'h6_bandieten',
+  'L6H': 'h6_bandieten',     // alternatieve code voor H6 (Het Hol)
   'H7': 'h7_apotheker',
+  'KHT7P': 'h7_apotheker',   // alternatieve code voor H7 (De Apotheker)
   'H8': 'h8_steegje',
+  'J8GTS': 'h8_steegje',     // alternatieve code voor H8 (Het Steegje)
 };
 
 // ══ FUNCTIES ══
@@ -8387,7 +8405,9 @@ var BGL_LOC_CODES = {
 };
 // Alternatieve (moeilijkere) codes die naast de bordjescode geldig zijn.
 var BGL_ALT_CODES = {
-  K7:'LKW6K', DD6:'NL4M', H3:'R3GLS',
+  K2:'P2TS', K3:'NR3T', K4:'S4NW', K5:'P5T', K6:'N6VZ', K7:'LKW6K', K8:'D8RD',
+  DD2:'T2RB', DD3:'N3T', DD4:'G4RB', DD5:'D5W', DD6:'NL4M', DD7:'KL7K', DD8:'R8VV',
+  H2:'X2LF', H3:'R3GLS', H4:'K4RK', H5:'TNM5G', H6:'L6H', H7:'KHT7P', H8:'J8GTS',
   D2:'MD2P', D3:'F3HCR', D4:'DN4H'
 };
 // De drie straten. De ingangscodes (ZONE_HOOFDCODE) staan boven elke
@@ -9669,7 +9689,13 @@ function openKraaiLocatie(code) {
   const codeToId = {
     'K2':'k1_groenteboer','K3':'k1_uitkijktoren','K4':'k1_nachtenwens',
     'K5':'k1_dorpsput','K6':'k1_nummer7','K7':'k1_nummer5','K8':'k1_naaldmasker',
-    'LKW6K':'k1_nummer5',   // alternatieve code voor K7 (Nummer 5)
+    'P2TS':'k1_groenteboer',   // alternatieve code voor K2 (Stoop de Groenteboer)
+    'NR3T':'k1_uitkijktoren',  // alternatieve code voor K3 (De Uitkijktoren)
+    'S4NW':'k1_nachtenwens',   // alternatieve code voor K4 (De Nachtenwens)
+    'P5T':'k1_dorpsput',       // alternatieve code voor K5 (De Dorpsput)
+    'N6VZ':'k1_nummer7',       // alternatieve code voor K6 (Nummer 7)
+    'LKW6K':'k1_nummer5',      // alternatieve code voor K7 (Nummer 5)
+    'D8RD':'k1_naaldmasker',   // alternatieve code voor K8 (Naald en Masker)
   };
   const id = codeToId[code];
   if (id) openLocatie(id);
