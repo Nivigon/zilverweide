@@ -7972,7 +7972,7 @@ function begeleiderRenderWachtwoord() {
 
 function begeleiderControleerWachtwoord() {
   var inv = document.getElementById('bgl-wachtwoord');
-  if (!inv || inv.value !== BEGELEIDER_WACHTWOORD) {
+  if (!inv || inv.value.toLowerCase() !== BEGELEIDER_WACHTWOORD.toLowerCase()) {
     var f = document.getElementById('bgl-wachtwoord-fout');
     if (f) f.textContent = 'Dat wachtwoord klopt niet.';
     return;
