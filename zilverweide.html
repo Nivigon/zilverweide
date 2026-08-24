@@ -111,7 +111,7 @@ body::before{content:'';position:fixed;inset:0;background-image:url("data:image/
 .btn:hover{background:rgba(var(--goudrgb),calc(.1 * var(--vlak)));border-color:var(--gold)}
 .btn:active{transform:scale(.98)}
 /* Hulp-knop: gevraagd-staat (groen, zacht pulserend). */
-#hulp-knop:hover{border-color:var(--parchment)}
+#hulp-knop:hover{border-color:rgba(var(--goudrgb),calc(.9 * var(--lijn)));background:rgba(var(--goudrgb),calc(.08 * var(--vlak)))}
 #hulp-knop.hulp-gevraagd{border-color:#6faf5a;background:rgba(111,175,90,.2);color:#c8ecb4;animation:hulpKnopPuls 1.4s ease-in-out infinite}
 @keyframes hulpKnopPuls{0%,100%{box-shadow:0 0 0 rgba(111,175,90,0)}50%{box-shadow:0 0 14px rgba(111,175,90,.6)}}
 .btn-full{display:block;width:100%;text-align:center;margin-top:1rem}
@@ -1871,7 +1871,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   <!-- Hulp-knop: de speler vraagt de begeleider om hulp. Gouden outline naast
        de verhaalscore; wordt groen zodra de vraag verstuurd is en gaat vanzelf
        terug zodra de begeleider hem afmeldt (via de gedeelde stand). -->
-  <button id="hulp-knop" onclick="spelerVraagHulp()" title="Vraag de begeleider om hulp" style="display:none;flex:0 0 auto;align-items:center;gap:.4rem;padding:.4rem .85rem;border:2px solid var(--gold);border-radius:50px;background:rgba(var(--goudrgb),calc(.14 * var(--vlak)));font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px)">Hulp vragen</button>
+  <button id="hulp-knop" onclick="spelerVraagHulp()" title="Vraag de begeleider om hulp" style="display:none;flex:0 0 auto;align-items:center;gap:.4rem;padding:.35rem .7rem;border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn)));border-radius:50px;background:rgba(13,10,6,.82);font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;cursor:pointer;white-space:nowrap;backdrop-filter:blur(4px)">Hulp vragen</button>
   <!-- Eén knop, breder dan voorheen: naam van het personage, een streepje en
        daarna de rol ("Felix - Voormalig spion"). De verhaalscore hiernaast
        schuift vanzelf mee naar links, want de cluster is een flexrij die
@@ -5487,9 +5487,11 @@ function startOverworldIntro() {
     { tekst: 'Welkom in Zilverweide. We gaan je kort op weg helpen.' },
     { lift: '#inv-bar', doel: '#inv-bar .inv-knop',
       tekst: 'Linksboven in het scherm staat je inventaris. Druk hierop om te zien welke voorwerpen je hebt verzameld. Het kleine rondje geeft aan hoeveel voorwerpen je hebt. Knippert het rondje, dan zit er een nieuw voorwerp in je inventaris.' },
-    { lift: '#topright-cluster', doel: '#missie-teller', dim: ['#avatar-badge'],
+    { lift: '#topright-cluster', doel: '#missie-teller', dim: ['#hulp-knop', '#avatar-badge'],
       tekst: 'Rechts van het inventaris staat jullie verhaalscore. Als deze vol is, kunnen jullie naar een volgend deel van het verhaal. Je kunt erop drukken om terug te lezen wat jullie al gedaan hebben. Er staat niet wat er nog moet gebeuren, dat moeten jullie zelf uitvinden.' },
-    { lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller'],
+    { lift: '#topright-cluster', doel: '#hulp-knop', dim: ['#missie-teller', '#avatar-badge'],
+      tekst: 'Naast de verhaalscore zit de hulpknop. Kom je er samen even niet uit, kun je iets niet vinden, of doet je tablet gek? Druk dan op ‘Hulp vragen’. De spelbegeleider ziet het en komt jullie op weg helpen. De knop wordt groen zolang je vraag openstaat; druk er nog eens op als het weer lukt.' },
+    { lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller', '#hulp-knop'],
       tekst: 'En weer rechts daarvan kun je terecht als je je afvraagt wie je karakter ook alweer was. Druk dan hierop, dan kun je het altijd nog even teruglezen. Ook zie je hier wie je teamgenoten zijn en wat hun personage kan.' },
     { doel: '#tile-dorpsplein',
       tekst: 'Tot slot. Door op deze knoppen op de kaart te drukken bezoek je een deel van het dorp. Voer je daarna de code van de bordjes in, dan bezoek je een locatie. Jullie verhaal gaat starten bij het podium. Ik zou daar snel heen gaan. Succes!' }
