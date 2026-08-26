@@ -2673,7 +2673,7 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bglk-ingang { display:block; margin:0 auto .5rem; font-family:'Cinzel',serif; font-size:.56rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); background:rgba(var(--goudrgb),calc(.1 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.35 * var(--lijn))); border-radius:20px; padding:.26rem .7rem; cursor:pointer; }
   .bglk-ingang:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.18 * var(--vlak))); }
   .bglk-ingang.gekozen { border-color:var(--gold); box-shadow:0 0 10px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
-  .bglk-grid { display:grid; gap:.35rem; justify-content:center; }
+  .bglk-grid { display:grid; gap:.35rem; justify-content:center; position:relative; }
   .bglk-tegel, .bglk-plein-vak { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.15rem; min-width:4.9rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.4rem .35rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
   .bglk-tegel:hover, .bglk-plein-vak:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.14 * var(--vlak))); }
   .bglk-tegel.gekozen, .bglk-plein-vak.gekozen { border-color:var(--gold); box-shadow:0 0 14px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
@@ -2694,6 +2694,17 @@ body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important
   .bglk-chip { width:15px; height:15px; border-radius:50%; background-size:cover; background-position:center top; background-repeat:no-repeat; background-color:var(--ash); border:1px solid rgba(0,0,0,.55); }
   .bglk-chip.hier { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 7px rgba(var(--goudrgb),calc(.9 * var(--schaduwdiepte))); }
   .bglk-chip.geweest { opacity:.42; filter:grayscale(.5); }
+  /* Onderweg: een speler die WEL in deze straat (of op het plein of de dorpskaart)
+     is, maar nog niet in een locatie. Portretjes met gouden gloed, net als 'hier
+     nu'. Absoluut gepositioneerd zodat de kaart nooit hoger wordt en op een scherm
+     blijft; leeg (niemand onderweg) toont niks. In de drie straten in het midden
+     tussen de tegels, op het plein in de hoeken. */
+  .bglk-onderweg { position:absolute; z-index:3; display:flex; flex-wrap:wrap; gap:2px; max-width:5.6rem; pointer-events:none; }
+  .bglk-onderweg:empty { display:none; }
+  .bglk-onderweg.midden { top:50%; left:50%; transform:translate(-50%,-50%); justify-content:center; }
+  .bglk-onderweg.hoek-rechts { top:3px; right:3px; justify-content:flex-end; max-width:60%; }
+  .bglk-onderweg.hoek-links { top:3px; left:3px; max-width:60%; }
+  .bglk-onderweg .bglk-chip { width:19px; height:19px; }
   #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
   /* Grote, vaste Bevestig-knop aan de rechterkant van het begeleiderspaneel.
@@ -3965,11 +3976,15 @@ function debugSimuleerAanwezigheid() {
     if (typeof toonToast === 'function') toonToast('🧭', 'Geen sessie actief');
     return;
   }
+  // Jan staat in een locatie (tegel-portret). De andere drie zijn 'onderweg':
+  // wel in een straat, op het plein of op de dorpskaart, maar niet in een
+  // locatie (loc leeg, plek gezet). Zo zijn zowel de tegel-portretjes als de
+  // onderweg-markers (midden in de straat en de plein-hoeken) solo te testen.
   var voorbeeld = {
-    jan:   { loc: 'k1_uitkijktoren',  bezocht: ['k1_dorpsput', 'k1_uitkijktoren', 'k1_nummer7'] },
-    kelly: { loc: 'dd8_stiltevijver', bezocht: ['dd5_woud', 'dd8_stiltevijver'] },
-    fenna: { loc: 'h5_gemeentehuis',  bezocht: ['h4_kerk', 'h5_gemeentehuis'] },
-    felix: { loc: null,               bezocht: ['k1_naaldmasker', 'h8_steegje', 'dorpsarchief'] }
+    jan:   { loc: 'k1_uitkijktoren', plek: '',            bezocht: ['k1_dorpsput', 'k1_uitkijktoren', 'k1_nummer7'] },
+    kelly: { loc: null,              plek: 'Dorendael',    bezocht: ['dd5_woud', 'dd8_stiltevijver'] },
+    fenna: { loc: null,              plek: 'Dorpsplein',   bezocht: ['h4_kerk', 'h5_gemeentehuis'] },
+    felix: { loc: null,              plek: 'Dorpskaart',   bezocht: ['k1_naaldmasker', 'h8_steegje', 'dorpsarchief'] }
   };
   Object.keys(voorbeeld).forEach(function (rol) {
     var v = voorbeeld[rol];
@@ -3977,7 +3992,7 @@ function debugSimuleerAanwezigheid() {
     v.bezocht.forEach(function (id) { bezocht[id] = true; });
     try {
       firebase.database().ref('sessies/' + sid + '/meta/spelers/' + rol)
-        .update({ loc: v.loc, bezocht: bezocht, hb: gedeeldeTijdNu() }).catch(function () {});
+        .update({ loc: v.loc, plek: v.plek, bezocht: bezocht, hb: gedeeldeTijdNu() }).catch(function () {});
     } catch (e) {}
   });
   if (typeof toonToast === 'function') toonToast('🧭', 'Voorbeeldposities gezet, open de kaart');
@@ -8541,7 +8556,9 @@ function bglBouwKaart(doelId, inline) {
     return '<div class="bglk-straat">' +
       '<div class="bglk-straat-titel">' + s.titel + '</div>' +
       '<button class="bglk-ingang" data-code="' + s.ingang + '" onclick="bglKaartKies(\'' + s.ingang + '\')">ingang: ' + s.ingang + '</button>' +
-      '<div class="bglk-grid" style="grid-template-columns:repeat(' + (lay.kolommen || 3) + ',auto)">' + tegels + '</div>' +
+      '<div class="bglk-grid" style="grid-template-columns:repeat(' + (lay.kolommen || 3) + ',auto)">' + tegels +
+        '<span class="bglk-onderweg midden" data-plek="' + s.titel + '"></span>' +
+      '</div>' +
     '</div>';
   }
 
@@ -8572,7 +8589,10 @@ function bglBouwKaart(doelId, inline) {
   var pleinBlok = '<div class="bglk-straat">' +
     '<div class="bglk-straat-titel">Dorpsplein</div>' +
     '<button class="bglk-ingang" data-code="D1" onclick="bglKaartKies(\'D1\')">ingang: D1</button>' +
-    '<div class="bglk-grid bglk-plein-grid">' + pleinVakken + '</div>' +
+    '<div class="bglk-grid bglk-plein-grid">' + pleinVakken +
+      '<span class="bglk-onderweg hoek-rechts" data-plek="Dorpsplein"></span>' +
+      '<span class="bglk-onderweg hoek-links" data-plek="Dorpskaart"></span>' +
+    '</div>' +
   '</div>';
 
   // Het grote code-vak. In het losse overlay staat het als balk bovenaan; in
@@ -8632,7 +8652,8 @@ function bglUpdateAanwezigheid() {
   var nu = (typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now();
   // Zowel het losse kaart-overlay als de ingebedde dashboard-kaart.
   var containers = document.querySelectorAll('.bglk-aanw');
-  if (!containers.length) return;
+  var onderwegContainers = document.querySelectorAll('.bglk-onderweg');
+  if (!containers.length && !onderwegContainers.length) return;
   Array.prototype.forEach.call(containers, function (cont) {
     var id = cont.getAttribute('data-for');
     if (!id) { cont.innerHTML = ''; return; }
@@ -8648,6 +8669,26 @@ function bglUpdateAanwezigheid() {
       var portret = BGL_ROL_PORTRET[r.id] || '';
       chips += '<span class="bglk-chip ' + (hier ? 'hier' : 'geweest') + '"' +
         ' title="' + r.naam + (hier ? ' is hier nu' : ' is hier geweest') + '"' +
+        ' style="background-image:url(' + portret + ')"></span>';
+    });
+    cont.innerHTML = chips;
+  });
+  // Onderweg-markers: een live speler die WEL in deze straat (of op het plein of
+  // de dorpskaart) is, maar nog niet in een specifieke locatie. De tablet zet dan
+  // plek op de straatnaam en laat loc leeg (zie spelerAanwezigheidBroadcast).
+  Array.prototype.forEach.call(onderwegContainers, function (cont) {
+    var plek = cont.getAttribute('data-plek');
+    if (!plek) { cont.innerHTML = ''; return; }
+    var chips = '';
+    BEGELEIDER_ROLLEN.forEach(function (r) {
+      var sp = spelers[r.id];
+      if (!sp) return;
+      var hb = (typeof sp.hb === 'number' && isFinite(sp.hb)) ? sp.hb : null;
+      var vers = hb !== null && (nu - hb) / 1000 < 150;
+      if (!vers || sp.loc || sp.plek !== plek) return;
+      var portret = BGL_ROL_PORTRET[r.id] || '';
+      chips += '<span class="bglk-chip hier"' +
+        ' title="' + r.naam + ' is onderweg in ' + plek + '"' +
         ' style="background-image:url(' + portret + ')"></span>';
     });
     cont.innerHTML = chips;
