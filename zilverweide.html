@@ -12289,8 +12289,7 @@ function renderH4Kerk(loc) {
         { spreker: 'Kelly', tekst: '*(in gedachten)* Nog een archief? Misschien kan ik daar meer vinden over die heksen...' }
       ],
       acties: [
-        { label: '\ud83d\udd0d Ga toch naar het kerkarchief', onclick: kellyKerkArchief },
-        { label: 'Niet doen', onclick: kellyNietNaarKerkArchief, stijl: 'blood' }
+        { label: '\ud83d\udd0d Naar het kerkarchief', onclick: kellyKerkArchief }
       ]
     });
   }
@@ -12562,8 +12561,8 @@ function bkCinematicStyle() {
     '#biecht-cinematic.bk-dim{opacity:1}' +
     '#biecht-cinematic.bk-out{opacity:0;transition:opacity 1.2s ease}' +
     '#biecht-cinematic .bk-eyes{position:absolute;top:50%;left:50%;width:min(80vw,620px);height:auto;transform:translate(-50%,-50%) scale(.7);opacity:0;pointer-events:none;filter:brightness(1.15) drop-shadow(0 0 24px rgba(200,20,20,.6))}' +
-    '#biecht-cinematic .bk-eyes.bk-eyes-pop{animation:bk-eyepop .7s ease}' +
-    '@keyframes bk-eyepop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}82%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}}' +
+    '#biecht-cinematic .bk-eyes.bk-eyes-pop{animation:bk-eyepop 3.4s ease}' +
+    '@keyframes bk-eyepop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}5%{opacity:1;transform:translate(-50%,-50%) scale(1.07)}12%{opacity:1;transform:translate(-50%,-50%) scale(1)}55%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}88%{opacity:1;transform:translate(-50%,-50%) scale(1.01)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.06)}}' +
     '#biecht-cinematic .bk-text{position:relative;z-index:3;max-width:88vw;text-align:center;font-family:Cinzel,serif;font-size:clamp(24px,5.5vw,60px);letter-spacing:.08em;line-height:1.3;color:#f4f1ea;opacity:0;transition:opacity .5s ease;text-shadow:0 0 26px rgba(255,255,255,.55),0 0 8px rgba(255,255,255,.85)}' +
     '#biecht-cinematic.bk-text-on .bk-text{opacity:1}' +
     '#biecht-cinematic .bk-flash{position:absolute;inset:0;pointer-events:none;background:#cfe3ff;opacity:0;mix-blend-mode:screen;z-index:2}' +
@@ -12572,7 +12571,7 @@ function bkCinematicStyle() {
   document.head.appendChild(s);
 }
 
-// De scare-cinematic zelf. Circa 12 seconden, daarna onKlaar. Fade naar zwart,
+// De scare-cinematic zelf. Circa 29 seconden, daarna onKlaar. Fade naar zwart,
 // witte tekst die per beat wisselt, en de ogen die op de "bam"-momenten kort in
 // beeld flitsen. Ontbrekende ogen_beide.png is geen bug: dan blijven de flitsen
 // en de tekst over.
@@ -12592,40 +12591,29 @@ function speelBiechtCinematic(onKlaar) {
   var timers = [];
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
   function zetTekst(html) { ov.classList.remove('bk-text-on'); void txt.offsetWidth; txt.innerHTML = html; ov.classList.add('bk-text-on'); }
+  function wisTekst() { ov.classList.remove('bk-text-on'); }
   function flits() { ov.classList.remove('bk-strike'); void ov.offsetWidth; ov.classList.add('bk-strike'); }
   function ogenFlits() { eyes.classList.remove('bk-eyes-pop'); void eyes.offsetWidth; eyes.classList.add('bk-eyes-pop'); }
   function scare() { try { var a = new Audio('scaresound.mp3'); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {} }
 
-  // Eerst een witte regel: er is iets aan de deur.
-  later(function () { zetTekst('Je hoort iets aan de deur.'); }, 1300);
-  // Bam: flits met de ogen kort in beeld, en het scare-geluid.
-  later(function () { flits(); ogenFlits(); scare(); }, 2700);
-  later(function () { zetTekst('Whahaha! Dat was je deur... voor nu zit je hier met mij.'); }, 3300);
-  later(function () { ogenFlits(); }, 5300);
-  later(function () { zetTekst('Alle tijd die jullie sukkels verdoen, brengt ons dichterbij...'); }, 5900);
-  later(function () { zetTekst('Dichterbij eeuwige stilte!!'); }, 8100);
-  later(function () { flits(); ogenFlits(); zetTekst('Whahaha.'); }, 9800);
-  // Uitfaden en klaar (circa 12s totaal).
-  later(function () { ov.classList.add('bk-out'); }, 11400);
+  // De regels en de ogen wisselen elkaar af: elke regel blijft op leeslengte in
+  // beeld, en op de bam-momenten valt de tekst weg zodat de ogen met een flits
+  // het scherm vullen en er zo'n 3 seconden blijven staren (subtiel loerend).
+  later(function () { zetTekst('Je hoort iets aan de deur.'); }, 1400);
+  // Bam: tekst weg, flits, ogen vullen het scherm, plus het scare-geluid.
+  later(function () { wisTekst(); flits(); ogenFlits(); scare(); }, 4400);
+  later(function () { zetTekst('Whahaha! Dat was je deur. Voorlopig zit je hier, met mij.'); }, 7800);
+  later(function () { wisTekst(); flits(); ogenFlits(); }, 12800);
+  later(function () { zetTekst('Alle tijd die jullie sukkels verdoen, brengt ons dichterbij...'); }, 16200);
+  later(function () { zetTekst('Dichterbij eeuwige stilte!!'); }, 20700);
+  later(function () { flits(); ogenFlits(); zetTekst('Whahaha.'); }, 24200);
+  // Onthullen zonder het oude scherm te laten flitsen: eerst het gangerscherm
+  // eronder renderen (nog achter het zwart, via onKlaar), pas daarna uitfaden.
+  later(function () { if (typeof onKlaar === 'function') onKlaar(); ov.classList.add('bk-out'); }, 28000);
   later(function () {
     timers.forEach(clearTimeout);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
-    if (typeof onKlaar === 'function') onKlaar();
-  }, 12700);
-}
-
-// Kelly kiest ervoor NIET naar het archief te gaan.
-function kellyNietNaarKerkArchief() {
-  const cont = document.getElementById('locatie-content');
-  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-  verbergNpcPop();
-  renderLocatieScene({
-    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Buiten', image: 'locaties/heerdonatuslaan/kerk.jpeg',
-    dialog: [
-      'Je loopt terug naar buiten. Het knaagt.',
-      { spreker: 'Kelly', tekst: '*(in gedachten)* Toch moet ik meer te weten komen.' }
-    ]
-  });
+  }, 29300);
 }
 
 // Kelly glipt weg naar het kerkarchief. Sfeerteksten, dan de doolhof in.
