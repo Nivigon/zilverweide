@@ -2957,18 +2957,27 @@ function plaatsZoomHerstel() {
 }
 
 // Zet de zoom terug naar 1. Op Android is er geen directe API hiervoor;
-// de betrouwbare truc is de viewport-meta kort op maximum-scale=1 zetten
-// (dat snapt de zoom terug) en meteen daarna herstellen, zodat opnieuw
-// inzoomen mogelijk blijft.
+// de truc is de viewport-meta kort op maximum-scale=1 zetten (dat snapt de
+// zoom terug) en daarna herstellen naar de zoombare stand.
+// BELANGRIJK: gebruik hier GEEN user-scalable=no. Op veel Samsung-toestellen
+// blijft die vlag hangen, waardoor inzoomen daarna helemaal geblokkeerd is,
+// ook nadat we hem terugdraaien. Alleen maximum-scale tijdelijk aanpassen is
+// genoeg om de zoom terug te snappen, en laat opnieuw inzoomen intact.
+// Herstel altijd naar een vaste, bekend-zoombare string in plaats van naar
+// de live waarde, zodat een tweede tik binnen het herstelvenster de stand
+// niet per ongeluk op de tijdelijke max-schaal vastzet.
+var _zoomHerstelBezig = false;
+var ZOOM_META_ZOOMBAAR = 'width=device-width, initial-scale=1.0, viewport-fit=cover';
 function zoomHerstelDoe() {
   var mv = document.querySelector('meta[name="viewport"]');
-  if (!mv) return;
-  var origineel = mv.getAttribute('content');
-  mv.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+  if (!mv || _zoomHerstelBezig) return;
+  _zoomHerstelBezig = true;
+  mv.setAttribute('content', ZOOM_META_ZOOMBAAR + ', maximum-scale=1.0');
   setTimeout(function () {
-    mv.setAttribute('content', origineel);
+    mv.setAttribute('content', ZOOM_META_ZOOMBAAR);
+    _zoomHerstelBezig = false;
     plaatsZoomHerstel();
-  }, 350);
+  }, 300);
 }
 
 (function () {
