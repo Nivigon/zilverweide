@@ -2394,20 +2394,9 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
     <div style="margin-top:1rem">
       <button type="button" onclick="toonTabletModus(_spelerNaamVervolg)" style="background:none;border:none;cursor:pointer;font-family:'Cinzel',serif;font-size:.66rem;letter-spacing:.12em;color:var(--mist);text-transform:uppercase;opacity:.7">← &nbsp; Toch met een ander aantal</button>
     </div>
-    <!-- De twee schuifjes naast elkaar op een rij, niet gestapeld: dit
-         scherm mag nooit scrollen en een extra rij is de duurste post. -->
-    <div style="display:flex;justify-content:center;gap:1.6rem;flex-wrap:wrap;margin-top:1.6rem">
-      <label class="ssi-toggle" title="Toont in het Kraaienkwartier een kaartje met de plekken waar je al geweest bent">
-        <span class="ssi-label">Beginner modus</span>
-        <input type="checkbox" id="beginner-modus-check" onchange="zetBeginnerModus(this.checked)">
-        <span class="ssi-schuif"></span>
-      </label>
-      <label class="ssi-toggle ssi-altijd-fel" title="Feller beeld voor spelen in de zon of in een lichte ruimte">
-        <span class="ssi-label">Daglicht modus</span>
-        <input type="checkbox" id="daglicht-modus-check" onchange="zetDaglichtModus(this.checked)">
-        <span class="ssi-schuif"></span>
-      </label>
-    </div>
+    <!-- Geen schuifjes op dit scherm meer. Beginner modus is geen speler-keuze
+         (die regelt de begeleider, plus de testmodus achter de gereedschaps-
+         knop op de splash); daglicht heeft zijn eigen keuzescherm vooraf. -->
   </div>
 </div>
 
@@ -3460,9 +3449,10 @@ var _leesvlagGemeld = {};
 // af waren. Deze vlaggen onderdrukken de effecten tijdens die eerste sync.
 var _verhaalInitieleSnapshotBezig = false;
 var _verhaalSnapshotGehad = false;
-// Laatst geziene stand van de extra hulp (begeleidersknop). null = nog geen
-// snapshot gehad, dan is er niets omgezet en hoeft er niets herzien te worden.
-var _extraHulpVorige = null;
+// Laatst geziene stand van de toren-hint-moeilijkheid (begeleiderskeuze).
+// null = nog geen snapshot gehad, dan is er niets omgezet en hoeft er niets
+// herzien te worden.
+var _torenMoeilijkVorige = null;
 // Hoeveel spelers stonden er bij de vorige snapshot in de herberg? Zodra dat
 // getal naar nul zakt, mag een wachtende Dorendael-finale-popup alsnog komen.
 var _herbergAanwezigVorig = 0;
@@ -3664,8 +3654,8 @@ function verwerkBinnengekomenShared(data) {
   // boven op de toren, dan zijn observaties meteen herzien, zodat hij de
   // duidelijkere hints ziet zonder eerst naar beneden en weer omhoog te
   // moeten. Stil, zoals alle ingrepen van de begeleider: geen melding.
-  var _hulpNu = !!(data && data.extra_hulp);
-  if (_extraHulpVorige !== null && _hulpNu !== _extraHulpVorige && !eersteSnapshot &&
+  var _hulpNu = !!(data && data.toren_moeilijk);
+  if (_torenMoeilijkVorige !== null && _hulpNu !== _torenMoeilijkVorige && !eersteSnapshot &&
       state.personage === 'jan' && state.janTorenDitBezoek &&
       state.lastOpenedLocatie === 'k1_uitkijktoren' &&
       document.getElementById('screen-locatie') &&
@@ -3675,7 +3665,7 @@ function verwerkBinnengekomenShared(data) {
     var _hulpLoc = locatiesK1.find(function(l){ return l.id === 'k1_uitkijktoren'; });
     if (_hulpLoc) renderK1Uitkijktoren(_hulpLoc);
   }
-  _extraHulpVorige = _hulpNu;
+  _torenMoeilijkVorige = _hulpNu;
   // Zelfde voor de Stiltevijver (DD8). Sta je daar terwijl Fenna's status via
   // een ander apparaat verandert, dan het scherm meteen herzien. Voor Kelly
   // speelt bovendien dezelfde reunie-dialoog als bij de put zodra Fenna de
@@ -7901,8 +7891,9 @@ function zetBeginnerModus(aan) {
   window._beginnerModus = !!aan;
   try { localStorage.setItem('zw_beginner', aan ? '1' : '0'); } catch (e) {}
   if (document.body) document.body.classList.toggle('beginner-modus', !!aan);
-  // Beide schuifjes (spelernaam-scherm en testmodus op splash) gelijk houden.
-  ['beginner-modus-check', 'beginner-modus-check-splash'].forEach(function (cid) {
+  // Het testmodus-schuifje op de splash gelijk houden (spelers hebben geen
+  // eigen beginner-schuifje meer; dat regelt de begeleider of de testmodus).
+  ['beginner-modus-check-splash'].forEach(function (cid) {
     var c = document.getElementById(cid);
     if (c) c.checked = !!aan;
   });
@@ -8029,8 +8020,9 @@ function zetDaglichtModus(aan, bewaren) {
     try { localStorage.setItem('zw_daglicht', aan ? '1' : '0'); } catch (e) {}
   }
   if (document.body) document.body.classList.toggle('daglicht', !!aan);
-  // Alle schuifjes gelijk houden (keuzescherm, spelernaam, testmodus).
-  ['daglicht-modus-check', 'daglicht-modus-check-splash'].forEach(function (cid) {
+  // Het testmodus-schuifje op de splash gelijk houden (het eigen daglicht-
+  // keuzescherm werkt met knoppen, niet met dit schuifje).
+  ['daglicht-modus-check-splash'].forEach(function (cid) {
     var c = document.getElementById(cid);
     if (c) c.checked = !!aan;
   });
@@ -9054,21 +9046,6 @@ function begeleiderPauzeAlles() {
   begeleiderRenderPaneel();
 }
 
-// Extra hulp voor het hele team: één knop, geen Bevestig. De gedeelde vlag
-// extra_hulp maakt Jans toren-hints concreter (zie extraHulpAan). Bewust een
-// waarde-write (false in plaats van wissen): een verwijderde sleutel komt niet
-// aan in de lokale spiegel van de tablets, want de merge daar wist niets.
-function begeleiderExtraHulp() {
-  if (!_bglSid) return;
-  var nieuw = !(_bglShared.extra_hulp === true);
-  try {
-    _bglShared.extra_hulp = nieuw;
-    firebase.database().ref('sessies/' + _bglSid + '/shared').child('extra_hulp').set(nieuw)
-      .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
-  } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
-  begeleiderRenderPaneel();
-}
-
 // ── Rail-panelen (stap 2): één modaal venster dat per knop gevuld wordt. ──
 function bglModalOpen(html) {
   var m = document.getElementById('bgl-modal');
@@ -9128,13 +9105,13 @@ var BGL_HULP_OPTIES = [
     id: 'toren',
     ic: '🗼',
     titel: 'Toren-hints',
-    uitleg: 'Jans hints vanaf de uitkijktoren. Makkelijker: noemt met zoveel woorden wie er iets mee kan.',
-    keuzes: [ { w: false, label: 'Normaal' }, { w: true, label: 'Makkelijker' } ],
-    huidig: function () { return _bglShared.extra_hulp === true; },
+    uitleg: 'Jans hints vanaf de uitkijktoren. Standaard makkelijk: noemt met zoveel woorden wie er iets mee kan. Moeilijker laat die aanwijzing weg.',
+    keuzes: [ { w: false, label: 'Makkelijk (standaard)' }, { w: true, label: 'Moeilijker' } ],
+    huidig: function () { return _bglShared.toren_moeilijk === true; },
     zet: function (v) {
-      _bglShared.extra_hulp = v;
+      _bglShared.toren_moeilijk = v;
       try {
-        firebase.database().ref('sessies/' + _bglSid + '/shared').child('extra_hulp').set(v)
+        firebase.database().ref('sessies/' + _bglSid + '/shared').child('toren_moeilijk').set(v)
           .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
       } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
     }
@@ -15551,12 +15528,14 @@ function speelVijverReunie() {
 // HTML-string-flow lopen.
 // ══════════════════════════════════════════════════════════════════
 
-// Extra hulp: de begeleider kan met één knop in het begeleiderspaneel de
-// hints van het hele team concreter maken. Team-breed (niet per rol), zodat
-// het één beslissing blijft. Nu gebruikt door Jans observaties boven op de
-// uitkijktoren; nieuwe hulp-teksten kunnen dezelfde vlag lezen.
-function extraHulpAan() {
-  return getSharedState('extra_hulp') === true;
+// Toren-hints: Jans observaties boven op de uitkijktoren staan STANDAARD op
+// makkelijk (ze noemen met zoveel woorden wie er iets mee kan). De begeleider
+// kan ze met één keuze in het begeleiderspaneel moeilijker zetten; dan
+// verdwijnt die extra aanwijzing. De gedeelde vlag toren_moeilijk is afwezig
+// (of false) bij makkelijk en true bij moeilijk, zodat de default zonder
+// enige begeleider-actie makkelijk is.
+function torenMoeilijkAan() {
+  return getSharedState('toren_moeilijk') === true;
 }
 
 function renderK1Uitkijktoren(loc) {
@@ -15582,10 +15561,11 @@ function renderK1Uitkijktoren(loc) {
       // Hints zijn gefaseerd: ze verschuiven mee met het verst ontgrendelde
       // district. Zodra Dorendael open is, verdwijnen de Kraaienkwartier-hints;
       // zodra Heer Donatuslaan open is, verdwijnen de Dorendael-hints.
-      // Staat de extra hulp van de begeleider aan, dan zijn een paar hints
-      // concreter: ze noemen wie ermee verder kan (zie extraHulpAan).
+      // Standaard zijn een paar hints concreter: ze noemen wie ermee verder
+      // kan. Zet de begeleider de toren-hints op moeilijker, dan valt die
+      // extra aanwijzing weg (zie torenMoeilijkAan).
       const donatusOpen = hasVisited('sintdonatuslaan_unlocked');
-      const hulp = extraHulpAan();
+      const hulp = !torenMoeilijkAan();
       let observaties;
       if (donatusOpen) {
         observaties = [
@@ -23598,10 +23578,11 @@ function buildDebugPanel() {
     ['🐉 Kleed om naar Liu-Yen', function(){ debugVermomFelix('Liu-Yen'); }, isFelix, 'Felix vermomming'],
     ['🧥 Vermomming uittrekken', function(){ debugVermomFelix(null); }, isFelix && !!state.vermomming, 'Felix vermomming'],
     // ── Begeleider & sessie
-    // Extra hulp van de begeleider: dezelfde gedeelde vlag als de knop in het
-    // begeleiderspaneel, zodat de duidelijkere hints solo te testen zijn.
-    ['💡 Extra hulp: ' + (extraHulpAan() ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){
-      setSharedState('extra_hulp', !extraHulpAan());
+    // Toren-hints makkelijk/moeilijk: dezelfde gedeelde vlag als de keuze in
+    // het begeleiderspaneel, zodat beide standen solo te testen zijn. Default
+    // (vlag afwezig) is makkelijk.
+    ['🗼 Toren-hints: ' + (torenMoeilijkAan() ? 'MOEILIJK (klik = makkelijk)' : 'MAKKELIJK (klik = moeilijk)'), function(){
+      setSharedState('toren_moeilijk', !torenMoeilijkAan());
       close();
       if (document.getElementById('screen-locatie').classList.contains('active')) refresh();
     }, true, 'Begeleider & sessie'],
