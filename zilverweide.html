@@ -1681,20 +1681,60 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
   to   { filter: brightness(1); }
 }
 
-/* ── Archivaris-pakt: portret-overlay in het doolhof ── */
+/* ── Fullscreen schrik-overlay in het doolhof: bij een foute afslag springt
+   de non, de archivaris of de heks naar je toe. Gedeeld door toonNonPakt,
+   toonArchivaristPakt en toonHeksPakt. ── */
 .archivaris-pakt-overlay {
   position: fixed; inset: 0; z-index: 500;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0, 0, 0, .85);
-  animation: archivarisIn .3s cubic-bezier(.2, .8, .3, 1) forwards;
+  overflow: hidden;                 /* geen scroll door de opschalende figuur */
+  background: rgba(0, 0, 0, .94);
+  animation: archivarisIn .16s ease forwards;
 }
+/* Portret-uitsnedes (non, archivaris): vullen de hoogte en schieten met een
+   korte overshoot plus trilling naar voren, alsof ze op je afkomen. */
 .archivaris-pakt-overlay img {
-  max-height: 70vh; max-width: 60vw; width: auto;
-  filter: drop-shadow(0 0 30px rgba(139, 26, 26, .6));
-  animation: archivarisZoom .4s cubic-bezier(.2, .8, .3, 1) forwards;
+  max-height: var(--vh100, 100vh); max-width: 94vw;
+  width: auto; height: auto;
+  transform-origin: 50% 44%;
+  will-change: transform, opacity;
+  filter: drop-shadow(0 0 42px rgba(139, 26, 26, .75)) contrast(1.06);
+  animation: archivarisLunge .5s cubic-bezier(.14, .7, .2, 1) forwards;
+}
+/* Scene-beeld (de heks in het woud): vult het hele scherm en zoomt uit het
+   donker op je in. */
+.archivaris-pakt-overlay.pakt-heks img {
+  width: 100vw; height: var(--vh100, 100vh);
+  max-width: none; max-height: none;
+  object-fit: cover;
+  transform-origin: 50% 38%;
+  filter: drop-shadow(0 0 60px rgba(30, 90, 180, .5)) contrast(1.08) brightness(1.04);
+  animation: heksLunge .55s cubic-bezier(.14, .7, .2, 1) forwards;
 }
 @keyframes archivarisIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes archivarisZoom { from { transform: scale(.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes archivarisLunge {
+  0%   { transform: scale(.32); opacity: 0; }
+  8%   { opacity: 1; }
+  58%  { transform: scale(1.2); }
+  72%  { transform: scale(1.06) translate3d(-1.4%, .6%, 0); }
+  84%  { transform: scale(1.14) translate3d(1.4%, -.4%, 0); }
+  100% { transform: scale(1.1); opacity: 1; }
+}
+@keyframes heksLunge {
+  0%   { transform: scale(.5); opacity: 0; }
+  12%  { opacity: 1; }
+  60%  { transform: scale(1.28); }
+  74%  { transform: scale(1.14) translate3d(1.6%, 0, 0); }
+  86%  { transform: scale(1.24) translate3d(-1.6%, 0, 0); }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .archivaris-pakt-overlay img,
+  .archivaris-pakt-overlay.pakt-heks img {
+    animation: archivarisIn .25s ease forwards;
+    transform: scale(1.02);
+  }
+}
 
 /* TEST: locatie-afbeelding groter (max-height van 42vh naar 46vh) en
    #screen-locatie iets compacter (minder top/bottom-padding en kleinere
@@ -26189,6 +26229,26 @@ function toonArchivaristPakt(onKlaar) {
   }, 1500);
 }
 
+// Fullscreen heks-pop overlay bij fout in het woud-doolhof. Zelfde beat als
+// de non en de archivaris, maar met het scene-beeld van de heks (pakt-heks),
+// dat het hele scherm vult en op je in zoomt.
+function toonHeksPakt(onKlaar) {
+  var ov = document.createElement('div');
+  ov.className = 'archivaris-pakt-overlay pakt-heks';
+  var img = document.createElement('img');
+  img.src = 'karakters/terugkerend/heks.jpg';
+  ov.appendChild(img);
+  document.body.appendChild(ov);
+  setTimeout(function() {
+    ov.style.transition = 'opacity .4s';
+    ov.style.opacity = '0';
+    setTimeout(function() {
+      if (ov.parentNode) ov.parentNode.removeChild(ov);
+      if (typeof onKlaar === 'function') onKlaar();
+    }, 400);
+  }, 1500);
+}
+
 function toonArchiefWaarschuwing() {
   toonLade(
     '\u26a0\ufe0f Voorzichtig',
@@ -27166,6 +27226,31 @@ function renderDd5Woud(loc) {
 
   huidigDoolhof.mount();
   schaduwTijdensDoolhof(huidigDoolhof);   // schaduw zwijgt/bevriest tijdens dit doolhof
+
+  // Monkey-patch _heksReset: fullscreen heks-pop overlay bij elke fout, net
+  // als de non (kerk) en de archivaris (archief). De sprong naar voren is nu
+  // de schrik, dus tijdens de reset tonen we de heks niet nog eens klein in de
+  // maze-box: we laten die kortstondig naar het gewone woud-beeld wijzen.
+  var origWoudHeksReset = huidigDoolhof._heksReset.bind(huidigDoolhof);
+  var woudHeksSfx = huidigDoolhof.heksSound;   // 'scaresound.mp3'
+  huidigDoolhof.heksSound = null;              // engine niet dubbel laten piepen: wij spelen 'm bij de sprong
+  huidigDoolhof._heksReset = function () {
+    try {
+      if (woudHeksSfx) {
+        var s = new Audio(woudHeksSfx);
+        s.volume = 0.9;
+        var p = s.play();
+        if (p && p.catch) p.catch(function () {});
+      }
+    } catch (e) {}
+    toonHeksPakt(function () {
+      var cfg = huidigDoolhof.config;
+      var bewaarHeksImg = cfg.images.heks;
+      cfg.images.heks = cfg.images.scene;   // geen tweede heks klein in de maze-box
+      origWoudHeksReset();
+      cfg.images.heks = bewaarHeksImg;
+    });
+  }.bind(huidigDoolhof);
 }
 
 // ══════════════════════════════════════════════════════════════════
