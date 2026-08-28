@@ -12289,8 +12289,7 @@ function renderH4Kerk(loc) {
         { spreker: 'Kelly', tekst: '*(in gedachten)* Nog een archief? Misschien kan ik daar meer vinden over die heksen...' }
       ],
       acties: [
-        { label: '\ud83d\udd0d Ga toch naar het kerkarchief', onclick: kellyKerkArchief },
-        { label: 'Niet doen', onclick: kellyNietNaarKerkArchief, stijl: 'blood' }
+        { label: '\ud83d\udd0d Naar het kerkarchief', onclick: kellyKerkArchief }
       ]
     });
   }
@@ -12612,20 +12611,6 @@ function speelBiechtCinematic(onKlaar) {
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (typeof onKlaar === 'function') onKlaar();
   }, 12700);
-}
-
-// Kelly kiest ervoor NIET naar het archief te gaan.
-function kellyNietNaarKerkArchief() {
-  const cont = document.getElementById('locatie-content');
-  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-  verbergNpcPop();
-  renderLocatieScene({
-    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Buiten', image: 'locaties/heerdonatuslaan/kerk.jpeg',
-    dialog: [
-      'Je loopt terug naar buiten. Het knaagt.',
-      { spreker: 'Kelly', tekst: '*(in gedachten)* Toch moet ik meer te weten komen.' }
-    ]
-  });
 }
 
 // Kelly glipt weg naar het kerkarchief. Sfeerteksten, dan de doolhof in.
