@@ -1013,15 +1013,15 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
    net als bij een echte krant. De kr-wm-float reserveert precies het schets-
    kader linksonder. */
 .kr-kopm{
-  left:8%; width:37%; top:20.5%;
+  left:8%; width:37%; top:20%;
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#1c1005;
-  font-size:clamp(.98rem,2.55vh,1.65rem); line-height:1.05;
+  font-size:clamp(1rem,2.6vh,1.7rem); line-height:1.05;
 }
 .kr-diamond{ margin:.6vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
 .kr-bodym{
-  left:8%; width:37%; top:31%; height:61%;
+  left:8%; width:37%; top:30.5%; height:61%;
   font-family:'KrantBody',Georgia,serif; color:#241608;
-  font-size:clamp(.75rem,1.62vh,1.08rem); line-height:1.36; text-align:justify;
+  font-size:clamp(.85rem,1.9vh,1.28rem); line-height:1.5; text-align:justify;
 }
 .kr-wm{
   float:left; width:62%; height:100%;
@@ -1034,18 +1034,18 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#3a2513;
   font-size:clamp(.85rem,2.05vh,1.3rem); line-height:1.16; margin-bottom:.5vh; text-align:center;
 }
-.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.75rem,1.62vh,1.08rem); line-height:1.4; text-align:justify; }
+.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.85rem,1.9vh,1.28rem); line-height:1.5; text-align:justify; }
 
 /* Rechterpagina onder: Nummer 2. Kop apart; body loopt om het portret heen. */
 .kr-nr2h{
   left:55%; width:37%; top:38%;
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#3a2513;
-  font-size:clamp(.85rem,2.05vh,1.3rem); line-height:1.16;
+  font-size:clamp(.85rem,2.05vh,1.3rem); line-height:1.16; text-align:center;
 }
 .kr-nr2b{
   left:55%; width:37%; top:44.5%; height:47%;
   font-family:'KrantBody',Georgia,serif; color:#3a2818;
-  font-size:clamp(.75rem,1.62vh,1.08rem); line-height:1.4; text-align:justify;
+  font-size:clamp(.85rem,1.9vh,1.28rem); line-height:1.5; text-align:justify;
 }
 .kr-pt{
   float:right; width:41%; height:100%;
@@ -26477,7 +26477,7 @@ function toonKrantenSpread(container) {
         '</div>' +
         // Linkerpagina: de molen (brand). De body loopt om de molen-schets heen.
         '<div class="kr-tekst kr-kopm">Molen afgebrand,<br>molenaar omgekomen<div class="kr-diamond"></div></div>' +
-        '<div class="kr-tekst kr-bodym"><span class="kr-wm"></span>De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Het vuur was reeds uitgewoed voor er hulp kon worden geboden. Naar de oorzaak wordt onderzoek gedaan, doch een verklaring is tot heden niet gevonden. De begrafenis vindt plaats in besloten kring. Wie iets heeft gezien of gehoord in den nacht van de brand, wordt verzocht zich bij de stadswacht te melden. Van het bouwwerk rest niet meer dan een geblakerd geraamte, en het pad erheen blijft voorlopig gesloten.</div>' +
+        '<div class="kr-tekst kr-bodym"><span class="kr-wm"></span>De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek, doch een verklaring ontbreekt. De begrafenis is in besloten kring; getuigen melden zich bij de stadswacht.</div>' +
         // Rechterpagina boven: de kerkdienst (los blok)
         '<div class="kr-tekst kr-kerk">' +
           '<div class="kr-kop">Dienst vervalt komende zondag</div>' +
@@ -26485,7 +26485,7 @@ function toonKrantenSpread(container) {
         '</div>' +
         // Rechterpagina onder: Nummer 2. De body loopt om het portret heen.
         '<div class="kr-tekst kr-nr2h">Zorg om Nummer 2 te Dorendael</div>' +
-        '<div class="kr-tekst kr-nr2b"><span class="kr-pt"></span>In de buurt Dorendael wordt de bewoner van Nummer 2 al dagen niet meer gezien. Doch &rsquo;s avonds brandt er licht achter de luiken, en de buurman zweert dat er nog altijd iemand thuiskomt en de haard wordt gestookt. De stadswacht is ter plaatse geweest, doch achtte nader onderzoek niet raadzaam. Wie hem gezien heeft, melde zich bij het gemeentehuis.</div>' +
+        '<div class="kr-tekst kr-nr2b"><span class="kr-pt"></span>In Dorendael wordt de bewoner van Nummer 2 vermist. Doch &rsquo;s avonds brandt er licht, en de buurman zweert dat er nog altijd iemand thuiskomt. De stadswacht achtte nader onderzoek niet raadzaam.</div>' +
       '</div>' +
       '<div class="kr-na" id="kr-na">Een brand, een dode, en verder niets. Geen oorzaak, een begrafenis achter gesloten deuren, en een oproep aan getuigen. Alsof men liever heeft dat niemand zich meldt.</div>' +
       '<button class="kr-verder" id="kr-verder">Verder &rarr;</button>' +
