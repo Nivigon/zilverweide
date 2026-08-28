@@ -3308,7 +3308,6 @@ function verwerkBinnengekomenShared(data) {
   var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
   var vijverFlagBinnen = false, fennaVijverVrijBinnen = false;
   var torenCodeBinnen = false, torenHaakBinnen = false;
-  var biechtFlagBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -3320,7 +3319,6 @@ function verwerkBinnengekomenShared(data) {
           if (f === 'kelly_gered') kellyGeredBinnen = true;
           if (f === 'fenna_vijver_vast' || f === 'fenna_vijver_vrij') vijverFlagBinnen = true;
           if (f === 'fenna_vijver_vrij') fennaVijverVrijBinnen = true;
-          if (f === 'priscilla_biecht_vast' || f === 'priscilla_weg') biechtFlagBinnen = true;
           if (f === 'toren_code_ingevoerd') torenCodeBinnen = true;
           if (f === 'jan_toren_haak_gebroken') torenHaakBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
@@ -3465,21 +3463,12 @@ function verwerkBinnengekomenShared(data) {
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
   }
-  // Biechthokje: staat een speler in de kerk terwijl iemand het hokje in gaat
-  // (priscilla_biecht_vast) of terwijl de ganger bevrijd wordt en Priscilla
-  // verdwijnt (priscilla_weg), dan het kerk-scherm meteen herzien. Zo ziet de
-  // helper het bonkende hokje verschijnen en springt de vastzittende ganger
-  // door naar de afloop, zonder de locatie opnieuw te hoeven openen. Zelfde
-  // patroon als de put hierboven. Niet tijdens de eerste snapshot (herladen).
-  if (biechtFlagBinnen && !eersteSnapshot &&
-      state.lastOpenedLocatie === 'h4_kerk' &&
-      document.getElementById('screen-locatie') &&
-      document.getElementById('screen-locatie').classList.contains('active') &&
-      typeof renderH4Kerk === 'function') {
-    if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
-    var _kerkLoc = locatiesHeerDonatuslaan.find(function(l){ return l.id === 'h4_kerk'; });
-    if (_kerkLoc) renderH4Kerk(Object.assign({}, _kerkLoc, { _stap: 1 }));
-  }
+  // Biechthokje: bewust GEEN live her-render van het kerk-scherm op de biecht-
+  // flags. De ganger-flow is volledig lokaal (plaatsnemen, cinematic, code
+  // invoeren, afloop), dus een listener is daar niet voor nodig. En een speler
+  // die net met Priscilla in gesprek is (bijvoorbeeld Jan) mag niet uit zijn
+  // tekst geslingerd worden zodra een ander het hokje in gaat. De helper ziet
+  // de code, en een achterblijver de lege kerk, zodra hij de kerk opnieuw opent.
   // Toren-overdracht: Fenna staat op haar code-scherm bij de toren te wachten
   // tot Jan de spijker-code invoert. Komt die vlag binnen terwijl ze daar
   // staat, dan speelt de overdracht-dialoog meteen (zelfde patroon als de
@@ -12083,7 +12072,7 @@ function renderH4Kerk(loc) {
       acties: [
         { label: '\ud83d\udd0d Ga toch naar het kerkarchief', onclick: kellyKerkArchief },
         { label: 'Niet doen', onclick: kellyNietNaarKerkArchief, stijl: 'blood' }
-      ].concat(biechtActie() ? [biechtActie()] : [])
+      ]
     });
   }
 
@@ -12116,8 +12105,8 @@ function renderH4Kerk(loc) {
         { spreker: 'Fenna-Vivi\u00e8nne', tekst: '*(in gedachten)* Wat is dat mens giftig. Onthouden, deze.' }
       ],
       acties: [
-        { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); fennaNaarTobbe(); } },
         ...(biechtActie() ? [biechtActie()] : []),
+        { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); fennaNaarTobbe(); } },
         { label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
       ]
     });
@@ -12210,9 +12199,10 @@ function renderH4Kerk(loc) {
 // exact zoals de put en de vijver. Alle tekst vanaf het ingaan is nog filler.
 const BIECHTKAMER_IMG = 'locaties/heerdonatuslaan/biechtkamer.jpg';
 // Statische bevrijdingscode (placeholder), zoals de put- en vijver-codes in
-// VASTZIT_SCENARIOS. De helper ziet hem, de ganger tikt hem in. Hoofdletters,
-// want de invoer wordt met toUpperCase vergeleken.
-const BIECHT_CODE = 'BIECHT';
+// VASTZIT_SCENARIOS (die staan voorlopig ook op XXX). De helper ziet hem, de
+// ganger tikt hem in. Hoofdletters, want de invoer wordt met toUpperCase
+// vergeleken.
+const BIECHT_CODE = 'XXX';
 
 function biechtGateOpen() {
   // De keuze komt pas vrij als Jan, Kelly en Fenna Priscilla alle drie gezien
@@ -23321,6 +23311,10 @@ function buildDebugPanel() {
       ['🔇 Kerkkoor uit', function(){ stopKerkKoor(); close(); }, true, 'H4 Kerk'],
       // ── Biechthokje
       ['🕯️ Biecht-keuze vrij (Jan+Kelly+Fenna zagen Priscilla)', function(){ ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, true); }); close(); }, !biechtGateOpen(), 'H4 Kerk'],
+      // Test alsof jij de derde bent: zet alleen de andere twee als "Priscilla
+      // gezien", zodat jouw eigen normale interactie de poort sluit en de biecht
+      // meteen erna aangeboden wordt. Kelly moet daarvoor wel eerst het doolhof.
+      ['🕯️ Ik ben de 3e (zet de andere 2)', function(){ ['jan','kelly','fenna'].forEach(function(r){ if (r !== state.personage) setSharedState('priscilla_gezien_' + r, true); }); close(); }, state.personage !== 'felix', 'H4 Kerk'],
       ['🕯️ Ikzelf ga het biechthokje in (vast)', function(){ close(); biechtGaNaarBinnen(); }, biechtGateOpen() && !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['🤝 Iemand zit vast in het hokje (helper-kant)', function(){ markVisited('priscilla_biecht_vast'); close(); }, !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['👻 Priscilla weg (biecht afgerond)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); close(); }, !biechtPriscillaWeg(), 'H4 Kerk'],
