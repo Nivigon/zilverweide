@@ -12013,23 +12013,34 @@ function renderH4Kerk(loc) {
     });
   }
 
-  // Iemand zit vast in het biechthokje: de ganger wacht op hulp, elke andere
-  // speler in de kerk ziet het bonkende hokje en kan het opentrekken.
+  // Iemand zit vast in het biechthokje. De ganger tikt de code in die zijn
+  // teamgenoot hardop doorgeeft (zelfde vorm als de put: statische code, geen
+  // gegenereerde code, dus geen SERVER-STUB nodig). Elke andere speler in de
+  // kerk ziet die code en roept hem door.
   if (biechtVast()) {
     verbergNpcPop();
     if (state.biechtGanger) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'In het biechthokje', image: BIECHTKAMER_IMG,
         geenTerug: true,
-        dialog: ['filler']
+        dialog: ['filler'],
+        extra:
+          '<div class="code-section">' +
+            '<span class="code-label">Vul de code van je teamgenoot in om uit het hokje te komen</span>' +
+            '<input class="code-input" id="code-biecht" type="text" placeholder="Code..." maxlength="10" oninput="checkBiechtCode(this.value)">' +
+            '<div class="code-error" id="code-biecht-msg"></div>' +
+          '</div>'
       });
     }
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: BIECHTKAMER_IMG,
       dialog: ['filler'],
-      acties: [
-        { label: '🤝 Trek het hokje open', onclick: biechtBevrijd }
-      ]
+      extra:
+        '<div style="padding:1rem;background:rgba(0,0,0,.4);border:1px solid var(--gold);border-radius:4px;text-align:center">' +
+          '<div style="font-family:Cinzel,serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.5rem">Code voor je teamgenoot</div>' +
+          '<div style="font-family:Cinzel,serif;font-size:1.6rem;color:var(--gold);letter-spacing:.3em">' + BIECHT_CODE + '</div>' +
+        '</div>' +
+        '<p style="margin-top:.75rem;color:var(--mist);font-style:italic;font-size:.9rem;text-align:center">Roep de code hardop naar wie in het hokje zit.</p>'
     });
   }
 
@@ -12193,6 +12204,10 @@ function renderH4Kerk(loc) {
 // priscilla_biecht_vast en priscilla_weg lopen als gedeelde vast/vrij-flags,
 // exact zoals de put en de vijver. Alle tekst vanaf het ingaan is nog filler.
 const BIECHTKAMER_IMG = 'locaties/heerdonatuslaan/biechtkamer.jpg';
+// Statische bevrijdingscode (placeholder), zoals de put- en vijver-codes in
+// VASTZIT_SCENARIOS. De helper ziet hem, de ganger tikt hem in. Hoofdletters,
+// want de invoer wordt met toUpperCase vergeleken.
+const BIECHT_CODE = 'BIECHT';
 
 function biechtGateOpen() {
   // De keuze komt pas vrij als Jan, Kelly en Fenna Priscilla alle drie gezien
@@ -12231,15 +12246,15 @@ function startBiechtPitch() {
     ]
   });
 }
-// Ze wijst naar de zijbeuk; het beeld wisselt naar de biechtkamer. Dan de keuze.
+// Ze wijst naar de zijbeuk; het beeld wisselt naar de biechtkamer. Priscilla's
+// pop blijft in beeld tot de speler daadwerkelijk plaatsneemt in het hokje.
 function biechtPitchWijst() {
   const cont = document.getElementById('locatie-content');
   const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-  verbergNpcPop();
   renderLocatieScene({
     container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Het biechthokje', image: BIECHTKAMER_IMG,
     dialog: [
-      'Ze draait zich half om en wijst naar de zijbeuk. Daar staat het biechthokje, de deur op een kier.',
+      { tekst: 'Ze draait zich half om en wijst naar de zijbeuk. Daar staat het biechthokje, de deur op een kier.', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
       { spreker: 'Priscilla', tekst: '"Het hokje staat open. Ga zitten, en wees eens eerlijk tegen jezelf, binnen onze kerk."' }
     ],
     acties: [
@@ -12261,30 +12276,92 @@ function biechtNietDoen() {
     ]
   });
 }
-// Ja: de speler gaat het hokje in en zit vast (gedeelde vlag). De vast-branche
-// in renderH4Kerk toont vanaf hier het wachtscherm (filler).
+// Ja: de speler neemt plaats in het hokje. Eerst de scare-cinematic (fade,
+// ogen inzoomen, rode Filler-tekst, een paar flitsen, circa 10s), daarna de
+// vast-branche met de code-invoer. De gedeelde vlag gaat meteen om, zodat de
+// teamgenoot in de kerk de code al ziet terwijl de cinematic loopt.
 function biechtGaNaarBinnen() {
   state.biechtGanger = true;
   markVisited('priscilla_biecht_vast');
   verbergNpcPop();
-  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-  if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 }));
-}
-// Een teamgenoot trekt het hokje open: Priscilla is daarna weg (gedeelde vlag).
-// De bevrijder ziet hier zijn eigen afloop (filler); de ganger springt via de
-// shared-listener door naar zijn afloop en daarna de lege kerk.
-function biechtBevrijd() {
-  markVisited('priscilla_weg');
-  verbergNpcPop();
-  const cont = document.getElementById('locatie-content');
-  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-  renderLocatieScene({
-    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Binnen', image: kerkBinnenAfbeelding(),
-    dialog: ['filler'],
-    acties: [
-      { label: 'Verder', onclick: function () { if (typeof goBackFromLocatie === 'function') goBackFromLocatie(); } }
-    ]
+  speelBiechtCinematic(function () {
+    const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+    if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 }));
   });
+}
+
+// Code-invoer van de ganger. Juist: Priscilla is weg (gedeelde vlag), de speler
+// gaat door naar zijn afloop; de teamgenoten zien via de listener de lege kerk.
+function checkBiechtCode(val) {
+  val = (val || '').trim().toUpperCase();
+  var msg = document.getElementById('code-biecht-msg');
+  if (!msg) return;
+  if (val === BIECHT_CODE) {
+    msg.className = 'code-success';
+    msg.textContent = '✦ Juist! Je komt het hokje uit.';
+    var inp = document.getElementById('code-biecht');
+    if (inp) inp.disabled = true;
+    markVisited('priscilla_weg');
+    var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+    setTimeout(function () { if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 })); }, 700);
+  } else if (val.length >= 2) {
+    msg.className = 'code-error';
+    msg.textContent = 'Dat is niet de juiste code...';
+  }
+}
+
+// Eenmalig de cinematic-stijl injecteren (scoped met bk-prefix).
+function bkCinematicStyle() {
+  if (document.getElementById('bk-cine-style')) return;
+  var s = document.createElement('style');
+  s.id = 'bk-cine-style';
+  s.textContent =
+    '#biecht-cinematic{position:fixed;inset:0;z-index:600;background:#05040a;opacity:0;transition:opacity 1s ease;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
+    '#biecht-cinematic.bk-dim{opacity:1}' +
+    '#biecht-cinematic.bk-out{opacity:0;transition:opacity 1.2s ease}' +
+    '#biecht-cinematic .bk-eyes{position:absolute;top:50%;left:50%;width:min(80vw,620px);height:auto;transform:translate(-50%,-50%) scale(.5);opacity:0;pointer-events:none;filter:brightness(1.1) drop-shadow(0 0 22px rgba(200,20,20,.5));transition:opacity 1.6s ease,transform 1.8s cubic-bezier(.2,.8,.2,1)}' +
+    '#biecht-cinematic.bk-eyes-on .bk-eyes{opacity:1;transform:translate(-50%,-50%) scale(1)}' +
+    '#biecht-cinematic .bk-text{position:relative;z-index:3;font-family:Cinzel,serif;font-size:clamp(28px,7vw,72px);letter-spacing:.12em;color:#e23b2e;opacity:0;transition:opacity .8s ease;text-shadow:0 0 30px rgba(226,59,46,.8)}' +
+    '#biecht-cinematic.bk-text-on .bk-text{opacity:1;animation:bk-ragepulse 1.4s ease-in-out infinite}' +
+    '@keyframes bk-ragepulse{0%,100%{text-shadow:0 0 24px rgba(226,59,46,.5)}50%{text-shadow:0 0 46px rgba(226,59,46,.95)}}' +
+    '#biecht-cinematic .bk-flash{position:absolute;inset:0;pointer-events:none;background:#cfe3ff;opacity:0;mix-blend-mode:screen;z-index:2}' +
+    '#biecht-cinematic.bk-strike .bk-flash{animation:bk-bolt .55s linear}' +
+    '@keyframes bk-bolt{0%{opacity:0}4%{opacity:.9}10%{opacity:.12}16%{opacity:.78}24%{opacity:.05}30%{opacity:.55}100%{opacity:0}}';
+  document.head.appendChild(s);
+}
+
+// De scare-cinematic zelf. Circa 10 seconden, daarna onKlaar. Ontbrekende
+// ogen_beide.png is geen bug: dan blijven de flitsen en de tekst over.
+function speelBiechtCinematic(onKlaar) {
+  bkCinematicStyle();
+  var ov = document.createElement('div');
+  ov.id = 'biecht-cinematic';
+  ov.innerHTML =
+    '<img class="bk-eyes" src="ogen_beide.png" alt="">' +
+    '<div class="bk-text">Filler</div>' +
+    '<div class="bk-flash"></div>';
+  document.body.appendChild(ov);
+  void ov.offsetWidth;              // reflow, dan fade-to-black
+  ov.classList.add('bk-dim');
+  var timers = [];
+  function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  // Na 2s zwart de ogen inzoomen, met een scare-geluid.
+  later(function () {
+    ov.classList.add('bk-eyes-on');
+    try { var a = new Audio('scaresound.mp3'); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {}
+  }, 2000);
+  later(function () { ov.classList.add('bk-text-on'); }, 2800);
+  // Een paar flitsen, zoals de zolderscene.
+  [3200, 4200, 5300, 6800].forEach(function (t) {
+    later(function () { ov.classList.remove('bk-strike'); void ov.offsetWidth; ov.classList.add('bk-strike'); }, t);
+  });
+  // Uitfaden en klaar (circa 10s totaal).
+  later(function () { ov.classList.add('bk-out'); }, 8800);
+  later(function () {
+    timers.forEach(clearTimeout);
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    if (typeof onKlaar === 'function') onKlaar();
+  }, 10000);
 }
 
 // Kelly kiest ervoor NIET naar het archief te gaan.
