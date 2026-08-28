@@ -1782,6 +1782,20 @@ body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #scr
    komt vanzelf terug op de andere scenes. Oudere browsers negeren :has, dan
    blijft de pop staan (geen regressie, gewoon het oude gedrag). */
 body:has(#screen-locatie.active .heks-grid) #char-pop { display: none !important; }
+/* De speler-pop viel ook over de dialoogtekst van de doolhof-puzzels (Kelly's
+   archief en het woud-doolhof, dat laatste voor alle vier de rollen). Die
+   dialoog gebruikt eigen dh-klassen en valt dus buiten de sc-ontwijkregels
+   hierboven. In plaats van de pop te verbergen schuiven we hier de doolhof-
+   tekst naar rechts, precies zoals de sc-dialog-body-regel dat voor gewone
+   scenes doet: zo blijft de pop op volle grootte in beeld. Dezelfde rekentruc
+   en 2/3-verhouding: op brede schermen wordt het verschil nul of negatief en
+   valt de max() terug op de eigen 1.1rem-padding van de box (geen wijziging);
+   op tablet-breedte ontstaat precies genoeg ruimte naast de pop. De Verder-knop
+   (dh-dialog-verder) staat los rechts in de box en blijft ongemoeid. Oudere
+   browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
+body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
+  padding-left: max(1.1rem, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+}
 </style>
 <link rel="stylesheet" href="technischefiles/schaduw.css">
 </head>
