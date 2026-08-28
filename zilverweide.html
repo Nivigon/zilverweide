@@ -943,6 +943,91 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   margin:0;
   line-height:1.5;
 }
+/* ─── Oude kranten: het opengeslagen boek met tekst-overlay ───
+   De boek-afbeelding (locaties/dorpsplein/kranteninwoner.jpg, met de schets)
+   vult de hoogte. De artikelteksten liggen als losse zones over de pagina's,
+   met percentages t.o.v. het beeld zodat ze meeschalen. De zone-percentages
+   staan hier bij elkaar zodat ze in een keer bijgesteld kunnen worden mocht
+   de definitieve export net iets anders uitgekaderd zijn. Fade: eerst het
+   beeld (kr-beeld-in), dan de tekst (kr-tekst-in). */
+.kr-scherm{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:calc(var(--vh100) - 5rem);
+  padding:.5rem 1rem 1rem;
+  box-sizing:border-box;
+}
+.kr-boek{ position:relative; display:inline-block; line-height:0; max-width:100%; }
+.kr-boek-img{
+  display:block; width:auto;
+  height:min(88vh, calc(var(--vh100) - 5rem));
+  max-width:100%;
+  opacity:0; transition:opacity 1.1s ease;
+}
+.kr-boek.kr-beeld-in .kr-boek-img{ opacity:1; }
+
+.kr-tekst{
+  position:absolute; opacity:0; transition:opacity 1.3s ease;
+  color:#2b1a0b; line-height:1.5; text-align:center;
+}
+.kr-boek.kr-tekst-in .kr-tekst{ opacity:1; }
+
+/* Linkerpagina: de molen, dominant, verticaal gecentreerd */
+.kr-links{ left:6.5%; width:37%; top:50%; transform:translateY(-50%); }
+.kr-bron{
+  font-family:'Cinzel',serif; font-weight:600;
+  font-size:clamp(.5rem,1.15vh,.72rem); letter-spacing:.3em;
+  text-transform:uppercase; color:#7a5330; margin-bottom:1.6vh;
+}
+.kr-kop-molen{
+  font-family:'Cinzel',serif; font-weight:700; color:#1c1005;
+  font-size:clamp(1.2rem,4vh,2.6rem); line-height:1.1;
+}
+.kr-deck{
+  font-style:italic; color:#4a3016;
+  font-size:clamp(.8rem,2.1vh,1.35rem); line-height:1.35; margin-top:1.6vh;
+}
+.kr-rule{ display:flex; align-items:center; justify-content:center; gap:.6rem; margin:2vh auto; }
+.kr-rule span{ width:clamp(28px,7vh,72px); height:1px; background:rgba(90,60,30,.5); }
+.kr-rule i{ width:6px; height:6px; transform:rotate(45deg); background:#7a5330; display:block; }
+.kr-body-molen{
+  color:#2b1a0b; font-size:clamp(.85rem,2.15vh,1.35rem); line-height:1.6;
+  max-width:34ch; margin:0 auto;
+}
+
+/* Rechterpagina: twee kleine, ingetogen berichten */
+.kr-kerk{ left:56.5%; width:37%; top:15%; }
+.kr-nr2{ left:57%; width:33%; top:46%; }
+.kr-kop{
+  font-family:'Cinzel',serif; font-weight:600; color:#5a4126;
+  font-size:clamp(.8rem,2vh,1.15rem); line-height:1.2; margin-bottom:1.2vh;
+}
+.kr-body{ color:#6a5238; font-size:clamp(.7rem,1.7vh,1rem); line-height:1.5; text-align:justify; }
+.kr-kop-klein{ font-size:clamp(.72rem,1.75vh,1rem); color:#63492b; }
+.kr-body-klein{ font-size:clamp(.66rem,1.6vh,.92rem); color:#6f583d; }
+
+/* Verder-knop, verschijnt zacht na de tekst */
+.kr-verder{
+  position:fixed; bottom:1.1rem; left:50%;
+  transform:translateX(-50%) translateY(8px);
+  font-family:'Cinzel',serif; font-size:.9rem; letter-spacing:.18em; text-transform:uppercase;
+  padding:.7rem 1.9rem; border:1px solid var(--gold); background:rgba(13,10,6,.9); color:var(--gold);
+  border-radius:3px; cursor:pointer; white-space:nowrap; z-index:60;
+  opacity:0; visibility:hidden;
+  transition:opacity 1.4s ease, transform 1.4s ease, background .25s ease;
+}
+.kr-verder.zichtbaar{ opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); }
+.kr-verder:hover{ background:rgba(var(--goudrgb),calc(.16 * var(--vlak))); }
+
+/* Kelly's bericht aan het team, als zwevende strook zodat er niet gescrold hoeft */
+.kr-hint{
+  position:fixed; top:.6rem; left:50%; transform:translateX(-50%); z-index:60;
+  background:rgba(13,10,6,.92);
+  border:1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));
+  border-radius:4px; padding:.5rem .9rem; max-width:min(92vw,520px); text-align:left;
+}
 .archief-kaart{
   display:flex;align-items:center;gap:1rem;
   padding:.9rem 1.1rem;
@@ -23220,6 +23305,7 @@ function buildDebugPanel() {
       ['🏚️ Kelly bij molen geweest', function(){ markVisited('molen_doorgelopen'); markVisited('kelly_muziekdoosje_gevonden'); close(); }, p === 'kelly' && !hasVisited('kelly_muziekdoosje_gevonden') && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['🎵 Muziekdoos ingeleverd',   function(){ debugMuziekdoosIngeleverd(); close(); }, !muziekKlaar && !inWoudWinScreen, 'Muziekdoos & Archief'],
       ['📰 Unlock kranten archief',  function(){ debugUnlockKranten(); close(); }, !krantenOntdekt && !inWoudWinScreen, 'Muziekdoos & Archief'],
+      ['📰 Toon kranten-spread (molen)', function(){ debugKrantenSpread(); close(); }, true, 'Muziekdoos & Archief'],
       ['🎞️ Kelly heeft molen-legende gezien (leestaak vrij)', function(){ setSharedState('oude_kranten_ontdekt', true); setSharedState('molen_gezien_kelly', true); updateMissieTeller(); close(); }, !getSharedState('molen_gezien_kelly'), 'Muziekdoos & Archief'],
       ['📖 Eigen molen-kijkbeurt (+1)', function(){ setSharedState('oude_kranten_ontdekt', true); markeerBoekGelezen('molen'); close(); }, !getSharedState('molen_gezien_' + state.personage), 'Muziekdoos & Archief'],
       ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, !boekDoorIedereenGelezen('molen'), 'Muziekdoos & Archief'],
@@ -26244,6 +26330,10 @@ function toonArchiefWinScherm() {
 // voor in de plaats zodra die er zijn.
 const ARCHIEF_KRANTENKOP = 'locaties/dorpsplein/archief-krantenkop.jpeg';
 const ARCHIEF_BUNDEL     = 'locaties/dorpsplein/archief-bundel.jpeg';
+// De opengeslagen krant-spread: de versie met de schets van de bewoner erin.
+// Ontbreekt het bestand, dan valt de fade terug op de tekst op een donkere
+// achtergrond en blijft de flow werken.
+const ARCHIEF_KRANT_SPREAD = 'locaties/dorpsplein/kranteninwoner.jpg';
 
 // Vindt het juiste render-doel, ongeacht vanuit welke context we komen:
 //  1) Vanuit Kelly's doolhof-win-scherm → archief-doolhof-mount.
@@ -26253,51 +26343,100 @@ function archiefMount() {
 }
 
 function toonOudeKranten() {
-  // Markeer voor iedereen dat de kranten ontdekt zijn — vanaf nu staat
+  // Markeer voor iedereen dat de kranten ontdekt zijn. Vanaf nu staat
   // in het archief voor elke speler een "Lees de oude kranten"-knop.
   setSharedState('oude_kranten_ontdekt', true);
 
   const mount = archiefMount();
   if (!mount) return;
 
-  // We gebruiken de standaard "← Terug"-knop linksboven om naar het
-  // archivaris-scherm terug te keren — geen aparte knop onderaan nodig.
-  // Override z'n click tijdelijk, daarna herstel via verlaatArchief.
+  // De standaard "← Terug"-knop linksboven brengt terug naar het archief.
   const zwBackBtn = document.getElementById('locatie-back-btn');
   if (zwBackBtn) {
     zwBackBtn.style.display = '';
     zwBackBtn.onclick = function() { verlaatArchief(); };
   }
 
-  // ── Beat 1: het losse knipsel ──
-  renderLocatieScene({
-    container: mount,
-    titel:     'De oude kranten',
-    sub:       'Dorpsarchief — wat er wél is opgeschreven',
-    image:     ARCHIEF_KRANTENKOP,
-    dialog: [
-      'Tussen de vergeelde jaargangen ligt een los knipsel. De kop schreeuwt over de halve pagina.',
-      { spreker: 'De Zilverweidse Bode', tekst: '"TRAGISCH ONGELUK BIJ MOLEN"' },
-      { spreker: 'De Zilverweidse Bode', tekst: '"De molenaar is bij werkzaamheden aan zijn eigen molen om het leven gekomen. Het dorp rouwt. Van verdere bijzonderheden is geen sprake. De begrafenis vindt plaats in besloten kring."' },
-      'Dat is het. Drie zinnen voor een dode man. Geen naam, geen datum, geen woord over hoe.',
-      'Voor een krant die anders elke verdwaalde geit vermeldt, is dit oorverdovend kort.'
-    ],
-    acties: [
-      { label: 'Verder →', onclick: toonOudeKrantenBundel }
-    ]
-  });
+  // Beat 1: de opengeslagen krant-spread. Molen dominant links, kerk- en
+  // Nummer 2-bericht ingetogen rechts. "Verder" leidt naar de bundel en
+  // daarna de molen-legende.
+  toonKrantenSpread(mount);
+}
 
-  if (state.personage === 'kelly') {
-    const cont = document.getElementById('locatie-content');
-    if (cont) {
-      const box = document.createElement('div');
-      box.className = 'kr-team';
-      box.innerHTML =
+// De opengeslagen krant. De boek-afbeelding faadt eerst in, dan de
+// artikelteksten, dan de Verder-knop. Alleen Kelly ziet de team-hint.
+// De zone-posities en lettergroottes staan in de CSS (.kr-links / .kr-kerk /
+// .kr-nr2) zodat ze in een keer bij te stellen zijn op de definitieve export.
+function toonKrantenSpread(container) {
+  if (!container) return;
+  const kellyHint = (state.personage === 'kelly')
+    ? '<div class="kr-hint">' +
         '<div class="kr-team-kop">✉ Bericht aan het team</div>' +
-        '<p class="kr-team-body">Geef je teamgenoten door dat ze in het archief nu ook over de molen te weten kunnen komen. Dat kan belangrijk zijn.</p>';
-      cont.appendChild(box);
-    }
+        '<p class="kr-team-body">Geef je teamgenoten door dat ze in het archief nu ook over de molen te weten kunnen komen. Dat kan belangrijk zijn.</p>' +
+      '</div>'
+    : '';
+
+  container.innerHTML =
+    '<div class="kr-scherm">' +
+      kellyHint +
+      '<div class="kr-boek" id="kr-boek">' +
+        '<img class="kr-boek-img" id="kr-boek-img" src="' + ARCHIEF_KRANT_SPREAD + '" alt="">' +
+        // Linkerpagina: de molen (dominant)
+        '<div class="kr-tekst kr-links">' +
+          '<div class="kr-bron">De Zilverweidse Bode</div>' +
+          '<div class="kr-kop-molen">Tragisch ongeluk<br>bij de molen</div>' +
+          '<div class="kr-deck">De molenaar bij werkzaamheden aan zijn eigen molen om het leven gekomen</div>' +
+          '<div class="kr-rule"><span></span><i></i><span></span></div>' +
+          '<div class="kr-body-molen">Het dorp rouwt. Van verdere bijzonderheden is geen sprake. De begrafenis vindt plaats in besloten kring.</div>' +
+        '</div>' +
+        // Rechterpagina boven: de kerkdienst (mundaan)
+        '<div class="kr-tekst kr-kerk">' +
+          '<div class="kr-kop">Dienst vervalt komende zondag</div>' +
+          '<div class="kr-body">De dienst van onze kerk gaat komende zondag niet door wegens herstel aan het dak. De gemeente wordt de week daarop weer verwacht.</div>' +
+        '</div>' +
+        // Rechterpagina onder: Nummer 2 (subtiel, klein)
+        '<div class="kr-tekst kr-nr2">' +
+          '<div class="kr-kop kr-kop-klein">Inwoner Nummer 2 vermist</div>' +
+          '<div class="kr-body kr-body-klein">Doch &rsquo;s avonds brandt er licht, en de buurman zweert dat er nog altijd iemand thuiskomt. De veldwachter achtte nader onderzoek niet raadzaam.</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="kr-verder" id="kr-verder">Verder &rarr;</button>' +
+    '</div>';
+
+  const boek = document.getElementById('kr-boek');
+  const img  = document.getElementById('kr-boek-img');
+  const btn  = document.getElementById('kr-verder');
+  if (!boek || !btn) return;
+
+  const toonTekst = function() {
+    boek.classList.add('kr-tekst-in');
+    btn.classList.add('zichtbaar');
+  };
+  const toonBeeld = function() {
+    boek.classList.add('kr-beeld-in');
+    setTimeout(toonTekst, 750);
+  };
+  // Eerst het beeld laten opkomen zodra het geladen is. Ontbreekt het bestand
+  // nog, dan zorgt de error-handler dat de tekst alsnog verschijnt.
+  if (img && !img.complete) {
+    img.addEventListener('load', toonBeeld);
+    img.addEventListener('error', toonBeeld);
+  } else {
+    requestAnimationFrame(toonBeeld);
   }
+
+  btn.onclick = function() { toonOudeKrantenBundel(); };
+}
+
+// Debug: open de krant-spread direct, los van de archief-flow.
+function debugKrantenSpread() {
+  const c = document.getElementById('locatie-content');
+  if (!c) return;
+  setSharedState('oude_kranten_ontdekt', true);
+  const zwBackBtn = document.getElementById('locatie-back-btn');
+  if (zwBackBtn) { zwBackBtn.style.display = ''; zwBackBtn.onclick = verlaatArchief; }
+  toonKrantenSpread(c);
+  showScreen('screen-locatie');
 }
 
 // ── Beat 2: de gebonden bundel, met de legende erin ──
