@@ -3185,6 +3185,11 @@ const state = {
   // deze twee bepalen alleen welke kant van de redding je op dit tablet ziet.
   biechtGanger: false,
   biechtGangerKlaar: false,
+  // De redder staat vergrendeld op het biecht-codescherm (geen terugknop) tot
+  // de ganger de code invoert. Deze vlag laat de listener op priscilla_weg
+  // alleen dit wachtende scherm live naar de lege kerk sturen, en niemand
+  // anders (zoals Jan die net met Priscilla praat).
+  biechtHelperActief: false,
   kraaiCooldown: null,
   // Testmodus uit het debug-paneel: zet alle finale-vergrendelingen uit in
   // checkCodeToegankelijk. Staat bewust niet in de herstelpunt-velden, zodat
@@ -3463,7 +3468,7 @@ function verwerkBinnengekomenShared(data) {
   var ietsNieuws = false;
   var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
   var vijverFlagBinnen = false, fennaVijverVrijBinnen = false;
-  var torenCodeBinnen = false, torenHaakBinnen = false;
+  var torenCodeBinnen = false, torenHaakBinnen = false, biechtWegBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -3477,6 +3482,7 @@ function verwerkBinnengekomenShared(data) {
           if (f === 'fenna_vijver_vrij') fennaVijverVrijBinnen = true;
           if (f === 'toren_code_ingevoerd') torenCodeBinnen = true;
           if (f === 'jan_toren_haak_gebroken') torenHaakBinnen = true;
+          if (f === 'priscilla_weg') biechtWegBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
               || f === 'felix_code_ingevoerd' || f === 'felix_klaar_voor_jan'
               || f === 'jan_outfit_bij_gat' || f === 'jan_outfit_geleverd'
@@ -3619,12 +3625,12 @@ function verwerkBinnengekomenShared(data) {
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
   }
-  // Biechthokje: bewust GEEN live her-render van het kerk-scherm op de biecht-
-  // flags. De ganger-flow is volledig lokaal (plaatsnemen, cinematic, code
-  // invoeren, afloop), dus een listener is daar niet voor nodig. En een speler
-  // die net met Priscilla in gesprek is (bijvoorbeeld Jan) mag niet uit zijn
-  // tekst geslingerd worden zodra een ander het hokje in gaat. De helper ziet
-  // de code, en een achterblijver de lege kerk, zodra hij de kerk opnieuw opent.
+  // Biechthokje: de ganger-flow zelf (plaatsnemen, cinematic, code invoeren,
+  // afloop) is volledig lokaal. Ook de vast-toestand her-rendert bewust NIET
+  // live: een speler die net met Priscilla in gesprek is (bijvoorbeeld Jan) mag
+  // niet uit zijn tekst geslingerd worden zodra een ander het hokje in gaat.
+  // Alleen de redder die vergrendeld op het codescherm wacht, wordt live
+  // vrijgegeven zodra de code klopt, zie het scoped blok direct na de toren.
   // Toren-overdracht: Fenna staat op haar code-scherm bij de toren te wachten
   // tot Jan de spijker-code invoert. Komt die vlag binnen terwijl ze daar
   // staat, dan speelt de overdracht-dialoog meteen (zelfde patroon als de
@@ -3636,6 +3642,23 @@ function verwerkBinnengekomenShared(data) {
       document.getElementById('screen-locatie').classList.contains('active') &&
       typeof speelTorenOverdracht === 'function') {
     speelTorenOverdracht();
+  }
+  // Biechthokje-overdracht: de redder staat vergrendeld op het codescherm
+  // (geen terugknop) tot de ganger de code invoert. Komt priscilla_weg binnen
+  // terwijl deze speler daar wacht, dan gaat zijn scherm meteen naar de stille
+  // lege kerk (zelfde patroon als de toren-overdracht hierboven). Strak
+  // gescoped op state.biechtHelperActief, zodat niemand anders (zoals Jan bij
+  // Priscilla) uit zijn tekst wordt geslingerd. Niet tijdens de eerste snapshot.
+  if (biechtWegBinnen && !eersteSnapshot &&
+      state.biechtHelperActief &&
+      state.lastOpenedLocatie === 'h4_kerk' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      typeof renderH4Kerk === 'function') {
+    if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+    state.biechtHelperActief = false;
+    var _biechtKerkLoc = locatiesHeerDonatuslaan.find(function(l){ return l.id === 'h4_kerk'; });
+    if (_biechtKerkLoc) renderH4Kerk(Object.assign({}, _biechtKerkLoc, { _stap: 1, _biechtNazicht: true }));
   }
   // Jans haakje brak af terwijl Fenna al bij de toren staat: haar scherm
   // meteen herzien, zodat de overhandig-knop verschijnt zonder dat ze de
@@ -4487,6 +4510,10 @@ const VISITED_FLAGS = {
   kerk_non_weg:               'H4 Kerk: Kelly heeft het kerkarchief doorzocht (HD-milestone en Over de Rozen)',
   priscilla_biecht_vast:      'H4 Kerk: iemand is het biechthokje in gegaan en zit vast',
   priscilla_weg:              'H4 Kerk: Priscilla is verdwenen nadat het biechthokje is afgerond',
+  // Persoonlijk, bewust NIET gedeeld (staan niet in SHARED_VISITED_FLAGS):
+  // sturen alleen de scene op dit tablet.
+  tobbe_kerk_ontmoet:         'H4 Kerk: deze speler heeft Tobbe achterin de kerk al een keer ontmoet',
+  priscilla_gezien_felix:     'H4 Kerk: Felix heeft de non (in het echt of als verschijning) gezien',
   fenna_gemeentehuis:         'H5: Fenna heeft bij het gemeentehuis Robbie getroffen',
   // Persoonlijk, bewust NIET gedeeld: alleen wie Robbie daar zelf zag staan,
   // mag later tekst krijgen waarin hij "weg" is.
@@ -7662,6 +7689,7 @@ function wisLokaleRondeStand() {
   state.gekozenArm = null;
   state.biechtGanger = false;
   state.biechtGangerKlaar = false;
+  state.biechtHelperActief = false;
   state.kraaiCooldown = null;
   state.activeKwartier = null;
   state.visited = new Set();
@@ -12102,6 +12130,10 @@ function renderH4Kerk(loc) {
   // pauze. Idempotent, dus elke volgende render binnen de kerk laat de loop
   // gewoon doorlopen.
   startKerkKoor();
+  // Standaard geen actief helper-codescherm; alleen de biecht-code-branche
+  // hieronder zet dit weer aan, zodat de listener op priscilla_weg precies
+  // weet welke speler vergrendeld staat te wachten.
+  state.biechtHelperActief = false;
 
   // Na Tobbe-gok: Priscilla met dichtgenaaide mond, gebaart naar beneden → kelder.
   if (state.tobbeGokOpgelost && !state.kerkkelderGezien) {
@@ -12130,23 +12162,40 @@ function renderH4Kerk(loc) {
     });
   }
 
-  // Priscilla weg (na het biechthokje): voor de speler die het hokje in ging
-  // eerst de afloop, daarna de lege kerk. Voor alle anderen meteen de lege
-  // kerk. Deze toestand blijft, ongeacht wie Priscilla wel of niet zag.
+  // Na het biechthokje is Priscilla verdwenen. Dit speelt zich af voor de
+  // heksgok; daarna neemt de guard bovenaan het over (dichtgenaaide mond,
+  // kelder). Vier toestanden:
+  //  - Geval 3: wie er zelf bij was (de ganger na zijn afloop, of de redder
+  //    zodra de code klopt via _biechtNazicht) krijgt eerst het stille lege
+  //    moment, en loopt dan de kerk uit.
+  //  - Geval 4: wie daarna opnieuw binnenkomt. Kelly en Jan houden de lege
+  //    kerk (zij hebben hier verder niets), maar Fenna en Felix treffen Tobbe
+  //    weer achterin, met de mededeling dat de non weg is. Felix die de non
+  //    nooit ontmoette, ziet haar eerst nog heel even achterin verschijnen.
   if (biechtPriscillaWeg()) {
     verbergNpcPop();
-    if (state.biechtGanger && !state.biechtGangerKlaar) {
+    if (loc._biechtNazicht || (state.biechtGanger && !state.biechtGangerKlaar)) {
+      state.biechtHelperActief = false;
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
-        dialog: ['filler'],
+        dialog: [
+          'De deur van het hokje valt achter je dicht. De kerk is stil.',
+          'Waar de non stond, is niemand meer. Geen voetstap, geen gezang, niets.'
+        ],
         acties: [
-          { label: 'Verder', onclick: function () { state.biechtGangerKlaar = true; ga(1); } }
+          { label: '← Naar buiten', onclick: function () { state.biechtGangerKlaar = true; verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
         ]
       });
     }
+    if (p === 'felix') {
+      if (!priscillaGezienFelix()) { return felixNonVerschijning(); }
+      return felixNaarTobbe();
+    }
+    if (p === 'fenna') { return fennaNaarTobbe(); }
+    // Kelly en Jan: de lege kerk.
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
-      dialog: ['filler']
+      dialog: ['De kerk is leeg en stil. Van de non is geen spoor meer te bekennen.']
     });
   }
 
@@ -12160,7 +12209,9 @@ function renderH4Kerk(loc) {
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'In het biechthokje', image: BIECHTKAMER_IMG,
         geenTerug: true,
-        dialog: ['filler'],
+        dialog: [
+          'De deur van het hokje geeft niet mee. Je zit vast. Aan de andere kant van het paneel hoor je de stem van je teamgenoot.'
+        ],
         extra:
           '<div class="code-section">' +
             '<span class="code-label">Vul de code van je teamgenoot in om uit het hokje te komen</span>' +
@@ -12169,9 +12220,15 @@ function renderH4Kerk(loc) {
           '</div>'
       });
     }
+    // De redder houdt de code vast en mag niet weg tot de ganger hem invoert
+    // (geenTerug). De listener op priscilla_weg laat dit scherm daarna live los.
+    state.biechtHelperActief = true;
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: BIECHTKAMER_IMG,
-      dialog: ['filler'],
+      geenTerug: true,
+      dialog: [
+        'Je teamgenoot verdween het hokje in en de deur sloeg dicht. Er klopt iets niet. Jij blijft hier tot ze er weer uit zijn.'
+      ],
       extra:
         '<div style="padding:1rem;background:rgba(0,0,0,.4);border:1px solid var(--gold);border-radius:4px;text-align:center">' +
           '<div style="font-family:Cinzel,serif;font-size:.75rem;letter-spacing:.15em;color:var(--gold-dim);text-transform:uppercase;margin-bottom:.5rem">Code voor je teamgenoot</div>' +
@@ -12223,13 +12280,16 @@ function renderH4Kerk(loc) {
   if (p === 'fenna') {
     if (stap === 1) {
       verbergNpcPop();
+      var fennaTweede = tobbeKerkOntmoet();
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
         dialog: [
-          'Je stapt de kerk in. Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, in de laatste bank, een jongetje, alleen.'
+          fennaTweede
+            ? 'De non staat nog voorin, bij het altaar. En achterin, op hetzelfde bankje, zit Tobbe. Je weet nu wat daar zit.'
+            : 'Je stapt de kerk in. Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, in de laatste bank, een jongetje, alleen.'
         ],
         acties: [
-          { label: 'Loop naar het jongetje', onclick: fennaNaarTobbe },
+          { label: fennaTweede ? 'Naar Tobbe' : 'Loop naar het jongetje', onclick: fennaNaarTobbe },
           { label: 'Loop naar de non', onclick: function () { ga(2); } }
         ]
       });
@@ -12259,18 +12319,23 @@ function renderH4Kerk(loc) {
   if (p === 'felix') {
     if (stap === 1) {
       verbergNpcPop();
+      var felixTweede = tobbeKerkOntmoet();
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
         dialog: [
-          'Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, alleen op een bankje, een jongetje.'
+          felixTweede
+            ? 'De non staat nog voorin, bij het altaar. En achterin, op hetzelfde bankje, zit Tobbe. Je weet nu wat daar zit.'
+            : 'Je ziet twee dingen tegelijk. Een non bij het altaar. En achterin, alleen op een bankje, een jongetje.'
         ],
         acties: [
-          { label: 'Loop naar het jongetje', onclick: felixNaarTobbe },
+          { label: felixTweede ? 'Naar Tobbe' : 'Loop naar het jongetje', onclick: felixNaarTobbe },
           { label: 'Loop naar de non', onclick: function () { ga(2); } }
         ]
       });
     }
-    // stap === 2: Felix bij Priscilla (per vermomming)
+    // stap === 2: Felix bij Priscilla (per vermomming). Dit telt als "Felix
+    // heeft de non gezien", zodat de verschijning na de biecht niet meer speelt.
+    markVisited('priscilla_gezien_felix');
     const verm = state.vermomming;
     var dialog = [
       { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
@@ -12356,6 +12421,11 @@ function biechtGateOpen() {
 }
 function biechtVast() { return hasVisited('priscilla_biecht_vast'); }
 function biechtPriscillaWeg() { return hasVisited('priscilla_weg'); }
+// Lokaal, per tablet: heeft deze speler Tobbe achterin de kerk al ontmoet
+// (voor de eerste/tweede-keer-tekst), en heeft Felix de non ooit gezien (echt
+// of als verschijning na de biecht).
+function tobbeKerkOntmoet() { return hasVisited('tobbe_kerk_ontmoet'); }
+function priscillaGezienFelix() { return hasVisited('priscilla_gezien_felix'); }
 function biechtBeschikbaar() {
   return state.personage !== 'felix'
       && biechtGateOpen()
@@ -12444,7 +12514,7 @@ function checkBiechtCode(val) {
     if (inp) inp.disabled = true;
     markVisited('priscilla_weg');
     var loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
-    setTimeout(function () { if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 })); }, 700);
+    setTimeout(function () { if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1, _biechtNazicht: true })); }, 700);
   } else if (val.length >= 2) {
     msg.className = 'code-error';
     msg.textContent = 'Dat is niet de juiste code...';
@@ -12708,61 +12778,118 @@ function kellyUitKerkDoolhof() {
   });
 }
 
-// Fenna loopt naar het jongetje vooraan in de kerk: dat blijkt Tobbe.
+// Fenna loopt naar het jongetje vooraan in de kerk: dat blijkt Tobbe. Eerste
+// keer de herkenning en schrik; daarna (tobbe_kerk_ontmoet) een kortere, kille
+// tweede ontmoeting. Na de biecht staat de non er niet meer, dan valt de
+// "naar de non"-knop weg en komt er een regel bij dat ze verdwenen is.
 function fennaNaarTobbe() {
   const cont = document.getElementById('locatie-content');
   const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  const nonWeg = biechtPriscillaWeg();
+  const tweede = tobbeKerkOntmoet();
   verbergNpcPop();
+  var dialog = [];
+  if (tweede) {
+    if (nonWeg) dialog.push('Van de non is geen spoor meer te bekennen. Alleen achterin, op hetzelfde bankje, zit Tobbe nog.');
+    dialog.push('Je loopt terug naar hem. Je weet nu wat je gaat horen, en toch ga je.');
+    dialog.push({ tekst: 'Tobbe zit doodstil. Hij hoeft zich niet om te draaien om te weten dat jij het bent.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } });
+    dialog.push({ spreker: 'Tobbe', tekst: '"Terug voor meer? Jullie snappen het nog steeds niet."' });
+    dialog.push('Hij lacht zacht. Het is geen kinderlach.');
+    dialog.push({ spreker: 'Tobbe', tekst: '"Rot op. Als de tijd rijp is, kom ik heus wel naar jullie toe."' });
+    dialog.push({ spreker: 'Fenna-Vivi\u00e8nne', tekst: '*(in gedachten)* Dat was geen kind dat me wegstuurde. Dat was iets dat w\u00e9\u00e9t dat het de tijd heeft. Ik krijg het er koud van.' });
+  } else {
+    markVisited('tobbe_kerk_ontmoet');
+    if (nonWeg) dialog.push('Van de non is geen spoor meer te bekennen. Achterin, in de laatste bank, zit alleen nog een jongetje.');
+    dialog.push('Naarmate je dichterbij komt, hoor je het. Een melodietje, zacht neuri\u00ebn. Bijna te mooi voor een kind van zijn leeftijd.');
+    dialog.push({ tekst: 'Vlak voor je bij hem bent, draait hij zich om.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } });
+    dialog.push('Het is Tobbe. Maar niet zoals je hem kent.');
+    dialog.push({ spreker: 'Fenna-Vivi\u00e8nne', tekst: '*(schrikt, draait zich meteen om)* Wat is er met hem aan de hand...' });
+  }
+  var acties = [];
+  if (!nonWeg) acties.push({ label: 'Loop naar de non', onclick: function() { verbergNpcPop(); renderH4Kerk(Object.assign({}, loc, { _stap: 2 })); } });
+  acties.push({ label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' });
   renderLocatieScene({
     container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: kerkBinnenAfbeelding(),
     sprekerPops: Object.assign({}, SPREKER_POPS, { 'Tobbe': 'karakters/terugkerend/tobbeaggressief-pop.png' }),
-    dialog: [
-      'Naarmate je dichterbij komt, hoor je het. Een melodietje, zacht neuri\u00ebn. Bijna te mooi voor een kind van zijn leeftijd.',
-      { tekst: 'Vlak voor je bij hem bent, draait hij zich om.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } },
-      'Het is Tobbe. Maar niet zoals je hem kent.',
-      { spreker: 'Fenna-Vivi\u00e8nne', tekst: '*(schrikt, draait zich meteen om)* Wat is er met hem aan de hand...' }
-    ],
-    acties: [
-      { label: 'Loop naar de non', onclick: function() { verbergNpcPop(); renderH4Kerk(Object.assign({}, loc, { _stap: 2 })); } },
-      { label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
-    ]
+    dialog: dialog,
+    acties: acties
   });
 }
 
-// Felix loopt naar het jongetje. Herkent Tobbe, krijgt de agressieve uitbarsting.
+// Felix loopt naar het jongetje. Eerste keer de herkenning en de agressieve
+// uitbarsting; daarna (tobbe_kerk_ontmoet) een kortere tweede ontmoeting waarin
+// Tobbe dwars door zijn vermomming heen kijkt. Na de biecht is de non weg: dan
+// vervalt de "naar de non"-knop en komt er een regel bij dat ze verdwenen is.
 function felixNaarTobbe() {
   const cont = document.getElementById('locatie-content');
   const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
   const verm = state.vermomming;
+  const nonWeg = biechtPriscillaWeg();
+  const tweede = tobbeKerkOntmoet();
   verbergNpcPop();
-  var openingRegel;
-  if (verm === 'Liu-Yen') {
-    openingRegel = { spreker: 'Liu-Yen', tekst: '"Hoi. Jij hier alleen? Ik ook een beetje alleen."' };
-  } else if (verm === 'Lola') {
-    openingRegel = { spreker: 'Lola', tekst: '"Hola, kleine man. Een beetje somber hier, vind je niet, para nada leuk voor een kind."' };
-  } else if (verm === 'Lucinde') {
-    openingRegel = { spreker: 'Lucinde', tekst: '"Wat doet een jongen als jij hier zo in zijn eentje."' };
+  var dialog = [];
+  if (tweede) {
+    if (nonWeg) dialog.push('Van de non is geen spoor meer te bekennen. Achterin zit Tobbe nog, alleen op zijn bankje.');
+    dialog.push('Je loopt naar hem toe. Je weet nu wat daar zit, en je weet dat het jou net zo goed kent.');
+    dialog.push({ tekst: 'Tobbe draait zijn hoofd en kijkt je recht aan. Dwars door je gezicht heen, alsof geen enkel masker ertoe doet.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } });
+    dialog.push({ spreker: 'Tobbe', tekst: '"De Vos. Denk je dat een ander jasje mij voor de gek houdt? Ik zie precies wie je bent."' });
+    dialog.push({ spreker: 'Felix', tekst: '*(in gedachten)* Ik heb honderd gezichten, en dit kind kijkt er dwars doorheen. Wie bespeelt hier eigenlijk wie.' });
+    dialog.push({ spreker: 'Tobbe', tekst: '"Rot op. Voorlopig."' });
   } else {
-    openingRegel = { spreker: 'Felix', tekst: '"H\u00e9. Alles goed met je?"' };
+    markVisited('tobbe_kerk_ontmoet');
+    var openingRegel;
+    if (verm === 'Liu-Yen') {
+      openingRegel = { spreker: 'Liu-Yen', tekst: '"Hoi. Jij hier alleen? Ik ook een beetje alleen."' };
+    } else if (verm === 'Lola') {
+      openingRegel = { spreker: 'Lola', tekst: '"Hola, kleine man. Een beetje somber hier, vind je niet, para nada leuk voor een kind."' };
+    } else if (verm === 'Lucinde') {
+      openingRegel = { spreker: 'Lucinde', tekst: '"Wat doet een jongen als jij hier zo in zijn eentje."' };
+    } else {
+      openingRegel = { spreker: 'Felix', tekst: '"H\u00e9. Alles goed met je?"' };
+    }
+    if (nonWeg) dialog.push('Van de non is geen spoor meer te bekennen. Achterin zit alleen nog een jongetje, op zijn bankje.');
+    dialog.push('Je gaat naast hem zitten. Hij zegt niets, dus jij begint.');
+    dialog.push(openingRegel);
+    dialog.push('Wat je ook zegt, hij reageert niet meteen. Dan pas kijk je goed. Echt goed.');
+    dialog.push('Even denk je dat je het verkeerd ziet. Dan valt het kwartje.');
+    dialog.push({ spreker: 'Felix', tekst: '*(in gedachten)* Wacht, verdorie. Dit is Tobbe. Uit het Kraaienkwartier.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } });
+    dialog.push('De stem die volgt, past niet bij wat je ziet. Krakend, oud, absoluut niet die van een jongen.');
+    dialog.push({ spreker: 'Tobbe', tekst: '"Jij!!!! Jij verpest alles! Ik haat je! Ik haat je!"' });
+    dialog.push('Hij staat op. Loopt naar de deur achterin de kerk. Bij de opening blijft hij nog even staan, kijkt om het hoekje terug. Zijn blik is niets dan agressie.');
+    dialog.push({ tekst: 'Dan is hij weg.', onShow: function() { verbergNpcPop(); } });
+    dialog.push('Even sta je daar gewoon.');
   }
+  var acties = [];
+  if (!nonWeg) acties.push({ label: 'Loop naar de non', onclick: function() { verbergNpcPop(); renderH4Kerk(Object.assign({}, loc, { _stap: 2 })); } });
+  acties.push({ label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' });
   renderLocatieScene({
     container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Achterin de kerk', image: kerkBinnenAfbeelding(),
     sprekerPops: Object.assign({}, SPREKER_POPS, { 'Tobbe': 'karakters/terugkerend/tobbeaggressief-pop.png' }),
+    dialog: dialog,
+    acties: acties
+  });
+}
+
+// Felix kwam pas na de biecht in de kerk en heeft de non nooit ontmoet. Voor
+// de rest van de kerk-communicatie (Tobbe) verschijnt ze heel even achterin:
+// ze zwijgt, kijkt hem met een spottende blik aan en verdwijnt weer. Zo heeft
+// hij haar ook gezien en blijft ze verdacht. Geen naam: hij weet niet wie ze
+// is, of dat het er maar \u00e9\u00e9n is. Daarna loopt hij door naar Tobbe.
+function felixNonVerschijning() {
+  const cont = document.getElementById('locatie-content');
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  markVisited('priscilla_gezien_felix');
+  renderLocatieScene({
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Binnen', image: kerkBinnenAfbeelding(),
     dialog: [
-      'Je gaat naast hem zitten. Hij zegt niets, dus jij begint.',
-      openingRegel,
-      'Wat je ook zegt, hij reageert niet meteen. Dan pas kijk je goed. Echt goed.',
-      'Even denk je dat je het verkeerd ziet. Dan valt het kwartje.',
-      { spreker: 'Felix', tekst: '*(in gedachten)* Wacht, verdorie. Dit is Tobbe. Uit het Kraaienkwartier.', onShow: function() { toonNpcPop('karakters/terugkerend/tobbeaggressief-pop.png'); } },
-      'De stem die volgt, past niet bij wat je ziet. Krakend, oud, absoluut niet die van een jongen.',
-      { spreker: 'Tobbe', tekst: '"Jij!!!! Jij verpest alles! Ik haat je! Ik haat je!"' },
-      'Hij staat op. Loopt naar de deur achterin de kerk. Bij de opening blijft hij nog even staan, kijkt om het hoekje terug. Zijn blik is niets dan agressie.',
-      { tekst: 'Dan is hij weg.', onShow: function() { verbergNpcPop(); } },
-      'Even sta je daar gewoon.'
+      'De kerk is stil. Je wil net naar het jongetje achterin lopen als je iets in je ooghoek ziet.',
+      { tekst: 'Achterin de zaal staat een non. Ze was er net nog niet. Ze zegt niets.', onShow: function() { setTimeout(function(){ toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); }, 200); } },
+      'Ze kijkt je recht aan, met een spottend lachje om haar mond. Alsof ze iets weet wat jij niet weet.',
+      { tekst: 'Dan is ze weg. Zomaar. De bank achterin is leeg alsof er nooit iemand zat.', onShow: function() { verbergNpcPop(); } },
+      { spreker: 'Felix', tekst: '*(in gedachten)* Wie was dat. En hoe wist ze mij zo aan te kijken. Die onthoud ik.' }
     ],
     acties: [
-      { label: 'Loop naar de non', onclick: function() { renderH4Kerk(Object.assign({}, loc, { _stap: 2 })); } },
-      { label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
+      { label: 'Verder', onclick: felixNaarTobbe }
     ]
   });
 }
@@ -23473,7 +23600,9 @@ function buildDebugPanel() {
       ['🕯️ Ikzelf ga het biechthokje in (vast)', function(){ close(); biechtGaNaarBinnen(); }, biechtGateOpen() && !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['🤝 Iemand zit vast in het hokje (helper-kant)', function(){ markVisited('priscilla_biecht_vast'); close(); }, !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['👻 Priscilla weg (biecht afgerond)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); close(); }, !biechtPriscillaWeg(), 'H4 Kerk'],
-      ['🔄 Reset biechthokje', function(){ ['priscilla_biecht_vast','priscilla_weg'].forEach(function(f){ state.visited.delete(f); setSharedState('vflag_' + f, null); }); ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, null); }); state.biechtGanger = false; state.biechtGangerKlaar = false; close(); }, true, 'H4 Kerk'],
+      ['🕵️ Felix: non-verschijning testen (non weg + gezien wissen)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); state.visited.delete('priscilla_gezien_felix'); close(); }, state.personage === 'felix', 'H4 Kerk'],
+      ['👋 Tobbe kerk: eerste ontmoeting resetten (weer 1e keer)', function(){ state.visited.delete('tobbe_kerk_ontmoet'); close(); }, tobbeKerkOntmoet(), 'H4 Kerk'],
+      ['🔄 Reset biechthokje', function(){ ['priscilla_biecht_vast','priscilla_weg'].forEach(function(f){ state.visited.delete(f); setSharedState('vflag_' + f, null); }); ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, null); }); state.visited.delete('tobbe_kerk_ontmoet'); state.visited.delete('priscilla_gezien_felix'); state.biechtGanger = false; state.biechtGangerKlaar = false; state.biechtHelperActief = false; close(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
