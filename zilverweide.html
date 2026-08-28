@@ -1015,11 +1015,10 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   padding:.35vh 0 .3vh; border-bottom:1px solid rgba(80,52,24,.5);
   margin-bottom:1.7vh;
 }
-/* Linkerpagina: de molen. De body loopt met shape-outside om de molen-schets
-   heen (boven over de volle breedte, daaronder ernaast verder). Het molen-
-   kader loopt van ~48% tot ~90% van de boekhoogte, links 8% tot 30% van het
-   boek. De kr-wm-float (eerste kind van de kolom, volle hoogte) reserveert de
-   linker 60% vanaf die kaderrand, met marge zodat de tekst het kader niet raakt. */
+/* Linkerpagina: de molen. De molen-schets in de boekafbeelding staat linksonder
+   (van ~48% tot ~90% van de boekhoogte). De kop en de korte body staan er
+   volledig boven, over de volle kolombreedte; de tekst is kort genoeg om ruim
+   boven de schets te eindigen, zodat hij het kader nooit kan raken. */
 .kr-kopm{
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#1c1005;
   font-size:clamp(1rem,2.6vh,1.7rem); line-height:1.06;
@@ -1028,10 +1027,6 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .kr-bodym{
   font-family:'KrantBody',Georgia,serif; color:#241608;
   font-size:clamp(.82rem,1.75vh,1.18rem); line-height:1.42; text-align:justify; margin-top:.8vh;
-}
-.kr-wm{
-  float:left; width:60%; height:100%;
-  shape-outside:polygon(0 49%,100% 49%,100% 100%,0 100%); shape-margin:2%;
 }
 /* Rechterpagina: kerkdienst en Nummer 2 onder elkaar in dezelfde kolom, met
    een ruit ertussen. Het portret-kader loopt van ~67% tot ~92% van de
@@ -26445,8 +26440,8 @@ function toonKrantenAanloop(container) {
 // De opengevouwen krant op locatie-formaat. Volgorde: de krant faadt in
 // (kr-beeld-in), dan de artikelteksten (kr-tekst-in), dan de nabeschouwing
 // plus de Verder-knop. De team-hint zit op het aanloopscherm, niet hier.
-// De zone-posities, lettergroottes en de shape-outside-wrap om de schetsen
-// (kr-wm / kr-pt) staan in de CSS zodat ze in een keer bij te stellen zijn.
+// Elke pagina is een doorlopende flow-kolom; posities, lettergroottes en de
+// shape-outside-wrap om het portret (kr-pt) staan in de CSS.
 function toonKrantenSpread(container) {
   if (!container) return;
 
@@ -26464,14 +26459,14 @@ function toonKrantenSpread(container) {
         '<img class="kr-boek-img" id="kr-boek-img" src="' + ARCHIEF_KRANT_SPREAD + '" alt="">' +
         // Krantennaam groot boven elke pagina, binnen het kader, met sierlijke D
         // Linkerpagina: EEN doorlopende kolom (naam, datum, kop, tekst in flow).
-        // De molen-body loopt via de kr-wm-float om de molen-schets heen.
+        // De molen-body staat volledig BOVEN de molen-schets (kort, volle
+        // breedte), zodat de tekst het schets-kader nooit kan raken.
         '<div class="kr-tekst kr-pag-l">' +
-          '<span class="kr-wm"></span>' +
           '<div class="kr-name"><span class="kr-cap">D</span>e Zilverweidse Bode</div>' +
           '<div class="kr-dateline">Zilverweide, den veertienden van Slachtmaand</div>' +
           '<div class="kr-kopm">Molen afgebrand,<br>molenaar omgekomen</div>' +
           '<div class="kr-diamond"></div>' +
-          '<div class="kr-bodym">De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek, doch een verklaring ontbreekt. De begrafenis is in besloten kring; getuigen melden zich bij de stadswacht.</div>' +
+          '<div class="kr-bodym">De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek, doch een verklaring ontbreekt.</div>' +
         '</div>' +
         // Rechterpagina: EEN doorlopende kolom met kerkdienst en Nummer 2 onder
         // elkaar (ruit ertussen). De Nummer 2-tekst loopt om het portret heen.
