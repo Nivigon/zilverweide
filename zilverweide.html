@@ -12176,11 +12176,25 @@ function renderH4Kerk(loc) {
     verbergNpcPop();
     if (loc._biechtNazicht || (state.biechtGanger && !state.biechtGangerKlaar)) {
       state.biechtHelperActief = false;
+      // Reddings-tweegesprek: beide spelers zien elkaars pop. De ganger bedankt
+      // de redder en noemt de heks; de redder reageert verward. Namen en pops
+      // komen uit de gedeelde rollen (ganger bij binnengaan, redder bij het
+      // openen van het codescherm). Onbekend = neutrale terugval.
+      var benGanger = !!state.biechtGanger;
+      var gangerInfo = biechtRolInfo(benGanger ? state.personage : getSharedState('biecht_ganger_rol'));
+      var redderInfo = biechtRolInfo(benGanger ? getSharedState('biecht_redder_rol') : state.personage);
+      var anderPop = benGanger ? redderInfo.pop : gangerInfo.pop;
+      // De pop van de ander via sprekerPops (zelfde weg als de Tobbe-scene), zo
+      // toont elk tablet het portret van de andere speler bij beide regels.
+      var biechtSprekerPops = {};
+      if (anderPop) { biechtSprekerPops[gangerInfo.naam] = anderPop; biechtSprekerPops[redderInfo.naam] = anderPop; }
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
+        sprekerPops: biechtSprekerPops,
         dialog: [
-          'De deur van het hokje valt achter je dicht. De kerk is stil.',
-          'Waar de non stond, is niemand meer. Geen voetstap, geen gezang, niets.'
+          { spreker: gangerInfo.naam, tekst: '"Dankje, ' + redderInfo.naam + '. Een van die heksen. Ze was hier."' },
+          { spreker: redderInfo.naam, tekst: '"Heks? Wat? Waar?"' },
+          { tekst: 'Jullie kijken panisch om je heen, maar de kerk is leeg.', onShow: function () { verbergNpcPop(); } }
         ],
         acties: [
           { label: '← Naar buiten', onclick: function () { state.biechtGangerKlaar = true; verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
@@ -12210,7 +12224,8 @@ function renderH4Kerk(loc) {
         container: cont, titel: loc.naam, sub: 'In het biechthokje', image: BIECHTKAMER_IMG,
         geenTerug: true,
         dialog: [
-          'De deur van het hokje geeft niet mee. Je zit vast. Aan de andere kant van het paneel hoor je de stem van je teamgenoot.'
+          'Ze heeft de deur achter je dichtgetrokken. Je zit vast in het donker.',
+          'Roep je vrienden, zo hard als je kunt. Misschien dat er eentje je hier weg kan halen.'
         ],
         extra:
           '<div class="code-section">' +
@@ -12222,12 +12237,16 @@ function renderH4Kerk(loc) {
     }
     // De redder houdt de code vast en mag niet weg tot de ganger hem invoert
     // (geenTerug). De listener op priscilla_weg laat dit scherm daarna live los.
+    // De redder publiceert hier zijn rol, ruim voordat de ganger de code
+    // intikt, zodat het tweegesprek daarna beide namen kent (geen race).
     state.biechtHelperActief = true;
+    setSharedState('biecht_redder_rol', state.personage);
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: BIECHTKAMER_IMG,
       geenTerug: true,
       dialog: [
-        'Je teamgenoot verdween het hokje in en de deur sloeg dicht. Er klopt iets niet. Jij blijft hier tot ze er weer uit zijn.'
+        'Je hoort een van je teamgenoten roepen, vanuit een houten biechtkamertje achterin de kerk. Iemand heeft de deur aan de buitenkant vastgezet.',
+        'Je wrikt en trekt, tot het net genoeg meegeeft om ze eruit te kunnen helpen. Nu nog doorgeven hoe ze zichzelf losmaken.'
       ],
       extra:
         '<div style="padding:1rem;background:rgba(0,0,0,.4);border:1px solid var(--gold);border-radius:4px;text-align:center">' +
@@ -12259,10 +12278,10 @@ function renderH4Kerk(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
-        'Priscilla staat al bij het altaar als je binnenkomt, en kijkt op alsof je iets hebt verstoord wat nog niemand had opgemerkt.',
-        { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+        'Een non staat al bij het altaar als je binnenkomt, en kijkt op alsof je iets hebt verstoord wat nog niemand had opgemerkt.',
+        { spreker: 'De non', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
         'Je twijfelt even, niet zeker hoe je haar moet aanspreken.',
-        { spreker: 'Priscilla', tekst: '"Priscilla." *(korte stilte)* "Maar zeg maar gewoon U."' },
+        { spreker: 'De non', tekst: '"Priscilla." *(korte stilte)* "Maar zeg maar gewoon U."' },
         { spreker: 'Priscilla', tekst: '"Wat kom jij hier zoeken, kind. Dit is een huis van stilte. Niet van nieuwsgierigheid."' },
         'Haar blik valt op het boek dat je vasthoudt. Ze fronst.',
         { spreker: 'Priscilla', tekst: '"Als je soms voor ons priv\u00e9-archief komt, dan kan ik je nu al vertellen: zo\'n bemoeizuchtig type als jij laat ik daar niet binnen."' },
@@ -12299,9 +12318,9 @@ function renderH4Kerk(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Bij de non', image: kerkBinnenAfbeelding(),
       dialog: [
-        { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+        { spreker: 'De non', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
         'Je opent je mond om te reageren, maar ze is je voor.',
-        { spreker: 'Priscilla', tekst: '"Priscilla. Maar zeg maar gewoon U."' },
+        { spreker: 'De non', tekst: '"Priscilla. Maar zeg maar gewoon U."' },
         'Ze ziet je aankomen en heeft duidelijk al een mening klaarliggen.',
         { spreker: 'Priscilla', tekst: '"Jij bent er een die meer om haar uiterlijk geeft dan om haar ziel. Dat zie ik zo." *(kijkt je van top tot teen)* "Onze kerk kijkt niet naar mooie gezichten, kind. Dat zou jij moeten weten."' },
         'Ze sneert nog even door, over ijdelheid, over hoe het dorp "types zoals jij" nooit heeft vertrouwd.',
@@ -12338,8 +12357,8 @@ function renderH4Kerk(loc) {
     markVisited('priscilla_gezien_felix');
     const verm = state.vermomming;
     var dialog = [
-      { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
-      { spreker: 'Priscilla', tekst: '"Priscilla. Maar zeg maar gewoon U."' }
+      { spreker: 'De non', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+      { spreker: 'De non', tekst: '"Priscilla. Maar zeg maar gewoon U."' }
     ];
     if (verm === 'Liu-Yen') {
       dialog.push({ spreker: 'Liu-Yen', tekst: '"Nihao. Waarom mevrouw zo boos kijken?"' });
@@ -12377,9 +12396,9 @@ function renderH4Kerk(loc) {
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
-        'Priscilla kijkt op zodra je binnenkomt, klaar voor de aanval.',
-        { spreker: 'Priscilla', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
-        { spreker: 'Priscilla', tekst: '"Priscilla. Maar zeg maar gewoon U."' },
+        'Een non kijkt op zodra je binnenkomt, klaar voor de aanval.',
+        { spreker: 'De non', tekst: '"Ja? Nou?"', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+        { spreker: 'De non', tekst: '"Priscilla. Maar zeg maar gewoon U."' },
         { spreker: 'Priscilla', tekst: '"Weer eentje die hier komt snuffelen, zeker."' },
         { spreker: 'Jan', tekst: '"Ik snuffel niet. Ik kijk gewoon. Dat is anders."' },
         'Ze trekt een wenkbrauw op.',
@@ -12426,6 +12445,15 @@ function biechtPriscillaWeg() { return hasVisited('priscilla_weg'); }
 // of als verschijning na de biecht).
 function tobbeKerkOntmoet() { return hasVisited('tobbe_kerk_ontmoet'); }
 function priscillaGezienFelix() { return hasVisited('priscilla_gezien_felix'); }
+// Naam en speler-pop per rol, voor het reddings-tweegesprek na het biechthokje.
+function biechtRolInfo(rol) {
+  var namen = { jan: 'Jan', kelly: 'Kelly', fenna: 'Fenna-Viviènne', felix: 'Felix' };
+  var pops = {
+    jan: 'karakters/spelers/jan-pop.png', kelly: 'karakters/spelers/kelly-pop.png',
+    fenna: 'karakters/spelers/fenna-pop.png', felix: 'karakters/spelers/felix-pop.png'
+  };
+  return { naam: namen[rol] || 'je teamgenoot', pop: pops[rol] || null };
+}
 function biechtBeschikbaar() {
   return state.personage !== 'felix'
       && biechtGateOpen()
@@ -12487,15 +12515,18 @@ function biechtNietDoen() {
     ]
   });
 }
-// Ja: de speler neemt plaats in het hokje. Eerst de scare-cinematic (fade,
-// ogen inzoomen, rode Filler-tekst, een paar flitsen, circa 10s), daarna de
-// vast-branche met de code-invoer. De gedeelde vlag gaat meteen om, zodat de
-// teamgenoot in de kerk de code al ziet terwijl de cinematic loopt.
+// Ja: de speler neemt plaats in het hokje. Eerst de scare-cinematic (fade naar
+// zwart, witte tekst, flitsen met de ogen, circa 12s), daarna de vast-branche
+// met de code-invoer. De gedeelde vast-vlag gaat pas OM in onKlaar, als het
+// invoerscherm er daadwerkelijk is. Zo krijgen de teamgenoten de code bij de
+// kerk pas als de ganger echt vastzit; tijdens de cinematic lopen ze anders
+// gewoon de normale kerk in.
 function biechtGaNaarBinnen() {
-  state.biechtGanger = true;
-  markVisited('priscilla_biecht_vast');
+  state.biechtGanger = true;   // lokaal: dit tablet is de ganger
   verbergNpcPop();
   speelBiechtCinematic(function () {
+    markVisited('priscilla_biecht_vast');
+    setSharedState('biecht_ganger_rol', state.personage);
     const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
     if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 }));
   });
@@ -12530,49 +12561,57 @@ function bkCinematicStyle() {
     '#biecht-cinematic{position:fixed;inset:0;z-index:600;background:#05040a;opacity:0;transition:opacity 1s ease;display:flex;align-items:center;justify-content:center;overflow:hidden}' +
     '#biecht-cinematic.bk-dim{opacity:1}' +
     '#biecht-cinematic.bk-out{opacity:0;transition:opacity 1.2s ease}' +
-    '#biecht-cinematic .bk-eyes{position:absolute;top:50%;left:50%;width:min(80vw,620px);height:auto;transform:translate(-50%,-50%) scale(.5);opacity:0;pointer-events:none;filter:brightness(1.1) drop-shadow(0 0 22px rgba(200,20,20,.5));transition:opacity 1.6s ease,transform 1.8s cubic-bezier(.2,.8,.2,1)}' +
-    '#biecht-cinematic.bk-eyes-on .bk-eyes{opacity:1;transform:translate(-50%,-50%) scale(1)}' +
-    '#biecht-cinematic .bk-text{position:relative;z-index:3;font-family:Cinzel,serif;font-size:clamp(28px,7vw,72px);letter-spacing:.12em;color:#e23b2e;opacity:0;transition:opacity .8s ease;text-shadow:0 0 30px rgba(226,59,46,.8)}' +
-    '#biecht-cinematic.bk-text-on .bk-text{opacity:1;animation:bk-ragepulse 1.4s ease-in-out infinite}' +
-    '@keyframes bk-ragepulse{0%,100%{text-shadow:0 0 24px rgba(226,59,46,.5)}50%{text-shadow:0 0 46px rgba(226,59,46,.95)}}' +
+    '#biecht-cinematic .bk-eyes{position:absolute;top:50%;left:50%;width:min(80vw,620px);height:auto;transform:translate(-50%,-50%) scale(.7);opacity:0;pointer-events:none;filter:brightness(1.15) drop-shadow(0 0 24px rgba(200,20,20,.6))}' +
+    '#biecht-cinematic .bk-eyes.bk-eyes-pop{animation:bk-eyepop .7s ease}' +
+    '@keyframes bk-eyepop{0%{opacity:0;transform:translate(-50%,-50%) scale(.7)}18%{opacity:1;transform:translate(-50%,-50%) scale(1.04)}82%{opacity:1;transform:translate(-50%,-50%) scale(1)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.05)}}' +
+    '#biecht-cinematic .bk-text{position:relative;z-index:3;max-width:88vw;text-align:center;font-family:Cinzel,serif;font-size:clamp(24px,5.5vw,60px);letter-spacing:.08em;line-height:1.3;color:#f4f1ea;opacity:0;transition:opacity .5s ease;text-shadow:0 0 26px rgba(255,255,255,.55),0 0 8px rgba(255,255,255,.85)}' +
+    '#biecht-cinematic.bk-text-on .bk-text{opacity:1}' +
     '#biecht-cinematic .bk-flash{position:absolute;inset:0;pointer-events:none;background:#cfe3ff;opacity:0;mix-blend-mode:screen;z-index:2}' +
     '#biecht-cinematic.bk-strike .bk-flash{animation:bk-bolt .55s linear}' +
     '@keyframes bk-bolt{0%{opacity:0}4%{opacity:.9}10%{opacity:.12}16%{opacity:.78}24%{opacity:.05}30%{opacity:.55}100%{opacity:0}}';
   document.head.appendChild(s);
 }
 
-// De scare-cinematic zelf. Circa 10 seconden, daarna onKlaar. Ontbrekende
-// ogen_beide.png is geen bug: dan blijven de flitsen en de tekst over.
+// De scare-cinematic zelf. Circa 12 seconden, daarna onKlaar. Fade naar zwart,
+// witte tekst die per beat wisselt, en de ogen die op de "bam"-momenten kort in
+// beeld flitsen. Ontbrekende ogen_beide.png is geen bug: dan blijven de flitsen
+// en de tekst over.
 function speelBiechtCinematic(onKlaar) {
   bkCinematicStyle();
   var ov = document.createElement('div');
   ov.id = 'biecht-cinematic';
   ov.innerHTML =
     '<img class="bk-eyes" src="ogen_beide.png" alt="">' +
-    '<div class="bk-text">Filler</div>' +
+    '<div class="bk-text"></div>' +
     '<div class="bk-flash"></div>';
   document.body.appendChild(ov);
+  var txt = ov.querySelector('.bk-text');
+  var eyes = ov.querySelector('.bk-eyes');
   void ov.offsetWidth;              // reflow, dan fade-to-black
   ov.classList.add('bk-dim');
   var timers = [];
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
-  // Na 2s zwart de ogen inzoomen, met een scare-geluid.
-  later(function () {
-    ov.classList.add('bk-eyes-on');
-    try { var a = new Audio('scaresound.mp3'); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {}
-  }, 2000);
-  later(function () { ov.classList.add('bk-text-on'); }, 2800);
-  // Een paar flitsen, zoals de zolderscene.
-  [3200, 4200, 5300, 6800].forEach(function (t) {
-    later(function () { ov.classList.remove('bk-strike'); void ov.offsetWidth; ov.classList.add('bk-strike'); }, t);
-  });
-  // Uitfaden en klaar (circa 10s totaal).
-  later(function () { ov.classList.add('bk-out'); }, 8800);
+  function zetTekst(html) { ov.classList.remove('bk-text-on'); void txt.offsetWidth; txt.innerHTML = html; ov.classList.add('bk-text-on'); }
+  function flits() { ov.classList.remove('bk-strike'); void ov.offsetWidth; ov.classList.add('bk-strike'); }
+  function ogenFlits() { eyes.classList.remove('bk-eyes-pop'); void eyes.offsetWidth; eyes.classList.add('bk-eyes-pop'); }
+  function scare() { try { var a = new Audio('scaresound.mp3'); a.volume = 0.7; a.play().catch(function () {}); } catch (e) {} }
+
+  // Eerst een witte regel: er is iets aan de deur.
+  later(function () { zetTekst('Je hoort iets aan de deur.'); }, 1300);
+  // Bam: flits met de ogen kort in beeld, en het scare-geluid.
+  later(function () { flits(); ogenFlits(); scare(); }, 2700);
+  later(function () { zetTekst('Whahaha! Dat was je deur... voor nu zit je hier met mij.'); }, 3300);
+  later(function () { ogenFlits(); }, 5300);
+  later(function () { zetTekst('Alle tijd die jullie sukkels verdoen, brengt ons dichterbij...'); }, 5900);
+  later(function () { zetTekst('Dichterbij eeuwige stilte!!'); }, 8100);
+  later(function () { flits(); ogenFlits(); zetTekst('Whahaha.'); }, 9800);
+  // Uitfaden en klaar (circa 12s totaal).
+  later(function () { ov.classList.add('bk-out'); }, 11400);
   later(function () {
     timers.forEach(clearTimeout);
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     if (typeof onKlaar === 'function') onKlaar();
-  }, 10000);
+  }, 12700);
 }
 
 // Kelly kiest ervoor NIET naar het archief te gaan.
@@ -23602,7 +23641,7 @@ function buildDebugPanel() {
       ['👻 Priscilla weg (biecht afgerond)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); close(); }, !biechtPriscillaWeg(), 'H4 Kerk'],
       ['🕵️ Felix: non-verschijning testen (non weg + gezien wissen)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); state.visited.delete('priscilla_gezien_felix'); close(); }, state.personage === 'felix', 'H4 Kerk'],
       ['👋 Tobbe kerk: eerste ontmoeting resetten (weer 1e keer)', function(){ state.visited.delete('tobbe_kerk_ontmoet'); close(); }, tobbeKerkOntmoet(), 'H4 Kerk'],
-      ['🔄 Reset biechthokje', function(){ ['priscilla_biecht_vast','priscilla_weg'].forEach(function(f){ state.visited.delete(f); setSharedState('vflag_' + f, null); }); ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, null); }); state.visited.delete('tobbe_kerk_ontmoet'); state.visited.delete('priscilla_gezien_felix'); state.biechtGanger = false; state.biechtGangerKlaar = false; state.biechtHelperActief = false; close(); }, true, 'H4 Kerk'],
+      ['🔄 Reset biechthokje', function(){ ['priscilla_biecht_vast','priscilla_weg'].forEach(function(f){ state.visited.delete(f); setSharedState('vflag_' + f, null); }); ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, null); }); setSharedState('biecht_ganger_rol', null); setSharedState('biecht_redder_rol', null); state.visited.delete('tobbe_kerk_ontmoet'); state.visited.delete('priscilla_gezien_felix'); state.biechtGanger = false; state.biechtGangerKlaar = false; state.biechtHelperActief = false; close(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
