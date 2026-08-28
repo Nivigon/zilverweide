@@ -629,9 +629,16 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .ow-intro-knop{font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.18em;text-transform:uppercase;padding:.65rem 2.3rem;border:1px solid rgba(var(--goudrgb),calc(.55 * var(--lijn)));background:rgba(var(--goudrgb),calc(.08 * var(--vlak)));color:var(--gold);cursor:pointer;border-radius:50px;transition:all .35s ease;box-shadow:0 0 14px rgba(var(--goudrgb),calc(.1 * var(--schaduwdiepte)))}
 .ow-intro-knop:hover{background:rgba(var(--goudrgb),calc(.18 * var(--vlak)));box-shadow:0 0 22px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte)));color:#f0dfae}
 .ow-intro-lift{z-index:9500 !important;pointer-events:none !important;animation:owIntroLiftIn .6s ease}
+/* Als de speler de echte knop zelf moet aantikken, tillen we hem net zo hoog
+   maar houden we hem klikbaar (ow-intro-lift zet pointer-events juist uit). */
+.ow-intro-tap{z-index:9500 !important;pointer-events:auto !important;animation:owIntroLiftIn .6s ease}
 .ow-intro-spot{animation:owIntroGloed 1.8s ease-in-out infinite;border-radius:50px}
 .zone-tile.ow-intro-spot{border-radius:6px;z-index:9500;pointer-events:none;animation:owIntroLiftIn .6s ease,owIntroGloed 1.8s ease-in-out .6s infinite}
 .ow-intro-dim{opacity:.15 !important;transition:opacity .45s ease}
+/* Bij een geopend schermvullend paneel (inventaris, rol-overzicht) dokt de
+   uitlegtekst bovenin, zodat hij de knoppen onderin dat paneel (met name de
+   terugknop die de speler moet aantikken) nooit bedekt. */
+.ow-intro-paneel.ow-boven{top:max(1rem,env(safe-area-inset-top,0px));bottom:auto}
 @keyframes owIntroGloed{
   0%,100%{box-shadow:0 0 14px rgba(240,205,80,.4)}
   50%{box-shadow:0 0 0 4px rgba(240,210,90,.15),0 0 32px rgba(240,205,80,.85)}
@@ -645,6 +652,7 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   .ow-intro-orn::before,.ow-intro-orn::after{width:min(40px,8vw)}
   .ow-intro-tekst{font-size:.92rem;line-height:1.5;margin-bottom:.6rem}
   .ow-intro-knop{padding:.45rem 1.6rem;font-size:.7rem}
+  .ow-intro-paneel.ow-boven{top:.7rem;bottom:auto}
 }
 /* Missie-teller: flash animatie wanneer er een key wordt aangevinkt. */
 #missie-teller.missie-flash{
@@ -1996,7 +2004,7 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
     <div class="inv-ov-divider"><span>✦</span></div>
     <div class="inv-ov-grid" id="inv-ov-grid"></div>
     <div class="inv-ov-detail" id="inv-ov-detail" style="display:none"></div>
-    <button class="back-btn" style="margin-top:1.1rem" onclick="sluitInventarisOverzicht()">← Terug naar Zilverweide</button>
+    <button class="back-btn" id="inv-ov-sluit" style="margin-top:1.1rem" onclick="sluitInventarisOverzicht()">← Terug naar Zilverweide</button>
   </div>
 </div>
 
@@ -2008,7 +2016,7 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
     <div class="inv-ov-divider"><span>✦</span></div>
     <div id="rol-ov-slot"></div>
     <div id="rol-ov-anderen"></div>
-    <button class="back-btn" style="margin-top:1.1rem" onclick="sluitRolOverzicht()">← Terug naar Zilverweide</button>
+    <button class="back-btn" id="rol-ov-sluit" style="margin-top:1.1rem" onclick="sluitRolOverzicht()">← Terug naar Zilverweide</button>
   </div>
 </div>
 
@@ -5720,20 +5728,56 @@ function startOverworldIntro() {
 
   var stappen = [
     { tekst: 'Welkom in Zilverweide. We gaan je kort op weg helpen.' },
-    { lift: '#inv-bar', doel: '#inv-bar .inv-knop',
-      tekst: 'Linksboven in het scherm staat je inventaris. Druk hierop om te zien welke voorwerpen je hebt verzameld. Het kleine rondje geeft aan hoeveel voorwerpen je hebt. Knippert het rondje, dan zit er een nieuw voorwerp in je inventaris.' },
+
+    // Inventaris: de speler opent hem zelf en sluit hem daarna zelf.
+    { tik: true, lift: '#inv-bar', doel: '#inv-bar .inv-knop',
+      tekst: 'Probeer maar eens! Druk hier.',
+      actie: function () { openInventarisOverzicht(); } },
+    { paneel: true,
+      tekst: 'Dit is je inventaris, je rugzak. Hier bewaar je alles wat je onderweg vindt. Druk je op een voorwerp, dan krijg je er soms een extra hint of uitleg bij.' },
+    { tik: true, paneel: true, doel: '#inv-ov-sluit',
+      tekst: 'Tijd om terug te gaan. Druk hier!',
+      actie: function () { sluitInventarisOverzicht(); } },
+
+    // Verhaalscore: zelf openen. Bij de start nog leeg, vult zich vanzelf.
+    { tik: true, lift: '#topright-cluster', doel: '#missie-teller', dim: ['#hulp-knop', '#avatar-badge'],
+      tekst: 'Druk hier ook maar eens op!',
+      actie: function () {
+        var p = document.getElementById('missie-paneel');
+        if (!p) return;
+        // Bewust zonder de buitenklik-sluiting van toggleMissiePaneel: tijdens
+        // de rondleiding blijft het paneel open tot de speler op Verder drukt.
+        bouwMissiePaneel();
+        p.classList.add('open');
+        window._missieNieuw = false;
+        updateMissieKnipper();
+      } },
     { lift: '#topright-cluster', doel: '#missie-teller', dim: ['#hulp-knop', '#avatar-badge'],
-      tekst: 'Rechts van het inventaris staat jullie verhaalscore. Als deze vol is, kunnen jullie naar een volgend deel van het verhaal. Je kunt erop drukken om terug te lezen wat jullie al gedaan hebben. Er staat niet wat er nog moet gebeuren, dat moeten jullie zelf uitvinden.' },
+      tekst: 'Dit is jullie verhaalscore. Nu nog leeg. Zodra jullie samen iets ontdekken of doen, vult dit zich vanzelf.',
+      naVerder: function () { sluitMissiePaneel(); } },
+
+    // Hulpknop: alleen uitleg, de speler drukt hem niet zelf in.
     { lift: '#topright-cluster', doel: '#hulp-knop', dim: ['#missie-teller', '#avatar-badge'],
       tekst: 'Naast de verhaalscore zit de hulpknop. Kom je er samen even niet uit, kun je iets niet vinden, of doet je tablet gek? Druk dan op ‘Hulp vragen’. De spelbegeleider ziet het en komt jullie op weg helpen. De knop wordt groen zolang je vraag openstaat; druk er nog eens op als het weer lukt.' },
-    { lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller', '#hulp-knop'],
-      tekst: 'En weer rechts daarvan kun je terecht als je je afvraagt wie je karakter ook alweer was. Druk dan hierop, dan kun je het altijd nog even teruglezen. Ook zie je hier wie je teamgenoten zijn en wat hun personage kan.' },
+
+    // Karakter: zelf openen en weer sluiten, net als de inventaris.
+    { tik: true, lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller', '#hulp-knop'],
+      tekst: 'Druk hier ook maar eens op!',
+      actie: function () { openRolOverzicht(); } },
+    { paneel: true,
+      tekst: 'Hier zie je wie jij ook alweer bent. Tik op de portretjes van je medespelers om te lezen wie zij zijn en wat zij kunnen.' },
+    { tik: true, paneel: true, doel: '#rol-ov-sluit',
+      tekst: 'Tijd om terug te gaan. Druk hier!',
+      actie: function () { sluitRolOverzicht(); } },
+
+    // Kaart: alleen uitleg, sluit de rondleiding af.
     { doel: '#tile-dorpsplein',
       tekst: 'Tot slot. Door op deze knoppen op de kaart te drukken bezoek je een deel van het dorp. Voer je daarna de code van de bordjes in, dan bezoek je een locatie. Jullie verhaal gaat starten bij het podium. Ik zou daar snel heen gaan. Succes!' }
   ];
 
   var overlay = document.createElement('div');
   overlay.id = 'ow-intro-overlay';
+  overlay.style.transition = 'opacity .45s ease';
   document.body.appendChild(overlay);
   // Het paneel staat los van de overlay in de body: zo tekent het boven de
   // opgelichte elementen (die tot boven de overlay getild worden).
@@ -5747,14 +5791,26 @@ function startOverworldIntro() {
   var tekstEl = paneel.querySelector('.ow-intro-tekst');
   var knop    = paneel.querySelector('.ow-intro-knop');
 
+  // Overlay tonen of wegfaden. Bij een geopend schermvullend paneel (inventaris
+  // of rol-overzicht) verdwijnt de donkere overlay, want dat paneel dekt het
+  // beeld zelf al af; zou de overlay blijven staan, dan viel hij eroverheen.
+  function zetOverlayZichtbaar(zichtbaar) {
+    overlay.style.opacity = zichtbaar ? '1' : '0';
+    overlay.style.pointerEvents = zichtbaar ? '' : 'none';
+  }
+
   var opruimSpot = null;
-  function zetSpot(stap) {
+  function zetSpot(s) {
     if (opruimSpot) { opruimSpot(); opruimSpot = null; }
-    if (!stap.doel) return;
-    var doel = document.querySelector(stap.doel);
-    var lift = stap.lift ? document.querySelector(stap.lift) : doel;
-    var dims = (stap.dim || []).map(function (s) { return document.querySelector(s); }).filter(Boolean);
-    if (lift) lift.classList.add('ow-intro-lift');
+    var doel = s.doel ? document.querySelector(s.doel) : null;
+    // Een tik-stap boven de kaart moet klikbaar boven de overlay komen
+    // (ow-intro-tap). Alle andere opgelichte elementen worden alleen getoond,
+    // niet aangeklikt (ow-intro-lift, pointer-events uit).
+    var tikBovenKaart = s.tik && !s.paneel;
+    var lift = s.lift ? document.querySelector(s.lift) : (tikBovenKaart ? doel : null);
+    var liftKlasse = tikBovenKaart ? 'ow-intro-tap' : 'ow-intro-lift';
+    var dims = (s.dim || []).map(function (sel) { return document.querySelector(sel); }).filter(Boolean);
+    if (lift) lift.classList.add(liftKlasse);
     if (doel) {
       doel.classList.add('ow-intro-spot');
       // Op korte schermen kan de dorpsplein-tegel deels buiten beeld staan.
@@ -5762,22 +5818,53 @@ function startOverworldIntro() {
     }
     dims.forEach(function (d) { d.classList.add('ow-intro-dim'); });
     opruimSpot = function () {
-      if (lift) lift.classList.remove('ow-intro-lift');
+      if (lift) lift.classList.remove(liftKlasse);
       if (doel) doel.classList.remove('ow-intro-spot');
       dims.forEach(function (d) { d.classList.remove('ow-intro-dim'); });
     };
   }
 
-  // Zolang een overgang (oplichten) of de afsluiting nog bezig is, negeert de
-  // knop clicks. Zonder dit kon te snel doorklikken een setTimeout van een
-  // eerdere stap nog laten afgaan ná het sluiten van de intro, die dan alsnog
-  // een lift/spot/dim-klasse op een echt UI-element zette dat daarna nooit
-  // meer werd opgeruimd (het bleef zo "hangen" oplichten).
+  // Eenmalige klik op het echte element (inventarisknop, verhaalscore, karakter
+  // of een terugknop). We onderscheppen de klik in de capture-fase zodat de
+  // eigen onclick van het element niet dubbel afgaat, voeren onze eigen actie
+  // uit (openen of sluiten) en gaan dan een stap verder.
+  var opruimTik = null;
+  function zetTik(s) {
+    if (opruimTik) { opruimTik(); opruimTik = null; }
+    var doel = document.querySelector(s.doel);
+    if (!doel) {
+      // Vangnet: doel niet gevonden, toon dan toch de Verder-knop zodat de
+      // speler nooit vast komt te zitten.
+      zetKnopZichtbaar(true);
+      zetKnopKlikbaar(true);
+      return;
+    }
+    function handler(ev) {
+      if (overgangBezig) return;
+      ev.preventDefault();
+      ev.stopImmediatePropagation();
+      doel.removeEventListener('click', handler, true);
+      opruimTik = null;
+      if (s.actie) { try { s.actie(); } catch (e) {} }
+      verder();
+    }
+    doel.addEventListener('click', handler, true);
+    opruimTik = function () { doel.removeEventListener('click', handler, true); };
+  }
+
+  // Zolang een overgang (oplichten) of de afsluiting nog bezig is, negeren de
+  // knop en de tik-doelen clicks. Zonder dit kon te snel doorklikken een
+  // setTimeout van een eerdere stap nog laten afgaan ná het sluiten van de
+  // intro, die dan alsnog een lift/spot/dim-klasse op een echt UI-element zette
+  // dat daarna nooit meer werd opgeruimd (het bleef zo "hangen" oplichten).
   var overgangBezig = false;
   function zetKnopKlikbaar(klikbaar) {
     knop.disabled = !klikbaar;
     knop.style.opacity = klikbaar ? '1' : '.4';
     knop.style.pointerEvents = klikbaar ? '' : 'none';
+  }
+  function zetKnopZichtbaar(zichtbaar) {
+    knop.style.display = zichtbaar ? '' : 'none';
   }
 
   var i = -1;
@@ -5792,20 +5879,39 @@ function startOverworldIntro() {
     // nieuwe tekst weer infaden. Bij de eerste stap alleen infaden.
     setTimeout(function () {
       tekstEl.textContent = s.tekst;
+      // Bij een schermvullend paneel dokt de tekst bovenin, zodat hij de
+      // knoppen onderin het paneel (zoals de terugknop) nooit bedekt.
+      paneel.classList.toggle('ow-boven', !!s.paneel);
+      zetOverlayZichtbaar(!s.paneel);
       zetSpot(s);
+      if (s.tik) {
+        zetKnopZichtbaar(false);
+        zetTik(s);
+      } else {
+        if (opruimTik) { opruimTik(); opruimTik = null; }
+        zetKnopZichtbaar(true);
+        zetKnopKlikbaar(true);
+      }
       tekstEl.style.opacity = '1';
       overgangBezig = false;
-      zetKnopKlikbaar(true);
     }, eerste ? 350 : 480);
   }
 
-  knop.addEventListener('click', function () {
-    if (overgangBezig) return;
+  function verder() {
     if (i < stappen.length - 1) { toonStap(i + 1); return; }
+    afsluiten();
+  }
+
+  function afsluiten() {
     // Klaar: opruimen en het scherm weer vrijgeven.
     overgangBezig = true;
     zetKnopKlikbaar(false);
+    if (opruimTik) { opruimTik(); opruimTik = null; }
     if (opruimSpot) { opruimSpot(); opruimSpot = null; }
+    // Vangnet: mocht er nog een paneel openstaan, sluit het.
+    try { sluitInventarisOverzicht(); } catch (e) {}
+    try { sluitRolOverzicht(); } catch (e) {}
+    try { sluitMissiePaneel(); } catch (e) {}
     markVisited('overworld_intro_gezien');
     [overlay, paneel].forEach(function (el) {
       el.style.transition = 'opacity .5s';
@@ -5816,6 +5922,13 @@ function startOverworldIntro() {
       if (paneel.parentNode) paneel.parentNode.removeChild(paneel);
       _owIntroBezig = false;
     }, 500);
+  }
+
+  knop.addEventListener('click', function () {
+    if (overgangBezig) return;
+    var s = stappen[i];
+    if (s && s.naVerder) { try { s.naVerder(); } catch (e) {} }
+    verder();
   });
 
   toonStap(0);
