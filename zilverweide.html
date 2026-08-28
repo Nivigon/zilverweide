@@ -977,13 +977,24 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 }
 .kr-boek.kr-tekst-in .kr-tekst{ opacity:1; }
 
-/* Linkerpagina: de molen, dominant, verticaal gecentreerd */
-.kr-links{ left:6.5%; width:37%; top:50%; transform:translateY(-50%); }
-.kr-bron{
-  font-family:'Cinzel',serif; font-weight:600;
-  font-size:clamp(.5rem,.95vh,.66rem); letter-spacing:.3em;
-  text-transform:uppercase; color:#7a5330; margin-bottom:1.3vh;
+/* Kop van beide pagina's: de krantnaam als lopende titel, plus paginanummer.
+   Bewust iets kleiner dan de molen-kop zodat het artikel de blikvanger blijft. */
+.kr-mast{
+  font-family:'Cinzel',serif; font-weight:700; color:#2b1a0b;
+  font-size:clamp(.85rem,2.5vh,1.7rem); letter-spacing:.1em;
+  padding-bottom:.7vh; border-bottom:1px solid rgba(90,60,30,.45);
 }
+.kr-mast-l{ left:5%; width:40%; top:7%; }
+.kr-mast-r{ left:55%; width:40%; top:7%; }
+.kr-pg{
+  font-family:'Cinzel',serif; font-weight:600; color:#7a5330;
+  font-size:clamp(.55rem,1.3vh,.85rem); letter-spacing:.1em;
+}
+.kr-pg-l{ left:6.5%; top:7.4%; }
+.kr-pg-r{ right:6.5%; top:7.4%; }
+
+/* Linkerpagina: de molen, dominant, in de bovenhelft (de schets staat onderin) */
+.kr-links{ left:5%; width:40%; top:18%; }
 .kr-kop-molen{
   font-family:'Cinzel',serif; font-weight:700; color:#1c1005;
   font-size:clamp(1.1rem,3.3vh,2.2rem); line-height:1.1;
@@ -1000,9 +1011,10 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   max-width:34ch; margin:0 auto;
 }
 
-/* Rechterpagina: twee kleine, ingetogen berichten */
-.kr-kerk{ left:56.5%; width:37%; top:15%; }
-.kr-nr2{ left:57%; width:33%; top:46%; }
+/* Rechterpagina: twee kleine, ingetogen berichten in de bovenhelft
+   (het portret staat rechtsonder in de afbeelding) */
+.kr-kerk{ left:54%; width:40%; top:18%; }
+.kr-nr2{ left:53.5%; width:33%; top:44%; }
 .kr-kop{
   font-family:'Cinzel',serif; font-weight:600; color:#5a4126;
   font-size:clamp(.7rem,1.65vh,1rem); line-height:1.2; margin-bottom:1vh;
@@ -26433,9 +26445,13 @@ function toonKrantenSpread(container) {
       kellyHint +
       '<div class="kr-boek" id="kr-boek">' +
         '<img class="kr-boek-img" id="kr-boek-img" src="' + ARCHIEF_KRANT_SPREAD + '" alt="">' +
+        // Kop over beide pagina's: krantnaam plus paginanummer
+        '<div class="kr-tekst kr-mast kr-mast-l">De Zilverweidse Bode</div>' +
+        '<div class="kr-tekst kr-pg kr-pg-l">II</div>' +
+        '<div class="kr-tekst kr-mast kr-mast-r">De Zilverweidse Bode</div>' +
+        '<div class="kr-tekst kr-pg kr-pg-r">III</div>' +
         // Linkerpagina: de molen (dominant)
         '<div class="kr-tekst kr-links">' +
-          '<div class="kr-bron">De Zilverweidse Bode</div>' +
           '<div class="kr-kop-molen">Tragisch ongeluk<br>bij de molen</div>' +
           '<div class="kr-deck">De molenaar bij werkzaamheden aan zijn eigen molen om het leven gekomen</div>' +
           '<div class="kr-rule"><span></span><i></i><span></span></div>' +
@@ -26444,7 +26460,7 @@ function toonKrantenSpread(container) {
         // Rechterpagina boven: de kerkdienst (mundaan)
         '<div class="kr-tekst kr-kerk">' +
           '<div class="kr-kop">Dienst vervalt komende zondag</div>' +
-          '<div class="kr-body">De dienst van onze kerk gaat komende zondag niet door wegens herstel aan het dak. De gemeente wordt de week daarop weer verwacht.</div>' +
+          '<div class="kr-body">De dienst van onze kerk aan de Heer Donatuslaan gaat komende zondag niet door wegens herstel aan het dak. De gemeente wordt de week daarop weer verwacht.</div>' +
         '</div>' +
         // Rechterpagina onder: Nummer 2 (subtiel, klein)
         '<div class="kr-tekst kr-nr2">' +
