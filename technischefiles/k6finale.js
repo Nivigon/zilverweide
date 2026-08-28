@@ -282,6 +282,7 @@
     scene: null,
     zwartEl: null,
     actieveLaag: null,
+    voorladers: null,
     timers: [],
     audioEls: {},
     audioTimers: [],
@@ -385,12 +386,62 @@
       // het plaatje moet hoe dan ook klaarstaan als de schrik valt
       this.jumpBeeldEl = new Image();
       this.jumpBeeldEl.src = (this.config.beeldmap || '') + this.config.beat8.jumpBeeld;
+      // alle beat-beelden alvast inladen, in speelvolgorde. Zonder dit start een
+      // cross-fade soms voordat het beeld binnen is en zie je te lang de zwarte
+      // scene-achtergrond in plaats van het beeld, vooral op een trager tablet.
+      this.voorlaadBeelden();
       if (!this.bladLoopBound) { this.bladLoopBound = this.bladerenLoop.bind(this); }
       if (!this.beat3LoopBound) { this.beat3LoopBound = this.beat3Loop.bind(this); }
       if (!this.beat4LoopBound) { this.beat4LoopBound = this.beat4Loop.bind(this); }
       if (!this.beat6LoopBound) { this.beat6LoopBound = this.beat6Loop.bind(this); }
       if (!this.beat8LoopBound) { this.beat8LoopBound = this.beat8Loop.bind(this); }
       if (!this.vonkenLoopBound) { this.vonkenLoopBound = this.vonkenLoop.bind(this); }
+    },
+
+    // Alle beelden die de finale gebruikt vooraf inladen, afgeleid uit de config
+    // zodat de lijst meebeweegt als beelden vervangen worden. De volgorde is de
+    // speelvolgorde: eerste beats eerst, zodat het begin sowieso op tijd klaar is.
+    // De Image-objecten blijven in this.voorladers hangen, anders kan de browser
+    // ze opruimen voordat de beat ze nodig heeft.
+    voorlaadBeelden: function () {
+      var c = this.config;
+      var map = c.beeldmap || '';
+      var urls = [];
+      function voegtoe(pad, bestand) { if (bestand) { urls.push((pad || '') + bestand); } }
+
+      if (c.beats) {
+        for (var i = 0; i < c.beats.length; i++) { voegtoe(map, c.beats[i].beeld); }
+      }
+      if (c.beat3) { voegtoe(map, c.beat3.beeld); }
+      if (c.beat4) { voegtoe(map, c.beat4.beeld); }
+      if (c.beat5) { voegtoe(map, c.beat5.beeld1); voegtoe(map, c.beat5.beeld2); }
+      if (c.beat6) {
+        voegtoe(map, c.beat6.beeld);
+        if (c.beat6.shade) { voegtoe(map, c.beat6.shade.bestand); voegtoe(map, c.beat6.shade.oogBestand); }
+      }
+      if (c.beat7) {
+        voegtoe(map, c.beat7.beeld);
+        var fr = c.beat7.heks && c.beat7.heks.frames;
+        if (fr) { for (var h = 0; h < fr.length; h++) { voegtoe(map, fr[h]); } }
+      }
+      if (c.beat8) {
+        voegtoe(map, c.beat8.jumpBeeld);
+        if (c.beat8.robbie) { voegtoe(map, c.beat8.robbie.beeld); }
+      }
+      if (c.blad && c.blad.standen) {
+        for (var b = 0; b < c.blad.standen.length; b++) { voegtoe(c.blad.map || map, c.blad.standen[b]); }
+      }
+
+      this.voorladers = [];
+      var gezien = {};
+      for (var u = 0; u < urls.length; u++) {
+        var url = urls[u];
+        if (gezien[url]) { continue; }
+        gezien[url] = true;
+        var img = new Image();
+        img.src = url;
+        this.voorladers.push(img);
+      }
     },
 
     start: function (container, opts) {
