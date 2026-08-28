@@ -12078,7 +12078,7 @@ function renderH4Kerk(loc) {
       acties: [
         { label: '\ud83d\udd0d Ga toch naar het kerkarchief', onclick: kellyKerkArchief },
         { label: 'Niet doen', onclick: kellyNietNaarKerkArchief, stijl: 'blood' }
-      ].concat(biechtActie() ? [biechtActie()] : [])
+      ]
     });
   }
 
@@ -12111,8 +12111,8 @@ function renderH4Kerk(loc) {
         { spreker: 'Fenna-Vivi\u00e8nne', tekst: '*(in gedachten)* Wat is dat mens giftig. Onthouden, deze.' }
       ],
       acties: [
-        { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); fennaNaarTobbe(); } },
         ...(biechtActie() ? [biechtActie()] : []),
+        { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); fennaNaarTobbe(); } },
         { label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
       ]
     });
@@ -23316,6 +23316,10 @@ function buildDebugPanel() {
       ['🔇 Kerkkoor uit', function(){ stopKerkKoor(); close(); }, true, 'H4 Kerk'],
       // ── Biechthokje
       ['🕯️ Biecht-keuze vrij (Jan+Kelly+Fenna zagen Priscilla)', function(){ ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, true); }); close(); }, !biechtGateOpen(), 'H4 Kerk'],
+      // Test alsof jij de derde bent: zet alleen de andere twee als "Priscilla
+      // gezien", zodat jouw eigen normale interactie de poort sluit en de biecht
+      // meteen erna aangeboden wordt. Kelly moet daarvoor wel eerst het doolhof.
+      ['🕯️ Ik ben de 3e (zet de andere 2)', function(){ ['jan','kelly','fenna'].forEach(function(r){ if (r !== state.personage) setSharedState('priscilla_gezien_' + r, true); }); close(); }, state.personage !== 'felix', 'H4 Kerk'],
       ['🕯️ Ikzelf ga het biechthokje in (vast)', function(){ close(); biechtGaNaarBinnen(); }, biechtGateOpen() && !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['🤝 Iemand zit vast in het hokje (helper-kant)', function(){ markVisited('priscilla_biecht_vast'); close(); }, !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
       ['👻 Priscilla weg (biecht afgerond)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); close(); }, !biechtPriscillaWeg(), 'H4 Kerk'],
