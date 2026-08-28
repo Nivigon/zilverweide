@@ -997,8 +997,8 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
    float staat op de opgemeten kaderpositie in de boekafbeelding. De naam in
    blackletter (KrantKop) met vergrote initiaal-D, de artikelen in IM Fell
    English (KrantBody), een oude drukletter. */
-.kr-pag-l{ left:8%; width:37%; top:8.5%; height:80%; text-align:center; }
-.kr-pag-r{ left:55%; width:37%; top:8.5%; height:80%; text-align:center; }
+.kr-pag-l{ left:8%; width:37%; top:7.5%; height:81%; text-align:center; }
+.kr-pag-r{ left:55%; width:37%; top:7.5%; height:81%; text-align:center; }
 .kr-name{
   font-family:'KrantKop','Cinzel',serif; font-weight:700; color:#1c0f04;
   font-size:clamp(.92rem,2.7vh,1.75rem); letter-spacing:.01em; line-height:1;
@@ -1013,7 +1013,7 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   font-family:'KrantBody',Georgia,serif; font-style:italic; color:#5a4126;
   font-size:clamp(.48rem,1.1vh,.78rem);
   padding:.35vh 0 .3vh; border-bottom:1px solid rgba(80,52,24,.5);
-  margin-bottom:1.7vh;
+  margin-bottom:1vh;
 }
 /* Linkerpagina: de molen. De molen-schets in de boekafbeelding staat linksonder
    (van ~48% tot ~90% van de boekhoogte). De kop en de korte body staan er
@@ -1023,10 +1023,10 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#1c1005;
   font-size:clamp(1rem,2.6vh,1.7rem); line-height:1.06;
 }
-.kr-diamond{ margin:.7vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
+.kr-diamond{ margin:.45vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
 .kr-bodym{
   font-family:'KrantBody',Georgia,serif; color:#241608;
-  font-size:clamp(.82rem,1.75vh,1.18rem); line-height:1.42; text-align:justify; margin-top:.8vh;
+  font-size:clamp(.8rem,1.68vh,1.14rem); line-height:1.4; text-align:justify; margin-top:.3vh;
 }
 /* Rechterpagina: kerkdienst en Nummer 2 onder elkaar in dezelfde kolom, met
    een ruit ertussen. Het portret-kader loopt van ~67% tot ~92% van de
@@ -1036,7 +1036,7 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#3a2513;
   font-size:clamp(.85rem,2.05vh,1.3rem); line-height:1.16; margin-bottom:1.1vh; text-align:center;
 }
-.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.82rem,1.75vh,1.18rem); line-height:1.42; text-align:justify; }
+.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.8rem,1.68vh,1.14rem); line-height:1.4; text-align:justify; }
 .kr-div{ margin:1vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
 .kr-pt{
   float:right; width:40%; height:100%;
@@ -26466,7 +26466,7 @@ function toonKrantenSpread(container) {
           '<div class="kr-dateline">Zilverweide, den veertienden van Slachtmaand</div>' +
           '<div class="kr-kopm">Molen afgebrand,<br>molenaar omgekomen</div>' +
           '<div class="kr-diamond"></div>' +
-          '<div class="kr-bodym">De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek, doch een verklaring ontbreekt.</div>' +
+          '<div class="kr-bodym">De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek, doch een verklaring ontbreekt. De begrafenis is in besloten kring.</div>' +
         '</div>' +
         // Rechterpagina: EEN doorlopende kolom met kerkdienst en Nummer 2 onder
         // elkaar (ruit ertussen). De Nummer 2-tekst loopt om het portret heen.
