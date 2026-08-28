@@ -3019,6 +3019,12 @@ const state = {
   kerkkelderGezien: false,
   podiumFinaleKlaar: false,
   gekozenArm: null,
+  // Biechthokje (H4): lokale spiegel of DEZE tablet de speler is die het
+  // hokje in ging. Bewust niet gedeeld en niet in het herstelpunt: de
+  // gedeelde stand (priscilla_biecht_vast / priscilla_weg) stuurt de scene,
+  // deze twee bepalen alleen welke kant van de redding je op dit tablet ziet.
+  biechtGanger: false,
+  biechtGangerKlaar: false,
   kraaiCooldown: null,
   // Testmodus uit het debug-paneel: zet alle finale-vergrendelingen uit in
   // checkCodeToegankelijk. Staat bewust niet in de herstelpunt-velden, zodat
@@ -3297,6 +3303,7 @@ function verwerkBinnengekomenShared(data) {
   var putFlagBinnen = false, kellyGeredBinnen = false, h2FlagBinnen = false;
   var vijverFlagBinnen = false, fennaVijverVrijBinnen = false;
   var torenCodeBinnen = false, torenHaakBinnen = false;
+  var biechtFlagBinnen = false;
   try {
     for (var key in data) {
       if (key.indexOf('vflag_') === 0) {
@@ -3308,6 +3315,7 @@ function verwerkBinnengekomenShared(data) {
           if (f === 'kelly_gered') kellyGeredBinnen = true;
           if (f === 'fenna_vijver_vast' || f === 'fenna_vijver_vrij') vijverFlagBinnen = true;
           if (f === 'fenna_vijver_vrij') fennaVijverVrijBinnen = true;
+          if (f === 'priscilla_biecht_vast' || f === 'priscilla_weg') biechtFlagBinnen = true;
           if (f === 'toren_code_ingevoerd') torenCodeBinnen = true;
           if (f === 'jan_toren_haak_gebroken') torenHaakBinnen = true;
           if (f === 'jan_bezocht_felix' || f === 'felix_munten_aan_jan'
@@ -3451,6 +3459,21 @@ function verwerkBinnengekomenShared(data) {
       var _putLoc = locatiesK1.find(function(l){ return l.id === 'k1_dorpsput'; });
       if (_putLoc) renderK1Dorpsput(_putLoc);
     }
+  }
+  // Biechthokje: staat een speler in de kerk terwijl iemand het hokje in gaat
+  // (priscilla_biecht_vast) of terwijl de ganger bevrijd wordt en Priscilla
+  // verdwijnt (priscilla_weg), dan het kerk-scherm meteen herzien. Zo ziet de
+  // helper het bonkende hokje verschijnen en springt de vastzittende ganger
+  // door naar de afloop, zonder de locatie opnieuw te hoeven openen. Zelfde
+  // patroon als de put hierboven. Niet tijdens de eerste snapshot (herladen).
+  if (biechtFlagBinnen && !eersteSnapshot &&
+      state.lastOpenedLocatie === 'h4_kerk' &&
+      document.getElementById('screen-locatie') &&
+      document.getElementById('screen-locatie').classList.contains('active') &&
+      typeof renderH4Kerk === 'function') {
+    if (typeof sluitPopDialoog === 'function') sluitPopDialoog();
+    var _kerkLoc = locatiesHeerDonatuslaan.find(function(l){ return l.id === 'h4_kerk'; });
+    if (_kerkLoc) renderH4Kerk(Object.assign({}, _kerkLoc, { _stap: 1 }));
   }
   // Toren-overdracht: Fenna staat op haar code-scherm bij de toren te wachten
   // tot Jan de spijker-code invoert. Komt die vlag binnen terwijl ze daar
@@ -4311,7 +4334,9 @@ const VISITED_FLAGS = {
   felix_vermommingen_herovert:'Felix heeft Lucinde en Lola van de stoel teruggepakt',
   slagerij_dicht:             'H3 Slagerij is dicht (na Jans vlucht met de vleespen)',
   jan_slagerij_gevlucht:      'Jan is uit de achterkamer van de slagerij gevlucht',
-  kerk_non_weg:               'H4 Kerk: de non is weg nadat Kelly het archief heeft gedaan',
+  kerk_non_weg:               'H4 Kerk: Kelly heeft het kerkarchief doorzocht (HD-milestone en Over de Rozen)',
+  priscilla_biecht_vast:      'H4 Kerk: iemand is het biechthokje in gegaan en zit vast',
+  priscilla_weg:              'H4 Kerk: Priscilla is verdwenen nadat het biechthokje is afgerond',
   fenna_gemeentehuis:         'H5: Fenna heeft bij het gemeentehuis Robbie getroffen',
   // Persoonlijk, bewust NIET gedeeld: alleen wie Robbie daar zelf zag staan,
   // mag later tekst krijgen waarin hij "weg" is.
@@ -4370,6 +4395,10 @@ const SHARED_VISITED_FLAGS = [
   'kerk_non_weg','h6_klokkenmaker_gezien','muziekdoosje_bij_aaltje',
   // Vastzit-situaties (iedereen moet de situatie en de afloop zien)
   'kelly_in_put','kelly_gered','fenna_vijver_vast','fenna_vijver_vrij',
+  // Biechthokje in de kerk: dezelfde vast/vrij-vorm als de put en de vijver.
+  // vast = iemand zit in het hokje en heeft hulp nodig, weg = bevrijd en
+  // Priscilla is verdwenen. Beide moeten alle tablets bereiken.
+  'priscilla_biecht_vast','priscilla_weg',
   // Toren-overdracht: Fenna wacht bij de toren tot Jan de spijker-code
   // invoert. Zonder delen blijft haar code-scherm staan en speelt de
   // overdracht-dialoog op haar tablet nooit.
@@ -7481,6 +7510,8 @@ function wisLokaleRondeStand() {
   state.kerkkelderGezien = false;
   state.podiumFinaleKlaar = false;
   state.gekozenArm = null;
+  state.biechtGanger = false;
+  state.biechtGangerKlaar = false;
   state.kraaiCooldown = null;
   state.activeKwartier = null;
   state.visited = new Set();
@@ -11912,7 +11943,6 @@ function kerkBinnenAfbeelding() {
 // Fenna en Felix ontmoeten Tobbe of Priscilla. Jan sneert kort met Priscilla.
 function renderH4Kerk(loc) {
   const p = state.personage;
-  const nonWeg = hasVisited('kerk_non_weg');
   const stap = loc._stap || 0;
   const cont = document.getElementById('locatie-content');
   function ga(n) { renderH4Kerk(Object.assign({}, loc, { _stap: n })); }
@@ -11963,20 +11993,64 @@ function renderH4Kerk(loc) {
     });
   }
 
-  // Non weg (na Kelly's archief): niemand ontmoet Priscilla meer.
-  if (nonWeg) {
+  // Priscilla weg (na het biechthokje): voor de speler die het hokje in ging
+  // eerst de afloop, daarna de lege kerk. Voor alle anderen meteen de lege
+  // kerk. Deze toestand blijft, ongeacht wie Priscilla wel of niet zag.
+  if (biechtPriscillaWeg()) {
     verbergNpcPop();
+    if (state.biechtGanger && !state.biechtGangerKlaar) {
+      return renderLocatieScene({
+        container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
+        dialog: ['filler'],
+        acties: [
+          { label: 'Verder', onclick: function () { state.biechtGangerKlaar = true; ga(1); } }
+        ]
+      });
+    }
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
-      dialog: [
-        'De kerk is stil en leeg. De kaarsen branden nog, maar Priscilla is nergens te bekennen.',
-        'Het voelt alsof er net iemand is weggegaan.'
+      dialog: ['filler']
+    });
+  }
+
+  // Iemand zit vast in het biechthokje: de ganger wacht op hulp, elke andere
+  // speler in de kerk ziet het bonkende hokje en kan het opentrekken.
+  if (biechtVast()) {
+    verbergNpcPop();
+    if (state.biechtGanger) {
+      return renderLocatieScene({
+        container: cont, titel: loc.naam, sub: 'In het biechthokje', image: BIECHTKAMER_IMG,
+        geenTerug: true,
+        dialog: ['filler']
+      });
+    }
+    return renderLocatieScene({
+      container: cont, titel: loc.naam, sub: 'Binnen', image: BIECHTKAMER_IMG,
+      dialog: ['filler'],
+      acties: [
+        { label: '🤝 Trek het hokje open', onclick: biechtBevrijd }
       ]
     });
   }
 
   // ─────────────────────────────────────────── KELLY ──
   if (p === 'kelly') {
+    // Kelly ziet Priscilla altijd bij binnenkomst: telt mee voor de biecht-poort.
+    setSharedState('priscilla_gezien_kelly', true);
+    // Na haar doolhof kan Kelly het archief niet opnieuw in; Priscilla staat er
+    // nog wel, kouder. De biecht-keuze kan hier ook verschijnen.
+    if (hasVisited('kerk_non_weg') || getSharedState('kerk_non_weg')) {
+      const kaActies = biechtActie() ? [biechtActie()] : [];
+      return renderLocatieScene({
+        container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
+        dialog: [
+          'Priscilla staat weer bij het altaar. Ze kijkt op zodra je binnenkomt, en haar blik is kouder dan eerst.',
+          { spreker: 'Priscilla', tekst: '"Jij. Ik weet niet precies wat je in mijn archief te zoeken had. Maar ik vergeet het niet."', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+          { spreker: 'Kelly', tekst: '*(in gedachten)* Ze vermoedt het. Hoe dan ook, ik heb daar niets meer te halen.' }
+        ],
+        acties: kaActies
+      });
+    }
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
@@ -11993,7 +12067,7 @@ function renderH4Kerk(loc) {
       acties: [
         { label: '\ud83d\udd0d Ga toch naar het kerkarchief', onclick: kellyKerkArchief },
         { label: 'Niet doen', onclick: kellyNietNaarKerkArchief, stijl: 'blood' }
-      ]
+      ].concat(biechtActie() ? [biechtActie()] : [])
     });
   }
 
@@ -12013,6 +12087,7 @@ function renderH4Kerk(loc) {
       });
     }
     // stap === 2: Fenna bij Priscilla
+    setSharedState('priscilla_gezien_fenna', true);
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Bij de non', image: kerkBinnenAfbeelding(),
       dialog: [
@@ -12026,6 +12101,7 @@ function renderH4Kerk(loc) {
       ],
       acties: [
         { label: 'Loop naar het jongetje', onclick: function() { verbergNpcPop(); fennaNaarTobbe(); } },
+        ...(biechtActie() ? [biechtActie()] : []),
         { label: '\u2190 Naar buiten', onclick: function() { verbergNpcPop(); goBackFromLocatie(); }, stijl: 'blood' }
       ]
     });
@@ -12083,6 +12159,8 @@ function renderH4Kerk(loc) {
 
   // ─────────────────────────────────────────── JAN ──
   if (p === 'jan') {
+    // Jan ziet Priscilla altijd: telt mee voor de biecht-poort.
+    setSharedState('priscilla_gezien_jan', true);
     return renderLocatieScene({
       container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
       dialog: [
@@ -12095,7 +12173,8 @@ function renderH4Kerk(loc) {
         { spreker: 'Priscilla', tekst: '"En wat zie je dan, met die scherpe ogen van je."' },
         { spreker: 'Jan', tekst: '"Dat u harder oordeelt dan een heks ooit zou doen."' },
         'Ze antwoordt niet meteen. Het is genoeg om het bij haar te laten hangen.'
-      ]
+      ],
+      acties: biechtActie() ? [biechtActie()] : []
     });
   }
 
@@ -12103,6 +12182,108 @@ function renderH4Kerk(loc) {
   return renderLocatieScene({
     container: cont, titel: loc.naam, sub: 'Binnen', image: kerkBinnenAfbeelding(),
     dialog: ['De kerk.']
+  });
+}
+
+// ── Biechthokje (H4) ─────────────────────────────────────────────────
+// Priscilla stuurt de laatste van Jan, Kelly en Fenna het biechthokje in. Wie
+// ja zegt zit vast en moet door een teamgenoot bevrijd worden; daarna is
+// Priscilla verdwenen. Felix krijgt de keuze nooit (hij loopt achter in de
+// straat en hoeft Priscilla niet gezien te hebben om de keuze vrij te geven).
+// priscilla_biecht_vast en priscilla_weg lopen als gedeelde vast/vrij-flags,
+// exact zoals de put en de vijver. Alle tekst vanaf het ingaan is nog filler.
+const BIECHTKAMER_IMG = 'locaties/heerdonatuslaan/biechtkamer.jpg';
+
+function biechtGateOpen() {
+  // De keuze komt pas vrij als Jan, Kelly en Fenna Priscilla alle drie gezien
+  // hebben, zodat niemand haar mist voordat ze kan verdwijnen.
+  return !!getSharedState('priscilla_gezien_jan')
+      && !!getSharedState('priscilla_gezien_kelly')
+      && !!getSharedState('priscilla_gezien_fenna');
+}
+function biechtVast() { return hasVisited('priscilla_biecht_vast'); }
+function biechtPriscillaWeg() { return hasVisited('priscilla_weg'); }
+function biechtBeschikbaar() {
+  return state.personage !== 'felix'
+      && biechtGateOpen()
+      && !biechtVast()
+      && !biechtPriscillaWeg();
+}
+function biechtActie() {
+  return biechtBeschikbaar()
+    ? { label: '🕯️ Naar het biechthokje (Priscilla wenkt)', onclick: startBiechtPitch }
+    : null;
+}
+
+// Beat 1 (echte tekst): Priscilla praat de speler richting het hokje.
+function startBiechtPitch() {
+  const cont = document.getElementById('locatie-content');
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  renderLocatieScene({
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Bij de non', image: kerkBinnenAfbeelding(),
+    dialog: [
+      { spreker: 'Priscilla', tekst: '"Maar nu je hier toch bent. Wanneer heb jij voor het laatst je zonden overzien? Eerlijk."', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } },
+      'Ze wacht niet op antwoord.',
+      { spreker: 'Priscilla', tekst: '"Te lang. Dat zie ik aan je."' }
+    ],
+    acties: [
+      { label: 'Verder', onclick: biechtPitchWijst }
+    ]
+  });
+}
+// Ze wijst naar de zijbeuk; het beeld wisselt naar de biechtkamer. Dan de keuze.
+function biechtPitchWijst() {
+  const cont = document.getElementById('locatie-content');
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  verbergNpcPop();
+  renderLocatieScene({
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Het biechthokje', image: BIECHTKAMER_IMG,
+    dialog: [
+      'Ze draait zich half om en wijst naar de zijbeuk. Daar staat het biechthokje, de deur op een kier.',
+      { spreker: 'Priscilla', tekst: '"Het hokje staat open. Ga zitten, en wees eens eerlijk tegen jezelf, binnen onze kerk."' }
+    ],
+    acties: [
+      { label: '🚪 Ga het biechthokje in', onclick: biechtGaNaarBinnen },
+      { label: 'Niet doen', onclick: biechtNietDoen, stijl: 'blood' }
+    ]
+  });
+}
+// Nee: geen vlag, de keuze blijft staan voor de andere spelers.
+function biechtNietDoen() {
+  const cont = document.getElementById('locatie-content');
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  verbergNpcPop();
+  renderLocatieScene({
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Binnen', image: kerkBinnenAfbeelding(),
+    dialog: [
+      'Je schudt je hoofd. "Een andere keer."',
+      { spreker: 'Priscilla', tekst: '"Zoals je wilt. Maar je ontloopt jezelf niet."', onShow: function() { toonNpcPop('karakters/heerdonatuslaan/non-pop.png'); } }
+    ]
+  });
+}
+// Ja: de speler gaat het hokje in en zit vast (gedeelde vlag). De vast-branche
+// in renderH4Kerk toont vanaf hier het wachtscherm (filler).
+function biechtGaNaarBinnen() {
+  state.biechtGanger = true;
+  markVisited('priscilla_biecht_vast');
+  verbergNpcPop();
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  if (loc) renderH4Kerk(Object.assign({}, loc, { _stap: 1 }));
+}
+// Een teamgenoot trekt het hokje open: Priscilla is daarna weg (gedeelde vlag).
+// De bevrijder ziet hier zijn eigen afloop (filler); de ganger springt via de
+// shared-listener door naar zijn afloop en daarna de lege kerk.
+function biechtBevrijd() {
+  markVisited('priscilla_weg');
+  verbergNpcPop();
+  const cont = document.getElementById('locatie-content');
+  const loc = locatiesHeerDonatuslaan.find(function (l) { return l.id === 'h4_kerk'; });
+  renderLocatieScene({
+    container: cont, titel: loc ? loc.naam : 'De Kerk', sub: 'Binnen', image: kerkBinnenAfbeelding(),
+    dialog: ['filler'],
+    acties: [
+      { label: 'Verder', onclick: function () { if (typeof goBackFromLocatie === 'function') goBackFromLocatie(); } }
+    ]
   });
 }
 
@@ -23056,6 +23237,12 @@ function buildDebugPanel() {
       // achtergrondmuziek weer terug, net als het verlaten van de kerk.
       ['🎵 Kerkkoor aan', function(){ startKerkKoor(); close(); }, true, 'H4 Kerk'],
       ['🔇 Kerkkoor uit', function(){ stopKerkKoor(); close(); }, true, 'H4 Kerk'],
+      // ── Biechthokje
+      ['🕯️ Biecht-keuze vrij (Jan+Kelly+Fenna zagen Priscilla)', function(){ ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, true); }); close(); }, !biechtGateOpen(), 'H4 Kerk'],
+      ['🕯️ Ikzelf ga het biechthokje in (vast)', function(){ close(); biechtGaNaarBinnen(); }, biechtGateOpen() && !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
+      ['🤝 Iemand zit vast in het hokje (helper-kant)', function(){ markVisited('priscilla_biecht_vast'); close(); }, !biechtVast() && !biechtPriscillaWeg(), 'H4 Kerk'],
+      ['👻 Priscilla weg (biecht afgerond)', function(){ markVisited('priscilla_biecht_vast'); markVisited('priscilla_weg'); close(); }, !biechtPriscillaWeg(), 'H4 Kerk'],
+      ['🔄 Reset biechthokje', function(){ ['priscilla_biecht_vast','priscilla_weg'].forEach(function(f){ state.visited.delete(f); setSharedState('vflag_' + f, null); }); ['jan','kelly','fenna'].forEach(function(r){ setSharedState('priscilla_gezien_' + r, null); }); state.biechtGanger = false; state.biechtGangerKlaar = false; close(); }, true, 'H4 Kerk'],
       ['🎵 Fenna heeft gezongen in herberg', function(){ markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan', true); close(); }, true, 'H5 Gemeentehuis'],
       ['🗡️ Felix binnen bij Vrouwe Roet (als Lola)', function(){ markVisited('h6_binnen'); close(); }, true, 'H6 Het Hol'],
       ['🕯️ Vrouwe Roet-scene gehad (3 hints)', function(){ markVisited('h6_binnen'); markVisited('h6_roet_ontmoet'); close(); }, true, 'H6 Het Hol'],
