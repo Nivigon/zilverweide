@@ -1017,15 +1017,19 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#1c1005;
   font-size:clamp(1rem,2.6vh,1.7rem); line-height:1.05;
 }
-.kr-diamond{ margin:.6vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
+.kr-diamond{ margin:.4vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
 .kr-bodym{
-  left:8%; width:37%; top:30.5%; height:61%;
+  left:8%; width:37%; top:33%; height:58%;
   font-family:'KrantBody',Georgia,serif; color:#241608;
   font-size:clamp(.85rem,1.9vh,1.28rem); line-height:1.5; text-align:justify;
 }
+/* Het molen-kader in de boekafbeelding loopt van ~50% tot ~92% van de
+   boekhoogte en beslaat de linker 62% van deze kolom. De wrap begint daarom
+   net boven die kaderrand (polygon-drempel) en houdt met shape-margin afstand,
+   zodat de tekst het kader nooit raakt. */
 .kr-wm{
   float:left; width:62%; height:100%;
-  shape-outside:polygon(0 30%,100% 30%,100% 100%,0 100%); shape-margin:1.2%;
+  shape-outside:polygon(0 29%,100% 29%,100% 100%,0 100%); shape-margin:2%;
 }
 
 /* Rechterpagina: kerkdienst en Nummer 2 in een doorlopende kolom. Zo valt
