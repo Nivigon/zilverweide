@@ -583,6 +583,16 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .back-btn:hover{color:var(--gold)}
 .overworld{padding:1.5rem 0 4rem}
 .overworld-title{font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.25em;color:var(--gold-dim);text-transform:uppercase;text-align:center;margin-bottom:1.5rem}
+/* Zoom-herstelknop. Verschijnt alleen als de speler heeft ingezoomd (de
+   visual viewport is groter geschaald dan 1). Een tik zet de weergave terug
+   naar 1, zodat een knop die tijdens het inzoomen buiten beeld raakte weer
+   bereikbaar wordt. Cruciaal: de knop wordt in JS aan de VISUAL viewport
+   gehangen (plaatsZoomHerstel), niet aan de pagina, want een gewone vaste
+   knop zou bij inzoomen precies zo uit beeld schuiven als de knop die de
+   speler kwijt was. z-index boven alle overlays (9998/9999), zodat hij ook
+   over een pop-up heen tikbaar is. Standaard verborgen. */
+#zoom-herstel{position:fixed;left:1.2rem;bottom:8rem;z-index:10050;display:none;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:rgba(13,10,6,.94);border:1px solid rgba(var(--goudrgb),calc(.55 * var(--lijn)));color:var(--gold);font-size:1.3rem;cursor:pointer;box-shadow:0 0 18px rgba(0,0,0,.7),0 0 10px rgba(var(--goudrgb),calc(.18 * var(--schaduwdiepte)));-webkit-tap-highlight-color:transparent;touch-action:manipulation;transform-origin:top left}
+#zoom-herstel.zicht{display:flex;animation:fadeIn .2s ease}
 #debug-btn{position:fixed;bottom:1.2rem;left:1.2rem;z-index:300;background:rgba(13,10,6,.85);border:1px solid rgba(var(--goudrgb),calc(.25 * var(--lijn)));border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:.5;transition:opacity .2s}
 #debug-btn:hover{opacity:1}
 /* Reset-knop direct naast de debug-knop (links eronder zo'n 50px). Altijd
@@ -2621,6 +2631,7 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
     <button onclick="geluidNaarConsole()" style="flex:1;font-family:'Cinzel',serif;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);background:transparent;border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn)));border-radius:2px;padding:.45rem;cursor:pointer">Naar console</button>
   </div>
 </div>
+<button id="zoom-herstel" onclick="zoomHerstelDoe()" title="Herstel weergave (uitzoomen)" aria-label="Herstel weergave, zoom terug naar normaal">🔍</button>
 <button id="debug-btn" onclick="toggleDebug()" title="Testmodus" style="display:none">🛠️</button>
 <button id="reset-btn" onclick="resetSpel()" title="Reset alles en ga naar rolkeuze">↻</button>
 <button id="schaduw-btn" onclick="toggleSchaduwMenu()" title="Schaduw">🌑</button>
@@ -2881,6 +2892,80 @@ window.onerror = function(msg, src, line, col, err) {
   if (err && err.stack) console.error(err.stack);
   return false;
 };
+
+// ══════════════════════════════════════════════════════════════════
+// ZOOM-HERSTEL (toegankelijkheid + vastloper-vangnet)
+// Spelers mogen inzoomen om beter te lezen. Maar het spel draait als
+// fullscreen PWA op de tablets: er is dan geen adresbalk of browser-knop
+// om de zoom terug te zetten. Kwam er tijdens het inzoomen een pop-up in
+// beeld waarvan de knop buiten het ingezoomde beeld viel, dan zat de
+// speler vast en moest hij de app opnieuw openen.
+// Deze knop is dat vangnet. Hij verschijnt alleen bij inzoomen en hangt
+// aan de VISUAL viewport, zodat hij altijd zichtbaar en tikbaar blijft,
+// hoe ver ook ingezoomd of verschoven. Eén tik zet de weergave terug.
+// ══════════════════════════════════════════════════════════════════
+
+// Plaats de knop op een vaste plek IN het zichtbare (ingezoomde) beeld.
+// Een gewone position:fixed-knop hangt op Android aan de layout-viewport
+// en schuift bij inzoomen mee uit beeld; daarom rekenen we de positie elke
+// keer om met de visualViewport-offset en compenseren we de grootte met
+// een tegen-schaal, zodat de knop op het scherm even groot blijft.
+function plaatsZoomHerstel() {
+  var btn = document.getElementById('zoom-herstel');
+  if (!btn) return;
+  var vv = window.visualViewport;
+  // Debug-forceer laat de knop ook zonder echte zoom zien (op desktop kun
+  // je niet pinchen), zodat plaatsing en reset daar te testen zijn.
+  var forceer = (typeof state !== 'undefined') && state && state.zoomHerstelForce;
+  var ingezoomd = vv ? (vv.scale > 1.05) : false;
+  if (!ingezoomd && !forceer) { btn.classList.remove('zicht'); return; }
+  btn.classList.add('zicht');
+  if (!vv) return; // geen visualViewport-API: laat de knop op zijn CSS-hoek staan
+  var s = vv.scale || 1;
+  var marge = 14; // schermmarge in px
+  var maat = 44;  // knopgrootte in px (schermmaat)
+  // Linksonder in het zichtbare gebied. offsetLeft/offsetTop zijn de
+  // verschuiving van de visual viewport binnen de pagina; delen door de
+  // schaal houdt marge en grootte constant op het scherm.
+  var left = vv.offsetLeft + marge / s;
+  var top  = vv.offsetTop + vv.height - (marge + maat) / s;
+  btn.style.left = left + 'px';
+  btn.style.top = top + 'px';
+  btn.style.bottom = 'auto';
+  btn.style.transform = 'scale(' + (1 / s) + ')';
+}
+
+// Zet de zoom terug naar 1. Op Android is er geen directe API hiervoor;
+// de betrouwbare truc is de viewport-meta kort op maximum-scale=1 zetten
+// (dat snapt de zoom terug) en meteen daarna herstellen, zodat opnieuw
+// inzoomen mogelijk blijft.
+function zoomHerstelDoe() {
+  var mv = document.querySelector('meta[name="viewport"]');
+  if (!mv) return;
+  var origineel = mv.getAttribute('content');
+  mv.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+  setTimeout(function () {
+    mv.setAttribute('content', origineel);
+    plaatsZoomHerstel();
+  }, 350);
+}
+
+(function () {
+  var vv = window.visualViewport;
+  if (vv) {
+    vv.addEventListener('resize', plaatsZoomHerstel);
+    vv.addEventListener('scroll', plaatsZoomHerstel);
+  }
+  window.addEventListener('orientationchange', function () {
+    setTimeout(plaatsZoomHerstel, 300);
+  });
+  // Eerste plaatsing zodra de pagina er staat.
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', plaatsZoomHerstel);
+  } else {
+    plaatsZoomHerstel();
+  }
+})();
 
 // ══════════════════════════════════════════════════════════════════
 // GELUIDSMONITOR (testhulp)
@@ -23538,6 +23623,10 @@ function buildDebugPanel() {
     // Begeleiderspaneel: zonder wachtwoord, direct op de sessie van dit
     // apparaat, om de begeleider-sync solo te kunnen testen.
     ['🕯️ Begeleiderspaneel (deze sessie)', function(){ close(); begeleiderOpenVoorTest(); }, true, 'Begeleider & sessie'],
+    // Debugflag voor de zoom-herstelknop: forceer hem zichtbaar zodat de
+    // plaatsing en de reset op desktop te testen zijn (daar kun je niet
+    // pinchen). Op een tablet verschijnt de knop vanzelf bij inzoomen.
+    ['🔍 Zoom-herstelknop tonen: ' + ((typeof state !== 'undefined' && state.zoomHerstelForce) ? 'AAN (klik = uit)' : 'UIT (klik = aan)'), function(){ state.zoomHerstelForce = !state.zoomHerstelForce; plaatsZoomHerstel(); close(); }, true, 'Weergave'],
     // Debugflag voor de aanwezigheids-portretjes op de begeleiderskaart: zet
     // voorbeeldposities voor alle vier de rollen (huidige locatie + bezocht)
     // in meta, zodat de kaart solo te testen is zonder vier echte tablets.
