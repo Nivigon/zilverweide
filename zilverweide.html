@@ -4412,6 +4412,7 @@ const VISITED_FLAGS = {
   intro_filmpje_gezien:       'Het intro-filmpje op het podium is bekeken',
   overworld_intro_gezien:     'De kaart-introductie (eerste aankomst op de overworld) is getoond',
   kraai_kaart_intro_gezien:   'De beginnerskaart-uitleg in het Kraaienkwartier is getoond',
+  kraaien_locatie_bezocht:    'Deze speler heeft zelf minstens een Kraaienkwartier-straatlocatie (K2-K8) bezocht',
 
   // Kelly bij de put
   kelly_in_put:               'Kelly is in de dorpsput gevallen',
@@ -17215,6 +17216,12 @@ function openLocatie(id) {
   };
   state.locAfbeelding = K1_AFBEELDINGEN[id] || null;
   state.visitedLocations.add(id);
+  // Zodra deze speler zelf een Kraaienkwartier-straatlocatie (K2-K8) opent,
+  // vervallen de stuurteksten bij D3 (Dorpsarchief) en D4 (De Verborgen Hand):
+  // vanaf nu spelen die gewoon hun normale scene. Per speler, niet gedeeld,
+  // dus elke rol moet zelf eerst gaan kijken. De ingang K1 opent geen locatie
+  // via deze functie, dus die telt bewust niet mee.
+  markVisited('kraaien_locatie_bezocht');
   state.lastOpenedLocatie = id;
   // Zorg dat de Zilverweide-default back-knop weer zichtbaar is.
   // Scene-engine renderers (renderLocatieScene) verstoppen hem zelf
@@ -19583,6 +19590,44 @@ const DP_ALT_CODES = {
   'DN4H':  'D4',   // De Verborgen Hand
 };
 
+// Vlak na de intro (Kraaienkwartier net open) sturen D3 (Dorpsarchief) en
+// D4 (De Verborgen Hand) de speler eerst terug het Kraaienkwartier in: het
+// spoor van het heksachtige figuur gaat voor. De speler arriveert wel bij de
+// locatie, maar krijgt een korte stuurtekst in plaats van de normale scene.
+// Zodra deze speler zelf een Kraaienkwartier-straatlocatie (K2-K8) heeft
+// bezocht (vlag kraaien_locatie_bezocht, per speler), vervalt de stuurtekst.
+var KRAAIEN_STUUR = {
+  'D3': {
+    titel: 'Het Dorpsarchief',
+    sub:   'Dorpsplein, de bewaarplaats van Zilverweide\'s geschiedenis',
+    image: 'locaties/dorpsplein/archief.jpeg',
+    tekst: 'Ah, het Dorpsarchief. Interessant, maar voor nu eerst achter dat heksachtige figuur aan. Liep ze nu het Kraaienkwartier in?'
+  },
+  'D4': {
+    titel: 'De Verborgen Hand',
+    sub:   'Dorpsplein, een woonwagen met een mystiek symbool',
+    image: 'locaties/dorpsplein/verborgenhand.jpeg',
+    tekst: 'Een woonwagen met wat lijkt op genoeg mysterie, maar misschien kun je beter eerst het Kraaienkwartier gaan verkennen.'
+  }
+};
+
+function toonKraaienStuurscene(code) {
+  var cfg = KRAAIEN_STUUR[code];
+  if (!cfg) return;
+  state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
+  renderLocatieScene({
+    container: document.getElementById('locatie-content'),
+    titel:    cfg.titel,
+    sub:      cfg.sub,
+    image:    cfg.image,
+    dialog:   [ cfg.tekst ]
+  });
+  state.lastOpenedLocatie = null;
+  showScreen('screen-locatie');
+  updateIndicator('dorpsplein', '👥', 'Dorpsplein');
+  state.lastZone = 'dorpsplein';
+}
+
 function checkDorpspleinLocatie(val) {
   val = val.trim().toUpperCase();
   if (DP_ALT_CODES[val]) val = DP_ALT_CODES[val];
@@ -19601,8 +19646,12 @@ function checkDorpspleinLocatie(val) {
       if (alleFinaleCodesVerzameld() && !state.heksOpgelost) return openBeslispunt();
       return openToneel();
     },
-    'D3': openDorpsarchief,
-    'D4': openVerborgenHand
+    // Vlak na de intro sturen D3/D4 de speler eerst het Kraaienkwartier in,
+    // tot deze speler daar zelf een straatlocatie heeft bezocht. Daarna
+    // spelen ze gewoon hun normale scene. De alternatieve codes (F3HCR/DN4H)
+    // zijn hierboven al naar D3/D4 vertaald en lopen dus mee.
+    'D3': function () { return hasVisited('kraaien_locatie_bezocht') ? openDorpsarchief() : toonKraaienStuurscene('D3'); },
+    'D4': function () { return hasVisited('kraaien_locatie_bezocht') ? openVerborgenHand() : toonKraaienStuurscene('D4'); }
   };
   if (acties[val]) {
     // Ergens anders inloggen dan het podium (D2): afmelden bij de
@@ -23813,6 +23862,10 @@ function buildDebugPanel() {
       // meestal op de kaart en niet in het Kraaienkwartier zelf.
       ['📋 Stand van de klaar-melding', function(){ close(); debugEigenDeelStatus(); }, true, 'Kaart & panelen'],
       ['↩️ Verhaal-fase terug naar Kraaienkwartier', function(){ close(); debugFaseTerugNaarKraaienkwartier(); }, verhaalFaseZone() !== 'kraaienkwartier', 'Kaart & panelen'],
+      // D3/D4-stuurtekst: aan zolang deze speler nog geen Kraaienkwartier-
+      // straatlocatie bezocht heeft, uit zodra hij dat wel deed. Toggle om
+      // beide standen te testen zonder fysiek een K-locatie in te gaan.
+      ['🐦 D3/D4-stuurtekst aan/uit (Kraaienkwartier bezocht)', function(){ close(); if (hasVisited('kraaien_locatie_bezocht')) { state.visited.delete('kraaien_locatie_bezocht'); bewaarHerstelpunt(); toonToast('🐦', 'Stuurtekst bij D3/D4 weer AAN'); } else { markVisited('kraaien_locatie_bezocht'); toonToast('🐦', 'Stuurtekst bij D3/D4 UIT'); } }, true, 'Kaart & panelen'],
       // ── Samenvattingen (recaps zoals ze tussen de wijken verschijnen)
       ['📜 Samenvatting Dorendael (voorbeeld)', function(){ close(); toonRecap('dorendael', null, false); }, true, 'Samenvattingen'],
       ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }, true, 'Samenvattingen'],
