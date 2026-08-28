@@ -15689,9 +15689,9 @@ function renderK1Uitkijktoren(loc) {
       if (!state.janTorenDitBezoek) return;
       toonMagischOverlay(
         'Vanaf de toren',
-        '<p class="magisch-tekst">Je laat je blik over de daken gaan. Op de nok, op een schoorsteen, op de rand van de put, op het uithangbord, op de goot van het huis daar beneden.</p>' +
-        '<div class="magisch-getal">5</div>' +
-        '<p class="magisch-tekst">Vijf kraaien. Je telt ze nog een keer, en het blijven er vijf.</p>',
+        '<p class="magisch-tekst">Je laat je blik over de daken gaan. Op de nok, op de rand van de put, op de goot van het huis daar beneden.</p>' +
+        '<div class="magisch-getal">3</div>' +
+        '<p class="magisch-tekst">Drie kraaien. Je telt ze nog een keer, en het blijven er drie.</p>',
         'Verder →',
         null
       );
@@ -20332,7 +20332,11 @@ function vhDiepereHintKlaar(district) {
 // Heer Donatuslaan staat hier niet meer: die "knapste aan tafel"-vraag is
 // vervangen door de crystal-missie (zie toonVerborgenHandCrystal).
 var VH_VRAGEN = {
-  kraaienkwartier: { juist: '5',   inputId: 'kraai-tel-input', msgId: 'kraai-tel-msg', timerId: 'kraai-tel-timer' }
+  // juist is het "officiële" antwoord (dat Jans torenvisioen toont); ookGoed
+  // zijn extra antwoorden die ook als correct tellen. Voor het Kraaienkwartier
+  // telt het visioen drie kraaien, maar een speler die er zelf vier telt op de
+  // scene mag ook goed rekenen.
+  kraaienkwartier: { juist: '3', ookGoed: ['4'], inputId: 'kraai-tel-input', msgId: 'kraai-tel-msg', timerId: 'kraai-tel-timer' }
 };
 var VH_COOLDOWN = {};
 
@@ -20352,7 +20356,8 @@ function checkVerborgenHandVraag(vraagId) {
     return;
   }
 
-  var goed = (val.toUpperCase() === cfg.juist.toUpperCase());
+  var geldig = [cfg.juist].concat(cfg.ookGoed || []);
+  var goed = geldig.some(function (a) { return val.toUpperCase() === String(a).toUpperCase(); });
   // Invoerveld en knop verdwijnen zodra je inzendt.
   input.style.display = 'none';
   var btn = document.getElementById(cfg.inputId + '-btn');
