@@ -12305,8 +12305,11 @@ function biechtBeschikbaar() {
       && !biechtPriscillaWeg();
 }
 function biechtActie() {
+  // Label noemt het biechthokje bewust NIET: Priscilla heeft er op dit punt
+  // nog niets over gezegd. Zij introduceert het hokje pas in de pitch, als ze
+  // ernaar wijst. Zo klopt de volgorde.
   return biechtBeschikbaar()
-    ? { label: '🕯️ Naar het biechthokje (Priscilla wenkt)', onclick: startBiechtPitch }
+    ? { label: 'Priscilla wil je nog iets zeggen', onclick: startBiechtPitch }
     : null;
 }
 
