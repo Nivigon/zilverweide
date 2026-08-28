@@ -1698,7 +1698,10 @@ body.pf-cinema-actief .interactie-panel{display:none !important}
    overlap op tablet-breedte (1180px), de belangrijkste doelgroep. Oudere
    browsers zonder :has negeren de regel (oude gedrag, geen regressie). */
 body:has(#char-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)) !important;
+  /* De pop-reserve komt BOVENOP de basis-inspringing (1.6rem), niet ervoor
+     in de plaats: anders zakt de reserve op brede schermen naar 0px en
+     verdwijnt alle lucht links, zodat de eerste letter tegen de rand plakt. */
+  padding-left: calc(1.6rem + max(0px, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
 }
 /* Zelfde probleem, spiegelbeeld: een NPC-pop (bv. Stoop) staat rechts op de
    schermrand en kan de dialoogbox (en de verder-knop daarin) overlappen.
@@ -1754,7 +1757,9 @@ body:has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .vh-strip {
    zijn eigen regel heeft toevallig dezelfde specificiteit als deze, dus
    heeft een aparte, nog specifiekere dual-pop-variant nodig). */
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog-body {
-  padding-left: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
+  /* Zelfde reden als bij de enkele-pop-regel: basis-inspringing behouden en de
+     reserve erbovenop, zodat de eerste letter ook hier nooit de rand raakt. */
+  padding-left: calc(1.6rem + max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px)))) !important;
 }
 body:has(#char-pop[style*="opacity: 1"]):has(#npc-pop[style*="opacity: 1"]) #screen-locatie.active .sc-dialog {
   margin-right: max(0px, min(26vw, calc(min(320px, var(--vh100) * 0.367) - 50vw + 410px))) !important;
