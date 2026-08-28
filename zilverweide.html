@@ -1008,28 +1008,49 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   padding:.35vh 0; border-bottom:1px solid rgba(80,52,24,.5);
 }
 
-/* Linkerpagina: de molen, boven de molen-schets (kader begint op ~49%) */
-.kr-links{ left:8%; width:37%; top:20%; }
-.kr-kop-molen{
+/* Linkerpagina: de molen. Kop apart; de body loopt met shape-outside om de
+   molen-schets heen (boven over de volle breedte, daaronder ernaast verder),
+   net als bij een echte krant. De kr-wm-float reserveert precies het schets-
+   kader linksonder. */
+.kr-kopm{
+  left:8%; width:37%; top:20%;
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#1c1005;
   font-size:clamp(.95rem,2.5vh,1.6rem); line-height:1.05;
 }
-.kr-rule{ display:flex; align-items:center; justify-content:center; margin:.9vh auto; }
-.kr-rule i{ width:8px; height:8px; transform:rotate(45deg); background:#7a5330; display:block; }
-.kr-body-molen{
-  font-family:'KrantBody',Georgia,serif;
-  color:#241608; font-size:clamp(.7rem,1.5vh,1rem); line-height:1.34;
-  margin:0 auto; text-align:justify; text-align-last:center;
+.kr-diamond{ margin:.6vh auto; width:8px; height:8px; transform:rotate(45deg); background:#7a5330; }
+.kr-bodym{
+  left:8%; width:37%; top:30%; height:62%;
+  font-family:'KrantBody',Georgia,serif; color:#241608;
+  font-size:clamp(.7rem,1.5vh,1rem); line-height:1.34; text-align:justify;
+}
+.kr-wm{
+  float:left; width:62%; height:100%;
+  shape-outside:polygon(0 31%,100% 31%,100% 100%,0 100%); shape-margin:1.2%;
 }
 
-/* Rechterpagina: twee berichten boven het portret (kader op ~69%) */
-.kr-kerk{ left:55%; width:38%; top:23%; }
-.kr-nr2{ left:55%; width:38%; top:46%; }
+/* Rechterpagina boven: de kerkdienst (los blok) */
+.kr-kerk{ left:55%; width:38%; top:20%; }
 .kr-kop{
   font-family:'KrantBody',Georgia,serif; font-weight:700; color:#3a2513;
-  font-size:clamp(.8rem,1.95vh,1.25rem); line-height:1.16; margin-bottom:.6vh;
+  font-size:clamp(.8rem,1.95vh,1.25rem); line-height:1.16; margin-bottom:.6vh; text-align:center;
 }
-.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.68rem,1.58vh,1rem); line-height:1.44; text-align:justify; }
+.kr-body{ font-family:'KrantBody',Georgia,serif; color:#3a2818; font-size:clamp(.68rem,1.5vh,.98rem); line-height:1.42; text-align:justify; }
+
+/* Rechterpagina onder: Nummer 2. Kop apart; body loopt om het portret heen. */
+.kr-nr2h{
+  left:55%; width:37%; top:43%;
+  font-family:'KrantBody',Georgia,serif; font-weight:700; color:#3a2513;
+  font-size:clamp(.8rem,1.95vh,1.25rem); line-height:1.16;
+}
+.kr-nr2b{
+  left:55%; width:37%; top:50%; height:42%;
+  font-family:'KrantBody',Georgia,serif; color:#3a2818;
+  font-size:clamp(.68rem,1.5vh,.98rem); line-height:1.4; text-align:justify;
+}
+.kr-pt{
+  float:right; width:41%; height:100%;
+  shape-outside:polygon(0 40%,100% 40%,100% 100%,0 100%); shape-margin:1.2%;
+}
 
 /* Nabeschouwing: de innerlijke monoloog na het lezen, in de kolom onder de
    krant (niet fixed; de kolom als geheel is gecentreerd en past zonder scroll) */
@@ -26427,9 +26448,9 @@ function toonKrantenAanloop(container) {
 
 // De opengevouwen krant op locatie-formaat. Volgorde: de krant faadt in
 // (kr-beeld-in), dan de artikelteksten (kr-tekst-in), dan de nabeschouwing
-// plus de Verder-knop. Alleen Kelly ziet de team-hint. De zone-posities en
-// lettergroottes staan in de CSS (.kr-links / .kr-kerk / .kr-nr2) zodat ze in
-// een keer bij te stellen zijn op de definitieve export.
+// plus de Verder-knop. De team-hint zit op het aanloopscherm, niet hier.
+// De zone-posities, lettergroottes en de shape-outside-wrap om de schetsen
+// (kr-wm / kr-pt) staan in de CSS zodat ze in een keer bij te stellen zijn.
 function toonKrantenSpread(container) {
   if (!container) return;
 
@@ -26454,22 +26475,17 @@ function toonKrantenSpread(container) {
           '<div class="kr-name"><span class="kr-cap">D</span>e Zilverweidse Bode</div>' +
           '<div class="kr-dateline">Vierde jaargang &middot; Nr. XLVII</div>' +
         '</div>' +
-        // Linkerpagina: de molen (brand), boven de molen-schets
-        '<div class="kr-tekst kr-links">' +
-          '<div class="kr-kop-molen">Molen afgebrand,<br>molenaar omgekomen</div>' +
-          '<div class="kr-rule"><i></i></div>' +
-          '<div class="kr-body-molen">De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Naar de oorzaak loopt onderzoek; een verklaring ontbreekt. De begrafenis is in besloten kring. Getuigen melden zich bij de stadswacht.</div>' +
-        '</div>' +
-        // Rechterpagina boven: de kerkdienst (mundaan)
+        // Linkerpagina: de molen (brand). De body loopt om de molen-schets heen.
+        '<div class="kr-tekst kr-kopm">Molen afgebrand,<br>molenaar omgekomen<div class="kr-diamond"></div></div>' +
+        '<div class="kr-tekst kr-bodym"><span class="kr-wm"></span>De oude molen is in de nacht afgebrand, de molenaar kwam daarbij om. Het vuur was reeds uitgewoed voor er hulp kon worden geboden. Naar de oorzaak wordt onderzoek gedaan, doch een verklaring is tot heden niet gevonden. De begrafenis vindt plaats in besloten kring. Wie iets heeft gezien of gehoord, wordt verzocht zich bij de stadswacht te melden.</div>' +
+        // Rechterpagina boven: de kerkdienst (los blok)
         '<div class="kr-tekst kr-kerk">' +
           '<div class="kr-kop">Dienst vervalt komende zondag</div>' +
           '<div class="kr-body">De dienst van onze kerk aan de Heer Donatuslaan gaat komende zondag niet door wegens herstel aan het dak. De gemeente wordt de week daarop weer verwacht.</div>' +
         '</div>' +
-        // Rechterpagina onder: Nummer 2 (subtiel dwaalspoor)
-        '<div class="kr-tekst kr-nr2">' +
-          '<div class="kr-kop">Zorg om Nummer 2 te Dorendael</div>' +
-          '<div class="kr-body">In de buurt Dorendael wordt de bewoner van Nummer 2 al dagen niet gezien. Doch &rsquo;s avonds brandt er licht, en de buurman zweert dat er nog altijd iemand thuiskomt. De stadswacht achtte nader onderzoek niet raadzaam.</div>' +
-        '</div>' +
+        // Rechterpagina onder: Nummer 2. De body loopt om het portret heen.
+        '<div class="kr-tekst kr-nr2h">Zorg om Nummer 2 te Dorendael</div>' +
+        '<div class="kr-tekst kr-nr2b"><span class="kr-pt"></span>In de buurt Dorendael wordt de bewoner van Nummer 2 al dagen niet gezien. Doch &rsquo;s avonds brandt er licht, en de buurman zweert dat er nog altijd iemand thuiskomt. De stadswacht achtte nader onderzoek niet raadzaam. Wie hem gezien heeft, melde zich.</div>' +
       '</div>' +
       '<div class="kr-na" id="kr-na">Een brand, een dode, en verder niets. Geen oorzaak, een begrafenis achter gesloten deuren, en een oproep aan getuigen. Alsof men liever heeft dat niemand zich meldt.</div>' +
       '<button class="kr-verder" id="kr-verder">Verder &rarr;</button>' +
