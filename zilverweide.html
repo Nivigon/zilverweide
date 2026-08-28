@@ -944,7 +944,7 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
   line-height:1.5;
 }
 /* ─── Oude kranten: het opengeslagen boek met tekst-overlay ───
-   De boek-afbeelding (locaties/dorpsplein/kranten.jpg, portret erin gebakken)
+   De boek-afbeelding (locaties/dorpsplein/kranteninwoner.jpg, met de schets)
    vult de hoogte. De artikelteksten liggen als losse zones over de pagina's,
    met percentages t.o.v. het beeld zodat ze meeschalen. De zone-percentages
    staan hier bij elkaar zodat ze in een keer bijgesteld kunnen worden mocht
@@ -26053,10 +26053,10 @@ function toonArchiefWinScherm() {
 // voor in de plaats zodra die er zijn.
 const ARCHIEF_KRANTENKOP = 'locaties/dorpsplein/archief-krantenkop.jpeg';
 const ARCHIEF_BUNDEL     = 'locaties/dorpsplein/archief-bundel.jpeg';
-// De opengeslagen krant-spread (boek met portret erin gebakken). Nog niet in de
-// repo: zet je export op dit pad. Ontbreekt hij, dan valt de fade terug op de
-// tekst op een donkere achtergrond, de flow blijft werken.
-const ARCHIEF_KRANT_SPREAD = 'locaties/dorpsplein/kranten.jpg';
+// De opengeslagen krant-spread: de versie met de schets van de bewoner erin.
+// Ontbreekt het bestand, dan valt de fade terug op de tekst op een donkere
+// achtergrond en blijft de flow werken.
+const ARCHIEF_KRANT_SPREAD = 'locaties/dorpsplein/kranteninwoner.jpg';
 
 // Vindt het juiste render-doel, ongeacht vanuit welke context we komen:
 //  1) Vanuit Kelly's doolhof-win-scherm → archief-doolhof-mount.
