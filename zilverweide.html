@@ -3177,9 +3177,10 @@ const state = {
   // gedeeld feit (heks_beslisser / dorendael_beslisser / hd_beslisser in de
   // sessie), anders denkt elke tablet dat hij de eerste bij het podium is.
   finalePopupGetoond: false,
-  // Eenmalig per speler: de vergrendelde "jouw deel is rond"-popup. Staat in
-  // het herstelpunt, zodat een herlaad hem niet opnieuw toont.
-  eigenDeelPopupGetoond: false,
+  // Eenmalig per speler per wijk: de vergrendelde "jouw deel is rond"-popup.
+  // Per zone bijgehouden (Kraaienkwartier, Dorendael) en opgeslagen in het
+  // herstelpunt, zodat een herlaad hem niet opnieuw toont.
+  eigenDeelPopupZones: {},   // welke wijken hun "jouw deel is rond"-popup al toonden
   // Heer Donatuslaan finale (Tobbe-gok + kerkkelder + podium)
   hdFinalePopupGetoond: false,
   tobbeGokOpgelost: false,
@@ -4698,9 +4699,9 @@ var HERSTEL_VELDEN = [
   'kerkkelderGezien', 'podiumFinaleKlaar', 'gekozenArm',
   'janVastInAchterkamer', 'vhTorenTellingGetoond',
   'locatieOnbekend', 'felixAfgepakt',
-  // De "jouw deel is rond"-popup komt maar een keer per speler; zonder dit
+  // De "jouw deel is rond"-popup komt maar een keer per wijk; zonder dit
   // veld zou een herlaad hem opnieuw voor de neus zetten.
-  'eigenDeelPopupGetoond',
+  'eigenDeelPopupZones',
   // Foute lied-pogingen (per lied) moeten een crash overleven, anders begint
   // de free-pass-teller na een herstart weer op nul.
   'fennaLiedPogingen'
@@ -5300,26 +5301,92 @@ var KK_EIGEN_TAKEN = {
   ]
 };
 
+// Wat moet elke rol in Dorendael zelf gedaan hebben? Zelfde ontwerpregel als
+// bij het Kraaienkwartier: waar mogelijk vlaggen die alleen die rol in de
+// praktijk zet, zodat "klaar" nooit te vroeg klopt. De afrondende stap staat
+// telkens onderaan. De checks draaien op het tablet van de rol zelf; de meeste
+// vlaggen zijn lokaal (die rol zet ze), een paar zijn gedeeld maar worden in de
+// echte flow alleen door die rol gezet.
+var DD_EIGEN_TAKEN = {
+  jan: [
+    // De hele sleutel-keten (woudpoort, klei, afdruk, klokkenmaker, werkplaats)
+    // eindigt in de Sleutel Woudpoort. Item of de gedeelde spiegelvlag, net als
+    // de finale-check in dorendaelFinaleStatus.
+    { label: 'de Sleutel Woudpoort maken', check: function () {
+        return !!state.inventory.find(function (i) { return i.naam === ITEMS.sleutelWoudpoort.naam; })
+            || hasVisited('sleutel_woudpoort_gemaakt');
+      } }
+  ],
+  kelly: [
+    { label: 'het muziekdoosje vinden bij de molen', check: function () { return hasVisited('kelly_muziekdoosje_gevonden'); } },
+    // De archief-doolhof zet ook sybille_mythe_gelezen; een van beide dekt het.
+    { label: 'het archief doorzoeken', check: function () { return hasVisited('archief_doolhof_voltooid'); } },
+    // Fenna kan alleen vrij als Kelly haar de code laat zien.
+    { label: 'Fenna losmaken bij de vijver', check: function () { return hasVisited('kelly_vijver_code_gezien'); } },
+    { label: 'het muziekdoosje bij de klokkenmaker inleveren', check: function () { return hasVisited('muziekdoosje_afgeleverd'); } }
+  ],
+  fenna: [
+    // herberg_scene_voltooid is gedeeld, maar in de praktijk Fenna's scene.
+    { label: 'de herberg-scene doorstaan', check: function () { return hasVisited('herberg_scene_voltooid'); } },
+    // Het meisje afleveren impliceert dat ze eerst bij de vijver is vrijgemaakt.
+    { label: 'het meisje thuisbrengen bij Nummer 10', check: function () { return hasVisited('meisje_afgeleverd'); } }
+  ],
+  felix: [
+    { label: 'de zaak bij Nummer 2 afhandelen', check: function () { return hasVisited('felix_dd2_gewacht') || hasVisited('felix_dd2_gestolen'); } },
+    // Alleen Lola zet lola_klokkenmaker_geflirt; klokkenmaker_afgeleid kan ook
+    // van Jan komen en is daarom bewust niet de check.
+    { label: 'als Lola de klokkenmaker afleiden', check: function () { return hasVisited('lola_klokkenmaker_geflirt'); } }
+  ]
+};
+
+// De taaklijst en leestaak per verhaal-fase, zodat de melding zone-bewust is.
+var EIGEN_TAKEN_PER_ZONE = {
+  kraaienkwartier: KK_EIGEN_TAKEN,
+  dorendael:       DD_EIGEN_TAKEN
+};
+// De leestaak die bij de eigen-deel-lijst hoort: in het Kraaienkwartier het
+// dagboek, in Dorendael de molen-legende. boek verwijst naar LEESTAKEN.
+var EIGEN_LEESTAAK_PER_ZONE = {
+  kraaienkwartier: { boek: 'dagboek', label: 'het dagboek lezen' },
+  dorendael:       { boek: 'molen',   label: 'de molen-legende bekijken' }
+};
+
+// Popup "jouw deel is rond" komt een keer per wijk. Vroeger een enkele boolean
+// (alleen Kraaienkwartier); nu per zone, zodat Dorendael zijn eigen beurt heeft.
+function eigenDeelPopupAl(zone) {
+  return !!(state.eigenDeelPopupZones && state.eigenDeelPopupZones[zone]);
+}
+function eigenDeelPopupZet(zone) {
+  if (!state.eigenDeelPopupZones) state.eigenDeelPopupZones = {};
+  state.eigenDeelPopupZones[zone] = true;
+}
+
 // Wat staat er voor deze speler nog open in het Kraaienkwartier? Lege lijst is
 // "rond". De leestaak hoort erbij, maar pas zodra hij echt openstaat: daarvoor
 // bestaat die taak voor deze speler nog niet.
-function eigenDeelTakenOpen() {
-  var taken = KK_EIGEN_TAKEN[state.personage];
+function eigenDeelTakenOpen(zone) {
+  zone = zone || verhaalFaseZone();
+  var tabel = EIGEN_TAKEN_PER_ZONE[zone];
+  var taken = tabel && tabel[state.personage];
   if (!taken) return ['onbekende rol'];
   var open = taken.filter(function (t) { return !t.check(); }).map(function (t) { return t.label; });
-  if (LEESTAKEN.dagboek.beschikbaar() && !getSharedState('dagboek_gelezen_' + state.personage)) {
-    open.push('het dagboek lezen');
+  var lt = EIGEN_LEESTAAK_PER_ZONE[zone];
+  if (lt && LEESTAKEN[lt.boek].beschikbaar()
+        && !getSharedState(LEESTAKEN[lt.boek].prefix + state.personage)) {
+    open.push(lt.label);
   }
   return open;
 }
 
-// Heeft deze speler zijn eigen deel van de huidige wijk af? Alleen het
-// Kraaienkwartier is hiervoor uitgewerkt; in andere wijken blijft alles uit.
+// Heeft deze speler zijn eigen deel van de huidige wijk af? Uitgewerkt voor
+// het Kraaienkwartier en Dorendael (zie EIGEN_TAKEN_PER_ZONE); in wijken zonder
+// taaklijst blijft alles uit.
 function eigenDeelRond() {
   if (!state.personage) return false;
-  if (verhaalFaseZone() !== 'kraaienkwartier') return false;
-  if (!KK_EIGEN_TAKEN[state.personage]) return false;
-  return eigenDeelTakenOpen().length === 0;
+  var zone = verhaalFaseZone();
+  var tabel = EIGEN_TAKEN_PER_ZONE[zone];
+  if (!tabel || !tabel[state.personage]) return false;
+  return eigenDeelTakenOpen(zone).length === 0;
 }
 
 // Is de wijkfinale al gevallen? Vanaf dat moment is de richting het podium en
@@ -5332,26 +5399,58 @@ function kkFinaleFaseBezig() {
       || !!getSharedState('heks_opgelost');
 }
 
-function eigenDeelMeldingActief() {
-  return eigenDeelRond() && !kkFinaleFaseBezig();
+// Dorendael-tegenhanger: de gok bij het podium is opgelost of de finale-lock
+// is gevallen. Vanaf dat moment stuurt het spel naar het woud-doolhof, dus
+// zwijgt de melding.
+function dorendaelFinaleFaseBezig() {
+  return !!state.dorendaelGokOpgelost
+      || !!getSharedState('dorendael_gok_opgelost')
+      || hasVisited('dorendael_finale_gestart')
+      || dorendaelFinaleKlaar();
 }
 
-// De drie richtingen, een bron voor popup en paneel zodat ze niet uit elkaar
-// lopen. In het paneel de korte vorm (naslag: in een oogopslag terugvinden),
-// in de popup de volle regel (daar leest de speler hem voor het eerst).
-var EIGEN_DEEL_RICHTINGEN = [
-  { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
-    lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
-  { kort: 'Speur verder naar wie de heks kan zijn.',
-    lang: 'Speur verder naar wie de heks kan zijn, ook waar je nog niet binnen bent geweest.' },
-  { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
-    lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
-];
+// De juiste finale-check voor de opgegeven zone.
+function wijkFinaleFaseBezig(zone) {
+  if (zone === 'dorendael') return dorendaelFinaleFaseBezig();
+  return kkFinaleFaseBezig();
+}
+
+function eigenDeelMeldingActief() {
+  return eigenDeelRond() && !wijkFinaleFaseBezig(verhaalFaseZone());
+}
+
+// De drie richtingen per wijk, een bron voor popup en paneel zodat ze niet uit
+// elkaar lopen. In het paneel de korte vorm (naslag: in een oogopslag
+// terugvinden), in de popup de volle regel (daar leest de speler hem voor het
+// eerst).
+var EIGEN_DEEL_RICHTINGEN_PER_ZONE = {
+  kraaienkwartier: [
+    { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
+      lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
+    { kort: 'Speur verder naar wie de heks kan zijn.',
+      lang: 'Speur verder naar wie de heks kan zijn, ook waar je nog niet binnen bent geweest.' },
+    { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
+      lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
+  ],
+  dorendael: [
+    { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
+      lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
+    { kort: 'Speur verder naar wie hier niet deugt.',
+      lang: 'Speur verder naar wie hier niet deugt, ook waar je nog niet binnen bent geweest.' },
+    { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
+      lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
+  ]
+};
+
+function eigenDeelRichtingen() {
+  return EIGEN_DEEL_RICHTINGEN_PER_ZONE[verhaalFaseZone()]
+      || EIGEN_DEEL_RICHTINGEN_PER_ZONE.kraaienkwartier;
+}
 
 // veld = 'kort' (paneel) of 'lang' (popup).
 function eigenDeelLijstHtml(veld, extraKlasse) {
   var html = '<ul class="klaar-lijst' + (extraKlasse ? ' ' + extraKlasse : '') + '">';
-  EIGEN_DEEL_RICHTINGEN.forEach(function (r) {
+  eigenDeelRichtingen().forEach(function (r) {
     html += '<li><span class="klaar-bolletje">\u25c6</span><span>' + r[veld] + '</span></li>';
   });
   return html + '</ul>';
@@ -5382,8 +5481,8 @@ function checkEigenDeelRond() {
 // scene, dan gebeurt er niets en probeert dezelfde check het opnieuw zodra hij
 // terug is op straat.
 function toonEigenDeelPopup() {
-  if (state.eigenDeelPopupGetoond) return;
-  var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorpsplein'].some(function (id) {
+  if (eigenDeelPopupAl(verhaalFaseZone())) return;
+  var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-dorpsplein'].some(function (id) {
     var el = document.getElementById(id);
     return el && el.classList.contains('active');
   });
@@ -5396,7 +5495,7 @@ function toonEigenDeelPopup() {
 // De popup zelf. Apart van de poort hierboven, zodat het debug-paneel hem op
 // elk scherm kan laten zien.
 function speelEigenDeelPopup() {
-  state.eigenDeelPopupGetoond = true;
+  eigenDeelPopupZet(verhaalFaseZone());
   bewaarHerstelpunt();
   toonLadeVergrendeld(
     '\u2713  Jij bent klaar in dit verhaaldeel',
@@ -5416,14 +5515,15 @@ function speelEigenDeelPopup() {
 function eigenDeelReden() {
   if (!state.personage) return 'er is nog geen rol gekozen';
   var fase = verhaalFaseZone();
-  if (fase !== 'kraaienkwartier') {
+  var tabel = EIGEN_TAKEN_PER_ZONE[fase];
+  if (!tabel) {
     return 'de verhaal-fase staat op ' + (faseWeergaveNaam(fase) || 'geen wijk') +
-           '. De melding bestaat voorlopig alleen in het Kraaienkwartier. Een eerdere skip naar een volgende wijk zet die fase gedeeld vooruit, en hij gaat nooit vanzelf terug.';
+           '. De melding is uitgewerkt voor het Kraaienkwartier en Dorendael. Een eerdere skip naar een volgende wijk zet die fase gedeeld vooruit, en hij gaat nooit vanzelf terug.';
   }
-  if (!KK_EIGEN_TAKEN[state.personage]) return 'voor deze rol staat geen taaklijst';
-  var open = eigenDeelTakenOpen();
+  if (!tabel[state.personage]) return 'voor deze rol staat geen taaklijst';
+  var open = eigenDeelTakenOpen(fase);
   if (open.length) return 'er staat nog iets open: ' + open.join(', ');
-  if (kkFinaleFaseBezig()) return 'de wijkfinale is al gevallen. Dan is het podium de richting, dus zwijgt de melding.';
+  if (wijkFinaleFaseBezig(fase)) return 'de wijkfinale is al gevallen. Dan is het podium de richting, dus zwijgt de melding.';
   return null;
 }
 
@@ -5432,9 +5532,10 @@ function eigenDeelReden() {
 function debugEigenDeelStatus() {
   var reden = eigenDeelReden();
   var fase = verhaalFaseZone();
-  var open = (state.personage && KK_EIGEN_TAKEN[state.personage] && fase === 'kraaienkwartier')
-    ? eigenDeelTakenOpen() : null;
-  var rustigeSchermen = ['screen-overworld', 'screen-kwartier1', 'screen-dorpsplein'];
+  var tabel = EIGEN_TAKEN_PER_ZONE[fase];
+  var open = (state.personage && tabel && tabel[state.personage])
+    ? eigenDeelTakenOpen(fase) : null;
+  var rustigeSchermen = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-dorpsplein'];
   var opRustigScherm = rustigeSchermen.some(function (id) {
     var el = document.getElementById(id);
     return el && el.classList.contains('active');
@@ -5448,8 +5549,8 @@ function debugEigenDeelStatus() {
   html += regel('Rol', state.personage || 'geen');
   html += regel('Verhaal-fase', faseWeergaveNaam(fase) || 'nog geen');
   html += regel('Eigen taken', open === null ? 'niet van toepassing' : (open.length ? 'nog open: ' + open.join(', ') : 'allemaal rond'));
-  html += regel('Wijkfinale', kkFinaleFaseBezig() ? 'gevallen (melding zwijgt)' : 'nog niet');
-  html += regel('Popup', state.eigenDeelPopupGetoond ? 'al gehad' : 'nog niet gehad');
+  html += regel('Wijkfinale', wijkFinaleFaseBezig(fase) ? 'gevallen (melding zwijgt)' : 'nog niet');
+  html += regel('Popup', eigenDeelPopupAl(fase) ? 'al gehad' : 'nog niet gehad');
   html += regel('Dit scherm', opRustigScherm ? 'popup mag hier verschijnen' : 'popup wacht tot je op de kaart of op straat staat');
   html += regel('Melding nu', reden ? 'uit, want ' + reden : 'aan');
   html += '</div>';
@@ -23631,7 +23732,7 @@ function buildDebugPanel() {
       ['📌 + Kromme Spijker (toren)', function(){ debugItem('📌','Kromme Spijker'); }, !heeftSpeld, 'Toren (K3)'],
       // ── Jouw deel is rond (de eigen-deel-melding)
       ['\u2713 Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
-      ['\ud83d\udd04 Reset de klaar-melding', function(){ state.eigenDeelPopupGetoond = false; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
+      ['\ud83d\udd04 Reset de klaar-melding', function(){ state.eigenDeelPopupZones = {}; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
       ['\ud83d\udccb Stand van de melding tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
       ['\u21a9\ufe0f Verhaal-fase terug naar Kraaienkwartier', function(){ close(); debugFaseTerugNaarKraaienkwartier(); }, verhaalFaseZone() !== 'kraaienkwartier', 'Jouw deel is rond'],
       // ── Verborgen Hand: de stille hulpklok van dit district
@@ -23681,7 +23782,7 @@ function buildDebugPanel() {
         debugVhKlokReset('kraaienkwartier');
         state.heksOpgelost = false;
         state.finalePopupGetoond = false;
-        state.eigenDeelPopupGetoond = false;
+        state.eigenDeelPopupZones = {};
         _eigenDeelVorige = null;
         state.inventory = state.inventory.filter(function(i){ return ['Microfoon','Kromme Spijker','Roestige Spijker','Munten van Stoop','Tobbe','Nat Dagboek'].indexOf(i.naam) === -1; });
         updateInventoryBar();
@@ -23707,6 +23808,10 @@ function buildDebugPanel() {
     const afgeleid     = hasVisited('klokkenmaker_afgeleid');
 
     btns = [
+      // ── Jouw deel is rond (de eigen-deel-melding, nu ook voor Dorendael)
+      ['✓ Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
+      ['🔄 Reset de klaar-melding', function(){ state.eigenDeelPopupZones = {}; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
+      ['📋 Stand van de melding tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
       // ── Algemeen
       ['🌲 Alle DD-items klaar',     function(){ debugDorendaelKlaar(); close(); }, !inWoudWinScreen, 'Algemeen'],
       ['🗳️ Lock Dorendael-finale',   function(){ markVisited('dorendael_finale_gestart'); close(); }, !inWoudWinScreen, 'Algemeen'],
