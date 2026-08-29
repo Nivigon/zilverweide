@@ -5339,16 +5339,51 @@ var DD_EIGEN_TAKEN = {
   ]
 };
 
+// Wat moet elke rol in Heer Donatuslaan zelf gedaan hebben? Alleen de
+// hoofdtaken, zelfde ontwerpregel: elke afrondende vlag valt op het tablet van
+// de rol zelf. Let op de sterke verwevenheid van deze wijk (Felix komt pas vrij
+// nadat Jan de vermomming levert; Kelly kan het doosje pas afleveren nadat Felix
+// bij Vrouwe Roet is geweest), maar de "klaar"-vlag is telkens die van de rol
+// zelf, dus de melding klopt per tablet.
+var HD_EIGEN_TAKEN = {
+  jan: [
+    // Alleen Jan komt in de achterkamer en forceert het slot.
+    { label: 'uit de slagerij ontsnappen', check: function () { return hasVisited('jan_slagerij_gevlucht'); } },
+    // Leveren impliceert kopen impliceert de munten aannemen: deze ene check
+    // dekt Jans hele H2-arc. Bewust NIET felix_hd2_vrij: die valt op Felix'
+    // tablet, niet op dat van Jan.
+    { label: 'de vermomming aan Felix leveren', check: function () { return hasVisited('jan_outfit_geleverd'); } }
+  ],
+  kelly: [
+    // Alleen Kelly speelt het kerkdoolhof; zet ook over_de_rozen_beschikbaar.
+    { label: 'het kerkarchief doorzoeken', check: function () { return hasVisited('kerk_non_weg'); } },
+    { label: 'het muziekdoosje bij Aaltje afleveren', check: function () { return hasVisited('muziekdoosje_bij_aaltje'); } }
+  ],
+  fenna: [
+    // Fenna's lied-doolhof in de herberg.
+    { label: 'de herberg betoveren', check: function () { return hasVisited('fenna_herberg_gedaan'); } }
+  ],
+  felix: [
+    // felix_hd2_vrij valt wel op Felix' eigen tablet (in tegenstelling tot Jans kant).
+    { label: 'ontsnappen en je vermommen als Liu-Yen', check: function () { return hasVisited('felix_hd2_vrij'); } },
+    // Alleen Felix als Lola komt bij Vrouwe Roet binnen.
+    { label: 'als Lola bij Vrouwe Roet de boodschap ophalen', check: function () { return hasVisited('h6_klokkenmaker_gezien'); } }
+  ]
+};
+
 // De taaklijst en leestaak per verhaal-fase, zodat de melding zone-bewust is.
 var EIGEN_TAKEN_PER_ZONE = {
   kraaienkwartier: KK_EIGEN_TAKEN,
-  dorendael:       DD_EIGEN_TAKEN
+  dorendael:       DD_EIGEN_TAKEN,
+  sintdonatuslaan: HD_EIGEN_TAKEN
 };
 // De leestaak die bij de eigen-deel-lijst hoort: in het Kraaienkwartier het
-// dagboek, in Dorendael de molen-legende. boek verwijst naar LEESTAKEN.
+// dagboek, in Dorendael de molen-legende, in Heer Donatuslaan "Over de Rozen".
+// boek verwijst naar LEESTAKEN.
 var EIGEN_LEESTAAK_PER_ZONE = {
   kraaienkwartier: { boek: 'dagboek', label: 'het dagboek lezen' },
-  dorendael:       { boek: 'molen',   label: 'de molen-legende bekijken' }
+  dorendael:       { boek: 'molen',   label: 'de molen-legende bekijken' },
+  sintdonatuslaan: { boek: 'rozen',   label: 'Over de Rozen lezen' }
 };
 
 // Popup "jouw deel is rond" komt een keer per wijk. Vroeger een enkele boolean
@@ -5409,9 +5444,19 @@ function dorendaelFinaleFaseBezig() {
       || dorendaelFinaleKlaar();
 }
 
+// Heer Donatuslaan-tegenhanger: de Tobbe-gok is opgelost of het HD-team is
+// compleet. Er bestaat geen aparte "finale gestart"-vlag voor deze wijk, dus
+// tobbe_gok_opgelost dekt het startmoment.
+function heerDonatuslaanFinaleFaseBezig() {
+  return !!state.tobbeGokOpgelost
+      || !!getSharedState('tobbe_gok_opgelost')
+      || heerDonatusFinaleKlaar();
+}
+
 // De juiste finale-check voor de opgegeven zone.
 function wijkFinaleFaseBezig(zone) {
   if (zone === 'dorendael') return dorendaelFinaleFaseBezig();
+  if (zone === 'sintdonatuslaan') return heerDonatuslaanFinaleFaseBezig();
   return kkFinaleFaseBezig();
 }
 
@@ -5433,6 +5478,14 @@ var EIGEN_DEEL_RICHTINGEN_PER_ZONE = {
       lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
   ],
   dorendael: [
+    { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
+      lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
+    { kort: 'Speur verder naar wie hier niet deugt.',
+      lang: 'Speur verder naar wie hier niet deugt, ook waar je nog niet binnen bent geweest.' },
+    { kort: 'Ga naar De Verborgen Hand op het dorpsplein.',
+      lang: 'Ga naar De Verborgen Hand op het dorpsplein voor extra hulp.' }
+  ],
+  sintdonatuslaan: [
     { kort: 'Zoek je teamgenoten op en vraag waar zij vastlopen.',
       lang: 'Zoek je teamgenoten op en vraag waar zij vastlopen.' },
     { kort: 'Speur verder naar wie hier niet deugt.',
@@ -5482,7 +5535,7 @@ function checkEigenDeelRond() {
 // terug is op straat.
 function toonEigenDeelPopup() {
   if (eigenDeelPopupAl(verhaalFaseZone())) return;
-  var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-dorpsplein'].some(function (id) {
+  var rustig = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-sintdonatuslaan', 'screen-dorpsplein'].some(function (id) {
     var el = document.getElementById(id);
     return el && el.classList.contains('active');
   });
@@ -5535,7 +5588,7 @@ function debugEigenDeelStatus() {
   var tabel = EIGEN_TAKEN_PER_ZONE[fase];
   var open = (state.personage && tabel && tabel[state.personage])
     ? eigenDeelTakenOpen(fase) : null;
-  var rustigeSchermen = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-dorpsplein'];
+  var rustigeSchermen = ['screen-overworld', 'screen-kwartier1', 'screen-dorendael', 'screen-sintdonatuslaan', 'screen-dorpsplein'];
   var opRustigScherm = rustigeSchermen.some(function (id) {
     var el = document.getElementById(id);
     return el && el.classList.contains('active');
@@ -23920,6 +23973,10 @@ function buildDebugPanel() {
   } else if (inHeerDonatuslaan) {
     label = 'Heer Donatuslaan';
     btns = [
+      // ── Jouw deel is rond (de eigen-deel-melding, nu ook voor Heer Donatuslaan)
+      ['✓ Popup "jouw deel is rond" nu', function(){ close(); speelEigenDeelPopup(); }, true, 'Jouw deel is rond'],
+      ['🔄 Reset de klaar-melding', function(){ state.eigenDeelPopupZones = {}; _eigenDeelVorige = null; bewaarHerstelpunt(); close(); updateMissieTeller(); }, true, 'Jouw deel is rond'],
+      ['📋 Stand van de melding tonen', function(){ close(); debugEigenDeelStatus(); }, true, 'Jouw deel is rond'],
       // Alleen op Felix' eigen tablet: de functie wist ook de gedeelde
       // keten-vlaggen (vrij, munten, code), en dat mag niet per ongeluk
       // vanaf het tablet van een teamgenoot gebeuren.
