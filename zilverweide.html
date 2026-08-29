@@ -4559,6 +4559,7 @@ const VISITED_FLAGS = {
   h6_jan_gezien:              'Jan is langs Het Hol gelopen',
   // ── H7 Apotheker & H8 Steegje ──
   h7_intro_gezien:            'Deze speler heeft de volledige apotheker-intro gehad',
+  h7_waarschuwing_gezien:     'Deze speler heeft de waarschuwing gezien dat de apotheker-quest optioneel is en tijd kost',
   h7_gedronken:               'Deze speler heeft het anti-Schaduw middel gedronken',
   muziekdoosje_hd_opgehaald:  'Kelly heeft het afgeronde muziekdoosje opgehaald bij de klokkenmaker',
   muziekdoosje_bij_aaltje:    'Kelly heeft het muziekdoosje aan Aaltje gegeven',
@@ -9257,6 +9258,21 @@ var BGL_HULP_OPTIES = [
           .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
       } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
     }
+  },
+  {
+    id: 'apotheker_beknopt',
+    ic: '⚗️',
+    titel: 'Apotheker beknopt',
+    uitleg: 'Korte teksten bij de apotheker (H7) voor een groep die achterloopt: de scene loopt sneller, de quest zelf verandert niet. Standaard uit, dus de volledige tekst.',
+    keuzes: [ { w: false, label: 'Volledig (standaard)' }, { w: true, label: 'Beknopt' } ],
+    huidig: function () { return _bglShared.apotheker_beknopt === true; },
+    zet: function (v) {
+      _bglShared.apotheker_beknopt = v;
+      try {
+        firebase.database().ref('sessies/' + _bglSid + '/shared').child('apotheker_beknopt').set(v)
+          .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+      } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+    }
   }
 ];
 function begeleiderHulpZet(id, waarde) {
@@ -13712,11 +13728,32 @@ function apothekerOntbrekend() {
 
 let _apotheekBinnen = false;
 
+// Waarschuwing vooraf: de apotheker-quest is optioneel en kost tijd. Elke
+// speler ziet hem eenmalig (lokale vlag h7_waarschuwing_gezien), zowel bij de
+// eerste speler vlak voor de keuze als bij een speler die later binnenkomt.
+// Zelfde tekst in de volledige en de beknopte modus.
+function h7Waarschuwing(loc) {
+  markVisited('h7_waarschuwing_gezien');
+  var alinea = 'font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic';
+  toonLade(
+    '⏳  Optioneel: een middel tegen de stemmen',
+    '<p style="' + alinea + '">Dit is een rustmiddel tegen de stemmen in je hoofd. Dit middel maken is optioneel en kost tijd.</p>' +
+    '<p style="' + alinea + '">Het kan je helpen: de stemmen remmen je niet meer af.</p>' +
+    '<p style="' + alinea + '">Maar het kan je ook vertragen: terwijl je de ingrediënten zoekt, kom je even niet verder in je eigen verhaal.</p>' +
+    '<p style="' + alinea + '">Kies zelf of het je dat waard is.</p>',
+    'Verder',
+    function () { renderH7Apotheker(loc); }
+  );
+}
+
 function renderH7Apotheker(loc) {
   const p = state.personage;
   const cont = document.getElementById('locatie-content');
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   const questActief = !!getSharedState('apotheker_quest_actief');
+  // Begeleider-schakelaar (globaal, gedeelde stand): korte teksten voor een
+  // groep die achterloopt. Standaard uit, dus de volledige tekst.
+  const beknopt = !!getSharedState('apotheker_beknopt');
 
   // ── Buiten: eerst de gevel, dan pas naar binnen ──
   if (!_apotheekBinnen) {
@@ -13804,9 +13841,14 @@ function renderH7Apotheker(loc) {
 
   // ── Quest actief maar deze speler kent de intro nog niet (ander begon) ──
   if (questActief && !hasVisited('h7_intro_gezien')) {
+    if (!hasVisited('h7_waarschuwing_gezien')) return h7Waarschuwing(loc);
     markVisited('h7_intro_gezien');
-    dialog.push('De apotheker kijkt op zodra je binnenkomt, alsof hij je verwachtte.');
-    dialog.push({ spreker: 'De apotheker', tekst: '"Een van je vrienden was hier al. Jullie zoeken drie dingen voor me."' });
+    if (beknopt) {
+      dialog.push({ spreker: 'De apotheker', tekst: '"Een van je vrienden was hier al, voor een rustmiddel tegen de stemmen. Jullie zoeken drie dingen voor me."' });
+    } else {
+      dialog.push('De apotheker kijkt op zodra je binnenkomt, alsof hij je verwachtte.');
+      dialog.push({ spreker: 'De apotheker', tekst: '"Een van je vrienden was hier al. Ze zoeken een rustmiddel tegen de stemmen in het hoofd. Jullie zoeken drie dingen voor me."' });
+    }
     ontbrekend.forEach(function(ing) {
       dialog.push({ spreker: 'De apotheker', tekst: '"' + ing.naam.charAt(0).toUpperCase() + ing.naam.slice(1) + '. ' + ing.hint + '"' });
     });
@@ -13814,8 +13856,25 @@ function renderH7Apotheker(loc) {
   }
 
   // ── Eerste bezoek: volledige intro per rol ──
+  if (!hasVisited('h7_waarschuwing_gezien')) return h7Waarschuwing(loc);
   markVisited('h7_intro_gezien');
   setSharedState('apotheker_bezocht', true);
+
+  // ── Beknopte modus (begeleider): rol-onafhankelijke korte intro ──
+  if (beknopt) {
+    dialog.push('De apotheker kijkt op van zijn werkbank.');
+    dialog.push({ spreker: 'De apotheker', tekst: '"Kom je voor Aeldervoet? De Spechtplaag? Of wat scheelt er?"' });
+    dialog.push('Je vertelt hem wat er speelt: stemmen, gefluister, je weet niet of je het je verbeeldt.');
+    dialog.push('De apotheker knikt, alsof hij het al wist.');
+    dialog.push({ spreker: 'De apotheker', tekst: '"Jij bent niet de eerste met dat verhaal. Wat je ervaart is meer magisch dan medisch. Een vloek, noemen de mensen het."' });
+    dialog.push({ spreker: 'De apotheker', tekst: '"Wegnemen kan ik het niet. Verdrukken wel, een tijdje rust. Maar het kost tijd."' });
+    acties = [
+      { label: '⚗️ Ja, help ons', onclick: function() { h7ZegJa(loc); } },
+      { label: 'Nee, we hebben geen tijd', onclick: goBackFromLocatie, stijl: 'blood' }
+    ];
+    return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog, acties: acties });
+  }
+
   dialog.push('De apotheker kijkt niet meteen op. Potten, weegschalen, iets dat te veel rookt voor een gewoon vuur.');
   dialog.push({ spreker: 'De apotheker', tekst: '"Kom je voor Aeldervoet? De Spechtplaag? Of wat scheelt er?"' });
 
@@ -13872,7 +13931,14 @@ function renderH7Apotheker(loc) {
 function h7ZegJa(loc) {
   setSharedState('apotheker_quest_actief', true);
   const cont = document.getElementById('locatie-content');
-  const dialog = [
+  const beknopt = !!getSharedState('apotheker_beknopt');
+  const dialog = beknopt ? [
+    'De apotheker gaat aan de slag, stopt, telt iets op zijn vingers.',
+    { spreker: 'De apotheker', tekst: '"Ik mis drie dingen. Jij of je vrienden kunnen ze brengen."' },
+    { spreker: 'De apotheker', tekst: '"Donderbloesem. Groeit waar iets verbrand is. Zoek een plek die ooit in vlammen opging."' },
+    { spreker: 'De apotheker', tekst: '"Een Kraal van Beengiht. Zeldzaam, niet van hier. Ga naar het Dorpsplein, daar helpt iemand je verder."' },
+    { spreker: 'De apotheker', tekst: '"Een stukje rouwstof. Een klein lapje, vaak van de kleding van een weduwe."' }
+  ] : [
     'De apotheker gaat aan de slag. Na een korte tijd stopt hij, fronst, telt iets op zijn vingers.',
     { spreker: 'De apotheker', tekst: '"Ik mis drie dingen." *(kijkt op)* "Jij kan ze brengen. Of je vrienden. Maakt niet uit wie."' },
     { spreker: 'De apotheker', tekst: '"Donderbloesem. Vreemd grillig goedje. Groeit het liefst waar iets verbrand is. As, roet, verkoolde grond. Zoek naar een plek die ooit in vlammen opging."' },
@@ -23804,6 +23870,7 @@ function buildDebugPanel() {
       ['🔄 Reset H6', function(){ ['h6_deur_lucinde_geprobeerd','h6_deur_liuyen_geprobeerd','h6_binnen','h6_roet_ontmoet','h6_klokkenmaker_gezien','h6_roet_gezien_kelly','h6_roet_gezien_fenna','h6_jan_gezien'].forEach(function(f){ state.visited.delete(f); }); state.shared.h6_klokkenmaker_gezien = false; close(); }, true, 'H6 Het Hol'],
       // ── H7 Apotheker quest
       ['⚗️ Quest actief (apotheker)', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('apotheker_bezocht', true); close(); }, true, 'H7 Apotheker'],
+      ['✂️ Beknopte tekst aan/uit (begeleider-modus)', function(){ var aan = !getSharedState('apotheker_beknopt'); setSharedState('apotheker_beknopt', aan); if (typeof toonToast === 'function') toonToast('✂️', aan ? 'Apotheker: beknopte tekst AAN' : 'Apotheker: volledige tekst'); close(); }, true, 'H7 Apotheker'],
       ['👁️ Apotheker bezocht (unlock Schaduw-vak)', function(){ setSharedState('apotheker_bezocht', true); close(); }, true, 'H7 Apotheker'],
       ['🌸 + Donderbloesem verzameld', function(){ setSharedState('ing_donderbloesem', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       // Zet de bloesem terug op de molenruïne zonder de rest van de quest te
@@ -23816,7 +23883,7 @@ function buildDebugPanel() {
       ['📿 + Kraal verzameld', function(){ setSharedState('ing_kraal', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['🖤 + Rouwstof verzameld', function(){ setSharedState('ing_rouwstof', 'verzameld'); close(); }, true, 'H7 Apotheker'],
       ['✅ Alle 3 ingeleverd', function(){ setSharedState('apotheker_quest_actief', true); setSharedState('ing_donderbloesem','ingeleverd'); setSharedState('ing_kraal','ingeleverd'); setSharedState('ing_rouwstof','ingeleverd'); close(); }, true, 'H7 Apotheker'],
-      ['🔄 Reset quest', function(){ setSharedState('apotheker_quest_actief', false); setSharedState('apotheker_bezocht', false); setSharedState('kraal_hint_gekregen', false); setSharedState('ing_donderbloesem', null); setSharedState('ing_kraal', null); setSharedState('ing_rouwstof', null); state.visited.delete('h7_intro_gezien'); state.visited.delete('h7_gedronken'); state.visited.delete('h8_vrouwtje_gezien'); state.visited.delete('omkleden_steegje_ontdekt'); state.inventory = state.inventory.filter(function(i){ return i.naam !== 'Flesje'; }); updateInventoryBar(); close(); }, true, 'H7 Apotheker'],
+      ['🔄 Reset quest', function(){ setSharedState('apotheker_quest_actief', false); setSharedState('apotheker_bezocht', false); setSharedState('kraal_hint_gekregen', false); setSharedState('ing_donderbloesem', null); setSharedState('ing_kraal', null); setSharedState('ing_rouwstof', null); state.visited.delete('h7_intro_gezien'); state.visited.delete('h7_waarschuwing_gezien'); state.visited.delete('h7_gedronken'); state.visited.delete('h8_vrouwtje_gezien'); state.visited.delete('omkleden_steegje_ontdekt'); state.inventory = state.inventory.filter(function(i){ return i.naam !== 'Flesje'; }); updateInventoryBar(); close(); }, true, 'H7 Apotheker'],
       ['🧪 + Flesje',        function(){ debugItem(ITEMS.flesje.emoji, ITEMS.flesje.naam); }, true, 'H7 Apotheker'],
       // ── HD Finale
       ['🌹 Trigger HD-finale popup', function(){ markVisited('felix_hd2_vrij'); setSharedState('felix_hd2_vrij',true); markVisited('jan_slagerij_gevlucht'); setSharedState('jan_slagerij_gevlucht',true); markVisited('fenna_herberg_gedaan'); setSharedState('fenna_herberg_gedaan',true); markVisited('kerk_non_weg'); setSharedState('kerk_non_weg',true); markVisited('h6_klokkenmaker_gezien'); setSharedState('h6_klokkenmaker_gezien',true); markVisited('muziekdoosje_afgeleverd'); setSharedState('muziekdoosje_afgeleverd',true); markVisited('muziekdoosje_bij_aaltje'); if (state.personage === 'felix' && !state.inventory.find(function(i){ return i.naam === ITEMS.felixOutfit.naam; })) { addInventory(ITEMS.felixOutfit.emoji, ITEMS.felixOutfit.naam, false); } state.hdFinalePopupGetoond = false; close(); checkHeerDonatusTokens(); }, !state.tobbeGokOpgelost, 'HD Finale'],
