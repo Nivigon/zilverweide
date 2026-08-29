@@ -13728,11 +13728,14 @@ function apothekerOntbrekend() {
 
 let _apotheekBinnen = false;
 
-// Waarschuwing vooraf: de apotheker-quest is optioneel en kost tijd. Elke
-// speler ziet hem eenmalig (lokale vlag h7_waarschuwing_gezien), zowel bij de
-// eerste speler vlak voor de keuze als bij een speler die later binnenkomt.
-// Zelfde tekst in de volledige en de beknopte modus.
-function h7Waarschuwing(loc) {
+// Waarschuwing: de apotheker-quest is optioneel en kost tijd. Elke speler ziet
+// hem eenmalig (lokale vlag h7_waarschuwing_gezien), op het moment dat de keuze
+// gemaakt moet worden: de pop-up verschijnt bij de laatste dialoog-regel van de
+// intro, precies als de Ja/Nee-knoppen in beeld komen. De speler die later
+// binnenkomt kent geen keuze meer en krijgt hem bij de laatste regel van zijn
+// eigen scene. Sluit alleen de lade, tekent de scene eronder niet opnieuw, dus
+// de keuzeknoppen blijven staan. Zelfde tekst in de volledige en beknopte modus.
+function h7ToonWaarschuwing() {
   markVisited('h7_waarschuwing_gezien');
   var alinea = 'font-size:1rem;color:var(--parchment);line-height:1.6;font-style:italic';
   toonLade(
@@ -13742,8 +13745,21 @@ function h7Waarschuwing(loc) {
     '<p style="' + alinea + '">Maar het kan je ook vertragen: terwijl je de ingrediënten zoekt, kom je even niet verder in je eigen verhaal.</p>' +
     '<p style="' + alinea + '">Kies zelf of het je dat waard is.</p>',
     'Verder',
-    function () { renderH7Apotheker(loc); }
+    null
   );
+}
+
+// Hang de waarschuwing aan de laatste dialoog-beat: zodra die regel getoond
+// wordt (en dus de keuzeknoppen verschijnen) komt de pop-up eenmalig op.
+function h7HangWaarschuwingAanLaatste(dialog) {
+  if (!dialog.length) return;
+  var laatste = dialog[dialog.length - 1];
+  if (typeof laatste === 'string') { laatste = { tekst: laatste }; dialog[dialog.length - 1] = laatste; }
+  var vorige = laatste.onShow;
+  laatste.onShow = function () {
+    if (typeof vorige === 'function') vorige();
+    if (!hasVisited('h7_waarschuwing_gezien')) h7ToonWaarschuwing();
+  };
 }
 
 function renderH7Apotheker(loc) {
@@ -13841,7 +13857,6 @@ function renderH7Apotheker(loc) {
 
   // ── Quest actief maar deze speler kent de intro nog niet (ander begon) ──
   if (questActief && !hasVisited('h7_intro_gezien')) {
-    if (!hasVisited('h7_waarschuwing_gezien')) return h7Waarschuwing(loc);
     markVisited('h7_intro_gezien');
     if (beknopt) {
       dialog.push({ spreker: 'De apotheker', tekst: '"Een van je vrienden was hier al, voor een rustmiddel tegen de stemmen. Jullie zoeken drie dingen voor me."' });
@@ -13852,11 +13867,11 @@ function renderH7Apotheker(loc) {
     ontbrekend.forEach(function(ing) {
       dialog.push({ spreker: 'De apotheker', tekst: '"' + ing.naam.charAt(0).toUpperCase() + ing.naam.slice(1) + '. ' + ing.hint + '"' });
     });
+    h7HangWaarschuwingAanLaatste(dialog);
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog });
   }
 
   // ── Eerste bezoek: volledige intro per rol ──
-  if (!hasVisited('h7_waarschuwing_gezien')) return h7Waarschuwing(loc);
   markVisited('h7_intro_gezien');
   setSharedState('apotheker_bezocht', true);
 
@@ -13872,6 +13887,7 @@ function renderH7Apotheker(loc) {
       { label: '⚗️ Ja, help ons', onclick: function() { h7ZegJa(loc); } },
       { label: 'Nee, we hebben geen tijd', onclick: goBackFromLocatie, stijl: 'blood' }
     ];
+    h7HangWaarschuwingAanLaatste(dialog);
     return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog, acties: acties });
   }
 
@@ -13923,6 +13939,7 @@ function renderH7Apotheker(loc) {
     { label: 'Nee, we hebben geen tijd', onclick: goBackFromLocatie, stijl: 'blood' }
   ];
 
+  h7HangWaarschuwingAanLaatste(dialog);
   return renderLocatieScene({ container: cont, titel: loc.naam, sub: loc.sub, image: 'locaties/heerdonatuslaan/apotheekbinnen.jpeg', dialog: dialog, acties: acties });
 }
 
