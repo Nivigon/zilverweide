@@ -18447,7 +18447,13 @@ function goBackFromLocatie() {
   // Vangnet: als de hoofdmuziek om wat voor reden dan ook gepauzeerd is,
   // hervat hem nu (ongeacht welke module hem had stilgezet).
   var bgm = document.getElementById('bg-music');
-  if (bgm && bgm.paused && bgm.src) { bgm.play().catch(function(){}); }
+  if (bgm) {
+    // Een scène kan de hoofdmuziek gemute hebben (bv. de molen via dempMuziek).
+    // De mute weghalen, anders blijft de muziek stil als de speler de scène via
+    // Terug verlaat vóór zijn eigen afsluiting (toonMolenOntwaak) hem weer aanzet.
+    if (bgm.muted) bgm.muted = false;
+    if (bgm.paused && bgm.src) { bgm.play().catch(function(){}); }
+  }
   window._bgMuziekPauze = false;
   // Achterkamer-audio van de slagerij opruimen (no-op als die niet speelt).
   if (typeof h3StopTimer === 'function') h3StopTimer();
