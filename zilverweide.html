@@ -4281,8 +4281,8 @@ function debugSimuleerAanwezigheid() {
   // onderweg-markers (midden in de straat en de plein-hoeken) solo te testen.
   var voorbeeld = {
     jan:   { loc: 'k1_uitkijktoren', plek: '',            bezocht: ['k1_dorpsput', 'k1_uitkijktoren', 'k1_nummer7'] },
-    kelly: { loc: null,              plek: 'Dorendael',    bezocht: ['dd5_woud', 'dd8_stiltevijver'] },
-    fenna: { loc: null,              plek: 'Dorpsplein',   bezocht: ['h4_kerk', 'h5_gemeentehuis'] },
+    kelly: { loc: null,              plek: 'Dorendael',    bezocht: ['dd5_woud', 'dd8_stiltevijver', 'verborgen_hand'] },
+    fenna: { loc: null,              plek: 'Dorpsplein',   bezocht: ['h4_kerk', 'h5_gemeentehuis', 'podium'] },
     felix: { loc: null,              plek: 'Dorpskaart',   bezocht: ['k1_naaldmasker', 'h8_steegje', 'dorpsarchief'] }
   };
   Object.keys(voorbeeld).forEach(function (rol) {
@@ -9067,14 +9067,16 @@ var BGL_STRAAT_LAYOUT = {
   }
 };
 // De drie code-locaties op het dorpsplein.
-// locId koppelt een plein-vak aan de locatie-id die de speler-tablet als
-// state.lastOpenedLocatie gebruikt, zodat de aanwezigheids-portretjes ook op
-// het plein kloppen. Alleen het Dorpsarchief heeft nu zo'n eigen locatie-id;
-// het podium en de verborgen hand zijn scene-momenten zonder vaste id.
+// locId koppelt een plein-vak aan een vaste locatie-id. De drie openers
+// (openToneel, openDorpsarchief, openVerborgenHand) voegen die id toe aan
+// state.visitedLocations, zodat de begeleiderskaart een gedimd 'geweest'-
+// portretje op het juiste vak toont. Deze ids staan los van de gameplay-
+// variabele state.lastOpenedLocatie, die de openers bewust op null houden;
+// een felle 'hier nu'-gloed op het plein bestaat daarom nog niet.
 var BGL_DORPSPLEIN = [
-  { naam:'Het Podium (Toneel)', code:'D2' },
+  { naam:'Het Podium (Toneel)', code:'D2', locId:'podium' },
   { naam:'Het Dorpsarchief',    code:'D3', locId:'dorpsarchief' },
-  { naam:'De Verborgen Hand',   code:'D4' }
+  { naam:'De Verborgen Hand',   code:'D4', locId:'verborgen_hand' }
 ];
 var _bglKaartNamen = {};   // code -> mooie naam, voor het grote code-vak
 
@@ -18628,6 +18630,8 @@ const ARCHIEF_BINNEN  = 'locaties/dorpsplein/dorpsarchiefbinnen.jpeg';
 
 function openDorpsarchief() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
+  // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
+  state.visitedLocations.add('dorpsarchief');
 
   // ── Buiten: eerst het gebouw van de straat af zien ──
   // De buitenafbeelding bestaat nog niet, dus hier staat voorlopig de
@@ -20066,6 +20070,8 @@ function podiumAfbeelding() {
 
 function openToneel() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
+  // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
+  state.visitedLocations.add('podium');
 
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   const p = state.personage;
@@ -20732,6 +20738,8 @@ function plaatsKraalOpAfbeelding() {
 
 function openVerborgenHand() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
+  // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
+  state.visitedLocations.add('verborgen_hand');
 
   // ── Buiten: de woonwagen van de straat af, voor je aanklopt ──
   if (!_verborgenHandBinnen) {
