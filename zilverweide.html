@@ -1237,21 +1237,24 @@ body.pf-cinema-actief #sessie-klok{display:none !important}
 .se-titel{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(1.8rem,5.6vh,3.4rem);color:var(--gold);letter-spacing:.06em;line-height:1.05}
 .se-onderkop{font-family:'Cinzel',serif;color:var(--gold-dim);font-size:clamp(.68rem,1.7vh,.95rem);letter-spacing:.2em;text-transform:uppercase;margin-top:.35rem}
 .se-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding:.5vh 0}
-/* De vier staande pops als groep onderaan, licht gestaffeld alsof ze samen
-   op het plein staan. */
-.se-groep{flex:0 0 auto;display:flex;justify-content:center;align-items:flex-end}
-.se-fig{position:relative;display:flex;flex-direction:column;align-items:center;width:clamp(8rem,17vw,13rem)}
-.se-fig img{display:block;width:auto;max-width:100%;height:auto;max-height:clamp(13rem,40vh,26rem);object-fit:contain;filter:drop-shadow(2px 6px 14px rgba(0,0,0,.55))}
+/* Twee flanken onderaan: Fenna en Felix links, Jan en Kelly rechts, met de data
+   ertussen. space-between duwt de flanken naar de randen. */
+.se-groep{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;width:100%;gap:1rem}
+.se-flank{display:flex;align-items:flex-end}
+.se-fig{position:relative;display:flex;flex-direction:column;align-items:center;width:clamp(7.5rem,15vw,12rem)}
+.se-fig img{display:block;width:auto;max-width:100%;height:auto;max-height:clamp(13rem,42vh,27rem);object-fit:contain;filter:drop-shadow(2px 6px 14px rgba(0,0,0,.55))}
+/* Gespiegeld zodat de pop naar het midden kijkt. */
+.se-fig-mirror img{transform:scaleX(-1)}
 .se-fig-naam{font-family:'Cinzel',serif;color:var(--parchment);font-size:clamp(.8rem,1.9vh,1.05rem);text-align:center;line-height:1.12;margin-top:.15rem;display:flex;flex-direction:column;align-items:center;gap:.04rem}
 .se-fig-naam .leeg{opacity:.55}
 .se-fig-rol{font-family:'Cinzel',serif;color:var(--gold-dim);font-size:.6rem;letter-spacing:.12em;text-transform:uppercase}
-/* Lichte horizontale overlap; de buitenste figuren iets naar achteren (hoger)
-   dan de binnenste twee, zodat het een groep wordt in plaats van twee kolommen. */
-.se-fig:not(:first-child){margin-left:clamp(-2.6rem,-3.2vw,-1rem)}
-.se-fig-1{transform:translateY(-5%);z-index:1}
-.se-fig-2{transform:translateY(2%);z-index:3}
-.se-fig-3{transform:translateY(0);z-index:2}
-.se-fig-4{transform:translateY(-3%);z-index:1}
+/* Binnen een flank lichte overlap en stagger: de buitenste figuur iets hoger
+   (naar achteren) dan de binnenste, zodat het paar bij elkaar hoort. */
+.se-flank .se-fig:not(:first-child){margin-left:clamp(-2.4rem,-3vw,-1rem)}
+.se-flank-links .se-fig-fenna{transform:translateY(-4%);z-index:1}
+.se-flank-links .se-fig-felix{transform:translateY(2%);z-index:2}
+.se-flank-rechts .se-fig-jan{transform:translateY(2%);z-index:2}
+.se-flank-rechts .se-fig-kelly{transform:translateY(-4%);z-index:1}
 .se-midden{flex:1 1 auto;max-width:30rem;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:.35rem;min-width:0}
 .se-tijd{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(2.4rem,9.5vh,4.4rem);color:var(--gold);line-height:1}
 .se-zegel{color:var(--parchment);font-size:clamp(1rem,2.4vh,1.3rem)}
@@ -23967,18 +23970,22 @@ function sessieLeesTijden(cb) {
 }
 
 // ── Het eindscherm: volledig scherm met de vier staande pops ─────────
-// De echte pop-PNG's (zoals in het spel), niet de portretfoto's. De vier
-// staan als groep onderaan, licht gestaffeld alsof ze samen op het plein
-// staan, met de spelernaam onder elk en de data in het midden erboven.
+// De echte pop-PNG's (zoals in het spel). Twee spelers links (Fenna, Felix),
+// twee rechts (Jan, Kelly), met de data ertussen. Felix en Kelly worden
+// gespiegeld zodat alle vier naar het midden kijken; elke flank staat licht
+// gestaffeld en overlappend alsof ze samen op het plein staan.
 var SESSIE_ROL_POP = {
   jan: 'karakters/spelers/jan-pop.png', kelly: 'karakters/spelers/kelly-pop.png',
   fenna: 'karakters/spelers/fenna-pop.png', felix: 'karakters/spelers/felix-pop.png'
 };
 var SESSIE_ROL_NAAM = { jan: 'Jan', kelly: 'Kelly', fenna: 'Fenna-Viviènne', felix: 'Felix' };
-function sessieFigHtml(r, idx) {
+// Welke pops horizontaal gespiegeld worden om naar binnen te kijken.
+var SESSIE_ROL_SPIEGEL = { felix: true, kelly: true };
+function sessieFigHtml(r) {
   var speler = getSharedState('speler_naam_' + r);
   var naam = speler ? sessieVeilig(speler) : '<span class="leeg">niet bezet</span>';
-  return '<div class="se-fig se-fig-' + (idx + 1) + '">' +
+  var mir = SESSIE_ROL_SPIEGEL[r] ? ' se-fig-mirror' : '';
+  return '<div class="se-fig se-fig-' + r + mir + '">' +
     '<img src="' + SESSIE_ROL_POP[r] + '" alt="">' +
     '<div class="se-fig-naam">' + naam +
       '<span class="se-fig-rol">' + sessieVeilig(SESSIE_ROL_NAAM[r]) + '</span></div>' +
@@ -24012,13 +24019,16 @@ function toonTijdscore(vervolg, nepLijst) {
       });
       midden += '</ol>';
     }
-    var groep = ['jan', 'kelly', 'fenna', 'felix']
-      .map(function (r, i) { return sessieFigHtml(r, i); }).join('');
+    var linksFlank = ['fenna', 'felix'].map(sessieFigHtml).join('');
+    var rechtsFlank = ['jan', 'kelly'].map(sessieFigHtml).join('');
     var html =
       '<div class="se-kop"><div class="se-titel">' + sessieVeilig(team) + '</div>' +
         '<div class="se-onderkop">De stilte is verbroken</div></div>' +
       '<div class="se-body"><div class="se-midden">' + midden + '</div></div>' +
-      '<div class="se-groep">' + groep + '</div>' +
+      '<div class="se-groep">' +
+        '<div class="se-flank se-flank-links">' + linksFlank + '</div>' +
+        '<div class="se-flank se-flank-rechts">' + rechtsFlank + '</div>' +
+      '</div>' +
       (terminaal ? '' : '<div class="se-voet"><button class="se-knop" id="se-verder">Verder →</button></div>');
     var ov = document.getElementById('sessie-eindscherm');
     if (!ov) { ov = document.createElement('div'); ov.id = 'sessie-eindscherm'; document.body.appendChild(ov); }
