@@ -2903,7 +2903,7 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
   .bglk-ingang:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.18 * var(--vlak))); }
   .bglk-ingang.gekozen { border-color:var(--gold); box-shadow:0 0 10px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
   .bglk-grid { display:grid; gap:.35rem; justify-content:center; position:relative; }
-  .bglk-tegel, .bglk-plein-vak { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.15rem; min-width:4.9rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.4rem .35rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
+  .bglk-tegel, .bglk-plein-vak { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.15rem; min-width:5.4rem; background:rgba(var(--goudrgb),calc(.06 * var(--vlak))); border:1px solid rgba(var(--goudrgb),calc(.3 * var(--lijn))); border-radius:7px; padding:.4rem .35rem; cursor:pointer; font-family:inherit; transition:border-color .15s ease, background .15s ease; }
   .bglk-tegel:hover, .bglk-plein-vak:hover { border-color:var(--gold); background:rgba(var(--goudrgb),calc(.14 * var(--vlak))); }
   .bglk-tegel.gekozen, .bglk-plein-vak.gekozen { border-color:var(--gold); box-shadow:0 0 14px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))) inset; }
   .bglk-tegel-naam { font-family:'Crimson Text',Georgia,serif; font-size:.74rem; color:var(--parchment); text-align:center; line-height:1.12; }
@@ -2916,24 +2916,35 @@ body:has(#screen-locatie.active .dh-root) .dh-dialog-body {
   .bglk-terug:hover { background:rgba(155,58,74,calc(.3 * var(--vlak))); border-color:var(--rose); }
   .bglk-terug .bglk-tegel-naam { color:var(--rose); }
   .bglk-terug .bglk-tegel-code { color:var(--rose); opacity:.85; }
-  /* Aanwezigheid: kleine speler-portretjes op een tegel. Fel met gouden gloed =
-     de speler is daar nu (verse hartslag); gedimd = daar eerder geweest. Puur
-     informatie voor de begeleider, dus geen muisinteractie. */
-  .bglk-aanw { position:absolute; top:2px; right:2px; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:1px; max-width:70%; pointer-events:none; }
-  .bglk-chip { width:15px; height:15px; border-radius:50%; background-size:cover; background-position:center top; background-repeat:no-repeat; background-color:var(--ash); border:1px solid rgba(0,0,0,.55); }
-  .bglk-chip.hier { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 7px rgba(var(--goudrgb),calc(.9 * var(--schaduwdiepte))); }
-  .bglk-chip.geweest { opacity:.42; filter:grayscale(.5); }
+  /* Aanwezigheid: speler-portretjes als eigen strook onder de naam op een tegel.
+     Groot genoeg om het gezicht te herkennen terwijl je de spelers over de kaart
+     ziet bewegen. Fel met gouden ring en gloed = de speler is daar nu (verse
+     hartslag); rustiger met een koele ring = daar eerder geweest, maar nog steeds
+     in kleur en leesbaar. Puur informatie voor de begeleider, dus geen
+     muisinteractie. De strook staat in de tegelstroom (niet absoluut), zodat
+     meerdere portretten naast elkaar passen zonder over de naam te vallen. */
+  .bglk-aanw { margin:6px auto 0; display:flex; flex-wrap:wrap; justify-content:center; gap:5px; max-width:100%; pointer-events:none; }
+  .bglk-aanw:empty { display:none; margin:0; }
+  .bglk-chip { position:relative; width:32px; height:32px; border-radius:50%; background-size:cover; background-position:center top; background-repeat:no-repeat; background-color:var(--ash); border:2px solid var(--ash); }
+  .bglk-chip.hier { border-color:var(--gold); box-shadow:0 0 0 2px rgba(var(--goudrgb),calc(.35 * var(--lijn))), 0 0 13px rgba(var(--goudrgb),calc(.85 * var(--schaduwdiepte))); }
+  .bglk-chip.geweest { opacity:.82; border-color:#6f6650; }
+  /* Merkje in de hoek: hetzelfde onderscheid ook zonder op de ring te letten.
+     Vol goud stipje = nu hier, open grijs ringetje = geweest. In CSS getekend,
+     bewust geen emoji (die kleurt op iOS Safari anders en wordt onleesbaar klein). */
+  .bglk-merk { position:absolute; bottom:-2px; right:-2px; width:13px; height:13px; border-radius:50%; border:1.5px solid #161009; box-sizing:border-box; }
+  .bglk-chip.hier .bglk-merk { background:var(--gold); box-shadow:0 0 6px rgba(var(--goudrgb),calc(.6 * var(--schaduwdiepte))); }
+  .bglk-chip.geweest .bglk-merk { background:#2a2318; border-color:#9a8f72; }
   /* Onderweg: een speler die WEL in deze straat (of op het plein of de dorpskaart)
      is, maar nog niet in een locatie. Portretjes met gouden gloed, net als 'hier
-     nu'. Absoluut gepositioneerd zodat de kaart nooit hoger wordt en op een scherm
-     blijft; leeg (niemand onderweg) toont niks. In de drie straten in het midden
-     tussen de tegels, op het plein in de hoeken. */
-  .bglk-onderweg { position:absolute; z-index:3; display:flex; flex-wrap:wrap; gap:2px; max-width:5.6rem; pointer-events:none; }
+     nu'. Absoluut gepositioneerd zodat de kaart hier niet hoger wordt; leeg
+     (niemand onderweg) toont niks. In de drie straten in het midden tussen de
+     tegels, op het plein in de hoeken. */
+  .bglk-onderweg { position:absolute; z-index:3; display:flex; flex-wrap:wrap; gap:4px; max-width:6.6rem; pointer-events:none; }
   .bglk-onderweg:empty { display:none; }
   .bglk-onderweg.midden { top:50%; left:50%; transform:translate(-50%,-50%); justify-content:center; }
-  .bglk-onderweg.hoek-rechts { top:3px; right:3px; justify-content:flex-end; max-width:60%; }
-  .bglk-onderweg.hoek-links { top:3px; left:3px; max-width:60%; }
-  .bglk-onderweg .bglk-chip { width:19px; height:19px; }
+  .bglk-onderweg.hoek-rechts { top:2px; right:2px; justify-content:flex-end; max-width:70%; }
+  .bglk-onderweg.hoek-links { top:2px; left:2px; max-width:70%; }
+  .bglk-onderweg .bglk-chip { width:30px; height:30px; }
   #bgl-kaart-sluit { position:fixed; top:.7rem; right:1rem; z-index:9601; background:none; border:none; color:var(--gold-dim); font-size:1.5rem; cursor:pointer; opacity:.85; display:none; }
   #bgl-kaart-overlay.open ~ #bgl-kaart-sluit { display:block; }
   /* Grote, vaste Bevestig-knop aan de rechterkant van het begeleiderspaneel.
@@ -9107,9 +9118,9 @@ function bglBouwKaart(doelId, inline) {
       var naam = naamVanId[id] || id;
       _bglKaartNamen[code] = naam;
       tegels += '<button class="bglk-tegel" data-code="' + code + '" style="grid-column:' + p.col + ';grid-row:' + p.row + '" onclick="bglKaartKies(\'' + code + '\')">' +
-        '<span class="bglk-aanw" data-for="' + id + '"></span>' +
         '<span class="bglk-tegel-naam">' + naam + '</span>' +
         '<span class="bglk-tegel-code">' + code + '</span>' +
+        '<span class="bglk-aanw" data-for="' + id + '"></span>' +
       '</button>';
     });
     _bglKaartNamen[s.ingang] = s.titel + ' (ingang)';
@@ -9132,9 +9143,9 @@ function bglBouwKaart(doelId, inline) {
     _bglKaartNamen[v.code] = v.naam;
     var col = (idx % 2) + 1, row = Math.floor(idx / 2) + 1;
     pleinVakken += '<button class="bglk-plein-vak" data-code="' + v.code + '" style="grid-column:' + col + ';grid-row:' + row + '" onclick="bglKaartKies(\'' + v.code + '\')">' +
-      '<span class="bglk-aanw" data-for="' + (v.locId || '') + '"></span>' +
       '<span class="bglk-tegel-naam">' + v.naam + '</span>' +
       '<span class="bglk-tegel-code">' + v.code + '</span>' +
+      '<span class="bglk-aanw" data-for="' + (v.locId || '') + '"></span>' +
     '</button>';
   });
   // Vierde vak van het vierkant: terug naar het begeleidersscherm. Alleen in
@@ -9229,7 +9240,7 @@ function bglUpdateAanwezigheid() {
       var portret = BGL_ROL_PORTRET[r.id] || '';
       chips += '<span class="bglk-chip ' + (hier ? 'hier' : 'geweest') + '"' +
         ' title="' + r.naam + (hier ? ' is hier nu' : ' is hier geweest') + '"' +
-        ' style="background-image:url(' + portret + ')"></span>';
+        ' style="background-image:url(' + portret + ')"><span class="bglk-merk"></span></span>';
     });
     cont.innerHTML = chips;
   });
@@ -9249,7 +9260,7 @@ function bglUpdateAanwezigheid() {
       var portret = BGL_ROL_PORTRET[r.id] || '';
       chips += '<span class="bglk-chip hier"' +
         ' title="' + r.naam + ' is onderweg in ' + plek + '"' +
-        ' style="background-image:url(' + portret + ')"></span>';
+        ' style="background-image:url(' + portret + ')"><span class="bglk-merk"></span></span>';
     });
     cont.innerHTML = chips;
   });
