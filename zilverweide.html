@@ -1230,19 +1230,23 @@ body.pf-cinema-actief #sessie-klok{display:none !important}
    links en twee rechts met de spelernamen, de tijd en het zegel in het
    midden. */
 #sessie-eindscherm{position:fixed;inset:0;z-index:800;display:none;flex-direction:column;
-  background:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(96,66,28,.42), rgba(11,8,4,.985) 62%), rgba(9,7,4,.99);
+  background:radial-gradient(ellipse 120% 80% at 50% 0%, rgba(96,66,28,.42), rgba(11,8,4,.985) 62%),
+    radial-gradient(ellipse 95% 42% at 50% 100%, rgba(96,66,28,.20), transparent 68%), rgba(9,7,4,.99);
   padding:2.6vh 2.2vw;overflow:hidden}
 #sessie-eindscherm.zichtbaar{display:flex}
 .se-kop{text-align:center;flex:0 0 auto}
 .se-titel{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(1.8rem,5.6vh,3.4rem);color:var(--gold);letter-spacing:.06em;line-height:1.05}
 .se-onderkop{font-family:'Cinzel',serif;color:var(--gold-dim);font-size:clamp(.68rem,1.7vh,.95rem);letter-spacing:.2em;text-transform:uppercase;margin-top:.35rem}
 .se-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;min-height:0;padding:.5vh 0}
+/* De warme openingsbeat vóór de cijfers. */
+.se-verhaal{font-family:'Crimson Text',Georgia,serif;font-style:italic;color:var(--parchment);font-size:clamp(1.15rem,3vh,1.8rem);line-height:1.6;max-width:34rem;text-align:center;margin:0 auto}
 /* Twee flanken onderaan: Fenna en Felix links, Jan en Kelly rechts, met de data
-   ertussen. space-between duwt de flanken naar de randen. */
-.se-groep{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;width:100%;gap:1rem}
+   ertussen. space-between duwt de flanken naar de randen; de padding houdt ze
+   iets van de rand af zodat ze de data omlijsten. */
+.se-groep{flex:0 0 auto;display:flex;justify-content:space-between;align-items:flex-end;width:100%;gap:1rem;padding:0 clamp(1rem,4vw,4.5rem)}
 .se-flank{display:flex;align-items:flex-end}
-.se-fig{position:relative;display:flex;flex-direction:column;align-items:center;width:clamp(7.5rem,15vw,12rem)}
-.se-fig img{display:block;width:auto;max-width:100%;height:auto;max-height:clamp(13rem,42vh,27rem);object-fit:contain;filter:drop-shadow(2px 6px 14px rgba(0,0,0,.55))}
+.se-fig{position:relative;display:flex;flex-direction:column;align-items:center;width:clamp(8rem,16vw,13rem)}
+.se-fig img{display:block;width:auto;max-width:100%;height:auto;max-height:clamp(15rem,48vh,31rem);object-fit:contain;filter:drop-shadow(2px 6px 14px rgba(0,0,0,.55))}
 /* Gespiegeld zodat de pop naar het midden kijkt. */
 .se-fig-mirror img{transform:scaleX(-1)}
 .se-fig-naam{font-family:'Cinzel',serif;color:var(--parchment);font-size:clamp(.8rem,1.9vh,1.05rem);text-align:center;line-height:1.12;margin-top:.15rem;display:flex;flex-direction:column;align-items:center;gap:.04rem}
@@ -24000,44 +24004,74 @@ function toonTijdscore(vervolg, nepLijst) {
   // Het echte einde van het spel: geen vervolg en geen debug-lijst. Dan is dit
   // rapport het laatste scherm, zonder Verder-knop en zonder scherm erna.
   var terminaal = !vervolg && !nepLijst;
-  function toon(lijst) {
-    var midden = '<div class="se-tijd">' + tijdTekst + '</div>' +
+  // De regel onder de tijd. Positief of neutraal geframed, nooit "slechts X
+  // trager"; de exacte positie staat al in de top 3.
+  function tijdRegel(lijst) {
+    if (!(lijst && lijst.length >= SESSIE_TIJDEN_DREMPEL && ms !== null)) return '';
+    var record = lijst[0].speeltijd_ms;
+    if (ms <= record) {
+      return 'Nog nooit werd de vloek zo snel gebroken. Jullie tijd is de nieuwe legende.';
+    }
+    var trager = lijst.filter(function (e) { return e.speeltijd_ms > ms; }).length;
+    if (trager >= lijst.length / 2) {
+      return 'Sneller dan de meeste gezelschappen die de vloek ooit trotseerden.';
+    }
+    return 'De vloek is gebroken, en dat is wat telt. De stilte is voorbij.';
+  }
+  function statsHtml(lijst) {
+    var h = '<div class="se-tijd">' + tijdTekst + '</div>' +
       '<div class="se-zegel">Zegel: <b>' + sessieVeilig(zegel) + '</b></div>';
+    var regel = tijdRegel(lijst);
+    if (regel) h += '<div class="se-record">' + regel + '</div>';
     if (lijst && lijst.length >= SESSIE_TIJDEN_DREMPEL && ms !== null) {
-      var record = lijst[0].speeltijd_ms;
-      if (ms <= record) {
-        midden += '<div class="se-record">Nog nooit werd de vloek zo snel gebroken. Jullie tijd is de nieuwe legende.</div>';
-      } else {
-        var diff = Math.max(1, Math.round((ms - record) / 60000));
-        midden += '<div class="se-record">Slechts ' + diff + ' minuut' + (diff === 1 ? '' : 'en') + ' trager dan het snelste gezelschap ooit.</div>';
-      }
-      midden += '<div class="se-top3-titel">Snelste gezelschappen ooit</div><ol class="se-top3">';
+      h += '<div class="se-top3-titel">Snelste gezelschappen ooit</div><ol class="se-top3">';
       lijst.slice(0, 3).forEach(function (e) {
         var eigen = (ms !== null && e.team === team && Math.abs(e.speeltijd_ms - ms) < 1000);
-        midden += '<li' + (eigen ? ' class="eigen"' : '') + '><span>' + sessieVeilig(e.team || '') + '</span>' +
+        h += '<li' + (eigen ? ' class="eigen"' : '') + '><span>' + sessieVeilig(e.team || '') + '</span>' +
           '<span class="se-t-tijd">' + sessieMsNaarKlok(e.speeltijd_ms) + '</span></li>';
       });
-      midden += '</ol>';
+      h += '</ol>';
     }
+    return h;
+  }
+  function toon(lijst) {
     var linksFlank = ['fenna', 'felix'].map(sessieFigHtml).join('');
     var rechtsFlank = ['jan', 'kelly'].map(sessieFigHtml).join('');
-    var html =
+    var ov = document.getElementById('sessie-eindscherm');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'sessie-eindscherm'; document.body.appendChild(ov); }
+    // Vast omhulsel: kop en pops blijven staan; alleen het midden en de voet
+    // wisselen tussen de verhaal-fase en de cijfer-fase, zodat de pop-PNG's
+    // niet opnieuw laden bij de onthulling.
+    ov.innerHTML =
       '<div class="se-kop"><div class="se-titel">' + sessieVeilig(team) + '</div>' +
         '<div class="se-onderkop">De stilte is verbroken</div></div>' +
-      '<div class="se-body"><div class="se-midden">' + midden + '</div></div>' +
+      '<div class="se-body"><div class="se-midden" id="se-midden"></div></div>' +
       '<div class="se-groep">' +
         '<div class="se-flank se-flank-links">' + linksFlank + '</div>' +
         '<div class="se-flank se-flank-rechts">' + rechtsFlank + '</div>' +
       '</div>' +
-      (terminaal ? '' : '<div class="se-voet"><button class="se-knop" id="se-verder">Verder →</button></div>');
-    var ov = document.getElementById('sessie-eindscherm');
-    if (!ov) { ov = document.createElement('div'); ov.id = 'sessie-eindscherm'; document.body.appendChild(ov); }
-    ov.innerHTML = html;
+      '<div class="se-voet" id="se-voet"></div>';
     ov.classList.add('zichtbaar');
-    if (!terminaal) {
-      var knop = document.getElementById('se-verder');
-      if (knop) knop.onclick = function () { ov.classList.remove('zichtbaar'); ov.innerHTML = ''; if (typeof vervolg === 'function') vervolg(); };
+    var middenEl = document.getElementById('se-midden');
+    var voetEl = document.getElementById('se-voet');
+    function faseVerhaal() {
+      middenEl.innerHTML = '<div class="se-verhaal">De vloek van Zilverweide is gebroken. ' +
+        'Vier vreemden kwamen aan, vier bondgenoten vertrekken.</div>';
+      voetEl.innerHTML = '<button class="se-knop" id="se-onthul">Toon jullie tijd →</button>';
+      var k = document.getElementById('se-onthul');
+      if (k) k.onclick = faseCijfers;
     }
+    function faseCijfers() {
+      middenEl.innerHTML = statsHtml(lijst);
+      if (terminaal) {
+        voetEl.innerHTML = '';
+      } else {
+        voetEl.innerHTML = '<button class="se-knop" id="se-verder">Verder →</button>';
+        var k = document.getElementById('se-verder');
+        if (k) k.onclick = function () { ov.classList.remove('zichtbaar'); ov.innerHTML = ''; if (typeof vervolg === 'function') vervolg(); };
+      }
+    }
+    faseVerhaal();
   }
   if (nepLijst) { toon(nepLijst); return; }
   sessieLeesTijden(toon);
