@@ -1214,6 +1214,35 @@ body.k6finale-actief .finale-btn{display:none !important;}
 @keyframes molenTimerPuls{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.14)}}
 #molen-timer{position:fixed;top:7vh;left:50%;transform:translateX(-50%);z-index:600;font-family:'Cinzel',serif;font-weight:700;color:#b5402f;text-shadow:0 0 26px rgba(181,64,47,.55);pointer-events:none;line-height:1;transition:font-size .8s ease,color .6s ease}
 #molen-timer.puls{animation:molenTimerPuls .55s ease-in-out infinite}
+/* ══ SESSIEKLOK: de teamklok bovenin (alleen kaart + locatiescenes) ══
+   Zichtbaarheid regelt sessieKlokTik in JS (verborgen tijdens minigames,
+   plein-cinema en filmpjes); de body-regel hieronder is een CSS-vangnet
+   voor de plein-cinema. */
+#sessie-klok{position:fixed;top:max(.35rem,env(safe-area-inset-top));left:50%;transform:translateX(-50%);z-index:500;
+  font-family:'Cinzel',serif;font-weight:700;font-size:clamp(.9rem,2.3vh,1.3rem);
+  color:var(--gold);background:rgba(13,10,6,.72);border:1px solid rgba(212,175,110,.35);
+  border-radius:999px;padding:.12rem .8rem;line-height:1.25;letter-spacing:.04em;
+  pointer-events:none;text-shadow:0 0 12px rgba(0,0,0,.6);white-space:nowrap;
+  box-shadow:0 2px 12px rgba(0,0,0,.35)}
+#sessie-klok.verstreken{color:#e0705f;border-color:rgba(224,112,95,.5);text-shadow:0 0 14px rgba(181,64,47,.5)}
+body.pf-cinema-actief #sessie-klok{display:none !important}
+/* Eindscherm met tijdsscore (in de spel-lade). */
+.tijdscore{text-align:center}
+.tijdscore .ts-tijd{font-family:'Cinzel',serif;font-weight:700;font-size:clamp(2rem,8vh,3rem);color:var(--gold);line-height:1;margin:.2rem 0 .3rem}
+.tijdscore .ts-namen{color:var(--parchment);font-style:italic;font-size:.95rem;margin-bottom:.5rem}
+.tijdscore .ts-zegel{color:var(--parchment);font-size:1.05rem;margin-bottom:.6rem}
+.tijdscore .ts-zegel b{color:var(--gold)}
+.tijdscore .ts-record{color:var(--mist);font-style:italic;font-size:.9rem;line-height:1.5;margin:.4rem 0 .7rem}
+.tijdscore .ts-top3-titel{font-family:'Cinzel',serif;color:var(--gold);font-size:.9rem;letter-spacing:.05em;margin-bottom:.35rem}
+.tijdscore .ts-top3{list-style:decimal inside;margin:0;padding:0;text-align:left;max-width:22rem;margin:0 auto}
+.tijdscore .ts-top3 li{color:var(--parchment);font-size:.9rem;line-height:1.35;padding:.15rem 0}
+.tijdscore .ts-top3 li.eigen{color:var(--gold);font-weight:700}
+.tijdscore .ts-top3 .ts-t-tijd{opacity:.9;margin-left:.4rem}
+.tijdscore .ts-top3 .ts-t-spelers{display:block;font-size:.72rem;font-style:italic;opacity:.7;margin-left:1.1rem}
+/* Begeleider: de twee klokken in het Tijden-laatje. */
+.bgl-klok-regel{color:var(--parchment,#e8dcc0);font-size:.95rem;line-height:1.5;margin:.15rem 0}
+.bgl-klok-regel b{color:var(--gold,#d4af6e)}
+.bgl-klok-wacht{opacity:.7;font-style:italic}
 #molen-fade{position:fixed;inset:0;z-index:9998;background:#000;opacity:0;pointer-events:none;transition:opacity 2s ease}
 #molen-waarschuwing{position:fixed;inset:0;z-index:9999;background:rgba(8,5,3,.96);display:flex;align-items:center;justify-content:center;text-align:center;padding:2rem;color:var(--parchment);font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:1.35rem;line-height:1.7;opacity:0;transition:opacity .6s ease}
 #char-pop{position:fixed;bottom:0;left:0;z-index:150;pointer-events:none;opacity:0;transition:opacity .5s ease}
@@ -3436,6 +3465,10 @@ function initSharedFirebase(sessieId, versGedeeld) {
     // Binnengekomen wereldstatus verwerken: verhaal-flags, gok-statussen,
     // teller en toast op ALLE tablets.
     verwerkBinnengekomenShared(data);
+    // Spelersklok: zodra alle vier klaar zijn met de instructie, zet de
+    // vaste schrijver de starttijd. Elke snapshot opnieuw checken vangt de
+    // race af waarbij twee tablets bijna gelijk hun eigen "klaar" zetten.
+    if (typeof sessieProbeerSpelersklokStart === 'function') sessieProbeerSpelersklokStart();
     // Hulp-knop bijwerken: als de begeleider de vraag afmeldt (shared -> false)
     // moet deze tablet dat meteen tonen.
     if (typeof hulpKnopBijwerken === 'function') hulpKnopBijwerken();
@@ -3750,7 +3783,7 @@ function getSharedState(key) {
 var SHARED_LIJST_KEYS = [
   'herberg_binnen','woud_voltooid','woud_klaar','woudscene_klaar','nummer7_aanwezig',
   'kerk_kelder_aanwezig','podium_finale_aanwezig','podium_verhaal_klaar',
-  'kerk_verhaal_klaar','podium_intro_aanwezig'
+  'kerk_verhaal_klaar','podium_intro_aanwezig','instructie_klaar'
 ];
 var SHARED_ROLLEN = ['jan','kelly','fenna','felix'];
 
@@ -4137,6 +4170,9 @@ function rondTeamAf(slug, deviceIds) {
   wisLokaleRondeStand();
   // Gedeelde stand naar de teamsessie, met verse beginwaarden.
   initSharedFirebase(sid, true);
+  // De mooie teamnaam ook in de gedeelde stand, zodat elk tablet hem heeft
+  // voor het eindscherm zonder de sessie-id te hoeven ontleden.
+  setSharedState('team_naam', pretty);
   try { localStorage.setItem('zw_sessie', sid); } catch (e) {}
   var ind = document.getElementById('sessie-indicator');
   if (ind) ind.textContent = 'sessie: ' + sid;
@@ -5873,6 +5909,10 @@ function startOverworldIntro() {
       tekst: 'Tijd om terug te gaan. Druk hier!',
       actie: function () { sluitRolOverzicht(); } },
 
+    // De tijd: uitleg over de spelersklok, die pas gaat lopen als alle vier
+    // klaar zijn met deze rondleiding.
+    { tekst: 'Nog dit: straks loopt bovenin jullie tijd, 1 uur en 50 minuten. Die begint pas zodra alle vier klaar zijn met deze uitleg. Hoe sneller jullie het mysterie samen oplossen, hoe hoger jullie eindscore. Speel tegen de klok en versla de andere gezelschappen.' },
+
     // Kaart: alleen uitleg, sluit de rondleiding af.
     { doel: '#tile-dorpsplein',
       tekst: 'Tot slot. Door op deze knoppen op de kaart te drukken bezoek je een deel van het dorp. Voer je daarna de code van de bordjes in, dan bezoek je een locatie. Jullie verhaal gaat starten bij het podium. Ik zou daar snel heen gaan. Succes!' }
@@ -6016,6 +6056,9 @@ function startOverworldIntro() {
     try { sluitRolOverzicht(); } catch (e) {}
     try { sluitMissiePaneel(); } catch (e) {}
     markVisited('overworld_intro_gezien');
+    // Deze speler is klaar met de instructie; meld dat gedeeld. Zodra alle
+    // vier gemeld hebben, gaat de spelersklok lopen (zie sessieMarkInstructieKlaar).
+    if (typeof sessieMarkInstructieKlaar === 'function') sessieMarkInstructieKlaar();
     [overlay, paneel].forEach(function (el) {
       el.style.transition = 'opacity .5s';
       el.style.opacity = '0';
@@ -6892,6 +6935,11 @@ function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0,0);
+
+  // Sessieklok: start de tik-lus (eenmalig) en werk de zichtbaarheid meteen
+  // bij op dit nieuwe scherm.
+  if (typeof sessieKlokInit === 'function') sessieKlokInit();
+  else if (typeof sessieKlokTik === 'function') sessieKlokTik();
 
   // Aanwezigheid Jan-bij-toren: elke schermwissel is een moment waarop Jan
   // bij de toren aangekomen of vertrokken kan zijn. De check zelf staat bij
@@ -9444,11 +9492,47 @@ function begeleiderOpenVerhaal() {
     begeleiderMissieHtml());
 }
 
+var _bglTijdenTimer = null;
 function begeleiderOpenTijden() {
   var t = begeleiderTijdenHtml();
   bglModalOpen('<div class="bgl-titel">⏱ Tijden</div>' +
-    '<div class="bgl-sub">✦ &nbsp; richttijden en werkelijke tijden &nbsp; ✦</div>' +
-    (t || '<div class="bgl-info">Nog geen tijden bekend; die verschijnen zodra het team van start gaat.</div>'));
+    '<div class="bgl-sub">✦ &nbsp; klokken en richttijden &nbsp; ✦</div>' +
+    '<div id="bgl-klok-live">' + begeleiderKlokLiveHtml() + '</div>' +
+    (t || '<div class="bgl-info">Nog geen richttijden bekend; die verschijnen zodra het team van start gaat.</div>'));
+  // De twee klokken elke seconde bijwerken zolang het laatje openstaat.
+  clearInterval(_bglTijdenTimer);
+  _bglTijdenTimer = setInterval(function () {
+    var el = document.getElementById('bgl-klok-live');
+    if (!el) { clearInterval(_bglTijdenTimer); _bglTijdenTimer = null; return; }
+    el.innerHTML = begeleiderKlokLiveHtml();
+  }, 1000);
+}
+// De twee live klokken voor de begeleider: 2:00 totaal (vanaf de teamnaam) en
+// 1:50 voor de spelers (zodra alle vier klaar zijn met de instructie). Rekent
+// op de gadegeslagen sessie (_bglMeta / _bglShared), niet op de eigen state.
+function sessieSpelerResterendMsBgl() {
+  var start = _bglShared.team_klok_start, budget = SESSIE_SPELER_MIN * 60000;
+  if (typeof start !== 'number') return budget;
+  var eind = _bglShared.team_eind;
+  var eindpunt = (typeof eind === 'number') ? eind : ((typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now());
+  return budget - (eindpunt - start);
+}
+function begeleiderKlokLiveHtml() {
+  var out = '';
+  var start = _bglMeta && _bglMeta.aangemaakt;
+  var nu = (typeof gedeeldeTijdNu === 'function') ? gedeeldeTijdNu() : Date.now();
+  if (typeof start === 'number' && isFinite(start)) {
+    var eind = _bglShared.team_eind;
+    var totEind = (typeof eind === 'number') ? eind : nu;
+    var totRest = SESSIE_TOTAAL_MIN * 60000 - (totEind - start);
+    out += '<div class="bgl-klok-regel">Totaal (2:00): <b>' + sessieMsNaarKlok(totRest) + '</b>' + (typeof eind === 'number' ? ' (gestopt)' : '') + '</div>';
+  }
+  if (typeof _bglShared.team_klok_start === 'number') {
+    out += '<div class="bgl-klok-regel">Spelers (1:50): <b>' + sessieMsNaarKlok(sessieSpelerResterendMsBgl()) + '</b>' + (typeof _bglShared.team_eind === 'number' ? ' (gestopt)' : '') + '</div>';
+  } else {
+    out += '<div class="bgl-klok-regel bgl-klok-wacht">Spelers (1:50): wacht tot alle vier klaar zijn met de instructie</div>';
+  }
+  return out;
 }
 
 // Testapparaten in hetzelfde laatje zetten. De teamlobby is normaal de enige
@@ -23180,8 +23264,8 @@ function podiumEinde() {
     '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic">Het is voorbij. De heksen zijn verslagen. De vloek is gebroken.</p>' +
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Maar de schaduw... de schaduw blijft.</p>' +
       '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Bedankt voor het spelen van De Rozen van Zilverweide.</p>',
-    'Sluiten',
-    openFinalePodium
+    'Verder →',
+    function () { toonTijdscore(openFinalePodium); }
   );
 }
 
@@ -23557,6 +23641,9 @@ function pleinFinaleNaArmen() {
   // eenmalig en gedeeld vastleggen (het logboek toont start, eind en duur).
   if (typeof getSharedState === 'function' && !getSharedState('team_eind')) {
     setSharedState('team_eind', gedeeldeTijdNu());
+    // De speeltijd (los van de sessie en van het schaduw-systeem) bewaren,
+    // zodat het eindscherm record en top 3 kan tonen.
+    if (typeof sessieBewaarTijd === 'function') sessieBewaarTijd();
   }
   dempMuziek();
   pfRoosReset();
@@ -23627,6 +23714,208 @@ function pleinFinaleEinde() {
   podiumEinde();
 }
 
+// ═══════════════════════════════════════════════════════════════════
+// SESSIEKLOK EN TIJDSSCORE
+// Twee klokken. De begeleider ziet 2:00 vanaf de teamnaamkeuze (bestaande
+// meta.aangemaakt). De spelers zien 1:50 die pas gaat lopen als alle vier
+// klaar zijn met de knoppen-instructie, telt af naar 0 en loopt door in de
+// min. De klok bevriest bij team_eind (de slotscene). Sneller opgelost is
+// een betere eindscore. Alles loopt via dezelfde gedeelde-stand-weg als
+// team_eind (Firebase), los van het schaduw-systeem.
+// ═══════════════════════════════════════════════════════════════════
+var SESSIE_TOTAAL_MIN = 120;     // begeleidersklok, vanaf teamnaam (2:00)
+var SESSIE_SPELER_MIN = 110;     // spelersklok, vanaf instructie klaar (1:50)
+var SESSIE_TIJDEN_DREMPEL = 15;  // minimum aantal echte runs voor record en top 3
+// Zegel op speeltijd in minuten. Iedereen krijgt iets positiefs; de grenzen
+// staan hier op een plek en zijn makkelijk bij te stellen.
+var SESSIE_ZEGELS = [
+  { maxMin: 85,       naam: 'Fluisterend Snel' },  // tot 1:25
+  { maxMin: 100,      naam: 'Vaste Hand' },        // 1:25 tot 1:40
+  { maxMin: 110,      naam: 'Standvastig' },        // 1:40 tot 1:50
+  { maxMin: Infinity, naam: 'Volhardend' }          // in de min
+];
+function sessieZegelVoor(min) {
+  for (var i = 0; i < SESSIE_ZEGELS.length; i++) { if (min <= SESSIE_ZEGELS[i].maxMin) return SESSIE_ZEGELS[i].naam; }
+  return SESSIE_ZEGELS[SESSIE_ZEGELS.length - 1].naam;
+}
+
+// Tekstveilig maken (spelernamen en teamnamen in het eindscherm).
+function sessieVeilig(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
+
+// Milliseconden naar H:MM:SS, met een minteken als de tijd op is.
+function sessieMsNaarKlok(ms) {
+  var neg = ms < 0;
+  var s = Math.floor(Math.abs(ms) / 1000);
+  var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return (neg ? '-' : '') + h + ':' + p(m) + ':' + p(sec);
+}
+
+// ── De gate: alle vier klaar met de instructie ─────────────────────
+function sessieMarkInstructieKlaar() {
+  if (!state.personage) return;
+  var k = 'instructie_klaar__' + state.personage;
+  if (!getSharedState(k)) setSharedState(k, true);
+  sessieProbeerSpelersklokStart();
+}
+function sessieProbeerSpelersklokStart() {
+  if (typeof getSharedState('team_klok_start') === 'number') return;
+  // Wachten op de rollen die echt bezet zijn; in een solotest is dat alleen
+  // deze speler zelf.
+  var bezet = SHARED_ROLLEN.filter(function (r) { return getSharedState('rol_bezet_' + r); });
+  var wachtOp = bezet.length ? bezet : (state.personage ? [state.personage] : []);
+  if (!wachtOp.length) return;
+  var allemaal = wachtOp.every(function (r) { return !!getSharedState('instructie_klaar__' + r); });
+  if (!allemaal) return;
+  // Eén vaste schrijver (de eerste bezette rol) zet de starttijd, zodat twee
+  // tablets niet allebei een net iets andere tijd wegschrijven.
+  if (state.personage && state.personage === wachtOp[0]) {
+    setSharedState('team_klok_start', gedeeldeTijdNu());
+  }
+}
+
+// ── Waarden voor de spelersklok en de eindscore ────────────────────
+function sessieSpelerResterendMs() {
+  var start = getSharedState('team_klok_start');
+  var budget = SESSIE_SPELER_MIN * 60000;
+  if (typeof start !== 'number') return { ms: budget, gestart: false, bevroren: false };
+  var eind = getSharedState('team_eind');
+  var eindpunt = (typeof eind === 'number') ? eind : gedeeldeTijdNu();
+  return { ms: budget - (eindpunt - start), gestart: true, bevroren: (typeof eind === 'number') };
+}
+function sessieSpeeltijdMs() {
+  var start = getSharedState('team_klok_start'), eind = getSharedState('team_eind');
+  if (typeof start !== 'number' || typeof eind !== 'number') return null;
+  return eind - start;
+}
+
+// ── De klok-HUD bovenin (kaart + locatiescenes) ────────────────────
+var _sessieKlokTimer = null;
+function sessieKlokInit() {
+  if (_sessieKlokTimer) return;
+  _sessieKlokTimer = setInterval(sessieKlokTik, 1000);
+  sessieKlokTik();
+}
+function sessieKlokZichtbaar() {
+  // Alleen nadat deze speler zelf de rondleiding heeft afgerond.
+  if (!hasVisited('overworld_intro_gezien')) return false;
+  var actief = document.querySelector('.screen.active');
+  var id = actief && actief.id;
+  if (id !== 'screen-overworld' && id !== 'screen-locatie') return false;
+  // Niet tijdens de plein-cinema, een doolhof, een lockpick of een filmpje.
+  if (document.body.classList.contains('pf-cinema-actief')) return false;
+  if (document.querySelector('.dh-root') || document.querySelector('.lp-root')) return false;
+  var vids = document.querySelectorAll('video');
+  for (var i = 0; i < vids.length; i++) { if (!vids[i].paused && !vids[i].ended) return false; }
+  return true;
+}
+function sessieKlokTik() {
+  var el = document.getElementById('sessie-klok');
+  if (!sessieKlokZichtbaar()) { if (el) el.style.display = 'none'; return; }
+  if (!el) { el = document.createElement('div'); el.id = 'sessie-klok'; document.body.appendChild(el); }
+  var r = sessieSpelerResterendMs();
+  el.textContent = sessieMsNaarKlok(r.ms);
+  el.classList.toggle('verstreken', r.ms < 0);
+  el.style.display = 'block';
+}
+
+// ── Teamnaam en spelernamen voor het eindscherm ────────────────────
+function sessieTeamNaam() {
+  var n = getSharedState('team_naam');
+  if (n) return n;
+  var sid = _sharedSessieId || '';
+  var slug = sid.split(/-\d{4}-\d{2}-\d{2}-/)[0];
+  if (slug && slug !== sid) return teamPrettyVanSlug(slug);
+  return 'Jullie gezelschap';
+}
+function sessieSpelerNamen() {
+  var namen = [];
+  SHARED_ROLLEN.forEach(function (r) { var n = getSharedState('speler_naam_' + r); if (n) namen.push(n); });
+  return namen;
+}
+
+// ── Speeltijd bewaren en teruglezen (aparte node, los van de sessie) ─
+function sessieBewaarTijd() {
+  var ms = sessieSpeeltijdMs();
+  if (ms === null || ms <= 0) return;
+  if (_sharedBron === 'debug') return; // nep-runs tellen niet mee
+  if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
+  try {
+    firebase.database().ref('zilverweide_tijden/' + _sharedSessieId).set({
+      team: sessieTeamNaam(), spelers: sessieSpelerNamen(),
+      speeltijd_ms: ms, datum: teamDatumSleutel(), t: gedeeldeTijdNu()
+    }).catch(function () {});
+  } catch (e) {}
+}
+function sessieLeesTijden(cb) {
+  if (typeof firebase === 'undefined' || !firebase.database) { cb(null); return; }
+  try {
+    firebase.database().ref('zilverweide_tijden').once('value').then(function (snap) {
+      var v = snap.val() || {}, lijst = [];
+      for (var k in v) {
+        if (v.hasOwnProperty(k) && v[k] && typeof v[k].speeltijd_ms === 'number' && v[k].speeltijd_ms > 0) lijst.push(v[k]);
+      }
+      lijst.sort(function (a, b) { return a.speeltijd_ms - b.speeltijd_ms; });
+      cb(lijst);
+    }).catch(function () { cb(null); });
+  } catch (e) { cb(null); }
+}
+
+// ── Het eindscherm: zegel, tijd, en (bij genoeg data) record + top 3 ─
+function toonTijdscore(vervolg, nepLijst) {
+  var ms = sessieSpeeltijdMs();
+  var team = sessieTeamNaam();
+  var namen = sessieSpelerNamen();
+  var tijdTekst = (ms !== null) ? sessieMsNaarKlok(ms) : '--:--';
+  var min = (ms !== null) ? ms / 60000 : SESSIE_SPELER_MIN;
+  var zegel = sessieZegelVoor(min);
+  function render(lijst) {
+    var html = '<div class="ts-tijd">' + tijdTekst + '</div>';
+    if (namen.length) html += '<div class="ts-namen">' + namen.map(sessieVeilig).join(', ') + '</div>';
+    html += '<div class="ts-zegel">Zegel: <b>' + sessieVeilig(zegel) + '</b></div>';
+    if (lijst && lijst.length >= SESSIE_TIJDEN_DREMPEL && ms !== null) {
+      var record = lijst[0].speeltijd_ms;
+      if (ms <= record) {
+        html += '<div class="ts-record">Nog nooit werd de vloek zo snel gebroken. Jullie tijd is de nieuwe legende.</div>';
+      } else {
+        var diff = Math.max(1, Math.round((ms - record) / 60000));
+        html += '<div class="ts-record">Slechts ' + diff + ' minuut' + (diff === 1 ? '' : 'en') + ' trager dan het snelste gezelschap ooit.</div>';
+      }
+      html += '<div class="ts-top3-titel">Snelste gezelschappen van Zilverweide</div><ol class="ts-top3">';
+      lijst.slice(0, 3).forEach(function (e) {
+        var eigen = (ms !== null && e.team === team && Math.abs(e.speeltijd_ms - ms) < 1000);
+        html += '<li' + (eigen ? ' class="eigen"' : '') + '><span class="ts-t-team">' + sessieVeilig(e.team || '') + '</span>' +
+          '<span class="ts-t-tijd">' + sessieMsNaarKlok(e.speeltijd_ms) + '</span>' +
+          (e.spelers && e.spelers.length ? '<span class="ts-t-spelers">' + e.spelers.map(sessieVeilig).join(', ') + '</span>' : '') + '</li>';
+      });
+      html += '</ol>';
+    }
+    toonLade('✦  ' + team + '  ✦', '<div class="tijdscore">' + html + '</div>', 'Verder →', vervolg || openFinalePodium, null);
+  }
+  if (nepLijst) { render(nepLijst); return; }
+  sessieLeesTijden(render);
+}
+
+// Debug: springt naar het eindscherm met een nep-tijd (1:38) en een nep top 3,
+// zodat je ziet of het werkt en hoe het eruit ziet zonder de finale te spelen.
+function debugSessieEindscore() {
+  var nu = gedeeldeTijdNu();
+  var speeltijd = 98 * 60000; // 1:38
+  metSharedBron('debug', function () {
+    setSharedState('team_klok_start', nu - speeltijd);
+    setSharedState('team_eind', nu);
+  });
+  var team = sessieTeamNaam();
+  var nep = [
+    { team: 'De Nachtwakers', spelers: ['Anna', 'Bram', 'Cas', 'Dilan'], speeltijd_ms: 91 * 60000 },
+    { team: team, spelers: sessieSpelerNamen(), speeltijd_ms: speeltijd },
+    { team: 'Het Stille Gilde', spelers: ['Eef', 'Fien', 'Gijs'], speeltijd_ms: 104 * 60000 }
+  ];
+  while (nep.length < SESSIE_TIJDEN_DREMPEL) nep.push({ team: 'Oud gezelschap', spelers: [], speeltijd_ms: (118 + nep.length) * 60000 });
+  nep.sort(function (a, b) { return a.speeltijd_ms - b.speeltijd_ms; });
+  toonTijdscore(null, nep);
+}
+
 // Debug: variant A/B wisselen door de flesje-vlag om te zetten.
 function debugToggleFlesjeVlag() {
   if (state.visited.has('h7_gedronken')) {
@@ -23642,7 +23931,7 @@ function debugToggleFlesjeVlag() {
 // houdt zijn eigen plek in de knoppenlijst en belandt tussen de twee lijsten
 // in. Wil je iets hoger of lager: verplaats de naam hier, niet de knoppen.
 const DEBUG_CAT_BOVENAAN = ['Start & skips', 'Tempo & dialoog', 'Felix vermomming', 'Team & spelers'];
-const DEBUG_CAT_ONDERAAN = ['Samenvattingen', 'Begeleider & sessie', 'Herstelpunt', 'Logboek', 'Overig'];
+const DEBUG_CAT_ONDERAAN = ['Sessieklok', 'Samenvattingen', 'Begeleider & sessie', 'Herstelpunt', 'Logboek', 'Overig'];
 
 // Rangnummer voor de sortering hierboven. De middenmoot krijgt bewust een
 // gelijke score, zodat de stabiele sort hun onderlinge volgorde laat staan.
@@ -24039,6 +24328,10 @@ function buildDebugPanel() {
       ['⏭️ Skip naar Dorendael',    function(){ debugSkipNaarDorendael(); close(); }, true, 'Start & skips'],
       ['⏭️ Skip naar Heer Donatuslaan', function(){ debugSkipNaarHeerDonatuslaan(); close(); }, true, 'Start & skips'],
       ['🛏️ Skip naar Heer Donatuslaan (Felix wordt wakker)', function(){ debugSkipFelixWakkerHuis(); close(); }, state.personage === 'felix', 'Start & skips'],
+      // ── Sessieklok
+      ['⏱ Spelersklok nu starten', function(){ metSharedBron('debug', function(){ setSharedState('team_klok_start', gedeeldeTijdNu()); }); close(); if (typeof toonToast==='function') toonToast('⏱','Spelersklok gestart, 1:50 loopt.'); }, typeof getSharedState('team_klok_start') !== 'number', 'Sessieklok'],
+      ['⏱ Skip naar eindscore (nep tijd + top 3)', function(){ close(); debugSessieEindscore(); }, true, 'Sessieklok'],
+      ['⏱ Sessieklok resetten', function(){ metSharedBron('debug', function(){ setSharedState('team_klok_start', null); setSharedState('team_eind', null); SHARED_ROLLEN.forEach(function(r){ setSharedState('instructie_klaar__'+r, null); }); }); close(); if (typeof toonToast==='function') toonToast('⏱','Sessieklok gereset.'); }, true, 'Sessieklok'],
       // ── Team & spelers
       ['🧑‍🤝‍🧑 Vul namen andere spelers (test)', function(){ debugVulAndereSpelers(); close(); }, true, 'Team & spelers'],
       ['👥 Alle 4 aanwezig (intro)', function(){ setSharedState('podium_intro_aanwezig', ['jan', 'kelly', 'fenna', 'felix']); close(); }, true, 'Team & spelers'],
