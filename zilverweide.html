@@ -1238,6 +1238,10 @@ body.pf-cinema-actief #sessie-klok{display:none !important}
 .se-onderkop{font-family:'Cinzel',serif;color:var(--gold-dim);font-size:clamp(.68rem,1.7vh,.95rem);letter-spacing:.2em;text-transform:uppercase;margin-top:.35rem}
 .se-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:clamp(1rem,3vw,3rem);min-height:0}
 .se-kolom{display:flex;flex-direction:column;justify-content:center;gap:clamp(.9rem,3vh,2.2rem);flex:0 0 auto}
+/* Licht gestaffeld: de onderste pop van elke kolom stapt iets naar het midden,
+   zodat de vier portretten niet in twee kaarsrechte kolommen staan. */
+.se-body .se-kolom:first-child .se-pop:nth-child(2){transform:translateX(clamp(.7rem,1.6vw,1.6rem))}
+.se-body .se-kolom:last-child .se-pop:nth-child(2){transform:translateX(calc(-1 * clamp(.7rem,1.6vw,1.6rem)))}
 .se-pop{display:flex;flex-direction:column;align-items:center;gap:.4rem;width:clamp(6.5rem,14vw,10.5rem)}
 .se-pop-foto{width:100%;aspect-ratio:3/4;border-radius:8px;overflow:hidden;border:1px solid rgba(var(--goudrgb),calc(.4 * var(--lijn)));background:#000;box-shadow:0 6px 22px rgba(0,0,0,.55)}
 .se-pop-foto img{width:100%;height:100%;object-fit:cover;object-position:center top}
@@ -23092,6 +23096,14 @@ function openFinalePodium() {
   }
 
   var alleVier = aanwezig.length >= 4;
+  // De spelersklok stopt zodra alle vier bij het podium staan, dus voordat de
+  // finale-scene speelt. Eenmalig en gedeeld vastleggen; het logboek en het
+  // eindscherm lezen dezelfde team_eind. De set in pleinFinaleNaArmen blijft
+  // als vangnet staan voor losse debug-starts, maar no-opt hier na.
+  if (alleVier && typeof getSharedState === 'function' && !getSharedState('team_eind')) {
+    setSharedState('team_eind', gedeeldeTijdNu());
+    if (typeof sessieBewaarTijd === 'function') sessieBewaarTijd();
+  }
   var dialog = [
     'Het podium. Waar het begon. Waar het eindigt.',
   ];
@@ -23353,7 +23365,7 @@ function podiumEinde() {
       '<p style="font-size:1rem;color:var(--parchment);line-height:1.7;font-style:italic;margin-top:.75rem">Maar de schaduw... de schaduw blijft.</p>' +
       '<p style="font-size:.9rem;color:var(--mist);line-height:1.6;margin-top:.75rem;font-style:italic">Bedankt voor het spelen van De Rozen van Zilverweide.</p>',
     'Verder →',
-    function () { toonTijdscore(openFinalePodium); }
+    function () { toonTijdscore(); }
   );
 }
 
@@ -23725,8 +23737,9 @@ function pleinFinaleIntro() {
 // naweeën, de verteller en Kelly's slot (beats 7 tot 12).
 function pleinFinaleNaArmen() {
   var cont = document.getElementById('locatie-content');
-  // Oplostijd: de slotscene is bereikt, het spel is opgelost. Eindtijd
-  // eenmalig en gedeeld vastleggen (het logboek toont start, eind en duur).
+  // Vangnet voor de eindtijd: normaal is team_eind al gezet toen alle vier bij
+  // het podium aankwamen (openFinalePodium). Bij een losse debug-start hierheen
+  // is dat niet gebeurd, dus leggen we hem alsnog eenmalig en gedeeld vast.
   if (typeof getSharedState === 'function' && !getSharedState('team_eind')) {
     setSharedState('team_eind', gedeeldeTijdNu());
     // De speeltijd (los van de sessie en van het schaduw-systeem) bewaren,
@@ -23970,6 +23983,9 @@ function toonTijdscore(vervolg, nepLijst) {
   var tijdTekst = (ms !== null) ? sessieMsNaarKlok(ms) : '--:--';
   var min = (ms !== null) ? ms / 60000 : SESSIE_SPELER_MIN;
   var zegel = sessieZegelVoor(min);
+  // Het echte einde van het spel: geen vervolg en geen debug-lijst. Dan is dit
+  // rapport het laatste scherm, zonder Verder-knop en zonder scherm erna.
+  var terminaal = !vervolg && !nepLijst;
   function toon(lijst) {
     var midden = '<div class="se-tijd">' + tijdTekst + '</div>' +
       '<div class="se-zegel">Zegel: <b>' + sessieVeilig(zegel) + '</b></div>';
@@ -23999,13 +24015,15 @@ function toonTijdscore(vervolg, nepLijst) {
         '<div class="se-midden">' + midden + '</div>' +
         '<div class="se-kolom">' + rechts + '</div>' +
       '</div>' +
-      '<div class="se-voet"><button class="se-knop" id="se-verder">Verder →</button></div>';
+      (terminaal ? '' : '<div class="se-voet"><button class="se-knop" id="se-verder">Verder →</button></div>');
     var ov = document.getElementById('sessie-eindscherm');
     if (!ov) { ov = document.createElement('div'); ov.id = 'sessie-eindscherm'; document.body.appendChild(ov); }
     ov.innerHTML = html;
     ov.classList.add('zichtbaar');
-    var knop = document.getElementById('se-verder');
-    if (knop) knop.onclick = function () { ov.classList.remove('zichtbaar'); ov.innerHTML = ''; (vervolg || openFinalePodium)(); };
+    if (!terminaal) {
+      var knop = document.getElementById('se-verder');
+      if (knop) knop.onclick = function () { ov.classList.remove('zichtbaar'); ov.innerHTML = ''; if (typeof vervolg === 'function') vervolg(); };
+    }
   }
   if (nepLijst) { toon(nepLijst); return; }
   sessieLeesTijden(toon);
