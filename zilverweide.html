@@ -645,6 +645,15 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
    de infade van .ow-intro-lift overschrijven). */
 #sessie-klok.ow-intro-spot{animation:owIntroLiftIn .6s ease,owIntroGloed 1.8s ease-in-out .6s infinite}
 .ow-intro-dim{opacity:.15 !important;transition:opacity .45s ease}
+/* Het doel licht op, maar de tekst erin bleef op gold-dim staan: het woord
+   INVENTARIS, de rol naast je naam. Die gaan tijdens het aanwijzen mee omhoog
+   naar parchment. De HUD-knoppen dragen hun kleur inline, vandaar important. */
+.ow-intro-spot .inv-label{color:var(--parchment);border-color:rgba(var(--goudrgb),calc(.9 * var(--lijn)))}
+.ow-intro-spot .inv-teller{color:var(--parchment)}
+#missie-teller.ow-intro-spot,
+#hulp-knop.ow-intro-spot{color:var(--parchment) !important}
+#avatar-badge.ow-intro-spot #avatar-badge-name,
+#avatar-badge.ow-intro-spot #avatar-badge-rol{color:var(--parchment) !important}
 /* Pook: blijft de speler te lang op een stap hangen, dan verschijnt er een
    extra regel in het uitlegpaneel en gaat de Verder-knop lokken. Bewust in
    het paneel zelf en niet als losse pop-up: het paneel staat op 9600 en dus
@@ -6030,6 +6039,51 @@ function _missieBuitenklik(e) {
 // De uitleg-tekst staat op een vaste plek onderin (behalve de welkomst,
 // die staat in het midden), zodat hij nergens de kaart bedekt.
 // ─────────────────────────────────────────────────────────────────
+// ── Voorbeeldvoorwerp voor de rondleiding ─────────────────────────
+// De rugzak is aan het begin leeg, dus valt er niets te oefenen. Tijdens de
+// uitleg leggen we er daarom één voorwerp in, de naalden, puur om op te
+// drukken. Het staat alleen in de DOM en niet in state.inventory: de speler
+// heeft het niet, het telt nergens in mee en het verdwijnt vanzelf zodra het
+// grid opnieuw gebouwd wordt (elke volgende keer dat de rugzak opengaat).
+var OW_DEMO_ITEM_ID = 'ow-demo-item';
+var OW_DEMO_ITEM_SRC = 'items/naaldenitem.png';
+function zetDemoItemInRugzak() {
+  var grid = document.getElementById('inv-ov-grid');
+  if (!grid || document.getElementById(OW_DEMO_ITEM_ID)) return;
+  var leegVak = grid.querySelector('.inv-ov-vak-leeg');
+  if (!leegVak) return;
+  var knop = document.createElement('button');
+  knop.className = 'inv-ov-kaart';
+  knop.id = OW_DEMO_ITEM_ID;
+  knop.innerHTML = '<img class="inv-ov-emoji item-afbeelding" src="' + OW_DEMO_ITEM_SRC + '" alt="">' +
+                   '<span class="inv-ov-naam">Naalden</span>';
+  grid.replaceChild(knop, leegVak);
+}
+// Zelfde opbouw als toonInventarisItem, maar met een uitlegtekst in plaats van
+// de itemtekst: dit voorwerp hoort niet bij het verhaal, het laat alleen zien
+// wat drukken oplevert. Geen terug-knop, de rondleiding stuurt zelf terug.
+function toonDemoItem() {
+  var d = document.getElementById('inv-ov-detail');
+  var g = document.getElementById('inv-ov-grid');
+  if (!d) return;
+  d.innerHTML =
+    '<div class="inv-ov-detail-visual"><img class="inv-ov-detail-emoji item-afbeelding" src="' + OW_DEMO_ITEM_SRC + '" alt=""></div>' +
+    '<div class="inv-ov-detail-naam">Naalden</div>' +
+    '<div class="inv-ov-detail-note"><p>Zo werkt dat: je leest wat je aan een voorwerp opvalt, of wat je ermee zou kunnen. Deze naalden liggen hier alleen als voorbeeld.</p></div>';
+  if (g) g.style.display = 'none';
+  d.style.display = 'flex';
+  void d.offsetWidth;            // reflow zodat de animatie opnieuw start
+  d.classList.add('actief');
+}
+function verwijderDemoItem() {
+  var knop = document.getElementById(OW_DEMO_ITEM_ID);
+  if (!knop || !knop.parentNode) return;
+  var leeg = document.createElement('div');
+  leeg.className = 'inv-ov-kaart inv-ov-vak-leeg';
+  leeg.setAttribute('aria-hidden', 'true');
+  knop.parentNode.replaceChild(leeg, knop);
+}
+
 var _owIntroBezig = false;
 function startOverworldIntro() {
   if (_owIntroBezig || hasVisited('overworld_intro_gezien')) return;
@@ -6045,9 +6099,18 @@ function startOverworldIntro() {
     // Inventaris: de speler opent hem zelf en sluit hem daarna zelf.
     { tik: true, lift: '#inv-bar', doel: '#inv-bar .inv-knop',
       tekst: 'Probeer maar eens! Druk linksboven op Inventaris.',
-      actie: function () { openInventarisOverzicht(); } },
+      actie: function () { openInventarisOverzicht(); zetDemoItemInRugzak(); } },
     { paneel: true,
-      tekst: 'Dit is je inventaris, je rugzak. Hier bewaar je alles wat je onderweg vindt. Druk je op een voorwerp, dan krijg je er soms een extra hint of uitleg bij.' },
+      tekst: 'Dit is je inventaris, je rugzak. Hier bewaar je alles wat je onderweg vindt.' },
+    // Oefenen met drukken op een voorwerp. Zonder dit blijft het bij horen dat
+    // het kan, en de rugzak is aan het begin leeg, dus leggen we er zelf een
+    // voorbeeld in (zie zetDemoItemInRugzak).
+    { tik: true, paneel: true, doel: '#' + OW_DEMO_ITEM_ID,
+      tekst: 'Er ligt er alvast eentje in. Druk eens op de naalden.',
+      actie: function () { toonDemoItem(); } },
+    { paneel: true,
+      tekst: 'Zie je? Door op een voorwerp te drukken lees je wat je eraan opvalt, of wat je ermee zou kunnen. Onderweg is dat vaak net het duwtje dat je nodig hebt.',
+      naVerder: function () { toonInventarisGridView(); verwijderDemoItem(); } },
     { tik: true, paneel: true, doel: '#inv-ov-sluit',
       tekst: 'Tijd om terug te gaan. Druk onderaan op ‘Terug naar Zilverweide’.',
       actie: function () { sluitInventarisOverzicht(); } },
@@ -6135,13 +6198,19 @@ function startOverworldIntro() {
   var pookTimer = null, pookEl = null;
   function zetPook(s) {
     ruimPookOp();
-    if (!s.pook) return;
+    // Bij een tik-stap is de Verder-knop verborgen: wie de juiste knop niet
+    // vindt, of hem per ongeluk wegklikt, zou daar vast komen te zitten. Na
+    // dezelfde wachttijd komt Verder daarom alsnog tevoorschijn en doet die
+    // precies wat de tik zou doen (zie de klikafhandeling onderaan).
+    var tekst = s.pook || (s.tik ? 'Kom je er niet uit? Druk hieronder op Verder, dan gaan we samen door.' : null);
+    if (!tekst) return;
     pookTimer = setTimeout(function () {
       pookTimer = null;
       pookEl = document.createElement('p');
       pookEl.className = 'ow-intro-pook';
-      pookEl.textContent = s.pook;
+      pookEl.textContent = tekst;
       paneel.insertBefore(pookEl, knop);
+      if (s.tik) { zetKnopZichtbaar(true); zetKnopKlikbaar(true); }
       knop.classList.add('lokt');
     }, POOK_NA_MS);
   }
@@ -6319,6 +6388,9 @@ function startOverworldIntro() {
     // Vangnet: mocht de pijl of de pook er nog staan, haal ze weg.
     try { ruimPijlOp(); } catch (e) {}
     try { ruimPookOp(); } catch (e) {}
+    // Vangnet: het voorbeeldvoorwerp mag nooit in een echte rugzak blijven
+    // liggen, ook niet als de rondleiding halverwege afgebroken wordt.
+    try { verwijderDemoItem(); } catch (e) {}
     // Vangnet: mocht er nog een paneel openstaan, sluit het.
     try { sluitInventarisOverzicht(); } catch (e) {}
     try { sluitRolOverzicht(); } catch (e) {}
@@ -6344,6 +6416,10 @@ function startOverworldIntro() {
   knop.addEventListener('click', function () {
     if (overgangBezig) return;
     var s = stappen[i];
+    // Verder op een tik-stap kan alleen via het vangnet in zetPook. Dan doen
+    // we alsnog wat de tik zelf gedaan zou hebben, anders zou de volgende stap
+    // over een paneel praten dat niet openstaat.
+    if (s && s.tik && s.actie) { try { s.actie(); } catch (e) {} }
     if (s && s.naVerder) { try { s.naVerder(); } catch (e) {} }
     verder();
   });
