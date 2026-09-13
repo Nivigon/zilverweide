@@ -6229,9 +6229,12 @@ function startOverworldIntro() {
   }
 
   // ── Pijl naar het doel ──────────────────────────────────────────
-  // Alleen bij stappen waar de speler zelf moet tikken: daar betekent hij
-  // "hier drukken". Bij een stap die je alleen aanwijst zou hij tot drukken
-  // uitnodigen terwijl er niets te drukken valt.
+  // Bij elke stap die een element oplicht wijst de pijl het aan, ook als de
+  // speler er niet zelf op hoeft te drukken (zoals de tijd- en hulpknop-stap):
+  // hij krijgt dezelfde behandeling als een druk-stap. Het onderscheid zit in
+  // het geluidje: dat klinkt alleen op de stappen waar de speler echt moet
+  // tikken (zie planIntroDing). Stappen zonder doel (kale uitlegpanelen) laten
+  // niets oplichten en krijgen dus ook geen pijl.
   var pijlEl = null, pijlDoel = null, pijlHerplaats = null;
   function plaatsPijl() {
     if (!pijlEl || !pijlDoel) return;
@@ -6294,7 +6297,7 @@ function startOverworldIntro() {
       try { doel.scrollIntoView({ block: 'nearest' }); } catch (e) {}
     }
     dims.forEach(function (d) { d.classList.add('ow-intro-dim'); });
-    zetPijl(s.tik ? doel : null);
+    zetPijl(doel);
     opruimSpot = function () {
       if (lift) lift.classList.remove(liftKlasse);
       if (doel) doel.classList.remove('ow-intro-spot');
