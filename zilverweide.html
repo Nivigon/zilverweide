@@ -641,6 +641,16 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
    maar niet de klop. */
 .zone-tile.ow-intro-spot{border-radius:6px;z-index:9500;pointer-events:none;animation:owIntroLiftIn .6s ease,owIntroGloed 1.8s ease-in-out .6s infinite}
 .ow-intro-dim{opacity:.15 !important;transition:opacity .45s ease}
+/* Pook: blijft de speler te lang op een stap hangen, dan verschijnt er een
+   extra regel in het uitlegpaneel en gaat de Verder-knop lokken. Bewust in
+   het paneel zelf en niet als losse pop-up: het paneel staat op 9600 en dus
+   ook boven een opengeklikt medespeler-venster (360). */
+.ow-intro-pook{font-family:'Crimson Text',Georgia,serif;font-style:italic;font-size:.98rem;line-height:1.5;color:var(--gold);margin:-.4rem 0 1rem;animation:owIntroFade .8s ease}
+.ow-intro-knop.lokt{animation:owIntroKnopLokt 1.4s ease-in-out infinite}
+@keyframes owIntroKnopLokt{
+  0%,100%{box-shadow:0 0 0 1px rgba(var(--goudrgb),calc(.3 * var(--schaduwdiepte))),0 0 14px rgba(240,205,80,.25)}
+  50%{box-shadow:0 0 0 4px rgba(240,210,90,.4),0 0 26px rgba(240,205,80,.7)}
+}
 /* Bij een geopend schermvullend paneel (inventaris, rol-overzicht) dokt de
    uitlegtekst bovenin, zodat hij de knoppen onderin dat paneel (met name de
    terugknop die de speler moet aantikken) nooit bedekt. */
@@ -697,6 +707,7 @@ body.daglicht #beginner-kaart.ow-intro-spot{animation-name:owIntroGloedDag}
   .ow-intro-orn{font-size:.62rem;margin-bottom:.35rem}
   .ow-intro-orn::before,.ow-intro-orn::after{width:min(40px,8vw)}
   .ow-intro-tekst{font-size:.92rem;line-height:1.5;margin-bottom:.6rem}
+  .ow-intro-pook{font-size:.85rem;line-height:1.4;margin:-.3rem 0 .6rem}
   .ow-intro-knop{padding:.45rem 1.6rem;font-size:.7rem}
   .ow-intro-paneel.ow-boven{top:.7rem;bottom:auto}
 }
@@ -6067,6 +6078,7 @@ function startOverworldIntro() {
     // lezen. De rondleiding wijst alleen aan waar het staat, het lezen zelf
     // komt onderweg wel.
     { paneel: true,
+      pook: 'Tijd om door te gaan. Je kunt hier later altijd terugkijken.',
       tekst: 'Hier zie je wie jij ook alweer bent, en wat je medespelers kunnen. Lees het nu niet allemaal door. Onthoud vooral dat het hier staat, dan kun je onderweg terugkijken wanneer je het nodig hebt.' },
     { tik: true, paneel: true, doel: '#rol-ov-sluit',
       tekst: 'Tijd om terug te gaan. Druk onderaan op ‘Terug naar Zilverweide’.',
@@ -6103,6 +6115,32 @@ function startOverworldIntro() {
   function zetOverlayZichtbaar(zichtbaar) {
     overlay.style.opacity = zichtbaar ? '1' : '0';
     overlay.style.pointerEvents = zichtbaar ? '' : 'none';
+  }
+
+  // ── Pook: te lang op een stap ───────────────────────────────────
+  // Een stap met een pook-tekst krijgt na POOK_NA_MS een extra regel in het
+  // paneel, en de Verder-knop gaat lokken. Bedoeld voor de stappen waar een
+  // speler blijft hangen om alles te lezen terwijl de rondleiding alleen wil
+  // laten zien waar iets staat.
+  var POOK_NA_MS = 25000;
+  var pookTimer = null, pookEl = null;
+  function zetPook(s) {
+    ruimPookOp();
+    if (!s.pook) return;
+    pookTimer = setTimeout(function () {
+      pookTimer = null;
+      pookEl = document.createElement('p');
+      pookEl.className = 'ow-intro-pook';
+      pookEl.textContent = s.pook;
+      paneel.insertBefore(pookEl, knop);
+      knop.classList.add('lokt');
+    }, POOK_NA_MS);
+  }
+  function ruimPookOp() {
+    if (pookTimer) { clearTimeout(pookTimer); pookTimer = null; }
+    if (pookEl && pookEl.parentNode) pookEl.parentNode.removeChild(pookEl);
+    pookEl = null;
+    knop.classList.remove('lokt');
   }
 
   // ── Pijl naar het doel ──────────────────────────────────────────
@@ -6240,6 +6278,7 @@ function startOverworldIntro() {
       paneel.classList.toggle('ow-boven', !!s.paneel);
       zetOverlayZichtbaar(!s.paneel);
       zetSpot(s);
+      zetPook(s);
       if (s.tik) {
         zetKnopZichtbaar(false);
         zetTik(s);
@@ -6264,8 +6303,9 @@ function startOverworldIntro() {
     zetKnopKlikbaar(false);
     if (opruimTik) { opruimTik(); opruimTik = null; }
     if (opruimSpot) { opruimSpot(); opruimSpot = null; }
-    // Vangnet: mocht de pijl er nog staan, haal hem weg.
+    // Vangnet: mocht de pijl of de pook er nog staan, haal ze weg.
     try { ruimPijlOp(); } catch (e) {}
+    try { ruimPookOp(); } catch (e) {}
     // Vangnet: mocht er nog een paneel openstaan, sluit het.
     try { sluitInventarisOverzicht(); } catch (e) {}
     try { sluitRolOverzicht(); } catch (e) {}
