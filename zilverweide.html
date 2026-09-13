@@ -15267,15 +15267,20 @@ function renderDd4Menigte(loc, p) {
     if (st === 1) {
       // Mastermind-mechaniek, ingebed in de podium-scene. Pas bij alle drie
       // goed gaat de scene door naar de achterdeur.
+      // De twee zinnen hieronder tonen nog de herberg-binnen (val terug op
+      // state.locAfbeelding, dus geen geenMedia meer). Zodra de minigame in
+      // extra() verschijnt halen we dat beeld weg: beeld plus minigame samen
+      // zou kunnen scrollen, en scrollen mag in gameplay nooit.
       return renderLocatieScene({
         container: cont, titel: loc.naam, sub: 'Op het podium',
-        geenMedia: true,          // geen beeld-blok: de mechanic past zo zonder scrollen
         geenTerug: true,          // op het podium geen terug-knop: de puzzel houdt haar hier tot lied of free pass
         dialog: [
           { tekst: 'Je stapt het podium op. De zaal draait zich naar je toe, boos en luid.', onShow: function() { verbergNpcPop(); } },
           { spreker: 'Fenna-Viviènne', tekst: 'Eén lied. Het juiste lied. Dan heb ik ze.' }
         ],
         extra: function (mount) {
+          var beeld = cont.querySelector('.sc-image');
+          if (beeld) beeld.style.display = 'none';
           FennaLied.mount(mount, 'herberg', function () {
             mga(2);
           }, fennaLiedOpts('herberg'));
