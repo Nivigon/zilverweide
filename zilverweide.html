@@ -9303,6 +9303,16 @@ var BGL_ALT_CODES = {
   H2:'X2LF', H3:'R3GLS', H4:'K4RK', H5:'TNM5G', H6:'L6H', H7:'KHT7P', H8:'J8GTS',
   D2:'MD2P', D3:'F3HCR', D4:'DN4H'
 };
+// Reverse van BGL_ALT_CODES: alternatieve code -> bordjescode. Spelers krijgen
+// soms alleen de alternatieve (moeilijkere) code te zien. checkCodeToegankelijk
+// gebruikt dit om die code als gelijk aan de bordjescode te behandelen, zodat de
+// toegangspoorten na een gok (K6/N6VZ, DD5/D5W, H4/K4RK) niet per ongeluk de
+// speler buitensluiten.
+var BGL_ALT_NAAR_BORDJE = (function() {
+  var m = {};
+  for (var code in BGL_ALT_CODES) { m[BGL_ALT_CODES[code]] = code; }
+  return m;
+})();
 // De drie straten. De ingangscodes (ZONE_HOOFDCODE) staan boven elke
 // straatkaart. Volgorde en stand staan los van de spelerskaart
 // (BEGINNER_KAARTEN): op het begeleidersscherm vormen ze samen een
@@ -10547,6 +10557,11 @@ function checkCodeToegankelijk(val) {
   // wijk tijdens een wachtfase toch te bezoeken is. Staat bewust niet in
   // de herstelpunt-velden: na een herlaad staat de vergrendeling weer aan.
   if (state.debugGeenLocatieslot) return null;
+  // Een alternatieve (moeilijkere) code hoort exact dezelfde deur als de
+  // bordjescode. Spelers krijgen soms alleen de alternatieve code te zien, dus
+  // normaliseren we die hier eerst naar de bordjescode. Zonder dit weigert de
+  // toegangscontrole na een gok codes als N6VZ (K6), D5W (DD5) en K4RK (H4).
+  if (BGL_ALT_NAAR_BORDJE[val]) val = BGL_ALT_NAAR_BORDJE[val];
   // Voor intro-filmpje: alleen D1 en D2
   if (!hasVisited('intro_filmpje_gezien')) {
     const toegestaan = ['D1', 'D2'];
