@@ -3326,6 +3326,12 @@ const state = {
   vermomming: null,
   inventory: [],
   lastOpenedLocatie: null,
+  // Plein-locatie waar de speler nu is (podium/dorpsarchief/verborgen_hand).
+  // De plein-scenes houden lastOpenedLocatie bewust op null (daar hangt
+  // schaduw- en NPC-logica aan), dus dit aparte veld geeft de begeleiderskaart
+  // de live "hier nu"-gloed op D2/D3/D4. Alleen de aanwezigheids-broadcast leest
+  // het; het raakt de gameplay of gedeelde spelstand niet.
+  pleinLocatie: null,
   heksOpgelost: false,
   heksCooldown: null,
   // Dorendael-finale (heksengok op D2): apart van Kraaienkwartier-gok.
@@ -4361,13 +4367,14 @@ function debugSimuleerAanwezigheid() {
     if (typeof toonToast === 'function') toonToast('🧭', 'Geen sessie actief');
     return;
   }
-  // Jan staat in een locatie (tegel-portret). De andere drie zijn 'onderweg':
-  // wel in een straat, op het plein of op de dorpskaart, maar niet in een
-  // locatie (loc leeg, plek gezet). Zo zijn zowel de tegel-portretjes als de
-  // onderweg-markers (midden in de straat en de plein-hoeken) solo te testen.
+  // Jan staat in een straatlocatie (fel tegel-portret) en Kelly staat live op
+  // een plein-locatie (fel op D4, De Verborgen Hand), zodat de nieuwe plein-
+  // gloed solo te zien is. Fenna en Felix zijn 'onderweg': wel op het plein of
+  // de dorpskaart, maar niet in een locatie (loc leeg, plek gezet). Zo zijn de
+  // felle tegel-portretjes, de plein-gloed en de onderweg-markers samen te testen.
   var voorbeeld = {
     jan:   { loc: 'k1_uitkijktoren', plek: '',            bezocht: ['k1_dorpsput', 'k1_uitkijktoren', 'k1_nummer7'] },
-    kelly: { loc: null,              plek: 'Dorendael',    bezocht: ['dd5_woud', 'dd8_stiltevijver', 'verborgen_hand'] },
+    kelly: { loc: 'verborgen_hand',  plek: '',            bezocht: ['dd5_woud', 'dd8_stiltevijver', 'verborgen_hand'] },
     fenna: { loc: null,              plek: 'Dorpsplein',   bezocht: ['h4_kerk', 'h5_gemeentehuis', 'podium'] },
     felix: { loc: null,              plek: 'Dorpskaart',   bezocht: ['k1_naaldmasker', 'h8_steegje', 'dorpsarchief'] }
   };
@@ -18897,6 +18904,7 @@ function openDorpsarchief() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
   // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
   state.visitedLocations.add('dorpsarchief');
+  state.pleinLocatie = 'dorpsarchief';   // live "hier nu" op D3
 
   // ── Buiten: eerst het gebouw van de straat af zien ──
   // De buitenafbeelding bestaat nog niet, dus hier staat voorlopig de
@@ -20337,6 +20345,7 @@ function openToneel() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
   // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
   state.visitedLocations.add('podium');
+  state.pleinLocatie = 'podium';   // live "hier nu" op D2
 
   const heeftItem = (naam) => !!state.inventory.find(i => i.naam === naam);
   const p = state.personage;
@@ -21005,6 +21014,7 @@ function openVerborgenHand() {
   state.locAfbeelding = null;   // voorkom dat een district-afbeelding blijft hangen
   // Aanwezigheid: markeer dit plein-bezoek voor de begeleiderskaart ('geweest').
   state.visitedLocations.add('verborgen_hand');
+  state.pleinLocatie = 'verborgen_hand';   // live "hier nu" op D4
 
   // ── Buiten: de woonwagen van de straat af, voor je aanklopt ──
   if (!_verborgenHandBinnen) {
@@ -29224,8 +29234,8 @@ function spelerAanwezigheidBroadcast(force) {
   if (typeof firebase === 'undefined' || !firebase.database || !_sharedSessieId) return;
   var navPlek = _spelerNavPlek();
   var loc, plek;
-  if (navPlek) { loc = null; plek = navPlek; }                     // op straat/kaart
-  else { loc = state.lastOpenedLocatie || null; plek = ''; }        // in een locatie of scene
+  if (navPlek) { loc = null; plek = navPlek; state.pleinLocatie = null; }  // op straat/kaart: plein-locatie vervalt
+  else { loc = state.lastOpenedLocatie || state.pleinLocatie || null; plek = ''; }  // in een locatie of plein-scene
   var bezochtN = state.visitedLocations ? state.visitedLocations.size : 0;
   if (!force && loc === _laatsteAanwezigheid.loc && bezochtN === _laatsteAanwezigheid.bezochtN &&
       plek === _laatsteAanwezigheid.plek) return;
