@@ -24283,13 +24283,25 @@ function owIntroKlokDemo(aan) {
   if (typeof sessieKlokInit === 'function') sessieKlokInit();
   if (typeof sessieKlokTik === 'function') sessieKlokTik();
 }
+// De schermen waarop de klok-HUD in beeld hoort: de kaart, de locatiescenes en
+// de wijk-keuzeschermen (het dorpsplein en de drie wijken).
+var SESSIE_KLOK_SCHERMEN = {
+  'screen-overworld': true,
+  'screen-locatie': true,
+  'screen-dorpsplein': true,
+  'screen-kwartier1': true,
+  'screen-dorendael': true,
+  'screen-sintdonatuslaan': true
+};
 function sessieKlokZichtbaar() {
   // Alleen nadat deze speler zelf de rondleiding heeft afgerond (of tijdens de
   // tijd-stap van die rondleiding, zie owIntroKlokDemo).
   if (!hasVisited('overworld_intro_gezien') && !_owIntroKlokDemo) return false;
   var actief = document.querySelector('.screen.active');
   var id = actief && actief.id;
-  if (id !== 'screen-overworld' && id !== 'screen-locatie') return false;
+  // Zichtbaar op de kaart, in de locatiescenes en op de wijk-keuzeschermen
+  // (het dorpsplein en de drie wijken).
+  if (!SESSIE_KLOK_SCHERMEN[id]) return false;
   // Niet tijdens de plein-cinema, een doolhof, een lockpick of een filmpje.
   if (document.body.classList.contains('pf-cinema-actief')) return false;
   if (document.querySelector('.dh-root') || document.querySelector('.lp-root')) return false;
