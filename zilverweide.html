@@ -6339,6 +6339,36 @@ function startOverworldIntro() {
     knop.style.display = zichtbaar ? '' : 'none';
   }
 
+  // ── Geluid bij een 'druk hier'-stap ─────────────────────────────
+  // Op de stappen waar de speler zelf op de opgelichte knop moet tikken speelt,
+  // kort nadat de tekst verschenen is, het bekende succesgeluidje. Dat versterkt
+  // de uitnodiging om te drukken (naast de gouden gloed en de pijl). Vast,
+  // vooraf geladen element: een vers new Audio() wordt door de browser soms
+  // opgeruimd voordat het klaar is met laden en speelt dan niet.
+  if (!window._owIntroDing) {
+    try {
+      window._owIntroDing = new Audio('geluid/keuzegeluid/goed.mp3');
+      window._owIntroDing.volume = 0.5;
+      window._owIntroDing.addEventListener('error', function () { console.warn('goed.mp3 niet gevonden op geluid/keuzegeluid/goed.mp3'); });
+    } catch (e) { window._owIntroDing = null; }
+  }
+  var dingTimer = null;
+  function ruimDingOp() {
+    if (dingTimer) { clearTimeout(dingTimer); dingTimer = null; }
+  }
+  function planIntroDing() {
+    ruimDingOp();
+    // Even ná het infaden van de tekst (0,45s-transitie in .ow-intro-tekst),
+    // zodat het geluidje bij de tekst hoort en niet al klinkt terwijl die nog
+    // aan het opkomen is.
+    dingTimer = setTimeout(function () {
+      dingTimer = null;
+      var a = window._owIntroDing;
+      if (!a) return;
+      try { a.currentTime = 0; a.play().catch(function () {}); } catch (e) {}
+    }, 380);
+  }
+
   var i = -1;
   function toonStap(nieuw) {
     var eerste = i < 0;
@@ -6346,6 +6376,9 @@ function startOverworldIntro() {
     var s = stappen[i];
     overgangBezig = true;
     zetKnopKlikbaar(false);
+    // Een nog niet afgevuurd geluidje van de vorige stap annuleren, zodat het
+    // nooit ná een snelle doorklik alsnog op de verkeerde stap klinkt.
+    ruimDingOp();
     tekstEl.style.opacity = '0';
     // Zachte overgang: tekst rustig uitfaden, dan de spot verplaatsen en de
     // nieuwe tekst weer infaden. Bij de eerste stap alleen infaden.
@@ -6364,6 +6397,7 @@ function startOverworldIntro() {
       if (s.tik) {
         zetKnopZichtbaar(false);
         zetTik(s);
+        planIntroDing();
       } else {
         if (opruimTik) { opruimTik(); opruimTik = null; }
         zetKnopZichtbaar(true);
@@ -6388,6 +6422,7 @@ function startOverworldIntro() {
     // Vangnet: mocht de pijl of de pook er nog staan, haal ze weg.
     try { ruimPijlOp(); } catch (e) {}
     try { ruimPookOp(); } catch (e) {}
+    try { ruimDingOp(); } catch (e) {}
     // Vangnet: het voorbeeldvoorwerp mag nooit in een echte rugzak blijven
     // liggen, ook niet als de rondleiding halverwege afgebroken wordt.
     try { verwijderDemoItem(); } catch (e) {}
