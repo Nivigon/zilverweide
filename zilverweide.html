@@ -3757,6 +3757,13 @@ function verwerkBinnengekomenShared(data) {
     // De speler mag niet merken dat de begeleider bijstuurt.
     if (typeof pasSchaduwInstellingenToe === 'function') pasSchaduwInstellingenToe();
     if (typeof pasSchaduwPauzeToe === 'function') pasSchaduwPauzeToe();
+    // Sneller dagboek (begeleiderspaneel, Hulp): op een boek dat nu al
+    // openstaat direct toepassen. Een verse mount leest de vlag zelf uit
+    // getSharedState, dus dit is alleen voor het live omzetten tijdens lezen.
+    if (typeof data.dagboek_snel === 'boolean' &&
+        window.Dagboek && typeof window.Dagboek.zetSnel === 'function') {
+      window.Dagboek.zetSnel(data.dagboek_snel);
+    }
   } catch (e) { console.warn('verwerkBinnengekomenShared:', e); }
   if (eersteSnapshot) { _verhaalInitieleSnapshotBezig = false; _verhaalSnapshotGehad = true; }
   if (ietsNieuws && typeof updateMissieTeller === 'function') updateMissieTeller();
@@ -9830,6 +9837,21 @@ var BGL_HULP_OPTIES = [
       _bglShared.apotheker_beknopt = v;
       try {
         firebase.database().ref('sessies/' + _bglSid + '/shared').child('apotheker_beknopt').set(v)
+          .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
+      } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
+    }
+  },
+  {
+    id: 'dagboek_snel',
+    ic: '📖',
+    titel: 'Dagboek sneller',
+    uitleg: 'Laat de tekst in het dagboek (en "Over de Rozen") vlotter verschijnen en de bladzijden sneller omslaan, voor een groep die zit te wachten. Het verhaal en de bladzijden zelf blijven gelijk. Standaard uit.',
+    keuzes: [ { w: false, label: 'Gewoon (standaard)' }, { w: true, label: 'Sneller' } ],
+    huidig: function () { return _bglShared.dagboek_snel === true; },
+    zet: function (v) {
+      _bglShared.dagboek_snel = v;
+      try {
+        firebase.database().ref('sessies/' + _bglSid + '/shared').child('dagboek_snel').set(v)
           .catch(function (e) { console.warn('begeleider: schrijven mislukt:', e); });
       } catch (e) { console.warn('begeleider: schrijven mislukt:', e); }
     }
@@ -24892,6 +24914,11 @@ function buildDebugPanel() {
       ['📜 Samenvatting woud (voorbeeld)',      function(){ close(); toonRecap('woud', null, false); }, true, 'Samenvattingen'],
       ['📜 Samenvatting kerk (voorbeeld)',      function(){ close(); toonRecap('kerk', null, false); }, true, 'Samenvattingen'],
       // ── Leestaken (boeken die alle vier moeten lezen)
+      // Sneller dagboek: dezelfde gedeelde vlag als de Hulp-knop in het
+      // begeleiderspaneel, zodat het solo te testen is. zetSnel past een
+      // boek dat nu al openstaat direct aan; een verse mount leest de vlag
+      // zelf uit. Default (vlag afwezig) is het gewone tempo.
+      ['📖 Dagboek sneller aan/uit (begeleider-modus)', function(){ var aan = !getSharedState('dagboek_snel'); setSharedState('dagboek_snel', aan); if (window.Dagboek && typeof window.Dagboek.zetSnel === 'function') window.Dagboek.zetSnel(aan); if (typeof toonToast === 'function') toonToast('📖', aan ? 'Dagboek: sneller AAN' : 'Dagboek: gewoon tempo'); close(); }, true, 'Leestaken'],
       ['📖 Dagboek gerestaureerd',  function(){ dagboekHersteldFlags(); if (actieveMissieZone()==='kraaienkwartier') { var k=KRAAIEN_MISSIE_KEYS.find(function(x){return x.id==='dagboek';}); if(k) onMissieKeyVoltooid(k.label); } else updateMissieTeller(); close(); }, true, 'Leestaken'],
       ['📖 Alle 4 dagboek gelezen (4/4)', function(){ debugAlleGelezen('dagboek'); close(); }, true, 'Leestaken'],
       ['📖 Alle 4 molen-legende gezien (4/4)', function(){ setSharedState('oude_kranten_ontdekt', true); debugAlleGelezen('molen'); close(); }, true, 'Leestaken'],
@@ -30062,6 +30089,12 @@ function toonStemmenStil(stil) {
   .dgbk-regel{ transition:none; transform:none; filter:none; }
   .dgbk-illu{ transition:none; transform:rotate(-4deg); filter:none; }
 }
+/* Snel-modus (begeleiderspaneel, Hulp): kortere fades zodat tekst en vuil
+   vlotter staan. De stagger tussen de regels en het omslagfilmpje worden in
+   JS ingekort (tijd() en playbackRate); dit regelt alleen de fade-duur. */
+.dgbk-snel .dgbk-regel{ transition-duration:.35s; }
+.dgbk-snel .dgbk-illu{ transition-duration:.45s; }
+.dgbk-snel .dgbk-vuil{ transition-duration:.55s; }
 
 /* Beschadigd stuk [.....] → grillige inktvlek */
 .dgbk-schade{
@@ -30529,6 +30562,25 @@ window.Dagboek = (function(){
   // omslag-filmpjes blijven gedeeld.
   var bladen = CFG.bladen;
 
+  // Snel-modus (begeleiderspaneel, Hulp): tekst verschijnt vlotter en de
+  // bladzijden slaan sneller om, voor een groep die zit te wachten. Het
+  // verhaal en de bladzijden zelf blijven gelijk. De vlag staat in de
+  // gedeelde stand (dagboek_snel); een verse mount leest hem zelf uit,
+  // een lopend boek wordt via zetSnel() direct bijgewerkt.
+  var snel = false;
+  var SNEL_TIJD = 0.4;    // vertragingen (fade-stagger, omslag-uitfade) x0.4
+  var SNEL_VIDEO = 2.0;   // omslagfilmpje 2x zo snel
+  // Alle vertragingen lopen hierlangs, zodat snel-modus ze in één keer inkort.
+  function tijd(ms){ return snel ? Math.max(0, Math.round(ms * SNEL_TIJD)) : ms; }
+  // Snel-modus aan/uit zetten. Werkt ook op een boek dat nu al openstaat:
+  // de omslagfilmpjes en de fade-duur (via de dgbk-snel-klasse) passen mee.
+  function zetSnel(aan){
+    snel = !!aan;
+    if (film)  { try { film.playbackRate  = snel ? SNEL_VIDEO : 1; } catch(e){} }
+    if (filmT) { try { filmT.playbackRate = snel ? SNEL_VIDEO : 1; } catch(e){} }
+    if (stage) stage.classList.toggle('dgbk-snel', snel);
+  }
+
   function elt(cls){ var d = document.createElement('div'); d.className = cls; return d; }
 
   function rng(seed){
@@ -30687,7 +30739,7 @@ window.Dagboek = (function(){
     index = -2;
     zetKnoppen();
 
-    cover.style.transitionDuration = CFG.coverInFade+'ms';
+    cover.style.transitionDuration = tijd(CFG.coverInFade)+'ms';
     cover.classList.remove('dgbk-zichtbaar');
     requestAnimationFrame(function(){ requestAnimationFrame(function(){
       cover.classList.add('dgbk-zichtbaar');
@@ -30697,13 +30749,13 @@ window.Dagboek = (function(){
   function openDagboek(){
     if (!geopendGemeld && onOpenCb){ geopendGemeld = true; try { onOpenCb(); } catch(e){} }
     bezig = true;
-    cover.style.transitionDuration = CFG.openFade+'ms';
+    cover.style.transitionDuration = tijd(CFG.openFade)+'ms';
     cover.classList.remove('dgbk-zichtbaar');   // lost langzaam op
     timers.push(setTimeout(function(){
       index = 0;
       toonBlad(0);
       bezig = false;
-    }, CFG.openFade));
+    }, tijd(CFG.openFade)));
   }
 
   function toonBlad(i){
@@ -30747,9 +30799,9 @@ window.Dagboek = (function(){
       vuil.classList.add('dgbk-zichtbaar');
       faders.forEach(function(el){ el.classList.add('dgbk-zichtbaar'); });
     } else {
-      timers.push(setTimeout(function(){ vuil.classList.add('dgbk-zichtbaar'); }, 150));
+      timers.push(setTimeout(function(){ vuil.classList.add('dgbk-zichtbaar'); }, tijd(150)));
       faders.forEach(function(el, k){
-        timers.push(setTimeout(function(){ el.classList.add('dgbk-zichtbaar'); }, 500 + k*CFG.regelVertraging));
+        timers.push(setTimeout(function(){ el.classList.add('dgbk-zichtbaar'); }, tijd(500) + k*tijd(CFG.regelVertraging)));
       });
     }
 
@@ -30770,7 +30822,7 @@ window.Dagboek = (function(){
       var p = film.play();
       if (p && p.catch) p.catch(function(){ naOmslag(); });
       film.onended = naOmslag;
-    }, CFG.uitFade));
+    }, tijd(CFG.uitFade)));
   }
   function naOmslag(){
     film.onended = null; film.pause();
@@ -30788,7 +30840,7 @@ window.Dagboek = (function(){
       var p = filmT.play();
       if (p && p.catch) p.catch(function(){ naTerug(); });
       filmT.onended = naTerug;
-    }, CFG.uitFade));
+    }, tijd(CFG.uitFade)));
   }
   function naTerug(){
     filmT.onended = null; filmT.pause();
@@ -30828,6 +30880,11 @@ window.Dagboek = (function(){
     filmT.className = 'dgbk-film dgbk-film-terug';
     filmT.setAttribute('playsinline',''); filmT.preload = 'auto';
     filmT.src = CFG.map + CFG.videoTerug;
+
+    // Snel-modus overnemen uit de gedeelde stand (begeleiderspaneel, Hulp).
+    // getSharedState bestaat pas op runtime; zetSnel zet de afspeelsnelheid
+    // van de omslagfilmpjes en de dgbk-snel-klasse op stage.
+    zetSnel(typeof getSharedState === 'function' ? !!getSharedState('dagboek_snel') : false);
 
     inkLayer = elt('dgbk-ink');
 
@@ -30894,7 +30951,7 @@ window.Dagboek = (function(){
     if (onTonenCb) { try { onTonenCb(); } catch(e) {} }
   }
 
-  return { mount: mount };
+  return { mount: mount, zetSnel: zetSnel };
 })();
 </script>
 
