@@ -6062,8 +6062,12 @@ function startOverworldIntro() {
     { tik: true, lift: '#topright-cluster', doel: '#avatar-badge', dim: ['#missie-teller', '#hulp-knop'],
       tekst: 'Druk rechtsboven eens op je eigen naam.',
       actie: function () { openRolOverzicht(); } },
+    // Bewust geen uitnodiging om de portretjes van de anderen nu al open te
+    // tikken: spelers gingen daar in de praktijk ter plekke alles zitten
+    // lezen. De rondleiding wijst alleen aan waar het staat, het lezen zelf
+    // komt onderweg wel.
     { paneel: true,
-      tekst: 'Hier zie je wie jij ook alweer bent. Tik op de portretjes van je medespelers om te lezen wie zij zijn en wat zij kunnen.' },
+      tekst: 'Hier zie je wie jij ook alweer bent, en wat je medespelers kunnen. Lees het nu niet allemaal door. Onthoud vooral dat het hier staat, dan kun je onderweg terugkijken wanneer je het nodig hebt.' },
     { tik: true, paneel: true, doel: '#rol-ov-sluit',
       tekst: 'Tijd om terug te gaan. Druk onderaan op ‘Terug naar Zilverweide’.',
       actie: function () { sluitRolOverzicht(); } },
