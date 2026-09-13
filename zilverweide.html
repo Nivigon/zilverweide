@@ -634,6 +634,10 @@ body.intro-vergrendeld #locatie-indicator{ pointer-events:none !important; }
 .ow-intro-tap{z-index:9500 !important;pointer-events:auto !important;animation:owIntroLiftIn .6s ease}
 .ow-intro-spot{animation:owIntroGloed 1.8s ease-in-out infinite;border-radius:50px}
 .zone-tile.ow-intro-spot{border-radius:6px;z-index:9500;pointer-events:none;animation:owIntroLiftIn .6s ease,owIntroGloed 1.8s ease-in-out .6s infinite}
+/* De teamklok bij de tijd-stap: eerst rustig infaden, daarna dezelfde gouden
+   gloed als de andere uitgelichte knoppen (zonder deze regel zou .ow-intro-spot
+   de infade van .ow-intro-lift overschrijven). */
+#sessie-klok.ow-intro-spot{animation:owIntroLiftIn .6s ease,owIntroGloed 1.8s ease-in-out .6s infinite}
 .ow-intro-dim{opacity:.15 !important;transition:opacity .45s ease}
 /* Bij een geopend schermvullend paneel (inventaris, rol-overzicht) dokt de
    uitlegtekst bovenin, zodat hij de knoppen onderin dat paneel (met name de
@@ -6008,6 +6012,15 @@ function startOverworldIntro() {
       tekst: 'Dit is jullie verhaalscore. Nu nog leeg. Zodra jullie samen iets ontdekken of doen, vult dit zich vanzelf.',
       naVerder: function () { sluitMissiePaneel(); } },
 
+    // De tijd: de teamklok bovenin, die pas gaat lopen zodra alle vier klaar
+    // zijn met deze rondleiding. Normaal hangt de klok er tijdens de uitleg
+    // nog niet (zie sessieKlokZichtbaar), dus voor deze ene stap zetten we hem
+    // alvast in beeld op 1:50:00 en halen hem daarna weer weg.
+    { lift: '#sessie-klok', doel: '#sessie-klok',
+      voor:     function () { owIntroKlokDemo(true); },
+      naVerder: function () { owIntroKlokDemo(false); },
+      tekst: 'Bovenin staat jullie tijd: 1 uur en 50 minuten. Die gaat pas lopen zodra de laatste van jullie klaar is met deze uitleg. Hoe sneller jullie het mysterie samen oplossen, hoe hoger jullie eindscore. Speel tegen de klok en versla de andere gezelschappen.' },
+
     // Hulpknop: alleen uitleg, de speler drukt hem niet zelf in.
     { lift: '#topright-cluster', doel: '#hulp-knop', dim: ['#missie-teller', '#avatar-badge'],
       tekst: 'Naast de verhaalscore zit de hulpknop. Kom je er samen even niet uit, kun je iets niet vinden, of doet je tablet gek? Druk dan op ‘Hulp vragen’. De spelbegeleider ziet het en komt jullie op weg helpen. De knop wordt groen zolang je vraag openstaat; druk er nog eens op als het weer lukt.' },
@@ -6021,10 +6034,6 @@ function startOverworldIntro() {
     { tik: true, paneel: true, doel: '#rol-ov-sluit',
       tekst: 'Tijd om terug te gaan. Druk hier!',
       actie: function () { sluitRolOverzicht(); } },
-
-    // De tijd: uitleg over de spelersklok, die pas gaat lopen als alle vier
-    // klaar zijn met deze rondleiding.
-    { tekst: 'Nog dit: straks loopt bovenin jullie tijd, 1 uur en 50 minuten. Die begint pas zodra alle vier klaar zijn met deze uitleg. Hoe sneller jullie het mysterie samen oplossen, hoe hoger jullie eindscore. Speel tegen de klok en versla de andere gezelschappen.' },
 
     // Kaart: alleen uitleg, sluit de rondleiding af.
     { doel: '#tile-dorpsplein',
@@ -6139,6 +6148,10 @@ function startOverworldIntro() {
       // knoppen onderin het paneel (zoals de terugknop) nooit bedekt.
       paneel.classList.toggle('ow-boven', !!s.paneel);
       zetOverlayZichtbaar(!s.paneel);
+      // voor(): draait vlak voordat de spot gezet wordt, voor een stap die
+      // eerst zelf iets in beeld moet zetten (de teamklok) zodat zetSpot het
+      // element ook echt kan vinden.
+      if (s.voor) { try { s.voor(); } catch (e) {} }
       zetSpot(s);
       if (s.tik) {
         zetKnopZichtbaar(false);
@@ -6168,6 +6181,9 @@ function startOverworldIntro() {
     try { sluitInventarisOverzicht(); } catch (e) {}
     try { sluitRolOverzicht(); } catch (e) {}
     try { sluitMissiePaneel(); } catch (e) {}
+    // Vangnet: de tijdelijke klok-weergave van de tijd-stap weer uit. Vanaf
+    // hier bepaalt sessieKlokZichtbaar zelf of de klok in beeld hoort.
+    try { owIntroKlokDemo(false); } catch (e) {}
     markVisited('overworld_intro_gezien');
     // Deze speler is klaar met de instructie; meld dat gedeeld. Zodra alle
     // vier gemeld hebben, gaat de spelersklok lopen (zie sessieMarkInstructieKlaar).
@@ -23937,9 +23953,20 @@ function sessieKlokInit() {
   _sessieKlokTimer = setInterval(sessieKlokTik, 1000);
   sessieKlokTik();
 }
+// Tijdens de rondleiding staat de klok normaal nog niet in beeld. Voor de
+// tijd-stap zetten we hem één stap lang toch aan (hij staat dan stil op
+// 1:50:00, want team_klok_start bestaat nog niet), zodat de uitleg iets heeft
+// om aan te wijzen. De rondleiding zet deze vlag zelf weer uit.
+var _owIntroKlokDemo = false;
+function owIntroKlokDemo(aan) {
+  _owIntroKlokDemo = !!aan;
+  if (typeof sessieKlokInit === 'function') sessieKlokInit();
+  if (typeof sessieKlokTik === 'function') sessieKlokTik();
+}
 function sessieKlokZichtbaar() {
-  // Alleen nadat deze speler zelf de rondleiding heeft afgerond.
-  if (!hasVisited('overworld_intro_gezien')) return false;
+  // Alleen nadat deze speler zelf de rondleiding heeft afgerond (of tijdens de
+  // tijd-stap van die rondleiding, zie owIntroKlokDemo).
+  if (!hasVisited('overworld_intro_gezien') && !_owIntroKlokDemo) return false;
   var actief = document.querySelector('.screen.active');
   var id = actief && actief.id;
   if (id !== 'screen-overworld' && id !== 'screen-locatie') return false;
