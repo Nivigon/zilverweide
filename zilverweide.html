@@ -6139,15 +6139,6 @@ function startOverworldIntro() {
       tekst: 'Dit is jullie verhaalscore. Nu nog leeg. Zodra jullie samen iets ontdekken of doen, vult dit zich vanzelf.',
       naVerder: function () { sluitMissiePaneel(); } },
 
-    // De tijd: de teamklok bovenin, die pas gaat lopen zodra alle vier klaar
-    // zijn met deze rondleiding. Normaal hangt de klok er tijdens de uitleg
-    // nog niet (zie sessieKlokZichtbaar), dus voor deze ene stap zetten we hem
-    // alvast in beeld op 1:50:00 en halen hem daarna weer weg.
-    { lift: '#sessie-klok', doel: '#sessie-klok',
-      voor:     function () { owIntroKlokDemo(true); },
-      naVerder: function () { owIntroKlokDemo(false); },
-      tekst: 'Bovenin staat jullie tijd: 1 uur en 50 minuten. Die gaat pas lopen zodra de laatste van jullie klaar is met deze uitleg. Hoe sneller jullie het mysterie samen oplossen, hoe hoger jullie eindscore. Speel tegen de klok en versla de andere gezelschappen.' },
-
     // Hulpknop: alleen uitleg, de speler drukt hem niet zelf in.
     { lift: '#topright-cluster', doel: '#hulp-knop', dim: ['#missie-teller', '#avatar-badge'],
       tekst: 'Naast de verhaalscore zit de hulpknop. Kom je er samen even niet uit, kun je iets niet vinden, of doet je tablet gek? Druk dan op ‘Hulp vragen’. De spelbegeleider ziet het en komt jullie op weg helpen. De knop wordt groen zolang je vraag openstaat; druk er nog eens op als het weer lukt.' },
@@ -6166,6 +6157,17 @@ function startOverworldIntro() {
     { tik: true, paneel: true, doel: '#rol-ov-sluit',
       tekst: 'Tijd om terug te gaan. Druk onderaan op ‘Terug naar Zilverweide’.',
       actie: function () { sluitRolOverzicht(); } },
+
+    // De tijd: de teamklok bovenin, die pas gaat lopen zodra alle vier klaar
+    // zijn met deze rondleiding. Normaal hangt de klok er tijdens de uitleg
+    // nog niet (zie sessieKlokZichtbaar), dus voor deze ene stap zetten we hem
+    // alvast in beeld op 1:50:00 en halen hem daarna weer weg. Bewust vlak voor
+    // de kaart-stap: het rol-overzicht is dan net gesloten en de klok staat
+    // weer in beeld, en de tijdsdruk sluit mooi aan op 'ga snel naar het podium'.
+    { lift: '#sessie-klok', doel: '#sessie-klok',
+      voor:     function () { owIntroKlokDemo(true); },
+      naVerder: function () { owIntroKlokDemo(false); },
+      tekst: 'Bovenin staat jullie tijd: 1 uur en 50 minuten. Die gaat pas lopen zodra de laatste van jullie klaar is met deze uitleg. Hoe sneller jullie het mysterie samen oplossen, hoe hoger jullie eindscore. Speel tegen de klok en versla de andere gezelschappen.' },
 
     // Kaart: alleen uitleg, sluit de rondleiding af.
     { doel: '#tile-dorpsplein',
